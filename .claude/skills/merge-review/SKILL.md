@@ -1,6 +1,6 @@
 ---
 name: merge-review
-description: Run every Renovo review agent (bug-catcher, security-scanner, performance-auditor, design-reviewer) over a branch or PR in parallel, verify their blockers, and give one clear MERGE or REJECT decision. Use when asked "can this merge?", "review this branch/PR", "merge or reject", "pre-merge review" or /merge-review.
+description: Run every Renovo review agent (bug-catcher, security-scanner, performance-auditor, design-reviewer) over a branch or PR in parallel, verify their blockers, check the 80% changed-line / 85% total coverage gates, and give one clear MERGE or REJECT decision. Use when asked "can this merge?", "review this branch/PR", "merge or reject", "pre-merge review" or /merge-review.
 argument-hint: "[PR number | branch | base...head]  (default: current branch vs master)"
 ---
 
@@ -54,10 +54,39 @@ While (or after) the agents run, collect the mechanical signals:
 
 - **PR:** `gh pr checks <n>` — note failing or pending checks. Draft PRs and
   `mergeable: CONFLICTING` are noted too.
-- **Branch with no PR:** don't run the full suite unprompted; note
+- **Branch with no PR:** don't run lint/static analysis unprompted; note
   "CI not run" unless the user asked for local gates, in which case run
-  `vendor/bin/phpcs`, `vendor/bin/phpstan analyse` and `vendor/bin/phpunit`
-  and report pass/fail honestly (a DB-less skip is a skip, not a pass).
+  `vendor/bin/phpcs` and `vendor/bin/phpstan analyse` and report pass/fail
+  honestly.
+
+### Coverage — always checked
+
+Code the change adds or modifies must be **≥ 80% line-covered** (diff
+coverage), and the whole suite must stay **≥ 85%**. This is the same pair of
+gates CI runs on the Postgres leg (`.github/workflows/ci.yml`).
+
+- **PR:** read the results of the CI steps *"Changed lines are covered (80%)"*
+  and *"Overall coverage stays above the floor (85%)"* from
+  `gh pr checks <n>` / `gh run view <run-id> --log` on the
+  `Tests (postgres)` job. Record both percentages.
+- **Branch with no PR, or CI hasn't produced them:** measure locally against
+  the dev database (`docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d`
+  if it isn't running). New files must be committed first or diff-cover
+  skips them silently.
+
+  ```bash
+  DB_NAME=renovo_test composer coverage          # total, writes build/coverage.xml
+  pipx run --spec diff-cover==10.6.0 diff-cover build/coverage.xml \
+    --compare-branch=master --fail-under=80        # changed lines
+  ```
+
+  If the database tests skip (the total comes out implausibly low) or the
+  tooling can't run, coverage is **unverified** — say so; don't report a
+  number you didn't get.
+- A diff that touches no PHP under `src/` (docs, skills, templates only)
+  records coverage as **n/a**.
+- Coverage is the floor, not proof: the bug-catcher still judges whether the
+  new tests assert the behaviour that changed.
 
 ## 4. Verify blockers
 
@@ -80,6 +109,8 @@ the most severe label).
   layer, outbound HTTP outside the shared client, a missing server-side
   permission check, a hardcoded secret, a third-party asset load);
 - required CI checks are failing, or the PR has merge conflicts;
+- changed-line coverage is **below 80%**, or total coverage is **below 85%**,
+  or coverage is **unverified** for a diff that changes `src/`;
 - the change builds scope from a later phase than `docs/phases/PHASE.md`.
 
 **MERGE** otherwise. Non-blocking findings don't block; list them as
@@ -106,6 +137,7 @@ Reply in this shape, decision first:
 | Performance  | CONCERNS | 0        | 2     |
 | Design       | SKIPPED  | –        | –     |
 | CI           | green / failing (names) / pending / not run |
+| Coverage     | changed lines 87% (≥80) · total 88% (≥85) / unverified / n/a |
 
 ## Must fix before merge
 1. path:line — issue (agent) — fix

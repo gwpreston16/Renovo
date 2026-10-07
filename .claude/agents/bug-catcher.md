@@ -48,7 +48,14 @@ Prioritise the areas `CLAUDE.md` calls high-value:
 - **htmx / Twig** — partials that break when the request isn't htmx, forms
   that lose state on validation error, missing CSRF field on a new form.
 - **Tests** — behaviour changed without a test that would catch the
-  regression; tests that assert nothing meaningful.
+  regression; tests that assert nothing meaningful. The project requires
+  **≥ 80% line coverage of changed code** (and ≥ 85% overall): for each
+  changed class/method under `src/`, find the test that exercises it
+  (`Grep` `tests/` for the class and method). New or changed branches with
+  no test reaching them are a MAJOR finding; a high-value area from
+  `CLAUDE.md` (money, billing, trials, price history, budgets, reminders,
+  SSRF, permissions/isolation) changed with no test is a BLOCKER. If a
+  `build/coverage.xml` exists for this branch, use it to confirm.
 
 Where it helps, run the relevant tests (`vendor/bin/phpunit --filter …`) or
 `vendor/bin/phpstan analyse` on touched files. If a command can't run (no DB,
