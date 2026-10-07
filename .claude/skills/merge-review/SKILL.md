@@ -1,13 +1,13 @@
 ---
 name: merge-review
-description: Run every Renovo review agent (bug-catcher, security-scanner, performance-auditor, design-reviewer) over a branch or PR in parallel, verify their blockers, check the 80% changed-line / 85% total coverage gates, and give one clear MERGE or REJECT decision. Use when asked "can this merge?", "review this branch/PR", "merge or reject", "pre-merge review" or /merge-review.
+description: Run the Renovo review agents (bugs, security, performance, design, migrations, phase scope, API contract, test quality, release readiness) over a branch or PR in parallel, verify their blockers, check the 80% changed-line / 85% total coverage gates, and give one clear MERGE or REJECT decision. Use when asked "can this merge?", "review this branch/PR", "merge or reject", "pre-merge review" or /merge-review.
 argument-hint: "[PR number | branch | base...head]  (default: current branch vs master)"
 ---
 
 # Merge review
 
 Gives the user **one decision — MERGE or REJECT** — for a change, backed by
-four specialist reviews. It reads and reports only: it never edits code,
+up to nine specialist reviews. It reads and reports only: it never edits code,
 comments on a PR, merges or pushes.
 
 ## 1. Resolve the target
@@ -34,15 +34,25 @@ If the diff is empty, stop: there is nothing to review.
 
 ## 2. Run the agents in parallel
 
-Launch all four in a **single message** with the Agent tool, each in the
-foreground of that message so their results come back together:
+Launch every agent that applies in a **single message** with the Agent
+tool, each in the foreground of that message so their results come back
+together. Decide which apply from the changed file list; an agent that
+doesn't apply is recorded as **SKIPPED — <reason>**, not run.
 
-| subagent_type        | Run when                                                        |
-|----------------------|-----------------------------------------------------------------|
-| `bug-catcher`        | always                                                          |
-| `security-scanner`   | always                                                          |
-| `performance-auditor`| always                                                          |
-| `design-reviewer`    | diff touches `templates/`, `assets/`, or `translations/`; otherwise record it as **SKIPPED — no UI changes** |
+| subagent_type           | Run when                                                     |
+|-------------------------|--------------------------------------------------------------|
+| `phase-scope-guard`     | always                                                       |
+| `bug-catcher`           | diff touches `src/`, `config/`, `bin/`, `templates/` or `migrations/` |
+| `security-scanner`      | diff touches anything but docs/skills/agents (`*.md`, `.claude/`) |
+| `performance-auditor`   | diff touches `src/`, `templates/`, `assets/`, `migrations/` or `bin/` |
+| `test-quality-reviewer` | diff touches `src/` or `tests/`                              |
+| `design-reviewer`       | diff touches `templates/`, `assets/` or `translations/`      |
+| `migration-reviewer`    | diff touches `migrations/` or `seeds/`                       |
+| `api-contract-reviewer` | diff touches `src/Controller/Api/`, `config/routes.php`, `openapi/`, `docs/api.md`, `src/Security/`, or a service/repository an API controller calls |
+| `release-readiness`     | always                                                       |
+
+When unsure whether an agent applies, run it — each returns PASS quickly
+when there's nothing in its lane.
 
 Each prompt gives the agent: the diff target (range or `PR #<n>` with its
 head branch), the PR title/description if any, the changed file list, and
@@ -85,8 +95,9 @@ gates CI runs on the Postgres leg (`.github/workflows/ci.yml`).
   number you didn't get.
 - A diff that touches no PHP under `src/` (docs, skills, templates only)
   records coverage as **n/a**.
-- Coverage is the floor, not proof: the bug-catcher still judges whether the
-  new tests assert the behaviour that changed.
+- Coverage is the floor, not proof: the test-quality-reviewer still judges
+  whether the new tests assert the behaviour that changed. If its measured
+  number and CI's disagree, CI's wins.
 
 ## 4. Verify blockers
 
@@ -111,7 +122,9 @@ the most severe label).
 - required CI checks are failing, or the PR has merge conflicts;
 - changed-line coverage is **below 80%**, or total coverage is **below 85%**,
   or coverage is **unverified** for a diff that changes `src/`;
-- the change builds scope from a later phase than `docs/phases/PHASE.md`.
+- the phase-scope guard confirms work from a later phase or `ROADMAP.md`, or
+  anything on its forbidden list — nothing beyond `docs/phases/PHASE.md` may
+  merge.
 
 **MERGE** otherwise. Non-blocking findings don't block; list them as
 follow-ups. Pending CI or a draft PR → still decide on the code, but state
@@ -130,14 +143,19 @@ Reply in this shape, decision first:
 
 <One or two sentences: why. For REJECT, name the blocking issue(s).>
 
-| Review       | Verdict  | Blocking | Other |
-|--------------|----------|----------|-------|
-| Bugs         | PASS     | 0        | 1     |
-| Security     | BLOCK    | 1        | 0     |
-| Performance  | CONCERNS | 0        | 2     |
-| Design       | SKIPPED  | –        | –     |
-| CI           | green / failing (names) / pending / not run |
-| Coverage     | changed lines 87% (≥80) · total 88% (≥85) / unverified / n/a |
+| Review        | Verdict  | Blocking | Other |
+|---------------|----------|----------|-------|
+| Phase scope   | PASS     | 0        | 0     |
+| Bugs          | PASS     | 0        | 1     |
+| Security      | BLOCK    | 1        | 0     |
+| Performance   | CONCERNS | 0        | 2     |
+| Tests         | PASS     | 0        | 1     |
+| Design        | SKIPPED — no UI changes | – | – |
+| Migrations    | SKIPPED — no migrations | – | – |
+| API contract  | PASS     | 0        | 0     |
+| Release       | CONCERNS | 0        | 1     |
+| CI            | green / failing (names) / pending / not run |
+| Coverage      | changed lines 87% (≥80) · total 88% (≥85) / unverified / n/a |
 
 ## Must fix before merge
 1. path:line — issue (agent) — fix
