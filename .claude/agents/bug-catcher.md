@@ -41,21 +41,13 @@ Prioritise the areas `CLAUDE.md` calls high-value:
 - **Scoping** — a query that does not go through `AbstractScopedRepository` /
   `Scope`; a Contributor able to write a row they don't own; ISOLATED mode
   leaking another member's rows; splits hidden from participants.
-- **Migrations** — missing or wrong `down()`; SQL that only works on one of
-  Postgres / MySQL; non-idempotent MySQL steps.
+- **Code vs schema** — code that reads/writes a column with the wrong type,
+  nullability or name relative to the migrations (migration safety itself is
+  the migration-reviewer's).
 - **Null / empty handling**, unchecked array keys, wrong comparison
   (`==` vs `===`), swallowed exceptions, wrong HTTP status codes.
 - **htmx / Twig** — partials that break when the request isn't htmx, forms
   that lose state on validation error, missing CSRF field on a new form.
-- **Tests** — behaviour changed without a test that would catch the
-  regression; tests that assert nothing meaningful. The project requires
-  **≥ 80% line coverage of changed code** (and ≥ 85% overall): for each
-  changed class/method under `src/`, find the test that exercises it
-  (`Grep` `tests/` for the class and method). New or changed branches with
-  no test reaching them are a MAJOR finding; a high-value area from
-  `CLAUDE.md` (money, billing, trials, price history, budgets, reminders,
-  SSRF, permissions/isolation) changed with no test is a BLOCKER. If a
-  `build/coverage.xml` exists for this branch, use it to confirm.
 
 Where it helps, run the relevant tests (`vendor/bin/phpunit --filter …`) or
 `vendor/bin/phpstan analyse` on touched files. If a command can't run (no DB,
@@ -68,8 +60,11 @@ no vendor), say so — never claim a result you didn't get.
 - Verify each finding by reading the code path end to end before reporting.
   Drop anything you can't substantiate.
 - Out of scope: security exploits (security-scanner), performance
-  (performance-auditor), visual fidelity (design-reviewer). Mention a crossover
-  only if it is also a correctness bug.
+  (performance-auditor), visual fidelity (design-reviewer), migration safety
+  (migration-reviewer), API contract (api-contract-reviewer), test coverage
+  and quality (test-quality-reviewer), scope (phase-scope-guard), docs and
+  CHANGELOG (release-readiness). Mention a crossover only if it is also a
+  correctness bug.
 
 ## Output
 
