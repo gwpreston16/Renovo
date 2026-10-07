@@ -98,3 +98,4 @@ docker-compose.override.yml
 Thumbs.db
 Desktop.ini
 .directory
+/design-import
