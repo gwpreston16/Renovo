@@ -28,7 +28,7 @@ becomes scope when it is moved to `docs/phases/PHASE.md`, and its decisions are
 confirmed or corrected before the build starts. When a phase finishes, its brief
 is archived as `docs/phases/PHASE-<n>.md` as before.
 
-## Planned — Phases 30–43
+## Planned — Phases 30–44
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -50,6 +50,7 @@ can be moved.
 | 41 | [Security headers and a strict Content-Security-Policy](docs/phases/PHASE-41.md) | — | None |
 | 42 | [API tokens: scopes, lifetimes and rate limits](docs/phases/PHASE-42.md) | 40 | 1 table, 1 column |
 | 43 | [Control over outbound requests, and supply-chain checks](docs/phases/PHASE-43.md) | — | 1 column |
+| 44 | [The README and the docs, rebuilt for the first five minutes](docs/phases/PHASE-44.md) | — | None |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -110,6 +111,10 @@ can be moved.
   enforced inside the shared client; refused requests audited; a documented
   no-route-out Docker setup; `composer audit`, `npm audit`, an image scan and
   Dependabot in CI; `SECURITY.md`; SMTP certificates verified by default.
+- **44 — The README and the docs.** The README becomes a front page: who it
+  is for, screenshots, a two-path quick start and feature groups linking to
+  `docs/` pages that take the existing sections whole. Adds a link and anchor
+  guard, and corrects the logo-fetching copy.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
