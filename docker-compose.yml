@@ -134,7 +134,7 @@ services:
   # than daily is harmless — every dispatch is claimed in the notification
   # ledger before it is sent, so a repeated run sends nothing twice. Operators
   # who would rather use the host's cron can run the same command directly; the
-  # README has the entry.
+  # entry is in docs/operations.md.
   scheduler:
     build:
       context: .

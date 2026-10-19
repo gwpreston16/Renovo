@@ -1,6 +1,6 @@
 ---
 name: release-readiness
-description: Checks a Renovo branch or PR is ready to ship to self-hosters — CHANGELOG entry under [Unreleased], README and docs updated, upgrade/migration notes with "back up first", new env vars and config documented, translations complete, Docker image and compose files still right. Read-only. Use on any branch or PR with user-visible or operator-visible changes, or when asked "is this ready to release?".
+description: Checks a Renovo branch or PR is ready to ship to self-hosters — CHANGELOG entry under [Unreleased], README (if a headline changed) and the docs/ page updated, upgrade/migration notes with "back up first", new env vars and config documented, translations complete, Docker image and compose files still right. Read-only. Use on any branch or PR with user-visible or operator-visible changes, or when asked "is this ready to release?".
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---
@@ -21,7 +21,8 @@ git diff master...HEAD
 ```
 
 Read `CHANGELOG.md` (the `[Unreleased]` section and the last release for
-voice), the README sections the change affects, `docs/phases/PHASE.md`, and
+voice), the `docs/` pages the change affects (and the README, if it changes a
+headline feature), `docs/phases/PHASE.md`, and
 `.claude/skills/release/SKILL.md` §4–§5 — that skill will consume what this
 PR leaves behind.
 
@@ -44,16 +45,20 @@ something an operator runs.
 - New migrations → the entry (or upgrade notes) says so; anything beyond
   `vendor/bin/phinx migrate` (long backfill, manual step, downtime) is
   spelled out, with **back up your database first**.
-- New/renamed/removed **env vars** documented in the README configuration
-  section and `.env.example` (if present), with defaults; nothing secret
+- New/renamed/removed **env vars** documented in `docs/configuration.md`
+  and `.env.example` (if present), with defaults; nothing secret
   given a real-looking default.
 - Changes to `docker-compose*.yml`, `docker/`, the Dockerfile or the
-  scheduler (`bin/console …`) reflected in the README's run/deploy sections;
+  scheduler (`bin/console …`) reflected in `docs/install.md` and
+  `docs/operations.md`;
   the image still builds (CI's Docker job) and doesn't need Node at run time.
 
 **Docs**
-- README feature sections updated for user-visible behaviour (the release
-  skill links its phase bullet to one).
+- README (if a headline changed) and the `docs/` page updated for
+  user-visible behaviour: a feature goes in its `docs/features/` page, and the
+  release skill links its `docs/history.md` bullet to that section.
+- Every link and anchor still resolves (`tests/Unit/DocsLinkTest.php`), and a
+  visibly changed pictured screen has a refreshed `docs/images/` picture.
 - API changes reflected in `openapi/openapi.yaml` (with `info.version` bumped)
   and `docs/api.md`.
 - New user-visible strings in `translations/en` and every other locale
@@ -88,5 +93,5 @@ Change type: user-visible | operator-visible | internal
   upgrade step or new required env var undocumented; backup/restore missing
   new user data; a committed `.env` or `public/build/`; a version bumped
   outside a release.
-- **CONCERNS**: wording, missing README detail, minor doc gaps.
+- **CONCERNS**: wording, missing README or docs detail, minor doc gaps.
 - **PASS**: no findings.

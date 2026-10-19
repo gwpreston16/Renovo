@@ -1,0 +1,389 @@
+# History
+
+What each phase built, in order: v1 (Phases 1–29), then each phase since. Release notes per version are in the CHANGELOG. Back to the [documentation index](README.md).
+
+## v1 (Phases 1–29)
+
+Built in phases:
+
+- **Phase 1 — foundation, auth, roles and core tracking — complete.** Slim 4 on
+  PostgreSQL or MySQL, argon2id sign-in, household roles, SHARED/ISOLATED data
+  isolation applied centrally, and subscription tracking with billing-cycle
+  normalisation.
+- **Phase 2 — money — complete.** Exchange rates behind a pluggable provider,
+  append-only price history with scheduled changes, free trials that convert,
+  budgets that trigger on projected spend, a twelve-month forecast, per-period
+  and year-over-year figures, a usage signal, a cancel-by dashboard,
+  shared-cost splitting and bulk actions. See [Money features](features/money.md#money-features).
+- **Phase 3 — notifications and the scheduler — complete.** Reminders before a
+  renewal, a trial conversion or a cancellation deadline, and an alert when a
+  budget is projected to be exceeded; email, Gotify, Slack and generic webhook
+  channels; per-user lead times, routing and digests; a daily scheduler that
+  dispatches each alert exactly once; and an SSRF-hardened HTTP client with an
+  administrator's trusted-host allowlist. See
+  [Notifications](features/notifications.md#notifications).
+- **Phase 4 — advanced auth and the security surface — complete.** TOTP
+  two-factor, passkeys and security keys (both as a way to sign in and as a
+  second factor), an audit log an administrator or household Owner can read, and
+  a list of active sessions you can revoke one at a time or all at once. See
+  [Signing in](security.md#signing-in).
+- **Phase 5 — API, interoperability and files — complete.** A versioned
+  `/api/v1` with full subscription CRUD including edit, authenticated by tokens
+  you issue and revoke yourself; an OpenAPI 3 document that is the contract
+  rather than a description of it, checked against the routes in CI; a CSV/JSON
+  importer that maps columns and previews every row before writing any of them;
+  whole-household backup and restore, files included, without touching the
+  database; a read-only iCalendar feed of renewals, trial conversions and
+  cancellation deadlines; and invoices or receipts attached to a subscription,
+  stored outside the web root. See [The API](api.md#the-api),
+  [Importing](features/tracking.md#importing), [Backup and restore](operations.md#backup-and-restore),
+  [Calendar feed](features/calendar.md#calendar-feed) and
+  [Invoices and receipts](features/tracking.md#invoices-and-receipts).
+- **Phase 6 — language, the calendar, polish and operations — complete.** Every
+  string the application shows now comes from a catalogue, so adding a language
+  is adding one file and running one check; a month view of what is coming; list
+  filters you can name and come back to; comfortable or compact lists, a
+  dashboard you can rearrange, a quick-add dialog and keyboard shortcuts; icons
+  fetched from a subscription's own website through the guarded HTTP client and
+  cached per domain; liveness and readiness endpoints and a Prometheus
+  `/metrics`; and a read-only demonstration mode. See
+  [Language](features/customising.md#language), [Calendar](features/calendar.md#calendar),
+  [Making it yours](features/customising.md#making-it-yours),
+  [Health and metrics](operations.md#health-and-metrics) and
+  [Demonstration mode](operations.md#demonstration-mode).
+- **Phase 7 — the build pipeline and offline assets — complete.** Tailwind
+  compiled, a small JavaScript bundle (Chart.js lazily, tree-shaken Lucide
+  icons) and the Inter webfont vendored from npm rather than linked from
+  Google — all of it hashed into `public/build` with a manifest a Twig helper
+  resolves, built into the image so the running container fetches nothing, and
+  held to the rule that **nothing the browser loads comes from a third-party
+  host** by a check CI runs over the build's output as well as its sources. It
+  adds no feature; it is what a re-skin gets compiled by. See
+  [Building the front end](development.md#building-the-front-end).
+
+- **Phase 8 — the design system — complete.** The colour, type and spacing the
+  interface is built from, named once as Tailwind theme tokens the build
+  compiles: a brand gradient sampled from the logo, a separate warm hue for
+  urgency so "this is the action" and "this needs attention" stop competing,
+  Inter applied with tabular figures so columns of money line up, and both the
+  light and dark token sets. The stylesheet that dresses the application moved
+  into the build and Preflight came on with it. It adds no feature and no
+  screen; it is the vocabulary the re-skin in Phases 9–14 is written in. See
+  [The design system](development.md#the-design-system).
+
+- **Phase 9 — the application shell — complete.** One frame every screen sits
+  in: a fixed rail carrying the mark and the navigation, a top bar with the
+  page's name and the one action worth offering, and a bottom tab bar with a
+  no-JavaScript drawer below 768px. Every destination is declared once in a
+  service, the highlighted item is worked out on the server from the request
+  path, and the keyboard shortcuts still reach the same places. It adds no
+  feature and moves nothing about permissions, money or scope. See
+  [The application shell](development.md#the-application-shell).
+
+- **Phase 10 — the dashboard — complete.** The landing screen as a bento grid:
+  a row of metric cards — monthly and yearly spend as per-currency subtotals,
+  with a combined total alongside only when every currency converts; the count
+  of renewals in the near window; and the active-subscription count with the
+  next charge and its date beneath it — a twelve-month spend chart drawn from
+  the Forecast page's own call, so the two cannot disagree about a month; a
+  budget against its projected spend with the category bars beneath it; and the
+  charges coming in the next six weeks beside where the money goes by category.
+  The new tiles join the rearranging an account could already do, so a
+  dashboard somebody has arranged keeps its arrangement and finds them
+  appended. It adds no figure the application did not already produce — and it
+  no longer repeats the subscriptions list, which is the Subscriptions page's
+  own subject. *Phase 21 replaced this card set with the prototype's two
+  dashboards; see below.*
+
+- **Phase 11 — my subscriptions — complete.** The subscriptions screen in the
+  design's arrangement: a stats strip across the top, the list itself, the two
+  deadlines the application distinguishes — a charge inside the near window, and
+  the last day to give notice where a notice period exists — a section for
+  trials before they convert, and the category distribution as proportion bars
+  alongside. The list is the same list, so saved views, density, scope and
+  permissions are unchanged by the restyle; the figures are the ones the
+  Statistics page and the cancel-by view already produce. It adds no data and no
+  new query path. *Phase 22 rearranged this screen to the prototype and moved
+  trials and the category widget to the dashboard; see below.*
+
+- **Phase 12 — analytics and insights — complete.** The Statistics page
+  restyled to the design's layout: a KPI row, the twelve-month spending
+  trajectory, the category breakdown drawn as a donut, the year-over-year
+  comparison, and a notable card ranking the highest and lowest cost — ordered
+  on converted monthly cost, shown in each subscription's own currency, with
+  anything that has no rate left out and counted. The chart payload and the
+  category breakdown moved into services both screens call, so this trajectory
+  and the dashboard's are one payload, and these segments and the
+  subscriptions screen's bars are one breakdown. The donut is drawn only when
+  a single whole exists; where a currency has no rate the screen shows the
+  per-currency figures instead of a centre label standing for a number nobody
+  computed. It introduces no new computation and the route is still `/stats`.
+  *Phase 23 rebuilt this screen to the prototype; see below.*
+
+- **Phase 13 — spend insights — complete.** The one phase in the re-skin that
+  adds capability rather than restyling it, built as rules over data the
+  application already holds rather than a model: more than one active
+  subscription in a category, a trial about to convert, a price that has risen,
+  and — only where a usage signal exists — one that is rarely used. Each
+  insight names the subscriptions behind it and states a figure in their own
+  currency that the member can check; nothing is totalled across currencies,
+  urgency rather than size orders the list, and when no rule fires there is no
+  card at all. It sits on the analytics screen; the dashboard tile the brief
+  left optional was kept for later.
+
+- **Phase 14 — polish, responsiveness, accessibility and sign-off —
+  complete.** The screens seen whole rather than one at a time, and the rules
+  that came out of it written down as tests rather than as intentions. The
+  accent now means one thing: a screen carries at most one filled button, which
+  is why the top bar's quick-add is outlined — a control on every screen cannot
+  hold the accent for the one thing a particular screen is about. Every screen
+  was walked at 1440, 390 and 320 pixels in both themes, which is how a `curl`
+  example turned out to be making the API tokens page wider than the phone
+  showing it; every table and every `<pre>` now scrolls inside its own card,
+  and below 720px the calendar stops being a seven-column grid and becomes a
+  list in which each day names its own weekday. Contrast is checked as a matrix
+  rather than against one surface — quiet text on the page, in a hovered row
+  and in a row tinted for urgency, in both themes — and the light theme is
+  proved by that matrix rather than by being looked at. Every figure on every
+  screen goes through ICU, so not one number, currency sign or percent is
+  written in a template. See [The accent
+  rule](development.md#the-accent-rule), [Contrast is tested, not
+  eyeballed](development.md#contrast-is-tested-not-eyeballed) and [On a narrow
+  screen](development.md#on-a-narrow-screen).
+
+- **Phase 15 — household membership — complete.** The part of Phase 6 that was
+  deferred: a household has always been a real scoping entity, but two of its
+  edges were never wired to a screen. An Owner/Admin can now put somebody into
+  their household, and every member can manage their own account. Adding a
+  member creates a membership in **this** household and never a second one —
+  the single thing separating provisioning from open sign-up — and sends a
+  link the new member sets their own password with; an administrator never
+  sets one and never sees one. The exception is a member with no mailbox of
+  their own, who gets a placeholder address that can never receive mail and a
+  one-time password shown once, stored only as a hash and enforced until it is
+  replaced. Revoking a login closes every door rather than the obvious one —
+  password, passkey, second factor and API token — and ends every session at
+  once. Two things are refused however they are attempted: acting on the
+  household's last Owner, and leaving a row that belongs to nobody.
+  Self-service covers the name, the address — which does not become the login
+  until it has been proved — the password, which asks for the current one, and
+  a picture, re-encoded rather than stored as it arrived.
+  See [Households and people](features/households.md#households-and-people).
+
+- **Phase 16 — more ways to be told — complete.** The channels deferred in v1,
+  spending the promise Phase 3 made: a new one costs a class and a line in the
+  container. This cost seven — Discord, Telegram, Pushover, Pushplus,
+  Mattermost, ntfy and Serverchan — and changed neither the dispatcher, the
+  scheduler, the routing rules, the settings form nor the database; the
+  settings page offers them because it already renders whatever the registry
+  holds. Each reads its own service's idea of failure rather than the status
+  code, because several of them answer HTTP 200 with a body saying the message
+  was not sent, and turns it into a sentence naming the thing to fix. What
+  decides each one's transport is whether the service can be self-hosted: a
+  public service forces https and no allowlist entry can downgrade it, while
+  Mattermost and a self-hosted ntfy follow the administrator's trusted-host
+  list exactly as Gotify does — and ntfy, being both, has that rule computed
+  from the URL rather than fixed. Four of these put the credential in the URL
+  itself, so the failure recorded against a channel is scrubbed before it is
+  stored and shown. Browser push is deliberately not in it: its delivery
+  necessarily travels through the browser vendor's push cloud, which is the one
+  thing the offline rule does not permit, so it waits for a phase that can say
+  so plainly rather than arriving with an asterisk. See
+  [Notifications](features/notifications.md#notifications).
+- **Phase 17 — payment methods — complete.** What each subscription is paid
+  with: a household-wide list managed beside Categories, a select on the
+  subscription form, a badge on the list, and a spend-by-payment-method donut
+  on Analytics that degrades to per-currency figures exactly as the category
+  one does. A payment method is a label with a picture — it holds no amount and
+  stores no card number. Every new household starts with ten defaults (cards,
+  direct debit, PayPal, the app stores…) drawn with generic icons rather than
+  anybody's trademark; a household that wants a brand's logo uploads it. A
+  household that predates the phase gets the same list from a button on the
+  empty screen. The API carries `payment_method_id` — where, unlike the older
+  fields, an absent key leaves the assignment alone so an existing client
+  cannot clear it — and backups carry the list, its logos and every
+  assignment, matched by name on the way back in.
+
+- **Phase 18 — the Renovo theme — complete.** The visual language from the
+  Claude Design prototype as the foundation later screens build on: colours
+  authored once in `assets/theme/tokens.json` and generated into five palettes
+  (navy & emerald by default, light & emerald, midnight & teal, light & ocean
+  blue, forest & mint), each in light, dark and "system"; Plus Jakarta Sans for
+  text and JetBrains Mono for every figure; a server-rendered Lucide sprite;
+  and one vocabulary of cards, buttons, controls, badges and tables. Each
+  member picks their own palette under Profile → Appearance — a Viewer
+  included — and it is rendered into the page before first paint. Every
+  palette × theme is held to WCAG AA by a test that reads the same JSON the
+  build does. No screen was rebuilt. See [The design system](development.md#the-design-system).
+- **Phase 19 — the shell, rebuilt to the prototype — complete.** The rail, top
+  bar and narrow tab bar rebuilt on the Phase 18 tokens; no page's content
+  changed. The rail carries the brand, a household label ("N members · you're
+  Editor" — a label, not a switcher), Dashboard, Subscriptions with a count of
+  the active rows the viewer can actually see, Analytics, a "Household tools"
+  group, a secondary add button and a user card with sign-out. The top bar
+  gains a static subtitle per page, a rates chip that reads the cache and never
+  fetches, a light/dark toggle any member (a Viewer included) can use with or
+  without script, and a bell that links to the Calendar and shows a dot when a
+  trial conversion or cancel-by deadline is close. Destinations that lost their
+  rail row are claimed by one that kept one — Settings gains an interim row of
+  links until its own rebuild — and a test still proves every route is
+  reachable from a phone. No migration. See
+  [The application shell](development.md#the-application-shell).
+- **Phase 20 — the data-model additions the new screens need — complete.** Six
+  behaviours the prototype assumes, built before any screen is rebuilt, on the
+  current pages in their current style:
+  - **Only me.** A subscription private to its payer, hidden from every other
+    member in either isolation mode (Owner/Admins included) and out of their
+    totals. The scoping layer enforces it on reads and writes.
+  - **Paused and Cancelled** are separate states. Cancelling a trial stops its
+    conversion, and undoing a cancel lands on Paused.
+  - **Plan** is a free-text tier.
+  - **Budgets** can measure a named member or, in SHARED mode, the whole
+    household.
+  - **Price change** is a new alert: once per change, on by default, and routed
+    like renewals.
+
+  Six migrations. The API, OpenAPI, `docs/api.md`, backup and the importer
+  carry every new field. A backup leaves out other members' private
+  subscriptions and says how many. See
+  [Paused, cancelled, and only me](features/tracking.md#paused-cancelled-and-only-me),
+  [Budgets](features/money.md#budgets) and [Notifications](features/notifications.md#notifications).
+- **Phase 21 — the dashboard: Overview and Household — complete.** The
+  prototype's two dashboards on one page, with a toggle between them that is
+  remembered on the account and a card layout of their own for each.
+  **Overview** shows what the month and the year cost, what is coming, and where
+  the money goes. **Household** shows how this month is going, who pays what,
+  and how the year compares with its budget pace. Past spend is reconstructed
+  from start dates and price history, and says so. The reconstruction now lives
+  in one service, which year-over-year shares, and it stops counting a
+  cancelled subscription at its cancellation date. **Upgrading resets every
+  saved dashboard layout once** (see [Upgrading](upgrading.md#upgrading)). Three
+  migrations. See [The dashboard](features/tracking.md#the-dashboard).
+- **Phase 22 — subscriptions: the list and the form — complete.** The list and
+  the add/edit form rebuilt to the prototype with every existing capability
+  kept: a strip of Active, Trials, Paused and Per month; a toolbar of category
+  and tag chips, status, Household/Mine scope, saved views, density and a CSV
+  export of the filtered list; a table with logos, split notes, base-currency
+  equivalents and status badges, cards below 768px, and the bulk bar back. The
+  form shows the prototype's fields, keeps the rest under More details, saves
+  the split with the row and computes its currency note on the server. No
+  migrations. See [My subscriptions](features/tracking.md#my-subscriptions).
+- **Phase 23 — analytics — complete.** The Analytics screen rebuilt to the
+  prototype: a year-to-date KPI row, twelve months back and twelve ahead in one
+  chart (the dashboard's chart is a window of it), this year against last month
+  by month, who pays what, the five most expensive subscriptions, the
+  household's price history and the insights as a list. The breakdown donuts,
+  the per-period figures and the cost-per-use ranking are kept beneath them. No
+  new computation and no migrations. See [Analytics](features/money.md#analytics).
+- **Phase 24 — budgets — complete.** The Budgets screen rebuilt to the
+  prototype: tiles for On track, Warning, Projected over and the household
+  limit; a card per budget with the month or year charged so far and
+  projected, a tick at its warning threshold, a note that says whether it is
+  trials that push it over, and the owner's real alert routing; and the
+  household's last six months against its monthly limit. New and Edit open one
+  dialog, which is the full-page form without script. No migrations. See
+  [Budgets](features/money.md#budgets).
+- **Phase 25 — the calendar — complete.** The Calendar rebuilt to the
+  prototype: a month grid from the account's first weekday with a chip per
+  charge, trial ending and cancel-by deadline (each named in a word and an
+  icon, not colour alone), the open day beside it, the month's total, count and
+  heaviest day, a list by day on a phone, and the calendar feed's card — copy
+  the link, or create a new one and retire the old. No migrations. See
+  [Calendar](features/calendar.md#calendar).
+- **Phase 26 — members & roles — complete.** One Members & roles screen for
+  every member of the household, replacing the Owner-only member list and the
+  read-only `/household` overview (which now redirects to it). A row per
+  member with their status in words, when they were last here and their
+  monthly share as far as the reader may see it; an Owner/Admin changes roles
+  inline and invites and removes people through a dialog. A table of what each
+  role can do, generated from `PermissionService` and the scoping layer, and a
+  read-only statement of the instance's isolation mode. Nobody can be invited
+  as an Owner, and a removal that would dispose of rows nobody else has seen
+  must say how. No migrations. See [Households and people](features/households.md#households-and-people).
+- **Phase 27 — profile — complete.** Every account setting on one page,
+  `/profile`, for every role: name, email (with the pending change's resend and
+  cancel), picture, password with "sign out my other sessions", the
+  authenticator app, passkeys and recovery codes, where you're signed in (device,
+  address and last seen — no location), and appearance and preferences, which
+  save as you change them. `/settings/security` and `/profile/account` redirect
+  to their sections. No migrations. See [Signing in](security.md#signing-in).
+- **Phase 28 — settings and notifications — complete.** Settings is three
+  tabs, each a page of its own. **General** holds the household's name, the
+  base currency and exchange rates (with **Refresh now**, which respects the
+  failure back-off), and the household's categories, tags and payment methods
+  as sections, with inline rename. **Data & integrations** holds import,
+  backup and restore, a CSV or JSON export, API tokens, the five latest audit
+  entries and a link to the calendar feed. **Instance**, for instance
+  administrators only, holds registration, isolation, trusted hosts, demo mode
+  and the server's mail, metrics and scheduler status. **Notifications** is
+  each person's own page: channels with an on/off switch, one set of lead
+  times chosen as chips, delivery, budget and price-change switches, and a
+  routing grid with a column for every channel. The interim link row is gone;
+  `/categories`, `/payment-methods`, `/settings/backup` and
+  `/settings/api-tokens` redirect to their sections. One migration (the
+  budget-alert switch). This completes the re-skin begun in Phase 18. See
+  [Notifications](features/notifications.md#notifications).
+- **Phase 29 — the signed-out screens — complete.** Every page before you are
+  inside the application — sign in, the two-step challenge, forgotten
+  password and the reset, registration, email confirmation, invitations,
+  email-change links, the forced password change, error pages and the setup
+  wizard — shares one split layout: the brand panel beside a card, collapsing
+  to a slim header on a narrow screen. Sign in gains **Keep me signed in**, a
+  show/hide on the password, and the passkey button only where the browser
+  can use one; every new-password field has a strength meter, and the
+  lifetimes and minimums on screen are read from the code that enforces them.
+  Email confirmation can be sent again, under a rate limit of its own. The
+  setup wizard is three steps — the owner account, the household (currency,
+  isolation, rate provider and invitations), and reminders (mail relay and
+  channels, each with a test) — then a done page. Otherwise no authentication
+  rule, token or lifetime changed, and there are no migrations. See
+  [Signing in](security.md#signing-in).
+
+That is the v1 feature set, Phase 7 the toolchain under it, Phase 8 the design
+language on top and Phase 14 the pass that made it one interface rather than
+seven screens. Deliberately not in it: OIDC/SSO, and bank or transaction sync —
+[`ROADMAP.md`](../ROADMAP.md) lists what was deferred, what may come after v1, and
+what is ruled out.
+
+## Since v1
+
+Since v1, each phase has shipped as a minor release (see
+[`CHANGELOG.md`](../CHANGELOG.md)):
+
+- **Phase 30 — API catch-up: tags and payment-method logos — complete
+  (1.1.0).** An API client can now do with tags and payment-method logos what
+  the Settings page can: create (`POST /api/v1/tags`) and rename
+  (`PUT /api/v1/tags/{id}`) a tag, and upload or clear a payment method's logo
+  (`POST`/`DELETE /api/v1/payment-methods/{id}/logo`). No new permission, and
+  nothing that existed changed shape; the OpenAPI document is version 1.1.0.
+  No migrations. See [The API](api.md#the-api).
+- **Phase 31 — the scenario planner — complete (1.2.0).** A **Scenario** tab
+  on the Forecast screen (`/forecast/scenario`) answers "what if I cancelled
+  these, and moved that one to another plan?" before anything changes. Set any
+  running subscription to Cancel or Change price (a new amount, optionally a
+  new cycle) and it shows the run-rate saving, the saving over the next twelve
+  months and the date each saving starts — a charge a notice period has
+  already committed is named, never counted as saved. The scenario lives in
+  the address, and the planner itself writes nothing. **If you cancelled** now
+  applies the same notice rule. No migrations. See [Forecast](features/money.md#forecast).
+- **Phase 32 — billing every N weeks, months or years — complete (1.3.0).**
+  Six-monthly insurance, a two-monthly water bill, a fortnightly cleaner: the
+  billing cycle is now **Every [N] [weeks / months / years]** beside Quarterly
+  and Custom days, advancing by calendar months so the charge stays on its
+  day, with a **last day of the month** switch. An interval of 1 changes no
+  existing figure. Import reads the cycle's unit ("6 months" no longer imports
+  as six days), and the API, export and backup carry the interval. Two
+  migrations. See [How costs are normalised](development.md#how-costs-are-normalised).
+- **Phase 33 — introductory and promotional prices — complete (1.4.0).**
+  "£5.99 for three months, then £11.99." A price can be marked promotional,
+  with **Offer ends** and **Then costs** scheduling the price it becomes; a
+  **Promo** chip sits beside it, and price history, analytics, the forecast,
+  the calendar and the price-change alert say "Offer ends" rather than calling
+  it a rise. Insights flag an offer that is ending and one with no end date.
+  A price that has taken effect is never rewritten. One migration. See
+  [Price history](features/money.md#price-history).
+
+Each phase's brief, with its scope, decisions and status, is archived in
+[`phases/`](phases/) as `PHASE-<n>.md`, and the current one is
+[`phases/PHASE.md`](phases/PHASE.md). `SPEC.md` has the conventions every
+phase followed.

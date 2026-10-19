@@ -8,6 +8,20 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Changed
+
+- **The README is now a front page.** It says what Renovo is and who it is
+  for, shows seven screenshots (`docs/images/`, taken from `demo:seed`), and
+  has a two-path quick start and the features in groups. The detail moved
+  whole into `docs/`, with [an index](docs/README.md): installing, upgrading,
+  configuration, operations, security, development, one page per feature
+  group, and [the history](docs/history.md) of every phase. `docs/api.md` now
+  opens with the README's API introduction. The security notes no longer say
+  logos are "never fetched": a subscription's website icon is fetched through
+  the guarded client. A new test, `DocsLinkTest`, fails on a broken link,
+  anchor or image anywhere in the README, CHANGELOG, ROADMAP or `docs/`.
+  Nothing in the application changed. *Phase 44.*
+
 ## [1.4.0] - 2026-10-01
 
 ### Added

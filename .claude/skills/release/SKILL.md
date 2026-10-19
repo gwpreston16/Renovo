@@ -1,6 +1,6 @@
 ---
 name: release
-description: Cut the next Renovo release — move the outstanding phases' CHANGELOG entries under a new version, add them to the README's "Since v1" list, bump the version, commit, tag master and publish the GitHub release. Use when asked to "do the release", "cut 1.x", "release the next version" or /release.
+description: Cut the next Renovo release — move the outstanding phases' CHANGELOG entries under a new version, add them to the "Since v1" list in docs/history.md, update the README's "What's new" line, bump the version, commit, tag master and publish the GitHub release. Use when asked to "do the release", "cut 1.x", "release the next version" or /release.
 argument-hint: "[version, e.g. 1.5.0 — defaults to the next minor]"
 disable-model-invocation: true
 ---
@@ -9,8 +9,8 @@ disable-model-invocation: true
 
 Cuts the next release of Renovo from `master`, the way 1.1.0 to 1.4.0 were cut.
 Each release is **one commit on master** ("Release X.Y.Z") carrying the
-CHANGELOG, README and version bump, an **annotated tag** `vX.Y.Z` on that
-commit, and a **GitHub release** titled `Renovo X.Y.Z`.
+CHANGELOG, `docs/history.md`, README and version bump, an **annotated tag**
+`vX.Y.Z` on that commit, and a **GitHub release** titled `Renovo X.Y.Z`.
 
 The order matters: the tag must point at the commit that already contains the
 changelog, so the docs are updated and committed *before* tagging.
@@ -31,9 +31,9 @@ LAST=$(git describe --tags --abbrev=0)      # e.g. v1.4.0
 ```
 
 - **Dirty tree:** stop and show `git status`. Never sweep stray changes into
-  the release commit. If the only change is `README.md`, it may be the user's
-  own in-progress "Since v1" edit — show the diff and ask whether to build on
-  it.
+  the release commit. If the only change is `docs/history.md` or
+  `README.md`, it may be the user's own in-progress "Since v1" or "What's new"
+  edit — show the diff and ask whether to build on it.
 - **Red or running CI:** stop. Don't release red.
 
 ## 2. Find the outstanding phases
@@ -48,7 +48,7 @@ Look for `Phase N: …` commits and `Merge pull request … from …/phase-N/…
 merges. Cross-check against:
 
 - `*Phase N.*` markers under `## [Unreleased]` in `CHANGELOG.md`;
-- the `- **Phase N — … — complete (X.Y.Z).**` bullets in `README.md`.
+- the `- **Phase N — … — complete (X.Y.Z).**` bullets in `docs/history.md`.
 
 **If no phase has merged since `$LAST`, stop** and say so — a docs-only change
 (new phase briefs, roadmap edits) is not a release. Only go on if the user
@@ -87,22 +87,22 @@ Keep a Changelog format. Phases normally add their entries under
    ```
    (keep the older links below, newest first).
 
-## 5. README.md
+## 5. docs/history.md and README.md
 
-In the "Since v1, each phase has shipped as a minor release" list (above the
-"The current phase is …" line in the phases section):
+In `docs/history.md`, under `## Since v1`, after the last phase bullet and
+before the closing paragraph about the archived briefs:
 
 1. Add one bullet per outstanding phase, in phase order:
    ```
    - **Phase N — <title from PHASE-N.md> — complete (X.Y.Z).**
      <One paragraph: what a user can now do, in plain terms; what changed for
      the API (new endpoints/fields, OpenAPI version); the migration count, or
-     "No migrations."; then "See [<section>](#anchor)." pointing at the README
-     section that documents it.>
+     "No migrations."; then "See [<section>](<page>.md#anchor)." pointing at
+     the docs page and section that document it, relative to `docs/`.>
    ```
    Wrap at ~78 columns like the surrounding text.
-2. Set **"The current phase is …"** from the `# Phase …` heading of
-   `docs/phases/PHASE.md`, with a one-sentence summary from its opening.
+2. In `README.md`'s **What's new** section, set "The current phase is …"
+   from the `# Phase …` heading of `docs/phases/PHASE.md`.
    If `PHASE.md` is still the phase being released, leave the line saying so
    and point that out to the user.
 
@@ -142,7 +142,7 @@ Show the user `git diff`, the tag message and the release notes. **Wait for an
 explicit go.** Then:
 
 ```bash
-git add CHANGELOG.md README.md package.json package-lock.json
+git add CHANGELOG.md README.md docs/ package.json package-lock.json
 git commit -m "Release X.Y.Z" -m "<attribution trailer from the system reminder>"
 git tag -a vX.Y.Z -F <scratchpad>/tag-message.md
 git push origin master
@@ -151,7 +151,8 @@ gh release create vX.Y.Z --verify-tag --title "Renovo X.Y.Z" \
   --notes-file <scratchpad>/release-notes.md --latest
 ```
 
-Stage only those four files — never `git add -A`.
+Stage only those paths — never `git add -A`. Check `git status` first: under
+`docs/` only `history.md` should have changed.
 
 ## 9. Report
 

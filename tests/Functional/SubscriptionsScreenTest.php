@@ -933,7 +933,7 @@ final class SubscriptionsScreenTest extends DatabaseTestCase
     }
 
     /**
-     * The README's claim, held to account: an exported file is read back by
+     * The documentation's claim (docs/features/tracking.md), held to account: an exported file is read back by
      * the importer's automatic preset with no mapping chosen by hand, and every
      * row passes the same validation a new subscription does.
      */

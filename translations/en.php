@@ -9,7 +9,7 @@
  * differently in the singular takes a `plural` block so that a language with
  * more than two forms can say all of them. Adding a language means copying
  * this file to `translations/<locale>.php` and translating the right-hand
- * side — see the README.
+ * side — see docs/development.md#adding-a-language.
  *
  * Keys beginning `js.` are handed to the browser by `js_translations()` in the
  * layout. They live here rather than in a JavaScript file so that one check
