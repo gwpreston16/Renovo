@@ -12,8 +12,8 @@ use Phinx\Migration\AbstractMigration;
  * the new cards after the positions of retired ones — an arrangement nobody
  * chose. Clearing the rows returns every account to the default layout, which
  * is what an account that never rearranged anything already has; anybody can
- * arrange the new cards again from their profile. README's Upgrading section
- * says so.
+ * arrange the new cards again from their profile. docs/upgrading.md says
+ * so.
  *
  * `down()` does nothing, deliberately: a deletion cannot be undone, and the
  * rows it removed describe a dashboard the rolled-back code would no longer

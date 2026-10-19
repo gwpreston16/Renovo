@@ -100,8 +100,11 @@ public/       Web root (index.php, assets, build). Nothing else is
               web-accessible. `public/build/` is generated — never edit it, and
               never commit it.
 migrations/   Phinx migrations + seeds.
-docs/         `api.md` (the prose API reference) and `phases/` (the current
-              phase brief, `PHASE.md`, and every earlier one, `PHASE-<n>.md`).
+docs/         `api.md` (the prose API reference), `phases/` (the current
+              phase brief, `PHASE.md`, and every earlier one, `PHASE-<n>.md`),
+              the guide pages (`README.md` is their index; install, upgrading,
+              operations, configuration, security, development, history, and
+              `features/`), and `images/` (the README's screenshots).
 bin/          CLI entry points (e.g. the scheduler command).
 config/       DI, routes, settings.
 tests/        PHPUnit tests.
@@ -123,7 +126,7 @@ npm run build                # compile into public/build/
 npm run watch                # rebuild on change (the `assets` compose service)
 
 # Run the app as it ships (each container serves its own image; no npm at run
-# time). Postgres by default; MySQL variant documented in README.
+# time). Postgres by default; MySQL variant documented in docs/install.md.
 docker compose up
 
 # Run it for development — the working tree's web root plus the asset watcher
@@ -201,6 +204,9 @@ reference and locale completeness. Don't merge red CI.
   count, date in a table) takes the `.num` class.
 - **New feature touching data:** it must respect roles + isolation via the
   scoping layer, and be covered by tests, including a permission test.
+- **New user-visible feature:** document it in its `docs/features/` page (or
+  the operator page it belongs to), not in the README. The README changes only
+  when a feature group gains a headline item.
 
 ## Testing expectations
 

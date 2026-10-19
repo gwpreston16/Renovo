@@ -11,7 +11,7 @@ and the scheduler, advanced auth, the API and import/backup, i18n and demo mode
 (1–6); the build pipeline, design system and first pass over every screen
 (7–14); household membership, more notification channels and payment methods
 (15–17); the Renovo re-skin (18–28); and the signed-out screens (29). The
-[README](README.md#renovo) summarises each phase, and every phase's brief,
+[history](docs/history.md) summarises each phase, and every phase's brief,
 decisions and deferrals are archived in [`docs/phases/`](docs/phases/).
 
 v1.0.0 was released on 1 October 2026 ([CHANGELOG](CHANGELOG.md)).
@@ -22,11 +22,11 @@ Work after v1 continues as numbered phases, each with its own brief in
 `docs/phases/PHASE.md`, and releases group finished phases (v1.1, v1.2, … and
 v2 for anything that breaks an upgrade path).
 
-Briefs for phases that have not started are drafted in
-[`docs/phases/drafts/`](docs/phases/drafts/). A draft is still not scope: it
-becomes scope when it is moved to `docs/phases/PHASE.md`, and its decisions are
-confirmed or corrected before the build starts. When a phase finishes, its brief
-is archived as `docs/phases/PHASE-<n>.md` as before.
+Briefs for phases that have not started are drafted beside the archive, as
+`docs/phases/PHASE-<n>.md` in [`docs/phases/`](docs/phases/). A draft is still
+not scope: it becomes scope when it is copied to `docs/phases/PHASE.md`, and its
+decisions are confirmed or corrected before the build starts. When a phase
+finishes, its brief stays archived as `docs/phases/PHASE-<n>.md`.
 
 ## Planned — Phases 30–44
 
@@ -37,20 +37,20 @@ can be moved.
 | Phase | Brief | Needs | Data model |
 | --- | --- | --- | --- |
 | 30 | Shipped as the API catch-up; secrets encryption moved to 40 | — | — |
-| 31 | [The scenario planner](docs/phases/drafts/PHASE-31.md) | — | None |
-| 32 | [Billing every N weeks, months or years](docs/phases/drafts/PHASE-32.md) | — | 2 columns |
-| 33 | [Introductory and promotional prices](docs/phases/drafts/PHASE-33.md) | — | 1 column |
-| 34 | [The payment ledger](docs/phases/drafts/PHASE-34.md) | — | 1 table, 1 column |
-| 35 | [Contracts, fixed terms and bills that vary](docs/phases/drafts/PHASE-35.md) | 32, 34 | 5 migrations |
-| 36 | [What you've saved](docs/phases/drafts/PHASE-36.md) | 31, 33, 34, 35 | 1 column |
-| 37 | [The version, and knowing when there is a newer one](docs/phases/drafts/PHASE-37.md) | — | 1 column |
-| 38 | [Instance backups: scheduled, encrypted, verified](docs/phases/drafts/PHASE-38.md) | 40 | 1 table |
-| 39 | [Backups off the server, and proof they restore](docs/phases/drafts/PHASE-39.md) | 40, 38 | 3 tables, alert preferences |
+| 31 | [The scenario planner](docs/phases/PHASE-31.md) | — | None |
+| 32 | [Billing every N weeks, months or years](docs/phases/PHASE-32.md) | — | 2 columns |
+| 33 | [Introductory and promotional prices](docs/phases/PHASE-33.md) | — | 1 column |
+| 34 | [The payment ledger](docs/phases/PHASE-34.md) | — | 1 table, 1 column |
+| 35 | [Contracts, fixed terms and bills that vary](docs/phases/PHASE-35.md) | 32, 34 | 5 migrations |
+| 36 | [What you've saved](docs/phases/PHASE-36.md) | 31, 33, 34, 35 | 1 column |
+| 37 | [The version, and knowing when there is a newer one](docs/phases/PHASE-37.md) | — | 1 column |
+| 38 | [Instance backups: scheduled, encrypted, verified](docs/phases/PHASE-38.md) | 40 | 1 table |
+| 39 | [Backups off the server, and proof they restore](docs/phases/PHASE-39.md) | 40, 38 | 3 tables, alert preferences |
 | 40 | [Secrets at rest, and rotating the key that guards them](docs/phases/PHASE-40.md) | — | 2–3 migrations (backfill) |
 | 41 | [Security headers and a strict Content-Security-Policy](docs/phases/PHASE-41.md) | — | None |
 | 42 | [API tokens: scopes, lifetimes and rate limits](docs/phases/PHASE-42.md) | 40 | 1 table, 1 column |
 | 43 | [Control over outbound requests, and supply-chain checks](docs/phases/PHASE-43.md) | — | 1 column |
-| 44 | [The README and the docs, rebuilt for the first five minutes](docs/phases/PHASE-44.md) | — | None |
+| 44 | [The README and the docs, rebuilt for the first five minutes](docs/phases/PHASE-44.md) (done) | — | None |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -114,7 +114,7 @@ can be moved.
 - **44 — The README and the docs.** The README becomes a front page: who it
   is for, screenshots, a two-path quick start and feature groups linking to
   `docs/` pages that take the existing sections whole. Adds a link and anchor
-  guard, and corrects the logo-fetching copy.
+  guard, and corrects the logo-fetching copy. *Done.*
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
@@ -200,7 +200,7 @@ Unordered until someone picks them up.
 - **A dashboard insight tile.** The insights are on Analytics only, so the
   feature can be judged on one screen before it goes on two. *Phases 13, 23.*
 - **"Recurring expenses" as the product's copy.** Worth doing once Phase 35's
-  behaviours exist, as a separate change across the catalogue and README.
+  behaviours exist, as a separate change across the catalogue and the docs.
   *Phase 35.*
 
 ### Security
@@ -215,8 +215,6 @@ Unordered until someone picks them up.
   *Phase 42.*
 - **A KMS or Vault backend** for the encryption key. *Phase 40.*
 - **Passkey-only sign-in for instance admins.**
-- **The README says logos are "uploaded, never fetched"**, but `LogoFetcher`
-  fetches a favicon through the guarded client. Correct the copy.
 - OIDC is under *Sign-in and accounts*.
 
 ### Accessibility and languages

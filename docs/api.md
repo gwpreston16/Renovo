@@ -1,6 +1,7 @@
 # The Renovo API, version 1
 
-A per-endpoint reference for `/api/v1`.
+A per-endpoint reference for `/api/v1`. Back to the
+[documentation index](README.md).
 
 **`openapi/openapi.yaml` is the source of truth**, not this file. It is written
 by hand, served verbatim at `/api/v1/openapi.yaml` (and converted at
@@ -14,6 +15,7 @@ disagree, the YAML is right and this file is stale.
 Generate a client from the YAML. Read this to understand what you are
 generating.
 
+- [The API](#the-api)
 - [Base URL and versioning](#base-url-and-versioning)
 - [Authentication](#authentication)
 - [Permissions](#permissions)
@@ -28,6 +30,74 @@ generating.
   - [Calendar feed](#calendar-feed)
 - [Schemas](#schemas)
 - [Not in version 1](#not-in-version-1)
+
+---
+
+## The API
+
+Everything the web interface can do to a subscription, `/api/v1` can do too —
+including editing, field by field, rather than delete-and-recreate. Both call
+the same services, so the billing-cycle rules, the trial checks and the
+ISOLATED-mode owner override behave identically whichever door a request comes
+through.
+
+### Tokens
+
+Issue one under **Settings → Data & integrations → API tokens**. A token looks like
+`rnv_<public id>_<secret>`; only a hash of the secret is stored, so it is shown
+once and cannot be recovered. Choose **read-only** unless something genuinely
+needs to make changes.
+
+A token narrows and never grants. The request runs under the household role of
+the account that issued it, so a Viewer's "read and write" token still cannot
+write — it fails the same permission check the browser would. A read-only token
+is refused any unsafe method outright, before a route runs.
+
+```bash
+curl -H "Authorization: Bearer rnv_..." http://localhost:9090/api/v1/subscriptions
+```
+
+Session cookies are **not** accepted. That is deliberate rather than an
+oversight: because no ambient browser credential can authenticate an API
+request, there is nothing for a cross-site request to forge, which is what makes
+it safe for these paths to be exempt from CSRF tokens.
+
+### The contract
+
+`openapi/openapi.yaml` is the source of truth — written by hand, served verbatim
+at **/api/v1/openapi.yaml** (and converted at **/api/v1/openapi.json**), and
+checked against the application's own route table in CI **in both directions**.
+Add an endpoint without describing it and the build fails; describe one that does
+not exist and the build fails too.
+
+A few things worth knowing before writing a client:
+
+- **Money is an integer in minor units** beside its currency: `price_minor:
+  1999` with `currency: "GBP"` is £19.99. Never a decimal — 19.99 is not
+  representable as a binary float, which is most of the reason this application
+  stores integers everywhere.
+- **`PUT` replaces; there is no `PATCH`.** To change one field, `GET` the
+  resource, edit the representation and `PUT` it back. A partial body would
+  clear the fields it omitted.
+- **`reminder_days` has three states**, and they are all different: omitted or
+  `null` means "use my notification preference", `[]` means "never remind me
+  about this one", and `[30, 7, 1]` sets lead times for this subscription alone.
+- **A 404 means "no such row, or not yours"**, deliberately indistinguishable,
+  so probing for another household's ids tells you nothing.
+- Errors are JSON: `{"error": {"status", "title", "message", "errors"}}`, where
+  `errors` maps a field name to a message and appears on a 422.
+
+Start with `GET /api/v1/me`, which reports the role, the isolation mode and the
+resolved permission list for the token you are holding.
+
+**Not in version 1:** shared-cost splits, scheduled price changes and the usage
+counter. All three are editable in the web interface, and all three are
+sub-resources with rules of their own — a split has to total its shares, a
+scheduled price has an effective date that interacts with the price history —
+so rather than fix a shape now that would be awkward to change once clients
+depend on it, they read as part of a subscription (`split_mode`, `usage_count`,
+`usage_rating`) and are written through the web interface. The OpenAPI document
+says so too.
 
 ---
 

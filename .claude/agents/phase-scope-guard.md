@@ -37,7 +37,7 @@ the diff touches.
 - **Maintenance** — tooling, CI, docs, skills/agents, dependency bumps,
   refactors with no behaviour change. Always in scope; check only that no
   feature work hides inside it.
-- **Release** — CHANGELOG/README/version only.
+- **Release** — CHANGELOG/README/`docs/history.md`/version only.
 
 ## What to flag
 

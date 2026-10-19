@@ -1,6 +1,6 @@
 ---
 name: hotfix
-description: Ship a Renovo hotfix as a patch release — write a hotfix phase brief numbered under the last released phase (PHASE-33.1.md), land the fix on master, record it in CHANGELOG and README, bump the patch version, tag master and publish the GitHub release. Use when asked to "hotfix", "ship a fix", "cut 1.x.1", "patch release" or /hotfix.
+description: Ship a Renovo hotfix as a patch release — write a hotfix phase brief numbered under the last released phase (PHASE-33.1.md), land the fix on master, record it in CHANGELOG and docs/history.md, bump the patch version, tag master and publish the GitHub release. Use when asked to "hotfix", "ship a fix", "cut 1.x.1", "patch release" or /hotfix.
 argument-hint: "<what is broken, or the commit/PR that fixes it>"
 disable-model-invocation: true
 ---
@@ -13,8 +13,8 @@ and a **patch** release — `vX.Y.Z` → `vX.Y.(Z+1)`. It never carries feature
 work, and it never touches the phase in progress (`docs/phases/PHASE.md`).
 
 It follows the shape of the `release` skill (`.claude/skills/release/SKILL.md`):
-**one "Release X.Y.Z" commit on master** carrying the CHANGELOG, README and
-version bump, an **annotated tag** on that commit, and a **GitHub release**
+**one "Release X.Y.Z" commit on master** carrying the CHANGELOG,
+`docs/history.md` and version bump, an **annotated tag** on that commit, and a **GitHub release**
 titled `Renovo X.Y.Z`. The docs are committed *before* tagging so the tag
 points at a commit that already describes it.
 
@@ -48,8 +48,8 @@ A hotfix is numbered **under the phase the last release shipped**, not the
 phase in progress:
 
 1. Find the released phase: the highest `Phase N` in `$LAST`'s CHANGELOG
-   section (`*Phase N.*` markers) or its README bullet `(X.Y.Z)`. For v1.4.0
-   that is Phase 33.
+   section (`*Phase N.*` markers) or its `docs/history.md` bullet `(X.Y.Z)`.
+   For v1.4.0 that is Phase 33.
 2. Find existing hotfixes of it: `ls docs/phases/PHASE-N.*.md`.
 3. The new brief is `docs/phases/PHASE-N.M.md` with `M` one higher than the
    highest existing (none → `N.1`). Phase 33's first hotfix is **33.1**, its
@@ -135,9 +135,9 @@ Stage named files only — never `git add -A`.
    [X.Y.Z]: https://github.com/gwpreston16/Renovo/compare/vLAST...vX.Y.Z
    ```
 
-## 6. README.md
+## 6. docs/history.md
 
-In the "Since v1, each phase has shipped as a minor release" list, add a
+In `docs/history.md`'s "Since v1" list, add a
 bullet **directly after Phase N's bullet** (hotfixes sit with the phase they
 fix, in order):
 
@@ -148,7 +148,8 @@ fix, in order):
 
 Wrap at ~78 columns. If this is the first hotfix, change the list's lead-in to
 "Since v1, each phase has shipped as a minor release, and each hotfix as a
-patch (see …):". Leave "The current phase is …" alone.
+patch (see …):". Leave the README's "What's new" line (the current phase)
+alone.
 
 ## 7. Version bump
 
@@ -183,7 +184,7 @@ Show the user `git diff`, the tag message and the release notes. **Wait for an
 explicit go.** Then:
 
 ```bash
-git add CHANGELOG.md README.md package.json package-lock.json
+git add CHANGELOG.md docs/history.md package.json package-lock.json
 git commit -m "Release X.Y.Z" -m "<attribution trailer from the system reminder>"
 git tag -a vX.Y.Z -F <scratchpad>/tag-message.md
 git push origin master

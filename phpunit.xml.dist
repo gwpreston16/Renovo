@@ -13,7 +13,7 @@
         <testsuite name="unit">
             <directory>tests/Unit</directory>
         </testsuite>
-        <!-- Require a live PostgreSQL or MySQL database (see README). -->
+        <!-- Require a live PostgreSQL or MySQL database (see docs/development.md). -->
         <testsuite name="integration">
             <directory>tests/Integration</directory>
         </testsuite>
