@@ -462,6 +462,9 @@ return [
     'charge.source.one_off' => 'The entry’s own charge',
     'charge.source.paused' => 'Paused',
 
+    'payments.term_amount' => '{paid} of {total} paid',
+    'payments.term_count' => 'Payment {paid} of {total}',
+    'payments.term_ends' => 'last payment by {date}',
     'payments.heading' => 'Payments',
     'payments.note' => 'One row for each billing date that has passed, at the price due that day. Record what was really charged, or mark a charge that did not happen.',
     'payments.empty' => 'No payments yet. A row appears here once a billing date has passed.',
@@ -957,6 +960,7 @@ return [
     'audit_action.attachment.uploaded' => 'Attachment uploaded',
     'audit_action.backup.exported' => 'Backup exported',
     'audit_action.backup.restored' => 'Backup restored',
+    'audit_action.subscription.ended' => 'Ended — final payment made',
     'audit_action.data.imported' => 'Data imported',
     'audit_action.email.verified' => 'Email address verified',
     'audit_action.household.updated' => 'Household renamed',

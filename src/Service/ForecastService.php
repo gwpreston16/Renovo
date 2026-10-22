@@ -156,8 +156,13 @@ final class ForecastService
                 continue;
             }
 
+            // A fixed term stops at its last payment, whether or not the
+            // catch-up has ended the row yet.
             $walked = $this->markOfferEnds(
-                $this->chargesFor($subscription, $today, $horizon, $scheduled),
+                array_values(array_filter(
+                    $this->chargesFor($subscription, $today, $horizon, $scheduled),
+                    static fn (array $charge): bool => $subscription->chargesOn($charge['date']),
+                )),
                 $offerEnds[$subscription->id] ?? [],
             );
             if ($scenario !== null) {

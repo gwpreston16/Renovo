@@ -164,7 +164,9 @@ final class SubscriptionScreenService
     {
         $byCurrency = [];
         foreach ($this->subscriptions->list($scope, $filter->unpaged()) as $subscription) {
-            $monthly = $subscription->isActive ? $subscription->monthlyMinor() : null;
+            $monthly = $subscription->isActive && $subscription->hasChargesRemaining($this->clock->today())
+                ? $subscription->monthlyMinor()
+                : null;
             if ($monthly === null) {
                 continue;
             }

@@ -11,6 +11,28 @@
     <h2 id="payments-heading">{{ t('payments.heading') }}</h2>
     <p class="muted">{{ t('payments.note') }}</p>
 
+    {#
+        A fixed term's progress: payments made of payments in all, and the
+        money either side. Counted from the dates, with the ledger's amounts
+        where it has them; no balance or interest is stored.
+    #}
+    {% if term %}
+        {% set paid = term.paid_amount.amountMinor|money(term.paid_amount.currency) %}
+        {% set whole = term.total_amount.amountMinor|money(term.total_amount.currency) %}
+        <div class="payments-term">
+            <p>
+                <strong>{{ t('payments.term_count', {'paid': term.paid, 'total': term.total}) }}</strong>
+                · {{ t('payments.term_amount', {'paid': paid, 'total': whole}) }}
+                · {{ t('payments.term_ends', {'date': subscription.paymentsEndOn|local_date('d MMM y')}) }}
+            </p>
+            <div class="budget-bar" role="img"
+                 aria-label="{{ t('payments.term_count', {'paid': term.paid, 'total': term.total}) }}">
+                <span class="budget-bar-charged"
+                      style="width: {{ (term.total > 0 ? term.paid / term.total * 100 : 0)|round(1) }}%"></span>
+            </div>
+        </div>
+    {% endif %}
+
     {% if payments.charges is empty %}
         <p class="muted empty">{{ t('payments.empty') }}</p>
     {% else %}

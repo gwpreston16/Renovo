@@ -64,6 +64,10 @@ enum AuditAction: string
     case AttachmentUploaded = 'attachment.uploaded';
     case AttachmentDeleted = 'attachment.deleted';
 
+    // Phase 35: the catch-up ending a fixed term after its last payment. No
+    // actor — nobody pressed anything — and the subscription is the target.
+    case SubscriptionEnded = 'subscription.ended';
+
     // Phase 15. Household member administration: everything an Owner/Admin can
     // do to somebody else's account. Each of these carries a target as well as
     // an actor, which is the whole reason they are separate cases from the

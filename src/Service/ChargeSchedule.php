@@ -117,6 +117,11 @@ final class ChargeSchedule
             return [];
         }
 
+        // A fixed term is charged up to its last payment and no further.
+        if ($subscription->paymentsEndOn !== null && $subscription->paymentsEndOn < $to) {
+            $to = $subscription->paymentsEndOn;
+        }
+
         $charges = [];
         $date = $start;
         $iterations = 0;

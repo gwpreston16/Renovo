@@ -59,6 +59,7 @@ use App\Tests\Support\TestTranslator;
 use DateTimeImmutable;
 use Psr\Log\NullLogger;
 use Slim\Psr7\Factory\RequestFactory;
+use App\Tests\Support\TestFixedTermService;
 
 /**
  * The whole notification stack, wired by hand against a real database.
@@ -228,6 +229,7 @@ abstract class NotificationTestCase extends DatabaseTestCase
                 $priceHistory,
                 new TrialService($this->subscriptions, $priceHistory, $this->db, $this->clock),
                 $this->subscriptionService,
+                TestFixedTermService::build($this->db, $this->clock, $priceHistory),
             ),
             $this->scanner,
             new PriceChangeScanner(

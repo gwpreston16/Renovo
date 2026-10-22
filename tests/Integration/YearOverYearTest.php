@@ -39,6 +39,7 @@ use App\Tests\Support\TestLogoFetcher;
 use DateTimeImmutable;
 use Psr\Log\NullLogger;
 use Slim\Psr7\Factory\RequestFactory;
+use App\Tests\Support\TestFixedTermService;
 
 /**
  * Year-over-year comparison and the per-period figures.
@@ -126,6 +127,7 @@ final class YearOverYearTest extends DatabaseTestCase
             $this->priceHistory,
             new TrialService($this->subscriptions, $this->priceHistory, $this->db, $clock),
             $subscriptionService,
+            TestFixedTermService::build($this->db, $clock, $this->priceHistory),
         );
 
         $this->stats = new StatsService(

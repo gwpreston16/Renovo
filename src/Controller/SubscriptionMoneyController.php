@@ -9,6 +9,7 @@ use App\Repository\MembershipRepository;
 use App\Security\SessionInterface;
 use App\Service\AttachmentService;
 use App\Service\CatchUpService;
+use App\Service\FixedTermService;
 use App\Service\ChargeService;
 use App\Service\PriceHistoryService;
 use App\Service\ScenarioService;
@@ -43,6 +44,7 @@ final class SubscriptionMoneyController extends Controller
         private readonly ScenarioService $scenarios,
         private readonly ChargeService $charges,
         private readonly CatchUpService $catchUp,
+        private readonly FixedTermService $terms,
     ) {
         parent::__construct($view, $session, $translator);
     }
@@ -84,6 +86,7 @@ final class SubscriptionMoneyController extends Controller
             'can_plan' => $this->scenarios->isPlannable($subscription),
             'attachments' => $this->attachments->forSubscription($scope, $subscription->id),
             'payments' => $this->charges->page($scope, $subscription->id, is_numeric($page) ? (int) $page : 1),
+            'term' => $this->terms->progress($scope, $subscription),
             'invoices' => $this->attachments->byCharge($scope, $subscription->id),
             'today' => $this->charges->today(),
             'errors' => [],

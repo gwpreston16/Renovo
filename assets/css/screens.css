@@ -968,6 +968,17 @@ tr.is-passed > td {
 /* ------------------------------------------------------- the payment ledger */
 
 /* What was due, struck through beside what was really charged. */
+/* A fixed term's progress, above the ledger: the sentence, then the track. */
+.payments-term {
+    display: grid;
+    gap: 0.5rem;
+    margin-block: 0.75rem 1rem;
+}
+
+.payments-term p {
+    margin: 0;
+}
+
 .payments-expected {
     color: var(--muted);
     margin-inline-end: 0.35rem;

@@ -582,7 +582,9 @@ final class SubscriptionService
 
     /**
      * The billing dates a subscription has rolled past, and the date it lands
-     * on — the first that is today or later.
+     * on — the first that is today or later, or the first after a fixed
+     * term's last payment, which is never charged: a catch-up running late
+     * writes nothing after the final payment.
      *
      * @return array{dates: list<DateTimeImmutable>, next: ?DateTimeImmutable}
      */
@@ -597,7 +599,11 @@ final class SubscriptionService
 
         $dates = [];
         $iterations = 0;
-        while ($current < $today->setTime(0, 0) && $iterations < self::MAX_ADVANCE_ITERATIONS) {
+        while (
+            $current < $today->setTime(0, 0)
+            && $subscription->chargesOn($current)
+            && $iterations < self::MAX_ADVANCE_ITERATIONS
+        ) {
             $dates[] = $current;
             $current = $cycle->advance(
                 $current,
@@ -734,11 +740,25 @@ final class SubscriptionService
     /**
      * Every in-scope subscription, unpaginated, for the dashboard figures.
      *
+     * The running rows, by default — and a fixed term whose last payment has
+     * passed is not running, though the catch-up may not have ended it yet:
+     * every total read from here drops it on the day after.
+     *
      * @return list<Subscription>
      */
     public function allForStats(Scope $scope, bool $activeOnly = true): array
     {
-        return $this->subscriptions->findAllForStats($scope, $activeOnly);
+        $rows = $this->subscriptions->findAllForStats($scope, $activeOnly);
+        if (!$activeOnly) {
+            return $rows;
+        }
+
+        $today = $this->clock->today();
+
+        return array_values(array_filter(
+            $rows,
+            static fn (Subscription $subscription): bool => $subscription->hasChargesRemaining($today),
+        ));
     }
 
     /**

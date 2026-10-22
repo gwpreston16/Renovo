@@ -39,6 +39,7 @@ use App\Tests\Support\TestLogoFetcher;
 use DateTimeImmutable;
 use Psr\Log\NullLogger;
 use Slim\Psr7\Factory\RequestFactory;
+use App\Tests\Support\TestFixedTermService;
 
 /**
  * The twelve-month forecast.
@@ -148,7 +149,12 @@ final class ForecastTest extends DatabaseTestCase
             $this->clock,
         );
 
-        $this->catchUp = new CatchUpService($this->priceHistory, $trials, $subscriptionService);
+        $this->catchUp = new CatchUpService(
+            $this->priceHistory,
+            $trials,
+            $subscriptionService,
+            TestFixedTermService::build($this->db, $this->clock, $this->priceHistory),
+        );
     }
 
     public function testAMonthlySubscriptionAppearsOnceInEveryMonth(): void
