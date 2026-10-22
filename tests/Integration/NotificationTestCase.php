@@ -183,6 +183,7 @@ abstract class NotificationTestCase extends DatabaseTestCase
             $forecast,
             $rates,
             $this->instanceSettings,
+            $this->clock,
         );
 
         $this->notifier = new RecordingNotifier();

@@ -1362,6 +1362,21 @@ final class SubscriptionService
         $day = (int) $nextPaymentDate->format('j');
         $isMonthEnd = $day === (int) $nextPaymentDate->format('t');
 
+        // An edit that leaves the date on the day its anchor clamps to in a
+        // shorter month — the 30th's 28 February, 29 February's 28th in a
+        // common year — keeps the anchor rather than taking the clamped day
+        // as the new one (K11). Re-derived when the cycle changes. A monthly
+        // last-day anchor is the switch's to keep, below.
+        $kept = $existing?->anchorDay;
+        $keepsAnchor = $kept !== null
+            && $existing?->billingCycle === $cycle
+            && $day < $kept
+            && $day === min($kept, (int) $nextPaymentDate->format('t'))
+            && !($cycle === BillingCycle::Monthly && $kept === BillingCycle::LAST_DAY_ANCHOR);
+        if ($keepsAnchor) {
+            $day = $kept;
+        }
+
         if ($cycle !== BillingCycle::Monthly) {
             return $day;
         }

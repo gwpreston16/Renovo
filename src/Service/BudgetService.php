@@ -14,6 +14,7 @@ use App\Repository\BudgetRepository;
 use App\Repository\CategoryRepository;
 use App\Repository\MembershipRepository;
 use App\Security\Scope;
+use App\Support\Clock;
 use DateTimeImmutable;
 use InvalidArgumentException;
 
@@ -71,6 +72,7 @@ final class BudgetService
         private readonly ForecastService $forecast,
         private readonly ExchangeRateService $rates,
         private readonly InstanceSettingsService $settings,
+        private readonly Clock $clock,
     ) {
     }
 
@@ -112,16 +114,41 @@ final class BudgetService
             }
 
             $key = ($budget->subjectUserId ?? 'household') . ':' . $budget->period->months();
-            $chargeCache[$key] ??= $this->forecast->charges(
-                $scope,
+            $chargeCache[$key] ??= $this->withinWindow(
+                $this->forecast->charges($scope, $budget->period->months(), $budget->subjectUserId),
                 $budget->period->months(),
-                $budget->subjectUserId,
             );
 
             $progress[] = $this->progressFor($budget, $chargeCache[$key]);
         }
 
         return $progress;
+    }
+
+    /**
+     * The charges inside a rolling window of `$months` from today: today
+     * included, the same day `$months` on not (K2). A monthly charge due
+     * today is counted once, not again a month later, and the window's end
+     * is clamped to its month — 31 January plus a month is 28 February, not
+     * 3 March.
+     *
+     * @param list<array{subscription: \App\Domain\Entity\Subscription, date: DateTimeImmutable, amount: Money, reason: string}> $charges
+     * @return list<array{subscription: \App\Domain\Entity\Subscription, date: DateTimeImmutable, amount: Money, reason: string}>
+     */
+    private function withinWindow(array $charges, int $months): array
+    {
+        $today = $this->clock->today()->setTime(0, 0);
+        $month = $today->modify('first day of this month')->modify(sprintf('+%d months', $months));
+        $end = $month->setDate(
+            (int) $month->format('Y'),
+            (int) $month->format('n'),
+            min((int) $today->format('j'), (int) $month->format('t')),
+        );
+
+        return array_values(array_filter(
+            $charges,
+            static fn (array $charge): bool => $charge['date']->setTime(0, 0) < $end,
+        ));
     }
 
     /**
