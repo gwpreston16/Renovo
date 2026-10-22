@@ -713,6 +713,7 @@ final class PaymentLedgerTest extends DatabaseTestCase
 
         $bob = $this->scope($this->bobId, Role::Contributor);
         $charges = $this->charges->forSubscription($bob, $id);
+        self::assertCount(3, $charges);
         self::assertSame(
             [['2026-05-15', 'skipped', 0], ['2026-04-15', 'skipped', 0], ['2026-03-15', 'skipped', 0]],
             $this->statuses($id),
@@ -760,6 +761,35 @@ final class PaymentLedgerTest extends DatabaseTestCase
             ],
             $this->statuses($id),
         );
+    }
+
+    public function testASkippedPaymentAddedByHandOnAPausedDateStaysSkipped(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
+        $id = $this->create('Energy', '58.00', '2026-03-15', '2026-01-15', ['currency' => 'USD']);
+        $this->subscriptions->setActive($this->alice, $id, false);
+        $this->clock->advanceTo(new DateTimeImmutable('2026-04-20 08:00:00'));
+        // March in dollars, as due; April in pounds, after a switch.
+        $march = $this->charges->addManual($this->alice, $id, ['date' => '2026-03-15', 'amount' => '58.00']);
+        $this->subscriptions->update(
+            $this->alice,
+            $id,
+            $this->input('Energy', '50.00', '2026-03-15', '2026-01-15', ['is_active' => '0']),
+        );
+        $april = $this->charges->addManual($this->alice, $id, ['date' => '2026-04-15', 'amount' => '50.00']);
+        $this->charges->skip($this->alice, $march->id);
+        $this->charges->skip($this->alice, $april->id);
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-20 08:00:00'));
+        $this->subscriptions->setActive($this->alice, $id, true);
+
+        foreach ([$march->id, $april->id] as $chargeId) {
+            $charge = $this->charges->find($this->alice, $chargeId);
+            self::assertSame([ChargeSource::Paused, true, null], [
+                $charge?->source,
+                $charge?->isSkipped(),
+                $charge?->actualMinor,
+            ]);
+        }
     }
 
     public function testBackfillAfterAResumeLeavesThePausedMonthsUnbilled(): void

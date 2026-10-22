@@ -161,7 +161,8 @@ Found while starting it:
   `ledger:backfill` filled them with the reconstruction's charges. A member
   billed during the pause records the amount on that row; Undo puts it back
   as skipped. A payment added by hand on one of those dates becomes that
-  month's `paused` row, still charged, with what was entered as its actual —
+  month's `paused` row, keeping its status, with what was entered as its
+  actual (a skipped one stays skipped, with no actual) —
   one in the price's currency takes the price due as expected, one in
   another currency keeps its own amounts (the row is not relabelled, so its
   value does not change). The rows are written before the row is saved, so
@@ -255,7 +256,8 @@ both engines. Then mark it ✅ in `ROADMAP.md`.
 - A Viewer's page view writes no charges (catch-up is a no-op without write).
 - Paused and cancelled rows write no rows for later dates while paused or
   cancelled; a resume writes the stepped-over dates as skipped, and makes a
-  payment added by hand on one of them that month's charged `paused` row.
+  payment added by hand on one of them that month's `paused` row, keeping
+  its status.
 - `ledger:backfill` reproduces the year-over-year reconstruction to the minor
   unit, is idempotent, never overwrites a `catch_up` row, and adopts a
   `manual` payment on a reconstructed date with its amount kept.
