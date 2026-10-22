@@ -12,6 +12,7 @@ use App\Domain\Entity\ApiToken;
 use App\Domain\SubscriptionFilter;
 use App\Security\Scope;
 use App\Domain\Entity\Subscription;
+use App\Service\CatchUpService;
 use App\Service\LogoStorage;
 use App\Service\PriceHistoryService;
 use App\Service\SubscriptionService;
@@ -45,6 +46,7 @@ final class SubscriptionApiController extends ApiController
         private readonly SubscriptionService $subscriptions,
         private readonly PriceHistoryService $priceHistory,
         private readonly LogoStorage $logos,
+        private readonly CatchUpService $catchUp,
         private readonly Clock $clock,
     ) {
         parent::__construct($translator);
@@ -60,7 +62,7 @@ final class SubscriptionApiController extends ApiController
         // and a negative days-until — until somebody happened to open the
         // subscriptions page in a browser, which is precisely the kind of
         // divergence between the two doors that this phase exists to avoid.
-        $this->advanceDuePayments($request, $scope);
+        $this->catchUp($request, $scope);
 
         $filter = SubscriptionFilter::fromQueryParams($query);
         $perPage = $this->perPage($query);
@@ -312,12 +314,18 @@ final class SubscriptionApiController extends ApiController
         );
     }
 
-    private function advanceDuePayments(ServerRequestInterface $request, Scope $scope): void
+    /**
+     * The whole catch-up, in its order — prices, then trials, then payments —
+     * as every web page runs it. Payments alone would roll a trial's
+     * conversion date past before converting it, and write its first charge
+     * to the ledger at £0.
+     */
+    private function catchUp(ServerRequestInterface $request, Scope $scope): void
     {
         $token = $request->getAttribute(TokenAuthenticationMiddleware::ATTRIBUTE_TOKEN);
 
         if ($token instanceof ApiToken && $token->abilities->allowsWrites()) {
-            $this->subscriptions->advanceDuePayments($scope);
+            $this->catchUp->run($scope);
         }
     }
 

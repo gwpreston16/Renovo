@@ -158,26 +158,36 @@ final class ChargeRepository extends AbstractScopedRepository
     }
 
     /**
-     * The first ledger date of each subscription in scope.
+     * Where each subscription's ledger begins, in scope.
      *
-     * Past spend reads the ledger from this date on and reconstructs the
-     * months before it, so a subscription the ledger began part-way through
-     * its life is neither counted twice nor left with a gap.
+     * `written` is the first charge Renovo wrote itself — by the catch-up or
+     * the backfill. Past spend reads the ledger from that date on and
+     * reconstructs the dates before it. A payment a member added by hand does
+     * not count: it is one charge off the cycle, not evidence that the cycle
+     * has been recorded, and counting it would drop every reconstructed date
+     * between it and the next written row. `any` is the first row of any
+     * source, which says only that the subscription has charges at all.
      *
-     * @return array<int, DateTimeImmutable> Keyed by subscription id.
+     * @return array<int, array{written: DateTimeImmutable|null, any: DateTimeImmutable}>
      */
     public function firstDueDates(Scope $scope): array
     {
-        $params = [];
+        $params = ['__manual' => ChargeSource::Manual->value];
         $sql = 'SELECT ' . $this->qualify('subscription_id') . ' AS subscription_id,'
-            . ' MIN(' . $this->qualify('due_date') . ') AS first_due'
+            . ' MIN(CASE WHEN ' . $this->qualify('source') . ' <> :__manual'
+            . ' THEN ' . $this->qualify('due_date') . ' END) AS first_written,'
+            . ' MIN(' . $this->qualify('due_date') . ') AS first_any'
             . ' FROM ' . $this->quote($this->table())
             . ' WHERE ' . $this->readPredicate($scope, $params)
             . ' GROUP BY ' . $this->qualify('subscription_id');
 
         $dates = [];
         foreach ($this->db->fetchAll($sql, $params) as $row) {
-            $dates[(int) $row['subscription_id']] = new DateTimeImmutable((string) $row['first_due']);
+            $written = $row['first_written'] ?? null;
+            $dates[(int) $row['subscription_id']] = [
+                'written' => is_string($written) && $written !== '' ? new DateTimeImmutable($written) : null,
+                'any' => new DateTimeImmutable((string) $row['first_any']),
+            ];
         }
 
         return $dates;
@@ -199,23 +209,33 @@ final class ChargeRepository extends AbstractScopedRepository
 
     /**
      * The dates a subscription already has a charge on, as `Y-m-d` keys — what
-     * the catch-up and the backfill check before writing, so a date that has
-     * a row is never written twice.
+     * the catch-up, the backfill and a manual payment check before writing,
+     * so a date that has a row is never written twice.
      *
-     * Read through the write predicate: both callers are about to write, and
-     * must ask about the rows they could write beside.
+     * Asked of the subscription within the household, not through the owner
+     * fence: the unique key is per subscription whoever owns each row, so a
+     * check narrower than the key would let a write collide with it. Every
+     * caller has already established that it may write the subscription, and
+     * the answer is dates and sources, never a charge's amounts.
      *
      * @return array<string, ChargeSource>
      */
     public function existingDates(Scope $scope, int $subscriptionId): array
     {
-        $params = [];
-        $sql = 'SELECT ' . $this->qualify('due_date') . ' AS due_date, ' . $this->qualify('source') . ' AS source'
+        if (!$scope->hasHousehold()) {
+            return [];
+        }
+
+        $rows = $this->db->fetchAll(
+            'SELECT ' . $this->quote('due_date') . ' AS due_date, ' . $this->quote('source') . ' AS source'
             . ' FROM ' . $this->quote($this->table())
-            . $this->writableWhere($scope, Criteria::new()->equals('subscription_id', $subscriptionId), $params);
+            . ' WHERE ' . $this->quote('subscription_id') . ' = :subscription'
+            . ' AND ' . $this->quote('household_id') . ' = :household',
+            ['subscription' => $subscriptionId, 'household' => $scope->householdId],
+        );
 
         $dates = [];
-        foreach ($this->db->fetchAll($sql, $params) as $row) {
+        foreach ($rows as $row) {
             $date = (new DateTimeImmutable((string) $row['due_date']))->format('Y-m-d');
             $dates[$date] = ChargeSource::tryFrom((string) $row['source']) ?? ChargeSource::CatchUp;
         }

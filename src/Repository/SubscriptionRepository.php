@@ -445,8 +445,38 @@ final class SubscriptionRepository extends AbstractScopedRepository
             $data['updated_at'] = (new DateTimeImmutable())->format('Y-m-d H:i:s');
 
             $this->updateScoped($scope, $id, $data);
+            $this->moveChildRows($scope, $id, $data);
             $this->syncTags($scope, $id, $tagIds);
         });
+    }
+
+    /**
+     * Carry a change of owner down to the rows that keep their own copy of
+     * it: the price history, the payment ledger and the attachments.
+     *
+     * Those copies are what the scoping layer fences them by, so a copy left
+     * behind would leave the former owner able to change the payments of a
+     * bill that is no longer theirs, and the new owner unable to. Run after
+     * the subscription's own update, which has already asked whether this
+     * scope may write it; a scope fenced to its own rows cannot change the
+     * owner at all (`updateScoped()` drops the column), so it moves nothing.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function moveChildRows(Scope $scope, int $id, array $data): void
+    {
+        if (!array_key_exists('owner_user_id', $data) || $scope->restrictsWritesToOwner() || !$scope->hasHousehold()) {
+            return;
+        }
+
+        foreach (['subscription_price_history', 'subscription_charges', 'attachments'] as $table) {
+            $this->db->execute(
+                'UPDATE ' . $this->quote($table) . ' SET ' . $this->quote('owner_user_id') . ' = :owner'
+                . ' WHERE ' . $this->quote('subscription_id') . ' = :subscription'
+                . ' AND ' . $this->quote('household_id') . ' = :household',
+                ['owner' => (int) $data['owner_user_id'], 'subscription' => $id, 'household' => $scope->householdId],
+            );
+        }
     }
 
     public function delete(Scope $scope, int $id): void
@@ -626,6 +656,7 @@ final class SubscriptionRepository extends AbstractScopedRepository
                     $this->updateScoped($scope, $id, $data + [
                         'updated_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
                     ]);
+                    $this->moveChildRows($scope, $id, $data);
                     $changed++;
                 } catch (\App\Security\ScopeViolationException) {
                     // A row that is not this caller's to change is skipped

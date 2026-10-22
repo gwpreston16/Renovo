@@ -149,7 +149,9 @@ final class ChargeService
      */
     public function mayChange(Scope $scope, Charge $charge): bool
     {
-        return $scope->canWrite() && $scope->mayWriteRow($charge->householdId, $charge->ownerUserId);
+        return $scope->canWrite()
+            && $scope->mayWriteRow($charge->householdId, $charge->ownerUserId)
+            && $this->subscriptions->isWritable($scope, $charge->subscriptionId);
     }
 
     /**
@@ -484,6 +486,9 @@ final class ChargeService
             || ($subscriptionId !== null && $charge->subscriptionId !== $subscriptionId)
             || !$scope->canWrite()
             || !$this->charges->isWritable($scope, $chargeId)
+            // The parent too: a charge is changed only by somebody who may
+            // change the subscription it belongs to.
+            || !$this->subscriptions->isWritable($scope, $charge->subscriptionId)
         ) {
             throw new ValidationException(['charge' => 'error.charge.not_found']);
         }

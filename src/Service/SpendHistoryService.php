@@ -52,7 +52,7 @@ use DateTimeImmutable;
  * @phpstan-type Sources array{
  *     history: array<int, list<PriceChange>>,
  *     ledger: array<int, list<Charge>>,
- *     first: array<int, DateTimeImmutable>
+ *     first: array<int, array{written: DateTimeImmutable|null, any: DateTimeImmutable}>
  * }
  * @phpstan-type HistoricCharge array{
  *     subscription: Subscription,
@@ -468,14 +468,11 @@ final class SpendHistoryService
         DateTimeImmutable $to,
     ): array {
         $history = $sources['history'][$subscription->id] ?? [];
-        $first = $sources['first'][$subscription->id] ?? null;
+        $first = $sources['first'][$subscription->id]['written'] ?? null;
 
-        if ($first === null) {
-            return $this->schedule->between($subscription, $history, $from, $to);
-        }
-
-        $charges = $this->schedule->between($subscription, $history, $from, min($to, $first->modify('-1 day')));
-
+        // Every ledger row in the window counts, a payment added by hand
+        // included; a date that has one is never also reconstructed.
+        $charges = [];
         $recorded = [];
         foreach ($sources['ledger'][$subscription->id] ?? [] as $charge) {
             $recorded[$charge->dueDate->format('Y-m-d')] = true;
@@ -484,8 +481,16 @@ final class SpendHistoryService
             }
         }
 
-        $since = max($from, $first->modify('-1 day'));
-        foreach ($this->schedule->pending($subscription, $history, $since, $to) as $charge) {
+        $reconstructTo = $first === null ? $to : min($to, $first->modify('-1 day'));
+        $walks = $this->schedule->between($subscription, $history, $from, $reconstructTo);
+        if ($first !== null) {
+            $walks = array_merge(
+                $walks,
+                $this->schedule->pending($subscription, $history, max($from, $first->modify('-1 day')), $to),
+            );
+        }
+
+        foreach ($walks as $charge) {
             if (!isset($recorded[$charge['date']->format('Y-m-d')])) {
                 $charges[] = $charge;
             }

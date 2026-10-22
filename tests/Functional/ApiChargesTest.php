@@ -161,6 +161,32 @@ final class ApiChargesTest extends ApiTestCase
         self::assertSame('charged', $first['status']);
     }
 
+    public function testTheApiListConvertsAnEndedTrialBeforeChargingIt(): void
+    {
+        $ended = (new DateTimeImmutable('-3 days'))->format('Y-m-d');
+        $id = $this->createSubscription([
+            'name' => 'Trial',
+            'price_minor' => 0,
+            'billing_cycle' => 'monthly',
+            'is_trial' => true,
+            'trial_end_date' => $ended,
+            'converts_to_price_minor' => 899,
+            'next_payment_date' => $ended,
+            'start_date' => (new DateTimeImmutable('-17 days'))->format('Y-m-d'),
+        ]);
+
+        // A write token's list runs the catch-up: the trial converts first, so
+        // its first charge is written at the converted price, not at £0.
+        $this->api('GET', '/api/v1/subscriptions', $this->ownerToken);
+
+        $list = $this->api('GET', '/api/v1/subscriptions/' . $id . '/charges', $this->ownerToken);
+        $charges = $this->decode($list)['data'];
+        self::assertSame([[$ended, 899]], array_map(
+            static fn (array $charge): array => [$charge['due_date'], $charge['expected_minor']],
+            $charges,
+        ));
+    }
+
     private function chargesPath(): string
     {
         return '/api/v1/subscriptions/' . $this->subscriptionId . '/charges';

@@ -326,6 +326,93 @@ final class PaymentLedgerTest extends DatabaseTestCase
         self::assertFalse($this->charges->find($this->alice, $charge->id)?->isAdjusted());
     }
 
+    public function testChargesMoveWithTheSubscriptionWhenItChangesOwner(): void
+    {
+        $id = $this->create('Energy', '58.00', '2026-04-15', '2026-01-15');
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-20 08:00:00'));
+        $this->catchUp->run($this->alice);
+        $bob = $this->scope($this->bobId, Role::Contributor);
+
+        // Alice hands the row to Bob, a Contributor.
+        $this->subscriptions->update($this->alice, $id, $this->input('Energy', '58.00', '2026-05-15', '2026-01-15', [
+            'owner_user_id' => (string) $this->bobId,
+        ]));
+
+        $charges = $this->charges->forSubscription($bob, $id);
+        self::assertCount(2, $charges);
+        foreach ($charges as $charge) {
+            self::assertSame($this->bobId, $charge->ownerUserId);
+            self::assertTrue($this->charges->mayChange($bob, $charge));
+        }
+        // The price history goes with it too.
+        self::assertSame(
+            [$this->bobId],
+            array_values(array_unique(array_map(
+                'intval',
+                array_column($this->db->fetchAll(
+                    'SELECT owner_user_id FROM subscription_price_history WHERE subscription_id = :id',
+                    ['id' => $id],
+                ), 'owner_user_id'),
+            ))),
+        );
+        $this->charges->recordActual($bob, $charges[0]->id, ['actual' => '60.00']);
+
+        // The backfill no longer collides with rows it cannot see.
+        $result = $this->container->get(LedgerBackfillRunner::class)->run();
+        self::assertSame(1, $result['households']);
+        // Jan–Mar rebuilt beside the two the catch-up wrote.
+        self::assertCount(5, $this->charges->forSubscription($bob, $id));
+    }
+
+    public function testAFormerOwnerIsRefusedTheChargesOfARowHandedOn(): void
+    {
+        $bob = $this->scope($this->bobId, Role::Contributor);
+        $id = $this->subscriptions->create($bob, $this->input('Bob gym', '30.00', '2026-04-15', '2026-01-15'));
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-20 08:00:00'));
+        $this->catchUp->run($bob);
+        $charge = $this->charges->forSubscription($bob, $id)[0];
+
+        // Alice, the Owner, takes it over.
+        $this->subscriptions->update($this->alice, $id, $this->input('Bob gym', '30.00', '2026-05-15', '2026-01-15', [
+            'owner_user_id' => (string) $this->aliceId,
+        ]));
+
+        self::assertFalse($this->charges->mayChange($bob, $charge));
+        foreach (
+            [
+                fn () => $this->charges->recordActual($bob, $charge->id, ['actual' => '1.00']),
+                fn () => $this->charges->skip($bob, $charge->id),
+                fn () => $this->charges->undo($bob, $charge->id),
+                fn () => $this->charges->patch($bob, $charge->id, ['status' => 'skipped']),
+            ] as $attempt
+        ) {
+            try {
+                $attempt();
+                self::fail('A former owner changed a charge on a row handed on.');
+            } catch (ValidationException) {
+                // Refused.
+            }
+        }
+        self::assertFalse($this->charges->find($this->alice, $charge->id)?->isAdjusted());
+    }
+
+    public function testABulkOwnerChangeMovesTheChargesToo(): void
+    {
+        $id = $this->create('Energy', '58.00', '2026-04-15', '2026-01-15');
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-20 08:00:00'));
+        $this->catchUp->run($this->alice);
+
+        $this->container->get(BulkActionService::class)->apply($this->alice, [
+            'action' => BulkActionService::ACTION_OWNER,
+            'ids' => [(string) $id],
+            'user_id' => (string) $this->bobId,
+        ]);
+
+        foreach ($this->charges->forSubscription($this->alice, $id) as $charge) {
+            self::assertSame($this->bobId, $charge->ownerUserId);
+        }
+    }
+
     public function testIsolatedModeHidesAnotherMembersCharges(): void
     {
         $bobShared = $this->scope($this->bobId, Role::Editor);
@@ -562,6 +649,26 @@ final class PaymentLedgerTest extends DatabaseTestCase
                 $history->charges($this->alice, $from, $to)['charges'],
             ),
         );
+    }
+
+    public function testAPaymentAddedByHandAddsToReconstructedSpendAndRemovesNone(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
+        $id = $this->create('Monthly', '10.00', '2026-03-15', '2025-01-15');
+        $this->clock->advanceTo(new DateTimeImmutable('2026-06-01 09:00:00'));
+        $history = $this->container->get(SpendHistoryService::class);
+        $from = new DateTimeImmutable('2025-12-31');
+        $to = new DateTimeImmutable('2026-05-31');
+
+        // Jan to May reconstructed or pending; nobody has caught up, no backfill.
+        self::assertSame(5000, $history->spent($this->alice, $from, $to)['by_currency']['GBP'] ?? 0);
+
+        $this->charges->addManual($this->alice, $id, ['date' => '2026-01-20', 'amount' => '5.00']);
+        self::assertSame(5500, $history->spent($this->alice, $from, $to)['by_currency']['GBP'] ?? 0);
+
+        // A manual payment on a billing date stands in for it rather than doubling it.
+        $this->charges->addManual($this->alice, $id, ['date' => '2026-02-15', 'amount' => '12.00']);
+        self::assertSame(5700, $history->spent($this->alice, $from, $to)['by_currency']['GBP'] ?? 0);
     }
 
     public function testChargesNobodyHasCaughtUpYetStillCount(): void
