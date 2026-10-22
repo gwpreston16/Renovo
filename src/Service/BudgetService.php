@@ -54,6 +54,13 @@ use InvalidArgumentException;
  *     unconvertible: list<string>,
  *     unavailable: bool
  * }
+ *
+ * @phpstan-type WindowCharge array{
+ *     subscription: \App\Domain\Entity\Subscription,
+ *     date: DateTimeImmutable,
+ *     amount: Money,
+ *     reason: string
+ * }
  */
 final class BudgetService
 {
@@ -132,8 +139,8 @@ final class BudgetService
      * is clamped to its month — 31 January plus a month is 28 February, not
      * 3 March.
      *
-     * @param list<array{subscription: \App\Domain\Entity\Subscription, date: DateTimeImmutable, amount: Money, reason: string}> $charges
-     * @return list<array{subscription: \App\Domain\Entity\Subscription, date: DateTimeImmutable, amount: Money, reason: string}>
+     * @param list<WindowCharge> $charges
+     * @return list<WindowCharge>
      */
     private function withinWindow(array $charges, int $months): array
     {
