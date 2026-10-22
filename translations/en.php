@@ -459,6 +459,7 @@ return [
     'charge.source.catch_up' => 'Billing date passed',
     'charge.source.manual' => 'Added by hand',
     'charge.source.reconstructed' => 'Reconstructed',
+    'charge.source.one_off' => 'The entry’s own charge',
 
     'payments.heading' => 'Payments',
     'payments.note' => 'One row for each billing date that has passed, at the price due that day. Record what was really charged, or mark a charge that did not happen.',
@@ -494,6 +495,8 @@ return [
     'error.charge.date_required' => 'Enter the date of the payment.',
     'error.charge.date_future' => 'A payment is dated today or earlier; one still to come is in the forecast.',
     'error.charge.date_taken' => 'There is already a payment on that date.',
+    'error.charge.one_off_date_taken' =>
+        'There is already a payment on that date. Change or remove it on the Payments card first, or choose another date.',
     'error.charge.status_invalid' => 'The status must be charged or skipped.',
     'error.charge.actual_on_skipped' => 'A skipped payment has no amount.',
     // promo — an introductory price, beside the price it is

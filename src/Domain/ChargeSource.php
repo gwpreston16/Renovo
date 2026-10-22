@@ -22,6 +22,14 @@ enum ChargeSource: string
     /** Rebuilt by `ledger:backfill` for a date before the ledger existed. */
     case Reconstructed = 'reconstructed';
 
+    /**
+     * A one-off or lifetime entry's own single charge, on its date — written by
+     * the catch-up or the backfill. Its own source because it is the one row
+     * a change of the entry's date moves: charges a row recorded while it was
+     * recurring carry `catch_up` or `reconstructed` and are left alone.
+     */
+    case OneOff = 'one_off';
+
     public function labelKey(): string
     {
         return 'charge.source.' . $this->value;

@@ -352,6 +352,39 @@ final class ApiChargesTest extends ApiTestCase
         @rmdir($directory);
     }
 
+    public function testAPutMovingAOneOffOntoATakenDayIsRefused(): void
+    {
+        $bought = (new DateTimeImmutable('-5 days'))->format('Y-m-d');
+        $deposit = (new DateTimeImmutable('-8 days'))->format('Y-m-d');
+        $id = $this->createSubscription([
+            'name' => 'Desk',
+            'price_minor' => 15000,
+            'subscription_type' => 'one_off',
+            'billing_cycle' => null,
+            'next_payment_date' => null,
+            'start_date' => $bought,
+        ]);
+        $path = '/api/v1/subscriptions/' . $id . '/charges';
+        $this->api('GET', $path, $this->ownerToken);
+        $this->api('POST', $path, $this->ownerToken, ['date' => $deposit, 'amount_minor' => 1000]);
+
+        $row = $this->decode($this->api('GET', '/api/v1/subscriptions/' . $id, $this->ownerToken))['data'];
+        $row['start_date'] = $deposit;
+        $response = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, $row);
+
+        self::assertSame(422, $response->getStatusCode(), (string) $response->getBody());
+        self::assertArrayHasKey('start_date', $this->decode($response)['error']['errors'] ?? []);
+        $after = $this->decode($this->api('GET', '/api/v1/subscriptions/' . $id, $this->ownerToken))['data'];
+        self::assertSame($bought, $after['start_date']);
+        self::assertSame(
+            [[$bought, 'one_off'], [$deposit, 'manual']],
+            array_map(
+                static fn (array $charge): array => [$charge['due_date'], $charge['source']],
+                $this->decode($this->api('GET', $path, $this->ownerToken))['data'],
+            ),
+        );
+    }
+
     private function chargesPath(): string
     {
         return '/api/v1/subscriptions/' . $this->subscriptionId . '/charges';

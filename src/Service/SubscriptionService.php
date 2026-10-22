@@ -112,6 +112,15 @@ final class SubscriptionService
         $existing = $this->subscriptions->find($scope, $id);
         [$data, $tagIds, $offer] = $this->validate($scope, $input, $id);
 
+        if ($existing !== null && is_string($data['start_date'] ?? null)) {
+            $start = DateTimeImmutable::createFromFormat('!Y-m-d', $data['start_date']);
+            if ($this->charges->oneOffDateTaken($scope, $existing, $start === false ? null : $start)) {
+                // One charge a day per subscription: moving the entry's own
+                // charge onto a day another stands on would drop one of them.
+                throw ValidationException::field('start_date', 'error.charge.one_off_date_taken');
+            }
+        }
+
         if ($existing !== null && $existing->isActive && $data['is_active'] !== true) {
             // Paused or cancelled through the edit form, the API or an import:
             // the dates already passed are recorded first.

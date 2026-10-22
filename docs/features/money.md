@@ -110,11 +110,13 @@ date from today. If you were in fact billed during the pause, add those
 payments by hand. A cancelled subscription writes nothing after its
 cancellation.
 
-A one-off or lifetime entry has one payment, on its date. **Changing the date
-moves the payment** to the new day, with any amount or note recorded on it and
-its invoice; a date moved into the future removes the payment until that day
-arrives. The billing dates a subscription recorded before it was turned into a
-one-off stay where they are.
+A one-off or lifetime entry has one payment of its own, on its date. **Changing
+the date moves that payment** to the new day — today included — with any amount
+or note recorded on it and its invoice. A date moved into the future removes it
+until the day passes; it is then written again, and its invoice comes back to
+it. A date that already has another payment is refused: change or remove that
+payment first. The billing dates a subscription recorded before it was turned
+into a one-off stay where they are, beside the entry's own payment.
 
 Rows marked *reconstructed* were rebuilt for the months before the ledger
 existed, by `ledger:backfill` ([upgrading](../upgrading.md)). Every payment you

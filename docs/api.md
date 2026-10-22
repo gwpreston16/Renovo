@@ -793,7 +793,7 @@ The writable half of a subscription. Required: `name`, `price_minor`,
 | `cycle_days` | integer, null | 1–3650. Required when `billing_cycle` is `custom_days`. |
 | `cycle_interval` | integer, null | Every N of the cycle's unit — `monthly` with `6` is every six months, `weekly` with `2` fortnightly. Weekly 1–52, monthly 1–24, yearly 1–10; `quarterly` and `custom_days` take only 1, and anything else is a 422, never a clamp. Omitted or null is 1 on a new subscription; on a PUT that keeps the same `billing_cycle`, an absent key keeps the current interval. |
 | `next_payment_date` | date, null | Required for a recurring subscription that is not a trial. |
-| `start_date` | date, null | On a one-off or lifetime entry, changing it moves the entry's recorded payment to the new date (with any amount, note and invoice on it), or removes it while the new date is still in the future. |
+| `start_date` | date, null | On a one-off or lifetime entry, changing it moves the entry's own payment (`source: one_off`) to the new date — today included — with any amount, note and invoice on it; a future date removes it until that day passes, when it is written again and its invoice returns to it. A date that already has another payment is a `422` on `start_date`. Other payments, including those the row recorded while it was recurring, are not touched. |
 | `notice_period_amount` | integer, null | 0–3650. |
 | `notice_period_unit` | enum, null | `days`, `weeks`, `months`. |
 | `reminder_days` | int[], null | Max 6 items, each 0–365. Three states — see [Conventions](#conventions). |
@@ -865,7 +865,7 @@ Returned by `GET /me`. Fields: `user` (`id`, `email`, `display_name`,
 | `PaymentMethod` | `id`, `name`, `colour` (nullable), `icon` (nullable; a generic icon key, never a brand mark), `logo_path` (nullable, read-only) |
 | `Tag` | `id`, `name` |
 | `Attachment` | `id`, `subscription_id`, `filename`, `mime_type`, `size_bytes`, `period_date` (nullable date), `charge_id` (nullable; the payment it is the invoice for), `created_at` |
-| `Charge` | `id`, `subscription_id`, `due_date`, `currency`, `expected_minor` (the price due, frozen when written), `actual_minor` (nullable), `amount_minor`, `status` (`charged`, `skipped`), `source` (`catch_up`, `manual`, `reconstructed`), `note` (nullable), `created_at`, `updated_at` |
+| `Charge` | `id`, `subscription_id`, `due_date`, `currency`, `expected_minor` (the price due, frozen when written), `actual_minor` (nullable), `amount_minor`, `status` (`charged`, `skipped`), `source` (`catch_up`, `manual`, `reconstructed`, `one_off` — a one-off or lifetime entry's own charge), `note` (nullable), `created_at`, `updated_at` |
 
 ---
 

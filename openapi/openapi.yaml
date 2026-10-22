@@ -1241,7 +1241,12 @@ components:
           type: integer
           description: What the charge counts as — the actual, else the expected; 0 when skipped.
         status: { type: string, enum: [charged, skipped] }
-        source: { type: string, enum: [catch_up, manual, reconstructed] }
+        source:
+          type: string
+          enum: [catch_up, manual, reconstructed, one_off]
+          description: |
+            `one_off` is a one-off or lifetime entry's own charge, the one a
+            change of its date moves.
         note: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
@@ -1303,9 +1308,11 @@ components:
           format: date
           nullable: true
           description: |
-            On a one-off or lifetime entry, changing it moves the entry's
-            recorded payment to the new date, or removes it while the new date
-            is still in the future.
+            On a one-off or lifetime entry, changing it moves the entry's own
+            payment (source `one_off`) to the new date, today included, with
+            what was recorded on it; a future date removes it until that day
+            passes. A date that already has another payment is a 422. Other
+            payments are not touched.
         notice_period_amount: { type: integer, nullable: true, minimum: 0, maximum: 3650 }
         notice_period_unit:
           type: string

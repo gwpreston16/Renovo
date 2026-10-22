@@ -246,21 +246,21 @@ final class ChargeRepository extends AbstractScopedRepository
     }
 
     /**
-     * Move the charge Renovo wrote for a one-off or lifetime entry from the
-     * date it had to the date it has just been given — or remove it, when the
-     * new date has not yet arrived.
+     * Move a one-off or lifetime entry's own charge from the date it had to
+     * the date it has just been given — or remove it, when the new date has
+     * not yet arrived.
      *
-     * Such an entry has one charge of its own, on its date, so a corrected
-     * date is a corrected charge: kept, with whatever a member recorded on it,
-     * but on the right day, and its invoices carry the new date with it. Left
-     * where it was, it would be counted on the old day and reconstructed
-     * again on the new one.
+     * Such an entry has one charge of its own (`one_off`), on its date, so a
+     * corrected date is a corrected charge: kept, with whatever a member
+     * recorded on it, and its invoices, on the new day — today included. A
+     * future date has no charge yet; the catch-up writes it once the day
+     * passes, and its invoices, which take the new date here, come back to it.
      *
-     * Only the charge on the previous date is touched. Anything else in the
-     * ledger — a payment a member added by hand, or the billing dates a row
-     * recorded while it was recurring, before it was turned into a one-off —
-     * is history, and an edit to the date does not rewrite it. If a charge
-     * already stands on the new date, the moved one gives way to it.
+     * Nothing else in the ledger is touched: a payment a member added by
+     * hand, or the billing dates a row recorded while it was recurring, are
+     * history. The caller has already refused a date that another charge
+     * stands on (`ChargeService::oneOffDateTaken()`); one found here anyway
+     * leaves everything as it was.
      *
      * Household-wide, like `existingDates()`: the caller has just written the
      * entry itself, and the unique key is per subscription.
@@ -279,27 +279,35 @@ final class ChargeRepository extends AbstractScopedRepository
 
         $match = ' WHERE ' . $this->quote('subscription_id') . ' = :subscription'
             . ' AND ' . $this->quote('household_id') . ' = :household'
-            . ' AND ' . $this->quote('source') . ' <> :manual'
+            . ' AND ' . $this->quote('source') . ' = :own'
             . ' AND ' . $this->quote('due_date') . ' = :from';
         $params = [
             'subscription' => $subscriptionId,
             'household' => $scope->householdId,
-            'manual' => ChargeSource::Manual->value,
+            'own' => ChargeSource::OneOff->value,
             'from' => $from->format('Y-m-d'),
         ];
-        $taken = isset($this->existingDates($scope, $subscriptionId)[$to->format('Y-m-d')]);
 
-        if ($to >= $today || $taken) {
-            $this->db->execute('DELETE FROM ' . $this->quote($this->table()) . $match, $params);
-
-            return;
-        }
-
-        $moved = $this->db->fetchAll(
+        $own = $this->db->fetchValue(
             'SELECT ' . $this->quote('id') . ' FROM ' . $this->quote($this->table()) . $match,
             $params,
         );
-        if ($moved === []) {
+        if ($own === null || isset($this->existingDates($scope, $subscriptionId)[$to->format('Y-m-d')])) {
+            return;
+        }
+
+        // Its invoices carry the date they are for, wherever the charge goes.
+        $this->db->execute(
+            'UPDATE ' . $this->quote('attachments')
+            . ' SET ' . $this->quote('period_date') . ' = :to'
+            . ' WHERE ' . $this->quote('household_id') . ' = :household'
+            . ' AND ' . $this->quote('charge_id') . ' = :charge',
+            ['to' => $to->format('Y-m-d'), 'household' => $scope->householdId, 'charge' => (int) $own],
+        );
+
+        if ($to > $today) {
+            $this->db->execute('DELETE FROM ' . $this->quote($this->table()) . $match, $params);
+
             return;
         }
 
@@ -310,15 +318,30 @@ final class ChargeRepository extends AbstractScopedRepository
             . $match,
             $params + ['to' => $to->format('Y-m-d'), 'updated' => $now->format('Y-m-d H:i:s')],
         );
+    }
 
-        // An invoice filed against the charge is dated to it; it moves too,
-        // so the link step a migration or backfill runs still finds it.
+    /**
+     * File a subscription's unlinked invoices dated to a charge against it.
+     */
+    public function linkInvoicesByDate(Scope $scope, int $subscriptionId, DateTimeImmutable $date, int $chargeId): void
+    {
+        if (!$scope->hasHousehold()) {
+            return;
+        }
+
         $this->db->execute(
             'UPDATE ' . $this->quote('attachments')
-            . ' SET ' . $this->quote('period_date') . ' = :to'
+            . ' SET ' . $this->quote('charge_id') . ' = :charge'
             . ' WHERE ' . $this->quote('household_id') . ' = :household'
-            . ' AND ' . $this->quote('charge_id') . ' = :charge',
-            ['to' => $to->format('Y-m-d'), 'household' => $scope->householdId, 'charge' => (int) $moved[0]['id']],
+            . ' AND ' . $this->quote('subscription_id') . ' = :subscription'
+            . ' AND ' . $this->quote('period_date') . ' = :date'
+            . ' AND ' . $this->quote('charge_id') . ' IS NULL',
+            [
+                'charge' => $chargeId,
+                'household' => $scope->householdId,
+                'subscription' => $subscriptionId,
+                'date' => $date->format('Y-m-d'),
+            ],
         );
     }
 

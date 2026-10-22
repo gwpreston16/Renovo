@@ -111,15 +111,44 @@ final class ChargeService
             return false;
         }
 
-        return $this->charges->recordUnlessTaken(
+        $id = $this->charges->recordUnlessTaken(
             $scope,
             $entry->id,
             $entry->ownerUserId,
             $entry->startDate,
             $this->priceHistory->priceOn($scope, $entry->id, $entry->startDate) ?? $entry->price,
-            ChargeSource::CatchUp,
+            ChargeSource::OneOff,
             now: $this->clock->now(),
-        ) !== null;
+        );
+        if ($id === null) {
+            return false;
+        }
+
+        // An invoice filed against the entry's charge before its date was moved
+        // into the future comes back to it, by the date it carries.
+        $this->charges->linkInvoicesByDate($scope, $entry->id, $entry->startDate, $id);
+
+        return true;
+    }
+
+    /**
+     * Whether giving a one-off or lifetime entry this date would put its own
+     * charge on a day that already has another — which the edit is refused
+     * for, rather than one of the two being dropped.
+     */
+    public function oneOffDateTaken(Scope $scope, Subscription $before, ?DateTimeImmutable $start): bool
+    {
+        if (
+            $before->type->countsTowardsRecurringTotals()
+            || $start === null
+            || $start == $before->startDate
+        ) {
+            return false;
+        }
+
+        $taken = $this->charges->existingDates($scope, $before->id)[$start->format('Y-m-d')] ?? null;
+
+        return $taken !== null;
     }
 
     /**
@@ -480,16 +509,21 @@ final class ChargeService
                     continue;
                 }
 
+                // A one-off's single charge is its own, whoever writes it, so a
+                // later change of its date can find it.
+                $source = $subscription->type->countsTowardsRecurringTotals()
+                    ? ChargeSource::Reconstructed
+                    : ChargeSource::OneOff;
                 $this->charges->record(
                     $scope,
                     $subscription->id,
                     $subscription->ownerUserId,
                     $charge['date'],
                     $charge['amount'],
-                    ChargeSource::Reconstructed,
+                    $source,
                     now: $this->clock->now(),
                 );
-                $existing[$key] = ChargeSource::Reconstructed;
+                $existing[$key] = $source;
                 $count++;
             }
 

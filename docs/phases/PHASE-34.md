@@ -37,7 +37,7 @@ ROADMAP's "Not planned" entry stands.
 | `expected_minor`, `currency` | The price in force on `due_date` (`priceOn()`), at the time it was written |
 | `actual_minor` | Nullable. What was really charged, when a member records it |
 | `status` | `charged` (default), `skipped` (did not happen — waived, missed, refunded in full) |
-| `source` | `catch_up`, `manual`, `reconstructed` |
+| `source` | `catch_up`, `manual`, `reconstructed`, `one_off` (added while building: a one-off's own charge) |
 | `note`, `recorded_by_user_id`, timestamps | As price history |
 
 Unique on (`subscription_id`, `due_date`). The **amount** of a charge is
@@ -174,6 +174,16 @@ Found while starting it:
 - **Charge routes answer 404** for a subscription or charge that does not exist
   or is not visible, like the other subscription sub-resources (K42 left as
   it is for attachments).
+
+- **A one-off's own payment moves with its date.** *Decided 2026-10-22,
+  found while reviewing.* A one-off or lifetime entry's single charge has its
+  own source, `one_off`, and only that charge follows an edit of the entry's
+  date: moved for any date up to and including today, with what was recorded
+  on it and its invoice; removed for a future date until the day passes. A
+  date that already has another payment is refused with an error. Charges the
+  row recorded while it was recurring are never touched.
+- **Pausing or cancelling records the dates already passed** first, through
+  every door, so none is lost (found while reviewing).
 
 ### Known issues taken
 

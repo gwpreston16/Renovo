@@ -48,8 +48,10 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   billing dates already passed**, through the toggle, the edit form, the API
   and a bulk pause alike, so none is lost. *Phase 34.*
 - **Changing a one-off or lifetime entry's date moves its payment** to the new
-  day, keeping any amount or note recorded on it and its invoice; a date moved
-  into the future removes the payment until the day arrives. *Phase 34.*
+  day, today included, keeping any amount or note recorded on it and its
+  invoice; a date moved into the future removes the payment until the day
+  passes. A date that already has another payment is refused. The payments a
+  row recorded while it was recurring are never moved. *Phase 34.*
 - **A restore is all or nothing.** One that fails part-way (a full disk, say)
   now keeps none of its rows, rather than rows whose logos and invoices it had
   removed (K16). *Phase 34.*
