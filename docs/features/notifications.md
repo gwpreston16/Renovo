@@ -70,6 +70,12 @@ lead times stop applying, and each thing is mentioned once. (A summary whose
 day is missed entirely — the scheduler down for that whole day — is skipped
 rather than deferred.)
 
+A **Contract ending** alert is sent at your lead times before a contract end
+date you have recorded, for a running subscription. It can be switched off on
+its own; existing members received it on the channels their renewal reminders
+already used. A renewal reminder for a bill whose amount varies says "about"
+the estimate, and a fixed term's renewals stop at its last payment.
+
 A budget alert fires on the crossing, not on the state: a budget that stays
 over its limit for three weeks says so once, and only speaks again if it drops
 back under and then goes over afresh.

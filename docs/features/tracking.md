@@ -105,7 +105,40 @@ The last day notice can be given, for every subscription with a notice period
 whose deadline falls inside the near window — the cancel-by view's fourteen
 days, referenced rather than re-chosen. Without a notice period that deadline
 *is* the renewal date, which the table's "Renewing soon" badge already says. A
-deadline already missed is kept and marked.
+deadline already missed is kept and marked. A contract's end date is listed
+beside the deadlines, in the same order; one that has passed stays, marked
+*Contract ended*, until the date is moved.
+
+### Contracts, fixed terms and bills that vary
+
+Three optional behaviours, in the form's **Terms** section (collapsed until one
+is set). A category says what something is; these say how it behaves, and a
+row that uses none behaves exactly as before.
+
+- **Contract ends** — the day a broadband or mobile contract's terms lapse. The
+  row keeps running after it. You are told before the date, at your usual lead
+  times (a **Contract ending** alert, on the channels your renewals use), it is
+  listed on the cancel-by view, and from the day after it the analytics show
+  **Out of contract** until the date is moved. Renovo never says you are
+  overpaying — only that the contract has ended and this is the time to check.
+- **Payments end on** — the last charge of a fixed term: a phone, a sofa, a car
+  on finance. The last billing date on or before it is the final payment.
+  Nothing after it is forecast or counted in any total, and the day after the
+  final payment the row ends itself: it is cancelled as of that day, with an
+  audit entry *Ended — final payment made*. Paused at the time, it is ended all
+  the same, its paused months recorded as skipped. The cost page's Payments
+  card shows **Payment 14 of 36** and **£1,078.00 of £2,772.00 paid**, counted
+  from the dates and, where it has them, the ledger's amounts. No balance or
+  interest rate is stored.
+- **The amount varies** — gas, electricity, water. The price becomes an
+  **estimate**: the form calls it *Estimated amount*, and the row's price and
+  every forward-looking figure that includes it — totals, forecast, budgets —
+  are shown with "≈". A total of fixed rows only is not. Past spend read from
+  amounts you recorded is exact. The Payments card shows each recorded bill
+  against the estimate, and the average of the last three with **Use as
+  estimate**, which records a price change like any other. When the last three
+  bills average more than 15% from the estimate, the analytics say **An
+  estimate looks low** (or high). A renewal reminder says "about £58".
 
 ### Paused, cancelled, and only me
 
@@ -137,7 +170,8 @@ note the server computes as you type, category, type, billing cycle (Custom
 reveals "every N days"), next charge, payment method, **Remind me** (your
 defaults, never, or chosen days), **Paid by**, **Cost split** (payer only, split
 equally, or custom shares), **Visible to**, and the free trial with what it
-converts to. Everything the application had besides sits under **More details**
+converts to. **Terms** holds a contract's end, a fixed term's last payment and
+whether the amount varies (above). Everything the application had besides sits under **More details**
 — notice period, tags, website and logo, start date, who actually pays if that
 is someone else, notes — which opens by itself when one of those fields comes
 back with an error.
