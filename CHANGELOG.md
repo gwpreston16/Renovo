@@ -51,7 +51,10 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   day, today included, keeping any amount or note recorded on it and its
   invoice; a date moved into the future removes the payment until the day
   passes. A date that already has another payment is refused. The payments a
-  row recorded while it was recurring are never moved. *Phase 34.*
+  row recorded while it was recurring are never moved, and a one-off turned
+  into a recurring subscription keeps its payment as history. *Phase 34.*
+- **Undoing a payment added by hand on a billing date puts that date's charge
+  back** at the price due, rather than leaving the date with none. *Phase 34.*
 - **A restore is all or nothing.** One that fails part-way (a full disk, say)
   now keeps none of its rows, rather than rows whose logos and invoices it had
   removed (K16). *Phase 34.*

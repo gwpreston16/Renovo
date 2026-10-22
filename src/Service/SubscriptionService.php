@@ -114,7 +114,8 @@ final class SubscriptionService
 
         if ($existing !== null && is_string($data['start_date'] ?? null)) {
             $start = DateTimeImmutable::createFromFormat('!Y-m-d', $data['start_date']);
-            if ($this->charges->oneOffDateTaken($scope, $existing, $start === false ? null : $start)) {
+            $submitted = SubscriptionType::from((string) $data['subscription_type']);
+            if ($this->charges->oneOffDateTaken($scope, $existing, $submitted, $start === false ? null : $start)) {
                 // One charge a day per subscription: moving the entry's own
                 // charge onto a day another stands on would drop one of them.
                 throw ValidationException::field('start_date', 'error.charge.one_off_date_taken');
@@ -152,7 +153,12 @@ final class SubscriptionService
 
             if ($existing !== null && is_string($data['start_date'] ?? null)) {
                 $start = DateTimeImmutable::createFromFormat('!Y-m-d', $data['start_date']);
-                $this->charges->followDateChange($scope, $existing, $start === false ? null : $start);
+                $this->charges->followDateChange(
+                    $scope,
+                    $existing,
+                    SubscriptionType::from((string) $data['subscription_type']),
+                    $start === false ? null : $start,
+                );
             }
 
             // A price that has actually moved becomes a new history row rather

@@ -272,9 +272,30 @@ final class ChargeRepository extends AbstractScopedRepository
         DateTimeImmutable $to,
         DateTimeImmutable $today,
         DateTimeImmutable $now,
+        bool $wasOneOff = true,
     ): void {
         if (!$scope->hasHousehold() || $from == $to) {
             return;
+        }
+
+        // Invoices of the entry left unlinked by an earlier move into the
+        // future still carry that date; they follow the entry to its new one,
+        // so the charge written there finds them (K69).
+        if ($wasOneOff) {
+            $this->db->execute(
+                'UPDATE ' . $this->quote('attachments')
+                . ' SET ' . $this->quote('period_date') . ' = :to'
+                . ' WHERE ' . $this->quote('household_id') . ' = :household'
+                . ' AND ' . $this->quote('subscription_id') . ' = :subscription'
+                . ' AND ' . $this->quote('charge_id') . ' IS NULL'
+                . ' AND ' . $this->quote('period_date') . ' = :from',
+                [
+                    'to' => $to->format('Y-m-d'),
+                    'household' => $scope->householdId,
+                    'subscription' => $subscriptionId,
+                    'from' => $from->format('Y-m-d'),
+                ],
+            );
         }
 
         $match = ' WHERE ' . $this->quote('subscription_id') . ' = :subscription'
@@ -318,6 +339,25 @@ final class ChargeRepository extends AbstractScopedRepository
             . $match,
             $params + ['to' => $to->format('Y-m-d'), 'updated' => $now->format('Y-m-d H:i:s')],
         );
+    }
+
+    /**
+     * Turn a payment added by hand back into the billing date's own charge:
+     * the expected price due that day, nothing recorded on it. The row — and
+     * any invoice filed against it — stays; only what it says changes.
+     */
+    public function restoreAsCycleCharge(Scope $scope, int $id, Money $expected): void
+    {
+        $this->updateScoped($scope, $id, [
+            'source' => ChargeSource::CatchUp->value,
+            'expected_minor' => $expected->amountMinor,
+            'currency' => $expected->currency,
+            'actual_minor' => null,
+            'status' => ChargeStatus::Charged->value,
+            'note' => null,
+            'recorded_by_user_id' => $scope->userId,
+            'updated_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+        ]);
     }
 
     /**

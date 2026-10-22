@@ -9,6 +9,7 @@ use App\Domain\ChargeStatus;
 use App\Domain\Entity\Charge;
 use App\Domain\Entity\Subscription;
 use App\Domain\Money;
+use App\Domain\SubscriptionType;
 use App\Repository\ChargeRepository;
 use App\Repository\SubscriptionRepository;
 use App\Security\Scope;
@@ -135,11 +136,18 @@ final class ChargeService
      * Whether giving a one-off or lifetime entry this date would put its own
      * charge on a day that already has another — which the edit is refused
      * for, rather than one of the two being dropped.
+     *
+     * Asked of the type the edit submits (K71): a row becoming recurring has
+     * no single charge to place, and keeps its one-off charge as history.
      */
-    public function oneOffDateTaken(Scope $scope, Subscription $before, ?DateTimeImmutable $start): bool
-    {
+    public function oneOffDateTaken(
+        Scope $scope,
+        Subscription $before,
+        SubscriptionType $type,
+        ?DateTimeImmutable $start,
+    ): bool {
         if (
-            $before->type->countsTowardsRecurringTotals()
+            $type->countsTowardsRecurringTotals()
             || $start === null
             || $start == $before->startDate
         ) {
@@ -155,11 +163,20 @@ final class ChargeService
      * Keep a one-off or lifetime entry's charge on the entry's date when that
      * date is edited. Recurring rows are not touched: their charges are the
      * billing dates that passed, which an edit does not rewrite.
+     *
+     * Decided by the type the edit submits (K71). A one-off turning recurring
+     * keeps its charge where it was, as history; a recurring row turning into
+     * a one-off has no own charge yet, and gets one on its date from the
+     * catch-up.
      */
-    public function followDateChange(Scope $scope, Subscription $before, ?DateTimeImmutable $start): void
-    {
+    public function followDateChange(
+        Scope $scope,
+        Subscription $before,
+        SubscriptionType $type,
+        ?DateTimeImmutable $start,
+    ): void {
         if (
-            $before->type->countsTowardsRecurringTotals()
+            $type->countsTowardsRecurringTotals()
             || $before->startDate === null
             || $start === null
             || $start == $before->startDate
@@ -174,6 +191,7 @@ final class ChargeService
             $start,
             $this->clock->today(),
             $this->clock->now(),
+            !$before->type->countsTowardsRecurringTotals(),
         );
     }
 
@@ -322,6 +340,17 @@ final class ChargeService
         $charge = $this->writable($scope, $chargeId, $subscriptionId);
 
         if ($charge->isManual()) {
+            // A payment added by hand on a billing date stood in for that
+            // date's charge, which the catch-up then skipped. Undoing it puts
+            // the charge back as the ledger would have written it, rather than
+            // leaving the date with none (K70).
+            $due = $this->cycleChargeOn($scope, $charge);
+            if ($due !== null) {
+                $this->charges->restoreAsCycleCharge($scope, $charge->id, $due);
+
+                return $this->reread($scope, $charge->id);
+            }
+
             $this->charges->deleteManual($scope, $charge->id);
 
             return null;
@@ -330,6 +359,33 @@ final class ChargeService
         $this->charges->adjust($scope, $charge->id, null, ChargeStatus::Charged, null);
 
         return $this->reread($scope, $charge->id);
+    }
+
+    /**
+     * The price due on a manual charge's date when that date is one of its
+     * subscription's billing dates the catch-up has already passed — and so
+     * one it skipped for the manual row standing on it.
+     */
+    private function cycleChargeOn(Scope $scope, Charge $charge): ?Money
+    {
+        $subscription = $this->subscriptions->findForWrite($scope, $charge->subscriptionId);
+        if (
+            $subscription === null
+            || !$subscription->type->countsTowardsRecurringTotals()
+            || $subscription->nextPaymentDate === null
+            || $charge->dueDate >= $subscription->nextPaymentDate
+        ) {
+            return null;
+        }
+
+        $walk = $this->schedule->between(
+            $subscription,
+            $this->priceHistory->historyFor($scope, $subscription->id),
+            $charge->dueDate->modify('-1 day'),
+            $charge->dueDate,
+        );
+
+        return $walk === [] ? null : $walk[0]['amount'];
     }
 
     /**

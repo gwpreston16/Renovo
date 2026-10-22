@@ -184,6 +184,13 @@ Found while starting it:
   row recorded while it was recurring are never touched.
 - **Pausing or cancelling records the dates already passed** first, through
   every door, so none is lost (found while reviewing).
+- **The one-off rules follow the submitted type** (K71). *Decided 2026-10-22.*
+  An edit that changes a row's type and date together is judged by the type
+  it submits: a one-off becoming recurring keeps its one-off charge as
+  history; a recurring row becoming a one-off is refused a date another
+  payment stands on.
+- **Undoing a payment added by hand on a billing date restores the charge**
+  (K70): the catch-up had skipped that date for it.
 
 ### Known issues taken
 

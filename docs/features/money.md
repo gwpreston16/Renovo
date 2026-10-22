@@ -95,7 +95,9 @@ A member who may change the subscription can, per row:
 - **Mark as skipped** — the charge did not happen: waived, missed or refunded in
   full. A skipped charge counts as nothing in every total.
 - **Undo** — put the row back as Renovo wrote it. On a payment added by hand,
-  this removes it.
+  this removes it — unless it was added on one of the subscription's billing
+  dates, where it stood in for that date's charge: then the charge comes back,
+  at the price due that day.
 - **Attach the invoice** for that payment. It is filed against the payment and
   dated to it, and also appears with the subscription's other attachments.
 
@@ -116,7 +118,9 @@ or note recorded on it and its invoice. A date moved into the future removes it
 until the day passes; it is then written again, and its invoice comes back to
 it. A date that already has another payment is refused: change or remove that
 payment first. The billing dates a subscription recorded before it was turned
-into a one-off stay where they are, beside the entry's own payment.
+into a one-off stay where they are, beside the entry's own payment, and a
+one-off turned into a recurring subscription keeps its payment as history.
+Moving the date more than once is fine: the invoice follows each move.
 
 Rows marked *reconstructed* were rebuilt for the months before the ledger
 existed, by `ledger:backfill` ([upgrading](../upgrading.md)). Every payment you

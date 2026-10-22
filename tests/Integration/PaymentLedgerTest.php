@@ -482,6 +482,177 @@ final class PaymentLedgerTest extends DatabaseTestCase
         self::assertSame($back->id, (int) ($invoice()['charge_id'] ?? 0));
     }
 
+    public function testAOneOffsInvoiceFollowsItThroughASecondMove(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-10-05 08:00:00'));
+        $input = [
+            'name' => 'Desk',
+            'price' => '150.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'one_off',
+            'start_date' => '2026-10-01',
+        ];
+        $id = $this->subscriptions->create($this->alice, $input);
+        $this->catchUp->run($this->alice);
+        $this->fileInvoice($id, $this->charges->forSubscription($this->alice, $id)[0]->id, '2026-10-01');
+
+        // A year typo, corrected: into the future, then back.
+        $this->subscriptions->update($this->alice, $id, ['start_date' => '2026-12-01'] + $input);
+        $this->subscriptions->update($this->alice, $id, ['start_date' => '2026-10-01'] + $input);
+        $this->catchUp->run($this->alice);
+
+        $charge = $this->charges->forSubscription($this->alice, $id)[0];
+        self::assertSame('2026-10-01', $charge->dueDate->format('Y-m-d'));
+        self::assertSame([$charge->id, '2026-10-01'], $this->invoiceOf($id));
+
+        // From one future date to another, then the day passes.
+        $this->subscriptions->update($this->alice, $id, ['start_date' => '2026-12-01'] + $input);
+        $this->subscriptions->update($this->alice, $id, ['start_date' => '2027-01-01'] + $input);
+        $this->clock->advanceTo(new DateTimeImmutable('2027-01-02 08:00:00'));
+        $this->catchUp->run($this->alice);
+
+        $charge = $this->charges->forSubscription($this->alice, $id)[0];
+        self::assertSame('2027-01-01', $charge->dueDate->format('Y-m-d'));
+        self::assertSame([$charge->id, '2027-01-01'], $this->invoiceOf($id));
+    }
+
+    public function testUndoingAPaymentAddedByHandOnABillingDatePutsTheChargeBack(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-15 08:00:00'));
+        $id = $this->create('Energy', '58.00', '2026-05-15', '2026-01-15');
+        $manual = $this->charges->addManual($this->alice, $id, ['date' => '2026-05-15', 'amount' => '61.00']);
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-16 08:00:00'));
+        $this->catchUp->run($this->alice);
+        $history = $this->container->get(SpendHistoryService::class);
+        $may = fn (): int => $history->spent(
+            $this->alice,
+            new DateTimeImmutable('2026-04-30'),
+            new DateTimeImmutable('2026-05-31'),
+        )['by_currency']['GBP'] ?? 0;
+        self::assertSame(6100, $may());
+
+        $restored = $this->charges->undo($this->alice, $manual->id);
+
+        self::assertNotNull($restored);
+        self::assertSame(
+            ['2026-05-15', ChargeSource::CatchUp, 5800, null, false],
+            [
+                $restored->dueDate->format('Y-m-d'),
+                $restored->source,
+                $restored->amount()->amountMinor,
+                $restored->note,
+                $restored->isAdjusted(),
+            ],
+        );
+        self::assertSame(5800, $may());
+    }
+
+    public function testUndoingAPaymentAddedByHandOffTheCycleStillRemovesIt(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-20 08:00:00'));
+        $id = $this->create('Energy', '58.00', '2026-05-15', '2026-01-15');
+        $this->catchUp->run($this->alice);
+        $fee = $this->charges->addManual($this->alice, $id, ['date' => '2026-05-18', 'amount' => '5.00']);
+
+        self::assertNull($this->charges->undo($this->alice, $fee->id));
+        self::assertSame([['2026-05-15', 5800]], $this->dueAndExpected($id));
+    }
+
+    public function testAOneOffBecomingRecurringKeepsItsChargeAsHistory(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-10-05 08:00:00'));
+        $id = $this->subscriptions->create($this->alice, [
+            'name' => 'Desk',
+            'price' => '150.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'one_off',
+            'start_date' => '2026-09-15',
+        ]);
+        $this->catchUp->run($this->alice);
+        $this->charges->addManual($this->alice, $id, ['date' => '2026-09-20', 'amount' => '5.00']);
+        $recurring = fn (string $start): array => $this->input('Desk', '15.00', $start, $start);
+
+        // Becoming recurring with a future start: the purchase stays where it was.
+        $this->subscriptions->update($this->alice, $id, $recurring('2026-11-01'));
+        $this->clock->advanceTo(new DateTimeImmutable('2026-12-05 08:00:00'));
+        $this->catchUp->run($this->alice);
+
+        self::assertSame(
+            [
+                ['2026-12-01', 'catch_up'],
+                ['2026-11-01', 'catch_up'],
+                ['2026-09-20', 'manual'],
+                ['2026-09-15', 'one_off'],
+            ],
+            array_map(
+                static fn (Charge $charge): array => [$charge->dueDate->format('Y-m-d'), $charge->source->value],
+                $this->charges->forSubscription($this->alice, $id),
+            ),
+        );
+        $september = $this->container->get(SpendHistoryService::class)->spent(
+            $this->alice,
+            new DateTimeImmutable('2026-08-31'),
+            new DateTimeImmutable('2026-09-30'),
+        );
+        self::assertSame(15500, $september['by_currency']['GBP'] ?? 0);
+    }
+
+    public function testARecurringRowBecomingAOneOffOnATakenDayIsRefused(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
+        $id = $this->create('Gym', '10.00', '2026-03-15', '2026-03-15');
+        $this->clock->advanceTo(new DateTimeImmutable('2026-06-01 09:00:00'));
+        $this->catchUp->run($this->alice);
+        $before = $this->dueAndExpected($id);
+
+        try {
+            $this->subscriptions->update($this->alice, $id, [
+                'name' => 'Gym',
+                'price' => '10.00',
+                'currency' => 'GBP',
+                'subscription_type' => 'one_off',
+                'start_date' => '2026-04-15',
+            ]);
+            self::fail('Turned into a one-off on a day that already has a payment.');
+        } catch (ValidationException $exception) {
+            self::assertSame('error.charge.one_off_date_taken', $exception->errors()['start_date']->key ?? null);
+        }
+
+        self::assertSame($before, $this->dueAndExpected($id));
+    }
+
+    private function fileInvoice(int $subscriptionId, int $chargeId, string $period): void
+    {
+        $this->db->insert('attachments', [
+            'household_id' => $this->household,
+            'owner_user_id' => $this->aliceId,
+            'subscription_id' => $subscriptionId,
+            'charge_id' => $chargeId,
+            'period_date' => $period,
+            'original_filename' => 'invoice.pdf',
+            'stored_path' => 'x/invoice-' . $subscriptionId . '.pdf',
+            'mime_type' => 'application/pdf',
+            'size_bytes' => 1,
+            'created_at' => '2026-10-02 00:00:00',
+        ]);
+    }
+
+    /**
+     * @return array{int|null, string}
+     */
+    private function invoiceOf(int $subscriptionId): array
+    {
+        $row = $this->db->fetchOne(
+            'SELECT charge_id, period_date FROM attachments WHERE subscription_id = :id',
+            ['id' => $subscriptionId],
+        ) ?? [];
+
+        return [
+            ($row['charge_id'] ?? null) === null ? null : (int) $row['charge_id'],
+            substr((string) ($row['period_date'] ?? ''), 0, 10),
+        ];
+    }
+
     public function testBackfillWritesAOneOffsChargeAsItsOwn(): void
     {
         $this->clock->advanceTo(new DateTimeImmutable('2026-06-01 09:00:00'));
