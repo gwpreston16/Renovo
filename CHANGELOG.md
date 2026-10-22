@@ -8,7 +8,45 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Added
+
+- **The payment ledger.** Renovo now remembers what was charged, not only
+  what is due: one row for every billing date that passes, at the price in
+  force that day, written as the date passes. Nothing is read from a bank.
+  A subscription's cost page has a **Payments** card, newest first, where a
+  member who may change the row can **Record amount** (what was really taken,
+  with a note; the amount due is shown struck through beside it), **Mark as
+  skipped** (waived, missed or refunded in full: it counts as nothing),
+  **Undo**, and **Add a payment** for one that fell off the cycle. A new
+  permission, `charge.manage`, is held by every role that may manage prices;
+  a Contributor changes payments only on rows they own. *Phase 34.*
+- **Invoices on payments.** An invoice uploaded from a payment row is filed
+  against that payment and dated to it. Upgrading links existing attachments
+  whose period date is a payment's date. *Phase 34.*
+- **The calendar pages backwards** through the months the ledger holds,
+  showing the charges taken at their recorded amounts. *Phase 34.*
+- **`php bin/console ledger:backfill [--household=ID]`** rebuilds the
+  payments from before the upgrade, marked *reconstructed*. Run it once after
+  upgrading; it is safe to run again and never overwrites a payment the ledger
+  wrote or a member recorded. See [upgrading](docs/upgrading.md). *Phase 34.*
+- **Payments in the API**: `GET` and `POST /api/v1/subscriptions/{id}/charges`
+  and `PATCH /api/v1/charges/{id}`, and `charge_id` on an attachment.
+  Payments export as CSV and JSON from **Settings → Data**, and household
+  backups carry them. *Phase 34.*
+
 ### Changed
+
+- **Past spend reads the payment ledger** — month so far, the history chart,
+  year to date, year over year and the budget's charged-so-far — so a
+  recorded amount or a skipped charge is reflected. The months before a
+  subscription's first payment are reconstructed as before, and unedited data
+  gives the same figures as before. *Phase 34.*
+- **Resuming a paused subscription skips the dates the pause covered**: the
+  next payment moves to the first billing date from today, and no payments
+  are written for the paused months. *Phase 34.*
+- **A restore is all or nothing.** One that fails part-way (a full disk, say)
+  now keeps none of its rows, rather than rows whose logos and invoices it had
+  removed. *Phase 34.*
 
 - **The README is now a front page.** It says what Renovo is and who it is
   for, shows seven screenshots (`docs/images/`, taken from `demo:seed`), and
@@ -21,6 +59,18 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   the guarded client. A new test, `DocsLinkTest`, fails on a broken link,
   anchor or image anywhere in the README, CHANGELOG, ROADMAP or `docs/`.
   Nothing in the application changed. *Phase 44.*
+
+### Fixed
+
+- A weekly subscription begun years ago (or a daily one) lost this year's
+  charges from past spend after 500 billing dates (K36). *Phase 34.*
+- Past spend made one price-history query per subscription on every walk;
+  it now makes one per walk (K17). *Phase 34.*
+- While a split subscription's price was £0 (a free trial, a £0 intro month),
+  each member was counted the whole later charge rather than their share
+  (K3). *Phase 34.*
+- A backup whose attachment had a filename over 255 characters failed to
+  restore; the name is now shortened (K16). *Phase 34.*
 
 ## [1.4.0] - 2026-10-01
 
