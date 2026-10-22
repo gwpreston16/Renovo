@@ -399,6 +399,42 @@ final class ChargeRepository extends AbstractScopedRepository
     }
 
     /**
+     * Make a payment a member added by hand on a paused date into that date's
+     * paused row as it stands: its own amount and currency stay — it is in
+     * another currency than the price due, so neither can be replaced — and
+     * what it records becomes its actual, so Undo puts the month back as not
+     * billed. A skipped one stays skipped, with no actual.
+     */
+    public function pauseManual(Scope $scope, int $subscriptionId, DateTimeImmutable $date): bool
+    {
+        if (!$scope->hasHousehold()) {
+            return false;
+        }
+
+        return $this->db->execute(
+            'UPDATE ' . $this->quote($this->table())
+            . ' SET ' . $this->quote('actual_minor') . ' = CASE WHEN ' . $this->quote('status') . ' = :skipped'
+            . ' THEN NULL ELSE COALESCE(' . $this->quote('actual_minor') . ', '
+            . $this->quote('expected_minor') . ') END,'
+            . ' ' . $this->quote('source') . ' = :source,'
+            . ' ' . $this->quote('updated_at') . ' = :updated'
+            . ' WHERE ' . $this->quote('subscription_id') . ' = :subscription'
+            . ' AND ' . $this->quote('household_id') . ' = :household'
+            . ' AND ' . $this->quote('due_date') . ' = :date'
+            . ' AND ' . $this->quote('source') . ' = :manual',
+            [
+                'skipped' => ChargeStatus::Skipped->value,
+                'source' => ChargeSource::Paused->value,
+                'updated' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+                'subscription' => $subscriptionId,
+                'household' => $scope->householdId,
+                'date' => $date->format('Y-m-d'),
+                'manual' => ChargeSource::Manual->value,
+            ],
+        ) > 0;
+    }
+
+    /**
      * File a subscription's unlinked invoices dated to a charge against it.
      */
     public function linkInvoicesByDate(Scope $scope, int $subscriptionId, DateTimeImmutable $date, int $chargeId): void

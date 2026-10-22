@@ -112,7 +112,9 @@ that, nothing is written while a subscription is paused, and **resuming skips
 the dates the pause covered** — the next payment moves on to the first billing
 date from today, and each date it steps over is listed as skipped, marked
 *paused*. If you were in fact billed during the pause, record the amount on
-that month's row; Undo puts it back as skipped. A cancelled subscription writes nothing after its
+that month's row; Undo puts it back as skipped. A payment you added by hand
+during the pause becomes that month's row when you resume, with what you
+entered as the amount charged. A cancelled subscription writes nothing after its
 cancellation.
 
 A one-off or lifetime entry has one payment of its own, on its date. **Changing

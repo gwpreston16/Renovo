@@ -108,8 +108,9 @@ final class ChargeService
      * charges. A payment a member added by hand on one of those dates — a
      * month that was in fact billed — becomes its paused row, with what they
      * entered as its actual, so Undo puts the month back as not billed rather
-     * than leaving it empty. Called in the same transaction as the resume
-     * moves the payment date.
+     * than leaving it empty — one in another currency keeps its own amounts.
+     * Called in the same transaction as the resume moves the payment date,
+     * before the row is saved.
      *
      * @param list<DateTimeImmutable> $dates From `Subscription::pausedDates()`.
      * @return int How many rows were written.
@@ -127,6 +128,12 @@ final class ChargeService
         foreach ($dates as $date) {
             $due = ChargeSchedule::priceAsAt($history, $date) ?? $subscription->price;
             if (!$this->claimManual($scope, $subscription, $date, $due, ChargeSource::Paused, $existing)) {
+                // One in another currency than the price due keeps its own
+                // amounts, but is still the month's paused row: Undo puts it
+                // back as not billed rather than leaving the month empty.
+                if (($existing[$date->format('Y-m-d')] ?? null) === ChargeSource::Manual) {
+                    $this->charges->pauseManual($scope, $subscription->id, $date);
+                }
                 continue;
             }
 

@@ -1251,10 +1251,11 @@ components:
           description: |
             `one_off` is a one-off or lifetime entry's own charge, the one a
             change of its date moves. `paused` is a billing date a pause
-            stepped over, written `skipped` when the row was resumed. A
-            `manual` charge on a billing date becomes that date's `catch_up`
-            (or `reconstructed`, or `one_off`) charge, same id, when the
-            catch-up or the backfill reaches it — so a later read may differ
+            stepped over, written `skipped` when the row was resumed (or
+            `charged`, when a payment added by hand stood on it). A `manual`
+            charge on a billing date becomes that date's `catch_up` (or
+            `reconstructed`, `one_off` or `paused`) charge, same id, when the
+            catch-up, the backfill or a resume reaches it — so a later read may differ
             from the `201` body: its amount moves to `actual_minor` (a
             skipped one stays skipped, with no actual) and `expected_minor`
             takes the price due. One in another currency than the price due
@@ -1367,7 +1368,9 @@ components:
             subscription skips the dates the pause covered: a
             `next_payment_date` in the past moves on, by whole cycles, to the
             first billing date from today, and each date it steps over is
-            recorded as a `skipped` charge with `source` `paused`. Billed for
+            recorded as a `skipped` charge with `source` `paused` — except one
+            that already has a payment added by hand, which becomes that
+            date's `paused` charge, still `charged`. Billed for
             one of those months after all? `PATCH` that charge's
             `actual_minor`; a `POST` on its date is a `422`.
         plan:

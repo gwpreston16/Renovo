@@ -12,6 +12,7 @@ use App\Domain\Role;
 use App\Http\GuardedClient;
 use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
+use App\Repository\SubscriptionRepository;
 use App\Repository\UserRepository;
 use App\Security\Scope;
 use App\Service\BulkActionService;
@@ -699,6 +700,64 @@ final class PaymentLedgerTest extends DatabaseTestCase
         self::assertSame([true, null, false], [$undone?->isSkipped(), $undone?->actualMinor, $undone?->isAdjusted()]);
     }
 
+    public function testAResumeThatHandsTheRowOnGivesTheNewOwnerItsPausedMonths(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
+        $id = $this->create('Energy', '58.00', '2026-03-15', '2026-01-15');
+        $this->subscriptions->setActive($this->alice, $id, false);
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-20 08:00:00'));
+        $this->subscriptions->update($this->alice, $id, $this->input('Energy', '58.00', '2026-03-15', '2026-01-15', [
+            'is_active' => '1',
+            'owner_user_id' => (string) $this->bobId,
+        ]));
+
+        $bob = $this->scope($this->bobId, Role::Contributor);
+        $charges = $this->charges->forSubscription($bob, $id);
+        self::assertCount(3, $charges);
+        foreach ($charges as $charge) {
+            self::assertSame([$this->bobId, true], [$charge->ownerUserId, $this->charges->mayChange($bob, $charge)]);
+        }
+    }
+
+    public function testAPaymentInAnotherCurrencyOnAPausedDateIsStillThatMonthsPausedRow(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
+        $id = $this->create('Energy', '58.00', '2026-03-15', '2026-01-15', ['currency' => 'USD']);
+        $this->subscriptions->setActive($this->alice, $id, false);
+        // Switched to pounds while paused; April was due in dollars.
+        $this->clock->advanceTo(new DateTimeImmutable('2026-04-20 08:00:00'));
+        $this->subscriptions->update(
+            $this->alice,
+            $id,
+            $this->input('Energy', '50.00', '2026-03-15', '2026-01-15', ['is_active' => '0']),
+        );
+        $manual = $this->charges->addManual($this->alice, $id, ['date' => '2026-04-15', 'amount' => '50.00']);
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-20 08:00:00'));
+        $this->subscriptions->setActive($this->alice, $id, true);
+
+        $april = $this->charges->find($this->alice, $manual->id);
+        self::assertSame([ChargeSource::Paused, 'GBP', 5000, false], [
+            $april?->source,
+            $april?->expected->currency,
+            $april?->amount()->amountMinor,
+            $april?->isSkipped(),
+        ]);
+
+        // Undo leaves the month not billed, and the backfill leaves it so.
+        self::assertTrue($this->charges->undo($this->alice, $manual->id)?->isSkipped() ?? false);
+        $this->container->get(LedgerBackfillRunner::class)->run();
+        self::assertSame(
+            [
+                ['2026-05-15', 'skipped', 0],
+                ['2026-04-15', 'skipped', 0],
+                ['2026-03-15', 'skipped', 0],
+                ['2026-02-15', 'charged', 5800],
+                ['2026-01-15', 'charged', 5800],
+            ],
+            $this->statuses($id),
+        );
+    }
+
     public function testBackfillAfterAResumeLeavesThePausedMonthsUnbilled(): void
     {
         $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
@@ -913,6 +972,67 @@ final class PaymentLedgerTest extends DatabaseTestCase
             new DateTimeImmutable('2026-09-30'),
         );
         self::assertSame(14500, $september['by_currency']['GBP'] ?? 0);
+    }
+
+    public function testAOneOffWhoseCurrencyChangedAdoptsAPaymentInItsOwnCurrency(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-09-15 08:00:00'));
+        $input = [
+            'name' => 'Desk',
+            'price' => '150.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'one_off',
+            'start_date' => '2026-09-15',
+        ];
+        $id = $this->subscriptions->create($this->alice, $input);
+        // Priced in dollars from the next day, so its date was due in pounds.
+        $this->clock->advanceTo(new DateTimeImmutable('2026-09-16 08:00:00'));
+        $this->subscriptions->update($this->alice, $id, ['price' => '190.00', 'currency' => 'USD'] + $input);
+        $manual = $this->charges->addManual($this->alice, $id, ['date' => '2026-09-15', 'amount' => '185.00']);
+
+        $this->clock->advanceTo(new DateTimeImmutable('2026-09-20 08:00:00'));
+        $this->catchUp->run($this->alice);
+
+        $adopted = $this->charges->find($this->alice, $manual->id);
+        self::assertSame([ChargeSource::OneOff, 'USD', 19000, 18500], [
+            $adopted?->source,
+            $adopted?->expected->currency,
+            $adopted?->expected->amountMinor,
+            $adopted?->actualMinor,
+        ]);
+        $subscriptions = $this->container->get(SubscriptionRepository::class);
+        self::assertSame([], $subscriptions->findUnchargedOneOffs($this->alice, $this->clock->today()));
+    }
+
+    public function testAOneOffsPaymentInAnotherCurrencyStandsAsEnteredAndIsNotOfferedAgain(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-09-15 08:00:00'));
+        $input = [
+            'name' => 'Desk',
+            'price' => '150.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'one_off',
+            'start_date' => '2026-09-15',
+        ];
+        $id = $this->subscriptions->create($this->alice, $input);
+        $manual = $this->charges->addManual($this->alice, $id, ['date' => '2026-09-15', 'amount' => '150.00']);
+        $this->clock->advanceTo(new DateTimeImmutable('2026-09-16 08:00:00'));
+        $this->subscriptions->update($this->alice, $id, ['price' => '190.00', 'currency' => 'USD'] + $input);
+
+        $this->clock->advanceTo(new DateTimeImmutable('2026-09-20 08:00:00'));
+        $this->catchUp->run($this->alice);
+        $this->catchUp->run($this->alice);
+
+        $charges = $this->charges->forSubscription($this->alice, $id);
+        self::assertCount(1, $charges);
+        self::assertSame([$manual->id, ChargeSource::Manual, 'GBP', 15000], [
+            $charges[0]->id,
+            $charges[0]->source,
+            $charges[0]->expected->currency,
+            $charges[0]->amount()->amountMinor,
+        ]);
+        $subscriptions = $this->container->get(SubscriptionRepository::class);
+        self::assertSame([], $subscriptions->findUnchargedOneOffs($this->alice, $this->clock->today()));
     }
 
     public function testACatchUpPassesABillingDateThatAlreadyHasACharge(): void

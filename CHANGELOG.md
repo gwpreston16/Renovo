@@ -46,7 +46,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   gives the same figures as before. *Phase 34.*
 - **Resuming a paused subscription skips the dates the pause covered**: the
   next payment moves to the first billing date from today, and the paused
-  months are listed as skipped, marked *paused*. **Pausing or cancelling first records the
+  months are listed as skipped, marked *paused*; a payment already added by
+  hand on one of those dates is kept, as that month's charge. **Pausing or cancelling first records the
   billing dates already passed**, through the toggle, the edit form, the API
   and a bulk pause alike, so none is lost. *Phase 34.*
 - **Changing a one-off or lifetime entry's date moves its payment** to the new
