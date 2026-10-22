@@ -13,12 +13,14 @@ use App\Repository\UserRepository;
 use App\Security\CsrfTokenManager;
 use App\Security\Scope;
 use App\Security\SessionInterface;
+use App\Service\AttachmentStorage;
 use App\Service\CatchUpService;
 use App\Service\ChargeService;
 use App\Service\InstanceSettingsService;
 use App\Service\SubscriptionService;
 use App\Tests\Integration\DatabaseTestCase;
 use App\Tests\Support\ArraySession;
+use App\Tests\Support\FakeUpload;
 use App\Tests\Support\RecordingMailer;
 use DateTimeImmutable;
 use Psr\Container\ContainerInterface;
@@ -46,6 +48,7 @@ final class PaymentsCardTest extends DatabaseTestCase
     private int $householdId;
     private int $subscriptionId;
     private int $otherSubscriptionId;
+    private string $attachmentDirectory;
     private Scope $owner;
 
     protected function setUp(): void
@@ -53,10 +56,12 @@ final class PaymentsCardTest extends DatabaseTestCase
         parent::setUp();
 
         $this->session = new ArraySession();
+        $this->attachmentDirectory = sys_get_temp_dir() . '/renovo-payments-card-' . bin2hex(random_bytes(6));
         $bootstrap = require dirname(__DIR__, 2) . '/config/bootstrap.php';
         $this->app = $bootstrap(true, [
             SessionInterface::class => $this->session,
             MailerInterface::class => new RecordingMailer(),
+            AttachmentStorage::class => new AttachmentStorage($this->attachmentDirectory, 1024 * 1024),
         ]);
 
         $container = $this->app->getContainer();
@@ -257,6 +262,64 @@ final class PaymentsCardTest extends DatabaseTestCase
             self::assertSame(403, $response->getStatusCode(), $path);
             self::assertStringNotContainsString('Energy', (string) $response->getBody(), $path);
         }
+    }
+
+    protected function tearDown(): void
+    {
+        FakeUpload::cleanUp();
+        ApiChargesTest::removeDirectory($this->attachmentDirectory);
+
+        parent::tearDown();
+    }
+
+    public function testAnInvoiceUploadedFromAPaymentRowIsFiledAgainstIt(): void
+    {
+        $charge = $this->firstCharge();
+        $this->signIn($this->ownerId);
+
+        $request = (new ServerRequestFactory())
+            ->createServerRequest(
+                'POST',
+                'http://localhost/subscriptions/' . $this->subscriptionId . '/attachments',
+                ['REMOTE_ADDR' => '127.0.0.1'],
+            )
+            ->withParsedBody([
+                'charge_id' => (string) $charge,
+                'return_to' => '/subscriptions/' . $this->subscriptionId . '/money#payments',
+            ])
+            ->withUploadedFiles(['file' => FakeUpload::pdf('bill.pdf')])
+            ->withHeader(CsrfTokenManager::HEADER_NAME, $this->container->get(CsrfTokenManager::class)->token());
+        $response = $this->app->handle($request);
+
+        $card = '/subscriptions/' . $this->subscriptionId . '/money#payments';
+        self::assertSame($card, $response->getHeaderLine('Location'));
+        self::assertSame(
+            $charge,
+            (int) $this->db->fetchValue(
+                'SELECT charge_id FROM attachments WHERE subscription_id = :id',
+                ['id' => $this->subscriptionId],
+            ),
+        );
+        self::assertStringContainsString('bill.pdf', (string) $this->get($this->ownerId)->getBody());
+    }
+
+    public function testTheCsvExportDisarmsAFormulaAndTheJsonDoesNot(): void
+    {
+        $this->charges()->recordActual($this->owner, $this->firstCharge(), [
+            'actual' => '1.00',
+            'note' => '=HYPERLINK("http://x.example")',
+        ]);
+        $this->signIn($this->ownerId);
+
+        $csv = (string) $this->app->handle(
+            (new ServerRequestFactory())->createServerRequest('GET', 'http://localhost/payments/export.csv'),
+        )->getBody();
+        self::assertStringContainsString('"\'=HYPERLINK(""http://x.example"")"', $csv);
+
+        $json = (string) $this->app->handle(
+            (new ServerRequestFactory())->createServerRequest('GET', 'http://localhost/payments/export.json'),
+        )->getBody();
+        self::assertContains('=HYPERLINK("http://x.example")', array_column((array) json_decode($json, true), 'note'));
     }
 
     private function chargePath(int $charge, string $action): string

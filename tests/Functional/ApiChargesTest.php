@@ -10,7 +10,9 @@ use App\Repository\MembershipRepository;
 use App\Repository\UserRepository;
 use App\Security\Scope;
 use App\Service\ApiTokenService;
+use App\Service\AttachmentStorage;
 use App\Service\CatchUpService;
+use App\Tests\Support\FakeUpload;
 use App\Domain\TokenAbility;
 use DateTimeImmutable;
 
@@ -23,9 +25,12 @@ final class ApiChargesTest extends ApiTestCase
 {
     private int $subscriptionId;
     private int $chargeId;
+    private string $attachmentDirectory;
 
     protected function setUp(): void
     {
+        $this->attachmentDirectory = sys_get_temp_dir() . '/renovo-api-charges-' . bin2hex(random_bytes(6));
+
         parent::setUp();
 
         $this->subscriptionId = $this->createSubscription([
@@ -276,6 +281,75 @@ final class ApiChargesTest extends ApiTestCase
         $mine = $this->decode($this->api('GET', $this->chargesPath(), $this->ownerToken))['data'];
         self::assertCount(2, $mine);
         self::assertSame('charged', $mine[0]['status']);
+    }
+
+    protected function tearDown(): void
+    {
+        FakeUpload::cleanUp();
+        self::removeDirectory($this->attachmentDirectory);
+
+        parent::tearDown();
+    }
+
+    protected function containerOverrides(): array
+    {
+        return [AttachmentStorage::class => new AttachmentStorage($this->attachmentDirectory, 1024 * 1024)];
+    }
+
+    public function testAnInvoiceUploadedWithAChargeIdIsFiledAgainstIt(): void
+    {
+        $path = '/api/v1/subscriptions/' . $this->subscriptionId . '/attachments';
+
+        $response = $this->upload($path, ['charge_id' => (string) $this->chargeId, 'period_date' => '2020-01-01']);
+        self::assertSame(201, $response->getStatusCode(), (string) $response->getBody());
+        $data = $this->decode($response)['data'];
+        $due = $this->decode($this->api('GET', $this->chargesPath(), $this->ownerToken))['data'][0]['due_date'];
+        self::assertSame([$this->chargeId, $due], [$data['charge_id'], $data['period_date']]);
+
+        $other = $this->createSubscription(['name' => 'Other']);
+        $wrong = $this->upload(
+            '/api/v1/subscriptions/' . $other . '/attachments',
+            ['charge_id' => (string) $this->chargeId],
+        );
+        self::assertSame(422, $wrong->getStatusCode());
+
+        $typo = $this->upload($path, ['charge_id' => 'abc']);
+        self::assertSame(422, $typo->getStatusCode());
+        self::assertArrayHasKey('charge_id', $this->decode($typo)['error']['errors'] ?? []);
+    }
+
+    /**
+     * @param array<string, string> $fields
+     */
+    private function upload(string $path, array $fields): \Psr\Http\Message\ResponseInterface
+    {
+        $request = (new \Slim\Psr7\Factory\ServerRequestFactory())
+            ->createServerRequest('POST', 'http://localhost' . $path, ['REMOTE_ADDR' => '127.0.0.1'])
+            ->withHeader('Authorization', 'Bearer ' . $this->ownerToken)
+            ->withParsedBody($fields)
+            ->withUploadedFiles(['file' => FakeUpload::pdf('bill.pdf')]);
+
+        return $this->app->handle($request);
+    }
+
+    public static function removeDirectory(string $directory): void
+    {
+        if (!is_dir($directory)) {
+            return;
+        }
+
+        $entries = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($directory, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST,
+        );
+        foreach ($entries as $entry) {
+            if ($entry instanceof \SplFileInfo && $entry->isDir()) {
+                @rmdir($entry->getPathname());
+            } else {
+                @unlink((string) $entry);
+            }
+        }
+        @rmdir($directory);
     }
 
     private function chargesPath(): string
