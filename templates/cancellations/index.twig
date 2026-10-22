@@ -70,7 +70,7 @@
                                     <div class="hint">{{ t('state.trial_converts') }}</div>
                                 {% endif %}
                             </td>
-                            <td>{{ row.kind == 'contract' ? '—' : notice_label(row.subscription.noticePeriod.amount,
+                            <td>{{ row.kind == 'contract' ? t('common.none_symbol') : notice_label(row.subscription.noticePeriod.amount,
                                 row.subscription.noticePeriod.unit) }}</td>
                             <td class="numeric num">{{
                                 row.subscription.price.amountMinor|money(row.subscription.price.currency) }}</td>

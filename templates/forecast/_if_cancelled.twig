@@ -35,7 +35,8 @@
                     </span>
                     <span class="top-figure num">
                         {% for amount in row.amounts %}
-                            {{ amount.amount_minor|money(amount.currency) }}{{ not loop.last ? ' · ' : '' }}
+                            {%- set figure = amount.amount_minor|money(amount.currency) -%}
+                            {{ row.subscription.amountVaries ? t('subscriptions_list.approximately', {'amount': figure}) : figure }}{{ not loop.last ? ' · ' : '' }}
                         {% endfor %}
                     </span>
                     <a class="forecast-scenario-link hint"

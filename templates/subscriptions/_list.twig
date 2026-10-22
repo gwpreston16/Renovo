@@ -262,22 +262,22 @@
     <p class="list-summary" id="list-summary">
         <span class="num">{{ t('subscriptions_list.summary', {'matched': summary.matched, 'of': summary.of}) }}</span>
         {% set figures = summary.per_month %}
-        {% set approx = figures.estimate|default(false) ? '≈ ' : '' %}
+        {% set estimate = figures.estimate|default(false) %}
         {% if figures.totals is not empty %}
             <span aria-hidden="true">·</span>
             {% if figures.totals|length == 1 %}
                 <span class="num">{{ t('subscriptions_list.per_month', {
-                    'amount': approx ~ figures.totals[0].amount_minor|money(figures.totals[0].currency),
+                    'amount': (estimate ? t('subscriptions_list.approximately', {'amount': figures.totals[0].amount_minor|money(figures.totals[0].currency)}) : figures.totals[0].amount_minor|money(figures.totals[0].currency)),
                 }) }}</span>
             {% elseif figures.combined.amount_minor is not null %}
                 <span class="num">{{ t('subscriptions_list.per_month', {
-                    'amount': approx ~ figures.combined.amount_minor|money(figures.combined.currency),
+                    'amount': (estimate ? t('subscriptions_list.approximately', {'amount': figures.combined.amount_minor|money(figures.combined.currency)}) : figures.combined.amount_minor|money(figures.combined.currency)),
                 }) }}</span>
             {% else %}
                 {# No rate for one of them, so there is no total — only the subtotals. #}
                 <span class="num">
                     {%- for total in figures.totals -%}
-                        {{ t('subscriptions_list.per_month', {'amount': approx ~ total.amount_minor|money(total.currency)}) }}
+                        {{ t('subscriptions_list.per_month', {'amount': (estimate ? t('subscriptions_list.approximately', {'amount': total.amount_minor|money(total.currency)}) : total.amount_minor|money(total.currency))}) }}
                         {{- not loop.last ? ' · ' : '' -}}
                     {%- endfor -%}
                 </span>

@@ -1038,7 +1038,9 @@ paths:
       tags: [Calendar]
       summary: Renewals, trial conversions and cancellation deadlines as iCalendar.
       description: |
-        A read-only feed for a calendar client. Because such a client cannot
+        A read-only feed for a calendar client. A fixed term's renewals stop
+        at its last payment, and no deadline is published after it. Because
+        such a client cannot
         send an `Authorization` header, this endpoint — and only this endpoint —
         takes its token in the `token` query parameter, and accepts read-only
         tokens exclusively. A write-capable token is refused rather than

@@ -766,7 +766,8 @@ Responses: `204`, `401`, `403`, `404`.
 #### `GET /api/v1/calendar.ics?token=rnv_...`
 
 Renewals, trial conversions and cancellation deadlines as an iCalendar
-document, for subscribing in a calendar client.
+document, for subscribing in a calendar client. A fixed term's renewals stop at
+its last payment (`payments_end_on`), and no deadline is published after it.
 
 This is **the only endpoint that takes its token in the query string**, and it
 is a separate middleware rather than a condition inside the shared one — so a

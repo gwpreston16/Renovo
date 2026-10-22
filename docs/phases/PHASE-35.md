@@ -157,11 +157,16 @@ Found while reviewing (merge review, 2026-10-22):
   each near a month's end.
 - **The calendar feed stops at the last payment**, and drops a cancel-by
   event that falls after it, like every other reader.
-- **Where "≈" is drawn** (assumption): the subscription list, the dashboard's
-  totals and due card, the forecast's headline figures and budgets. The
-  calendar screen, the forecast's "If cancelled" and scenario figures and the
-  dashboard's Coming up list are not marked in this phase — left as a
-  follow-up for the owner.
+- **Where "≈" is drawn**, as confirmed ("any total with a varying row"): the
+  subscription list, the dashboard's totals, due card and Coming up list, the
+  forecast's headline, "If cancelled" and scenario figures, budgets, and the
+  calendar's charges still to come and the totals that include them. A
+  charge the ledger recorded is what was charged, and is not marked.
+- **A trial in a budget's window** (K2) is walked from its conversion day, as
+  the forecast walks it.
+- **`payments_end_on` is validated** (found while building): it may not come
+  before the start date or the next charge, which a save that leaves the field
+  out is measured against too; it is ignored for a one-off or lifetime entry.
 - **A day-cycle row's window** (K2): a weekly or custom-day row's stored
   anchor is the day it was saved, so its own charge's day bounds it instead.
 

@@ -20,8 +20,11 @@
 {% import 'partials/logo.twig' as logo %}
 {% import _self as scenario %}
 
-{% macro amount(figures, base_currency) %}
-    {%- if figures.totals is empty -%}
+{% macro amount(figures, base_currency, estimate = false) %}
+    {%- import _self as self -%}
+    {%- if estimate -%}
+        {{ t('subscriptions_list.approximately', {'amount': self.amount(figures, base_currency)}) }}
+    {%- elseif figures.totals is empty -%}
         {{ 0|money(base_currency) }}
     {%- elseif figures.totals|length == 1 -%}
         {{ figures.totals[0].amount_minor|money(figures.totals[0].currency) }}
@@ -33,14 +36,15 @@
 {% endmacro %}
 
 {# A saving below zero is a change that costs more, said so rather than signed. #}
-{% macro saving(figures, base_currency) %}
+{% macro saving(figures, base_currency, estimate = false) %}
     {%- import _self as self -%}
     {%- if figures.net is not null and figures.net.amount_minor < 0 -%}
+        {%- set amount = figures.net.amount_minor|abs|money(figures.net.currency) -%}
         <span class="scenario-costs-more">{{ t('scenario.costs_more', {
-            'amount': figures.net.amount_minor|abs|money(figures.net.currency),
+            'amount': estimate ? t('subscriptions_list.approximately', {'amount': amount}) : amount,
         }) }}</span>
     {%- else -%}
-        {{ self.amount(figures, base_currency) }}
+        {{ self.amount(figures, base_currency, estimate) }}
     {%- endif -%}
 {% endmacro %}
 
@@ -60,12 +64,12 @@
     <div class="metric-grid scenario-headline">
         <article class="stat metric">
             <h3 class="stat-label">{{ t('scenario.monthly_saving') }}</h3>
-            <p class="stat-value num">{{ scenario.saving(r.run_rate.saving.monthly, base_currency) }}</p>
+            <p class="stat-value num">{{ scenario.saving(r.run_rate.saving.monthly, base_currency, r.estimate) }}</p>
             <p class="kpi-note muted">{{ t('scenario.monthly_saving_note') }}</p>
         </article>
         <article class="stat metric">
             <h3 class="stat-label">{{ t('scenario.twelve_saving', {'months': r.horizon_months}) }}</h3>
-            <p class="stat-value num">{{ scenario.saving(r.twelve_months.saving, base_currency) }}</p>
+            <p class="stat-value num">{{ scenario.saving(r.twelve_months.saving, base_currency, r.estimate) }}</p>
             <p class="kpi-note muted">{{ t('scenario.twelve_saving_note') }}</p>
         </article>
     </div>
@@ -84,21 +88,21 @@
             <tbody>
             <tr>
                 <th scope="row">{{ t('scenario.run_rate_monthly') }}</th>
-                <td class="numeric num">{{ scenario.amount(r.run_rate.current.monthly, base_currency) }}</td>
-                <td class="numeric num">{{ scenario.amount(r.run_rate.scenario.monthly, base_currency) }}</td>
-                <td class="numeric num">{{ scenario.saving(r.run_rate.saving.monthly, base_currency) }}</td>
+                <td class="numeric num">{{ scenario.amount(r.run_rate.current.monthly, base_currency, r.estimate) }}</td>
+                <td class="numeric num">{{ scenario.amount(r.run_rate.scenario.monthly, base_currency, r.estimate) }}</td>
+                <td class="numeric num">{{ scenario.saving(r.run_rate.saving.monthly, base_currency, r.estimate) }}</td>
             </tr>
             <tr>
                 <th scope="row">{{ t('scenario.run_rate_yearly') }}</th>
-                <td class="numeric num">{{ scenario.amount(r.run_rate.current.yearly, base_currency) }}</td>
-                <td class="numeric num">{{ scenario.amount(r.run_rate.scenario.yearly, base_currency) }}</td>
-                <td class="numeric num">{{ scenario.saving(r.run_rate.saving.yearly, base_currency) }}</td>
+                <td class="numeric num">{{ scenario.amount(r.run_rate.current.yearly, base_currency, r.estimate) }}</td>
+                <td class="numeric num">{{ scenario.amount(r.run_rate.scenario.yearly, base_currency, r.estimate) }}</td>
+                <td class="numeric num">{{ scenario.saving(r.run_rate.saving.yearly, base_currency, r.estimate) }}</td>
             </tr>
             <tr>
                 <th scope="row">{{ t('scenario.next_months', {'months': r.horizon_months}) }}</th>
-                <td class="numeric num">{{ scenario.amount(r.twelve_months.current, base_currency) }}</td>
-                <td class="numeric num">{{ scenario.amount(r.twelve_months.scenario, base_currency) }}</td>
-                <td class="numeric num">{{ scenario.saving(r.twelve_months.saving, base_currency) }}</td>
+                <td class="numeric num">{{ scenario.amount(r.twelve_months.current, base_currency, r.estimate) }}</td>
+                <td class="numeric num">{{ scenario.amount(r.twelve_months.scenario, base_currency, r.estimate) }}</td>
+                <td class="numeric num">{{ scenario.saving(r.twelve_months.saving, base_currency, r.estimate) }}</td>
             </tr>
             </tbody>
         </table>

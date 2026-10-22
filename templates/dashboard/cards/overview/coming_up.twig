@@ -46,7 +46,8 @@
                         </span>
                     {% endif %}
                     <span class="charge-amount">
-                        <span class="num">{{ row.amount.amountMinor|money(row.amount.currency) }}</span>
+                        {% set amount = row.amount.amountMinor|money(row.amount.currency) %}
+                        <span class="num">{{ subscription.amountVaries ? t('subscriptions_list.approximately', {'amount': amount}) : amount }}</span>
                         {% if row.approx_base %}
                             <span class="hint num">{{ t('dashboard.approx', {'amount': row.approx_base.amountMinor|money(row.approx_base.currency)}) }}</span>
                         {% endif %}

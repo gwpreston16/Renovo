@@ -260,6 +260,29 @@ final class BudgetProjectionTest extends DatabaseTestCase
         self::assertSame(1000, $this->budgets->progress($this->scope($this->alice))[0]['projected']?->amountMinor);
     }
 
+    public function testATrialConvertingTodayIsWalkedFromItsConversion(): void
+    {
+        // Today is 15 January. Once billed on the 20th, now a trial ending
+        // today: it is charged today and again on 15 February, the next
+        // period's.
+        $this->subscriptions->create($this->scope($this->alice), [
+            'name' => 'Streaming',
+            'price_minor' => 0,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'is_trial' => true,
+            'trial_end_date' => '2026-01-15',
+            'converts_to_price_minor' => 1000,
+            'next_payment_date' => '2026-01-20',
+            'anchor_day' => 20,
+            'is_active' => true,
+        ], []);
+        $this->monthlyBudget('100.00');
+
+        self::assertSame(1000, $this->budgets->progress($this->scope($this->alice))[0]['projected']?->amountMinor);
+    }
+
     /**
      * @return array<string, array{string, int|null}>
      */

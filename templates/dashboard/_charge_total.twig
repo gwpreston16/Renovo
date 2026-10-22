@@ -6,22 +6,22 @@
     `figures`  {totals: [{currency, amount_minor}], combined: {currency, amount_minor, unconvertible}},
                and `estimate` when a bill whose amount varies is among them.
 #}
-{% set approx = figures.estimate|default(false) ? '≈ ' : '' %}
+{% set estimate = figures.estimate|default(false) %}
 {% if figures.totals|length == 1 %}
-    <p class="kpi-note num">{{ approx }}{{ figures.totals[0].amount_minor|money(figures.totals[0].currency) }}</p>
+    <p class="kpi-note num">{{ estimate ? t('subscriptions_list.approximately', {'amount': figures.totals[0].amount_minor|money(figures.totals[0].currency)}) : figures.totals[0].amount_minor|money(figures.totals[0].currency) }}</p>
 {% elseif figures.combined.amount_minor is not null %}
     <p class="kpi-note num">
-        {{ approx }}{{ figures.combined.amount_minor|money(figures.combined.currency) }}
+        {{ estimate ? t('subscriptions_list.approximately', {'amount': figures.combined.amount_minor|money(figures.combined.currency)}) : figures.combined.amount_minor|money(figures.combined.currency) }}
         <span class="muted">·
             {% for total in figures.totals %}
-                {{ approx }}{{ total.amount_minor|money(total.currency) }}{{ not loop.last ? ' · ' : '' }}
+                {{ estimate ? t('subscriptions_list.approximately', {'amount': total.amount_minor|money(total.currency)}) : total.amount_minor|money(total.currency) }}{{ not loop.last ? ' · ' : '' }}
             {% endfor %}
         </span>
     </p>
 {% elseif figures.totals is not empty %}
     <p class="kpi-note num">
         {% for total in figures.totals %}
-            {{ approx }}{{ total.amount_minor|money(total.currency) }}{{ not loop.last ? ' · ' : '' }}
+            {{ estimate ? t('subscriptions_list.approximately', {'amount': total.amount_minor|money(total.currency)}) : total.amount_minor|money(total.currency) }}{{ not loop.last ? ' · ' : '' }}
         {% endfor %}
     </p>
     <p class="hint">{{ t('dashboard.unconvertible', {'currencies': figures.combined.unconvertible|join(', ')}) }}</p>

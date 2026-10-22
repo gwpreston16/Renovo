@@ -37,6 +37,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 - With a token that may write, the API's catch-up now also ends a finished
   fixed term, so a subscription's `status` and `cancelled_at` can change
   without a cancel call. *Phase 35.*
+- The API refuses an impossible date such as `2026-02-31` with a `422` on every
+  date field, where it stored the day it rolled over to. *Phase 35.*
 
 ### Fixed
 
