@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Persistence\Database;
+use App\Repository\ChargeRepository;
+use App\Domain\ChargeStatus;
+use App\Domain\ChargeSource;
 use App\Application\Api\Resource;
 use App\Application\Api\SubscriptionPayload;
 use App\Domain\AuditAction;
@@ -59,7 +63,7 @@ use ZipArchive;
  * magic bytes exactly as an upload would be.
  *
  * @phpstan-type RestoreSummary array{subscriptions: int, categories: int, payment_methods: int, tags: int,
- *     budgets: int, attachments: int, skipped: int}
+ *     budgets: int, attachments: int, charges: int, skipped: int}
  */
 final class BackupService
 {
@@ -90,6 +94,8 @@ final class BackupService
         private readonly MembershipRepository $memberships,
         private readonly AuditLogService $audit,
         private readonly PriceHistoryService $priceHistory,
+        private readonly ChargeRepository $charges,
+        private readonly Database $db,
         private readonly Clock $clock,
         private readonly string $logoDirectory,
     ) {
@@ -136,6 +142,29 @@ final class BackupService
             );
         }
 
+        // The payment ledger, by the same positional reference, and each
+        // charge's own position so an invoice can say which one it is for.
+        $charges = [];
+        $chargePositions = [];
+        foreach ($this->charges->findAllInScope($scope) as $charge) {
+            $position = $positions[$charge->subscriptionId] ?? null;
+            if ($position === null) {
+                continue;
+            }
+
+            $chargePositions[$charge->id] = count($charges);
+            $charges[] = [
+                'subscription_index' => $position,
+                'due_date' => $charge->dueDate->format('Y-m-d'),
+                'currency' => $charge->expected->currency,
+                'expected_minor' => $charge->expected->amountMinor,
+                'actual_minor' => $charge->actualMinor,
+                'status' => $charge->status->value,
+                'source' => $charge->source->value,
+                'note' => $charge->note,
+            ];
+        }
+
         $attachments = [];
         foreach ($this->attachments->findAllForHousehold($scope) as $attachment) {
             $position = $positions[$attachment->subscriptionId] ?? null;
@@ -146,6 +175,9 @@ final class BackupService
 
             $entry = $this->addAttachment($zip, $attachment, $position);
             if ($entry !== null) {
+                $entry['charge_index'] = $attachment->chargeId === null
+                    ? null
+                    : ($chargePositions[$attachment->chargeId] ?? null);
                 $attachments[] = $entry;
             }
         }
@@ -188,6 +220,7 @@ final class BackupService
                 $this->budgets->all($scope, activeOnly: false),
             ),
             'attachments' => $attachments,
+            'charges' => $charges,
         ];
 
         $zip->addFromString('manifest.json', $this->encode([
@@ -207,6 +240,7 @@ final class BackupService
                 'tags' => count($data['tags']),
                 'budgets' => count($data['budgets']),
                 'attachments' => count($data['attachments']),
+                'charges' => count($data['charges']),
             ],
         ]));
 
@@ -269,13 +303,16 @@ final class BackupService
                 throw ValidationException::field('file', 'error.backup.foreign');
             }
 
-            $summary = $this->restoreData($scope, $zip, $data, $written);
+            // One transaction, so a restore is all or nothing (K16). A row that
+            // fails validation is skipped and counted inside it; anything else —
+            // a full disk, a file the engine refuses — rolls every row back,
+            // and the files this run wrote are removed below with them. Keeping
+            // the rows while removing their files left subscriptions pointing
+            // at logos and invoices that were no longer there.
+            $summary = $this->db->transactional(
+                fn (): array => $this->restoreData($scope, $zip, $data, $written),
+            );
         } catch (Throwable $exception) {
-            // Whatever went wrong, the files this run had already written are
-            // removed. The rows are not: each one was created by a service call
-            // that either succeeded or threw, so there is no half-written row
-            // to undo, and a partial restore that reports its counts is more
-            // use than one that silently discards the rows it managed.
             $this->removeWritten($written);
             $zip->close();
 
@@ -303,6 +340,7 @@ final class BackupService
             'tags' => 0,
             'budgets' => 0,
             'attachments' => 0,
+            'charges' => 0,
             'skipped' => 0,
         ];
 
@@ -345,7 +383,18 @@ final class BackupService
         }
 
         $this->restoreBudgets($scope, $data['budgets'] ?? [], $categoryIds, $owners, $summary);
-        $this->restoreAttachments($scope, $zip, $data['attachments'] ?? [], $subscriptionIds, $written, $summary);
+        // Absent from an archive written before the ledger existed, which
+        // restores with the ledger empty.
+        $chargeIds = $this->restoreCharges($scope, $data['charges'] ?? [], $subscriptionIds, $summary);
+        $this->restoreAttachments(
+            $scope,
+            $zip,
+            $data['attachments'] ?? [],
+            $subscriptionIds,
+            $chargeIds,
+            $written,
+            $summary,
+        );
 
         return $summary;
     }
@@ -599,8 +648,82 @@ final class BackupService
     }
 
     /**
+     * Put the payment ledger back, row for row. A date its subscription
+     * already has a charge on — the catch-up ran during the restore — keeps
+     * the one there.
+     *
      * @param mixed $rows
      * @param array<int, int> $subscriptionIds
+     * @param RestoreSummary $summary
+     * @return array<int, int> Archive index => new charge id.
+     */
+    private function restoreCharges(Scope $scope, mixed $rows, array $subscriptionIds, array &$summary): array
+    {
+        $ids = [];
+        $subscriptions = [];
+        $taken = [];
+
+        foreach (is_array($rows) ? $rows : [] as $index => $row) {
+            if (!is_array($row)) {
+                $summary['skipped']++;
+                continue;
+            }
+
+            $subscriptionId = $subscriptionIds[(int) ($row['subscription_index'] ?? -1)] ?? null;
+            $date = $this->date($row['due_date'] ?? null);
+            $currency = is_string($row['currency'] ?? null) ? Currency::normalise($row['currency']) : '';
+            $expected = is_int($row['expected_minor'] ?? null) ? $row['expected_minor'] : null;
+            $status = is_string($row['status'] ?? null) ? ChargeStatus::tryFrom($row['status']) : null;
+            $source = is_string($row['source'] ?? null) ? ChargeSource::tryFrom($row['source']) : null;
+            $actual = is_int($row['actual_minor'] ?? null) ? $row['actual_minor'] : null;
+
+            if (
+                $subscriptionId === null
+                || $date === null
+                || !Currency::isValidCode($currency)
+                || $expected === null
+                || $expected < 0
+                || ($actual !== null && $actual < 0)
+                || $status === null
+                || $source === null
+            ) {
+                $summary['skipped']++;
+                continue;
+            }
+
+            $subscription = $subscriptions[$subscriptionId] ??= $this->subscriptions->find($scope, $subscriptionId);
+            $taken[$subscriptionId] ??= $this->charges->existingDates($scope, $subscriptionId);
+            if ($subscription === null || isset($taken[$subscriptionId][$date->format('Y-m-d')])) {
+                $summary['skipped']++;
+                continue;
+            }
+
+            $note = is_string($row['note'] ?? null) && $row['note'] !== ''
+                ? mb_substr($row['note'], 0, 255)
+                : null;
+
+            $ids[(int) $index] = $this->charges->restore(
+                $scope,
+                $subscriptionId,
+                $subscription->ownerUserId,
+                $date,
+                Money::of($expected, $currency),
+                $status === ChargeStatus::Skipped ? null : $actual,
+                $status,
+                $source,
+                $note,
+            );
+            $taken[$subscriptionId][$date->format('Y-m-d')] = $source;
+            $summary['charges']++;
+        }
+
+        return $ids;
+    }
+
+    /**
+     * @param mixed $rows
+     * @param array<int, int> $subscriptionIds
+     * @param array<int, int> $chargeIds
      * @param list<array{kind: string, path: string}> $written
      * @param RestoreSummary $summary
      */
@@ -609,6 +732,7 @@ final class BackupService
         ZipArchive $zip,
         mixed $rows,
         array $subscriptionIds,
+        array $chargeIds,
         array &$written,
         array &$summary,
     ): void {
@@ -646,11 +770,12 @@ final class BackupService
                     $subscriptionId,
                     $subscription->ownerUserId,
                     $this->date($row['period_date'] ?? null),
-                    is_string($row['filename'] ?? null) ? $row['filename'] : 'attachment',
+                    $this->restoredFilename($row['filename'] ?? null),
                     $stored['path'],
                     $stored['mime'],
                     $stored['size'],
                     $scope->userId,
+                    is_int($row['charge_index'] ?? null) ? ($chargeIds[$row['charge_index']] ?? null) : null,
                 );
                 $summary['attachments']++;
             } catch (ValidationException) {
@@ -659,6 +784,21 @@ final class BackupService
                 @unlink($temporary);
             }
         }
+    }
+
+    /**
+     * An archive's filename, made safe to store and to echo back in a
+     * download header: no path, no control characters, at most 255
+     * characters. An overlong one used to fail the insert part-way through a
+     * restore (K16).
+     */
+    private function restoredFilename(mixed $name): string
+    {
+        $name = is_string($name) ? $name : '';
+        $name = (string) preg_replace('/[\x00-\x1F\x7F"]/', '', str_replace(['/', '\\', "\0"], '-', $name));
+        $name = basename(trim($name));
+
+        return $name === '' || $name === '.' || $name === '..' ? 'attachment' : mb_substr($name, 0, 255);
     }
 
     /**

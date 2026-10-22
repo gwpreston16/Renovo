@@ -59,6 +59,7 @@ final class AttachmentController extends Controller
                 $subscriptionId,
                 $file,
                 is_scalar($body['period_date'] ?? null) ? (string) $body['period_date'] : null,
+                is_numeric($body['charge_id'] ?? null) ? (int) $body['charge_id'] : null,
             );
             $this->flash('success', 'flash.attachment_uploaded');
         } catch (ValidationException $exception) {

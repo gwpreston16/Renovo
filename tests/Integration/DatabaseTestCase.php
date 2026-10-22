@@ -100,6 +100,11 @@ abstract class DatabaseTestCase extends TestCase
         if (isset($this->db)) {
             $this->truncateAll();
         }
+
+        // A test's container holds its own connection in a cycle of objects
+        // that only the cycle collector frees; left to run when it chooses,
+        // the suite outgrows PostgreSQL's 100 connections.
+        gc_collect_cycles();
     }
 
     /**
@@ -148,6 +153,7 @@ abstract class DatabaseTestCase extends TestCase
             'subscription_splits',
             'budget_alert_state',
             'budgets',
+            'subscription_charges',
             'subscription_price_history',
             'subscriptions',
             'exchange_rates',

@@ -20,6 +20,7 @@ use App\Application\Middleware\PasswordChangeRequiredMiddleware;
 use App\Application\Middleware\RequirePermissionMiddleware;
 use App\Application\Ops\OpsPath;
 use App\Controller\Api\AttachmentApiController;
+use App\Controller\Api\ChargeApiController;
 use App\Controller\Api\CalendarApiController;
 use App\Controller\Api\MeApiController;
 use App\Controller\Api\OpenApiController;
@@ -57,6 +58,7 @@ use App\Controller\SettingsController;
 use App\Controller\SetupController;
 use App\Controller\StatsController;
 use App\Controller\SubscriptionController;
+use App\Controller\SubscriptionChargeController;
 use App\Controller\SubscriptionMoneyController;
 use App\Domain\Permission;
 // Imported by name: `App\Security\...` would resolve against the `Slim\App`
@@ -176,6 +178,15 @@ return static function (App $app): void {
             ->setName('subscriptions-export-json')
             ->add($requires(Permission::ViewSubscriptions));
 
+        // Phase 34: the payment ledger, as a file, for Settings' Export card.
+        $group->get('/payments/export.csv', [SubscriptionChargeController::class, 'export'])
+            ->setName('payments-export')
+            ->add($requires(Permission::ViewSubscriptions));
+
+        $group->get('/payments/export.json', [SubscriptionChargeController::class, 'exportJson'])
+            ->setName('payments-export-json')
+            ->add($requires(Permission::ViewSubscriptions));
+
         // The form's "≈ base at today's rate" note. It discloses an exchange
         // rate and nothing about any subscription.
         $group->get('/subscriptions/conversion-note', [SubscriptionController::class, 'conversionNote'])
@@ -231,6 +242,26 @@ return static function (App $app): void {
             '/subscriptions/{id:[0-9]+}/price-changes',
             [SubscriptionMoneyController::class, 'schedulePriceChange'],
         )->add($requires(Permission::ManagePrices));
+
+        // Phase 34: the payment ledger. Recording, skipping, undoing and
+        // adding a charge are all writes to a row's money.
+        $group->post('/subscriptions/{id:[0-9]+}/charges', [SubscriptionChargeController::class, 'add'])
+            ->add($requires(Permission::ManageCharges));
+
+        $group->post(
+            '/subscriptions/{id:[0-9]+}/charges/{charge:[0-9]+}/actual',
+            [SubscriptionChargeController::class, 'recordActual'],
+        )->add($requires(Permission::ManageCharges));
+
+        $group->post(
+            '/subscriptions/{id:[0-9]+}/charges/{charge:[0-9]+}/skip',
+            [SubscriptionChargeController::class, 'skip'],
+        )->add($requires(Permission::ManageCharges));
+
+        $group->post(
+            '/subscriptions/{id:[0-9]+}/charges/{charge:[0-9]+}/undo',
+            [SubscriptionChargeController::class, 'undo'],
+        )->add($requires(Permission::ManageCharges));
 
         $group->post('/subscriptions/{id:[0-9]+}/split', [SubscriptionMoneyController::class, 'updateSplit'])
             ->add($requires(Permission::ManageSplits));
@@ -734,6 +765,16 @@ return static function (App $app): void {
             '/subscriptions/{id:[0-9]+}/attachments/{attachmentId:[0-9]+}',
             [AttachmentApiController::class, 'delete'],
         )->add($requires(Permission::ManageAttachments));
+
+        // Phase 34: the payment ledger.
+        $group->get('/subscriptions/{id:[0-9]+}/charges', [ChargeApiController::class, 'index'])
+            ->add($requires(Permission::ViewSubscriptions));
+
+        $group->post('/subscriptions/{id:[0-9]+}/charges', [ChargeApiController::class, 'create'])
+            ->add($requires(Permission::ManageCharges));
+
+        $group->patch('/charges/{id:[0-9]+}', [ChargeApiController::class, 'update'])
+            ->add($requires(Permission::ManageCharges));
 
         $group->get('/categories', [TaxonomyApiController::class, 'categories'])
             ->add($requires(Permission::ViewSubscriptions));

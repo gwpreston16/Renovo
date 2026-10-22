@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
+use App\Service\ChargeService;
+use App\Service\ChargeSchedule;
+use App\Repository\ChargeRepository;
 use App\Domain\IsolationMode;
 use App\Domain\Role;
 use App\Notification\NotifierRegistry;
@@ -124,6 +127,13 @@ abstract class NotificationTestCase extends DatabaseTestCase
             TestLogoFetcher::silent($this->db, $this->clock),
             $this->memberships,
             $priceHistory,
+            new ChargeService(
+                new ChargeRepository($this->db),
+                $this->subscriptions,
+                $priceHistory,
+                new ChargeSchedule(),
+                $this->clock,
+            ),
             $this->db,
             $this->clock,
         );

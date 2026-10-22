@@ -37,3 +37,47 @@ from the new default arrangement and can rearrange it from their profile.
 Nothing else is touched. The migration's `down()` does nothing, because a
 deletion cannot be undone. The backup you took first is the only way back to
 the old arrangements.
+
+## After upgrading to the payment ledger (Phase 34)
+
+From Phase 34 Renovo writes a ledger row for every billing date that passes.
+The months before the upgrade have no rows yet; past spend still reconstructs
+them, so nothing changes on screen. To give the Payments list and the calendar
+those months, run the backfill once, after the migration, **with a backup
+taken first**:
+
+```bash
+docker compose run --rm app php bin/console ledger:backfill
+# or one household at a time
+docker compose run --rm app php bin/console ledger:backfill --household=3
+```
+
+It rebuilds each subscription's charges from its start date up to its next
+payment date, at the price in force on each date, and marks them
+*reconstructed*. It is safe to run again: a date that already has a charge is
+left alone, so it never overwrites a charge the catch-up wrote or one a member
+recorded — except that a payment a member added by hand on one of those dates
+becomes that date's reconstructed charge, with what they entered kept as the
+amount charged. A paused subscription is rebuilt only up to where its
+payment date stopped. Each household is one transaction, and once its payments
+are written the backfill files each existing invoice against the payment its
+period date names; the rest stay filed against their subscription.
+
+Undo it, if you need to, by deleting the rows it wrote that nobody has since
+corrected:
+
+```sql
+DELETE FROM subscription_charges
+ WHERE source = 'reconstructed' AND actual_minor IS NULL AND status = 'charged'
+   AND note IS NULL;
+```
+
+A reconstructed payment a member has recorded an amount on, skipped or written
+a note on is left; delete those too only if you mean to lose the correction. Invoices filed
+against a deleted payment stay, attached to their subscription.
+
+Rolling back the ledger's migration (`20261201000005_create_subscription_charges_table`)
+drops the ledger whole. The catch-up and `ledger:backfill` can write Renovo's own
+rows again, but every amount a member recorded, every charge they skipped, their
+notes and the payments they added by hand are gone. Only a backup — the one you
+took before upgrading, or a household backup from **Settings → Data** — has them.

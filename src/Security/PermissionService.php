@@ -34,6 +34,7 @@ final class PermissionService
             Permission::DeleteSubscription,
             Permission::ManageBudgets,
             Permission::ManagePrices,
+            Permission::ManageCharges,
             Permission::ManageSplits,
             Permission::RecordUsage,
             Permission::ManageAttachments,

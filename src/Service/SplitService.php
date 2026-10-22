@@ -130,9 +130,11 @@ final class SplitService
      * increase, and a charge reconstructed from last year is divided by
      * today's arrangement, because splits keep no history. Expressed as a ratio
      * rather than as a stored amount so that an increase is divided the same
-     * way the original was. If the current price is zero — a trial — the
-     * member bears the whole of their converted charge, since there is no
-     * ratio to take.
+     * way the original was. If the current price is zero — a trial, or a £0
+     * intro month — there is no price to take a ratio of, so the charge is
+     * divided by the split's own weights instead: a third each of a £30
+     * conversion split three ways, not £30 each (K3). Unsplit, it is the
+     * owner's whole.
      *
      * Ask `bears()` first: this answers "how much", not "whether".
      *
@@ -142,7 +144,7 @@ final class SplitService
     {
         $currentPrice = $subscription->price;
         if ($currentPrice->isZero()) {
-            return $charge;
+            return $this->weightedShare($charge, $subscription, $participants, $userId);
         }
 
         return Money::of(
@@ -282,6 +284,35 @@ final class SplitService
      * switching a custom split to an equal one does the obvious thing without
      * having to rewrite every row first.
      */
+    /**
+     * One member's part of a charge, by the split's weights alone.
+     *
+     * @param list<SubscriptionSplit> $participants
+     */
+    private function weightedShare(Money $charge, Subscription $subscription, array $participants, int $userId): Money
+    {
+        if (!$subscription->splitMode->isSplit() || $participants === []) {
+            return $subscription->ownerUserId === $userId ? $charge : Money::zero($charge->currency);
+        }
+
+        $weights = array_map(
+            fn (SubscriptionSplit $split): int => $this->weightOf($subscription->splitMode, $split),
+            $participants,
+        );
+        if (array_sum($weights) <= 0) {
+            return Money::zero($charge->currency);
+        }
+
+        $amounts = Allocation::byWeight($charge->amountMinor, $weights);
+        foreach ($participants as $index => $participant) {
+            if ($participant->userId === $userId) {
+                return Money::of($amounts[$index], $charge->currency);
+            }
+        }
+
+        return Money::zero($charge->currency);
+    }
+
     private function weightOf(SplitMode $mode, SubscriptionSplit $split): int
     {
         return $mode === SplitMode::Equal ? 1 : max(0, $split->shareUnits);

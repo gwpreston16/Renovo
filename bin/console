@@ -29,6 +29,7 @@ use App\Service\ExchangeRate\RateProviderException;
 use App\Service\ExchangeRateService;
 use App\Service\ImportService;
 use App\Service\InstanceSettingsService;
+use App\Service\LedgerBackfillRunner;
 use App\Service\Notification\ReminderRunner;
 use App\Support\Clock;
 use App\Support\CoverageFloor;
@@ -144,6 +145,31 @@ switch ($command) {
             $notifications,
             $auditEntries,
             $imports,
+        ));
+        exit(0);
+
+    case 'ledger:backfill':
+        // Once, after upgrading to the payment ledger: rebuild the charges
+        // from before it existed. Idempotent, and never overwrites a charge
+        // the catch-up wrote or an amount a member entered; a payment added by
+        // hand on a rebuilt date becomes that date's charge.
+        $householdId = null;
+        foreach (array_slice($argv, 2) as $argument) {
+            if (preg_match('/^--household=(\d+)$/', $argument, $match) === 1) {
+                $householdId = (int) $match[1];
+            } else {
+                fwrite(STDERR, sprintf("Unknown option \"%s\". Usage: ledger:backfill [--household=ID]\n", $argument));
+                exit(1);
+            }
+        }
+
+        $totals = $container->get(LedgerBackfillRunner::class)->run($householdId);
+        $out(sprintf(
+            'Backfilled %d charge(s) on %d subscription(s) across %d household(s); filed %d invoice(s) against them.',
+            $totals['charges'],
+            $totals['subscriptions'],
+            $totals['households'],
+            $totals['invoices'],
         ));
         exit(0);
 
@@ -306,6 +332,7 @@ switch ($command) {
         $out('  i18n:check           Compare every locale with the base catalogue and report any drift');
         $out('  assets:offline-check Fail if any template or built asset references a third-party host');
         $out('  coverage:check       Fail if a Clover report\'s line coverage is under the floor (default 85%)');
+        $out('  ledger:backfill      Rebuild past charges into the payment ledger [--household=ID]');
         $out('  demo:seed            Create the demonstration household and its subscriptions');
         exit(0);
 

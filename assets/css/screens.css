@@ -965,6 +965,35 @@ tr.is-passed > td {
     color: var(--ok);
 }
 
+/* ------------------------------------------------------- the payment ledger */
+
+/* What was due, struck through beside what was really charged. */
+.payments-expected {
+    color: var(--muted);
+    margin-inline-end: 0.35rem;
+}
+
+.payments-date {
+    white-space: nowrap;
+}
+
+.payments-actions {
+    margin-top: 0.35rem;
+}
+
+.payments-table tr.is-skipped td {
+    color: var(--muted);
+}
+
+.payments-actions[open] {
+    min-width: min(18rem, 80vw);
+}
+
+.payments-actions form + .form-actions,
+.payments-actions .form-actions + form {
+    margin-top: 0.75rem;
+}
+
 /* ------------------------------------------------- security and the audit log */
 
 /*

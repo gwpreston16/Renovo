@@ -15,10 +15,12 @@ figure is one another screen already shows.
   conversion are not counted as rises.
 - **Twelve months back, twelve ahead.** The dashboard's chart asked for twelve
   months either side instead of six, so its thirteen bars are thirteen of these
-  twenty-five. The past half is reconstructed. The forecast half, hatched,
+  twenty-five. The past half is read from the [payment ledger](#payments),
+  reconstructed before a subscription's first payment. The forecast half, hatched,
   includes trials converting and scheduled price changes.
 - **This year against last.** Same-month bars from last January to this month,
-  reconstructed. The rest of this year is the forecast. Beneath them, the
+  from the payment ledger and reconstructed before it. The rest of this year is
+  the forecast. Beneath them, the
   rolling comparison: the last twelve months against the twelve before.
 - **Who pays what.** The household dashboard's card, scoped the same way.
   Under ISOLATED you see only your own share.
@@ -78,6 +80,61 @@ knowable. The current price is the latest row whose date has arrived, and a
 forecasts and budgets from their own dates, and become the current price when
 the day arrives.
 
+### Payments
+
+Each subscription's cost page has a **Payments** card: one row for every
+billing date that has passed, newest first, at the price that was due that day.
+Renovo writes the row itself when the date passes — nothing is read from a bank
+or a provider — and the price on it is frozen, so a later price edit does not
+rewrite what was due last month.
+
+A member who may change the subscription can, per row:
+
+- **Record amount** — what was really charged, with a note ("£63.20 this
+  winter"). The amount due stays beside it, struck through.
+- **Mark as skipped** — the charge did not happen: waived, missed or refunded in
+  full. A skipped charge counts as nothing in every total.
+- **Undo** — put the row back as Renovo wrote it. On a payment added by hand,
+  this removes it.
+- **Attach the invoice** for that payment. It is filed against the payment and
+  dated to it, and also appears with the subscription's other attachments.
+
+**Add a payment** records one that fell off the cycle, such as a one-time fee,
+dated today or earlier. One payment a day per subscription. A payment added on
+a billing date becomes that date's charge once the date passes, with what you
+entered as the amount charged (unless it is in another currency than the price
+that was due, when it stays as you added it) — so Undo then puts back the
+price that was due, rather than leaving the date with nothing.
+
+Pausing stops the payments. Pausing or cancelling first records any billing
+dates that had already passed, so nothing due before the pause is lost; after
+that, nothing is written while a subscription is paused, and **resuming skips
+the dates the pause covered** — the next payment moves on to the first billing
+date from today, and each date it steps over is listed as skipped, marked
+*paused*. If you were in fact billed during the pause, record the amount on
+that month's row; Undo puts it back as skipped. A payment you added by hand
+during the pause becomes that month's row when you resume, with what you
+entered as the amount charged — in whatever currency you entered it — and
+Undo then marks the month as not billed. A cancelled subscription writes nothing after its
+cancellation.
+
+A one-off or lifetime entry has one payment of its own, on its date. **Changing
+the date moves that payment** to the new day — today included — with any amount
+or note recorded on it and its invoice. A date moved into the future removes it
+until the day passes; it is then written again, and its invoice comes back to
+it. A date that already has another payment is refused: change or remove that
+payment first. The billing dates a subscription recorded before it was turned
+into a one-off stay where they are, beside the entry's own payment, and a
+one-off turned into a recurring subscription keeps its payment as history.
+Moving the date more than once is fine: the invoice follows each move.
+
+Rows marked *reconstructed* were rebuilt for the months before the ledger
+existed, by `ledger:backfill` ([upgrading](../upgrading.md)). Every payment you
+can see exports as CSV or JSON from **Settings → Data**, with the subscription it
+belongs to. Changing a subscription's owner moves its payments with it. Viewers see the
+card without its controls; a Contributor changes payments only on rows they
+own.
+
 ### Trials
 
 A trial is the subscription it will become, not a separate record. **The trial's
@@ -102,8 +159,9 @@ spend, taken from the same forecast the Forecast page shows, so the two can
 never disagree.
 
 The Budgets screen reads each budget over its **calendar period** — this month,
-or this calendar year — as charged so far (reconstructed from start dates and
-price history, to yesterday) plus the forecast to the period's end, which is how
+or this calendar year — as charged so far (from the payment ledger to
+yesterday, reconstructed before a subscription's first payment) plus the
+forecast to the period's end, which is how
 the dashboard's budget card reads the month. A budget is **Over** when that
 projection, trials converting included, passes its limit, and the card says when
 it is only the trials. It shows **Warning** once the projection reaches its
@@ -136,7 +194,9 @@ to reads only, and every write path uses the unwidened predicate.
 
 ### Year over year
 
-Reconstructed from start dates, billing cycles and recorded price history —
-there is no payment ledger. A subscription with no start date contributes
-nothing to either year, which under-reports the past rather than inventing
-spending that may never have happened. The page says how many were excluded.
+Read from the payment ledger where it has rows, so a recorded amount or a
+skipped charge is reflected; the months before a subscription's first row are
+reconstructed from its start date, billing cycle and recorded price history. A
+subscription with no start date and no payments contributes nothing to either
+year, which under-reports the past rather than inventing spending that may
+never have happened. The page says how many were excluded.

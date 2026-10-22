@@ -37,7 +37,7 @@ ROADMAP's "Not planned" entry stands.
 | `expected_minor`, `currency` | The price in force on `due_date` (`priceOn()`), at the time it was written |
 | `actual_minor` | Nullable. What was really charged, when a member records it |
 | `status` | `charged` (default), `skipped` (did not happen — waived, missed, refunded in full) |
-| `source` | `catch_up`, `manual`, `reconstructed` |
+| `source` | `catch_up`, `manual`, `reconstructed`, `one_off` (added while building: a one-off's own charge), `paused` (a date a resume stepped over) |
 | `note`, `recorded_by_user_id`, timestamps | As price history |
 
 Unique on (`subscription_id`, `due_date`). The **amount** of a charge is
@@ -56,15 +56,17 @@ as nothing.
 - **One-off** entries get a single row on their date; **lifetime** entries get
   their purchase row.
 - **Paused and cancelled rows** write nothing for dates after the pause or
-  cancellation.
+  cancellation while they stay so; a resume records the dates it stepped over
+  as skipped (`paused`).
 
 ### Before the ledger existed
 
 A console command, `ledger:backfill`, reconstructs rows from each subscription's
 start date to today using the same rules the year-over-year reconstruction uses,
 with `source = reconstructed`. It is run once by the operator (documented in the
-upgrade notes), is idempotent, and never overwrites a `catch_up` or `manual`
-row. Reconstructed rows are shown with a "reconstructed" hint.
+upgrade notes), is idempotent, and never overwrites a `catch_up` row or what
+a member entered: a `manual` payment on a reconstructed date is adopted as
+that date's charge, its amount kept as the actual. Reconstructed rows are shown with a "reconstructed" hint.
 
 ## In scope this phase (build ONLY these)
 
@@ -141,17 +143,100 @@ Migrations, sequenced after the last existing one, each with an explicit
 - **Splits** are applied to a charge's amount when a share is shown, as they
   are to a price today.
 
+*Confirmed 2026-10-22*, all five as written. `ManageCharges` joins the writer
+list in `PermissionService` beside `ManagePrices` and the `EditMoney` row of
+`RoleCapability` (the role matrix refuses a role holding part of a row); the
+Contributor fence comes from `writableWhere()`, as for prices.
+
+Found while starting it:
+
+- **Resuming skips the paused dates.** *Confirmed 2026-10-22.* `setActive()`
+  left `next_payment_date` where the pause found it, so the first catch-up after
+  a resume (or an uncancel, which lands on Paused) would roll through every date
+  of the pause and write a `charged` row for each. Resuming now moves the date
+  forward to the first billing date on or after today, in the same
+  transaction. *Revised and confirmed 2026-10-22* (found while reviewing; it
+  wrote no rows at first): the dates a resume steps over
+  are written `skipped`, with their own source, `paused`. Left empty,
+  `ledger:backfill` filled them with the reconstruction's charges. A member
+  billed during the pause records the amount on that row; Undo puts it back
+  as skipped. A payment added by hand on one of those dates becomes that
+  month's `paused` row, keeping its status, with what was entered as its
+  actual (a skipped one stays skipped, with no actual) —
+  one in the price's currency takes the price due as expected, one in
+  another currency keeps its own amounts (the row is not relabelled, so its
+  value does not change). The rows are written before the row is saved, so
+  an owner change in the same edit carries them.
+- **`ledger:backfill` stops before the current `next_payment_date`.**
+  *Confirmed 2026-10-22.* Per subscription it writes the reconstruction's
+  charges from `start_date` up to, not including, `next_payment_date` (and
+  before the earliest `catch_up` row), so it never overlaps the catch-up and
+  does not count a paused row's unbilled months. The reconstruction counts a
+  paused row through today, so the "matches the reconstruction to the minor
+  unit" test holds for active and cancelled rows, not paused ones.
+- **The calendar pages back to the earliest ledger month in scope**
+  (assumption). It was clamped to this month (`CalendarService`).
+- **Which source a past date reads** (assumption). Per subscription, dates
+  before its first ledger row are reconstructed; dates from that row up to its
+  `next_payment_date` are the ledger; dates from `next_payment_date` to today
+  that the catch-up has not yet written (nobody with write access has looked)
+  are the charges the catch-up would write. A charge due today stays the
+  forecast's on the month-so-far card, as it is now.
+- **Zero-amount charges are rows** (assumption). A £0 intro month is a billing
+  date that passed; it counts as nothing in every sum.
+- **Charge routes answer 404** for a subscription or charge that does not exist
+  or is not visible, like the other subscription sub-resources (K42 left as
+  it is for attachments).
+
+- **A one-off's own payment moves with its date.** *Decided 2026-10-22,
+  found while reviewing.* A one-off or lifetime entry's single charge has its
+  own source, `one_off`, and only that charge follows an edit of the entry's
+  date: moved for any date up to and including today, with what was recorded
+  on it and its invoice; removed for a future date until the day passes. A
+  date that already has another payment is refused with an error. Charges the
+  row recorded while it was recurring are never touched.
+- **Pausing or cancelling records the dates already passed** first, through
+  every door, so none is lost (found while reviewing).
+- **The one-off rules follow the submitted type** (K71). *Decided 2026-10-22.*
+  An edit that changes a row's type and date together is judged by the type
+  it submits: a one-off becoming recurring keeps its one-off charge as
+  history; a recurring row becoming a one-off is refused a date another
+  payment stands on.
+- **A payment added by hand on a billing date is adopted as that date's
+  charge** (K70) by the catch-up or the backfill, with the amount entered as
+  its actual, so Undo restores the price due. Decided where the date is
+  passed, not guessed later from the schedule — which would have put back
+  charges on paused months, off-cycle days and months before the ledger.
+  The catch-up adopts one on a one-off's own date too, as the backfill does.
+  At the catch-up and the backfill, a payment in another currency than the
+  price due is not adopted — one row has one currency, and relabelling it
+  would change its value — and stays the date's only charge (a resume still
+  makes it a paused month's row, as above); a skipped one stays skipped, with
+  no actual.
+
+### Known issues taken
+
+Added *2026-10-22* at the owner's request, as rows in code this phase rewires:
+
+- **K36** — the reconstruction's 500-charge cap; the backfill would copy the
+  gap.
+- **K17** — one price-history query per subscription per spend walk.
+- **K3** — a split member counted the whole later charge when the current
+  price is £0.
+- **K16** — a restore failing part-way keeps its rows but deletes their files.
+
 ## Status
 
-- [ ] Migrations on both engines; entity, scoped repository, service
-- [ ] Catch-up writes one row per passed date, transactional and idempotent
-- [ ] `ledger:backfill`, documented in the upgrade notes
-- [ ] Payments card: record amount, skip, undo, add a payment
-- [ ] `attachments.charge_id` and the `period_date` link step
-- [ ] Calendar pages backwards; month-so-far and past spend read the ledger
-- [ ] API endpoints, OpenAPI, `docs/api.md`, role matrix; export; backup
-- [ ] New strings in `translations/en.php`
-- [ ] `composer check`, `i18n:check`, offline guard green on both engines
+- [x] Migrations on both engines; entity, scoped repository, service
+- [x] Catch-up writes one row per passed date, transactional and idempotent
+- [x] `ledger:backfill`, documented in the upgrade notes
+- [x] Payments card: record amount, skip, undo, add a payment
+- [x] `attachments.charge_id` and the `period_date` link step
+- [x] Calendar pages backwards; month-so-far and past spend read the ledger
+- [x] API endpoints, OpenAPI, `docs/api.md`, role matrix; export; backup
+- [x] K36, K17, K3, K16 fixed and marked in `known-issues.md`
+- [x] New strings in every catalogue in `translations/`
+- [x] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done
 
@@ -169,9 +254,13 @@ both engines. Then mark it ✅ in `ROADMAP.md`.
 - A trial converting today: the conversion charge is a ledger row, written after
   the conversion and before the date advances.
 - A Viewer's page view writes no charges (catch-up is a no-op without write).
-- Paused and cancelled rows write no rows for later dates.
+- Paused and cancelled rows write no rows for later dates while paused or
+  cancelled; a resume writes the stepped-over dates as skipped, and makes a
+  payment added by hand on one of them that month's `paused` row, keeping
+  its status.
 - `ledger:backfill` reproduces the year-over-year reconstruction to the minor
-  unit, is idempotent, and never overwrites a `catch_up` or `manual` row.
+  unit, is idempotent, never overwrites a `catch_up` row, and adopts a
+  `manual` payment on a reconstructed date with its amount kept.
 - Past-month spend from the ledger equals the reconstruction for unedited data;
   recording an actual changes that month and no other.
 - A skipped charge counts as zero everywhere spend is summed.

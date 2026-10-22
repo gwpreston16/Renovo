@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Domain\BillingCycle;
+use App\Domain\ChargeSource;
 use App\Domain\Entity\Subscription;
 use App\Domain\Entity\Tag;
 use App\Domain\Money;
@@ -118,6 +119,7 @@ final class SubscriptionRepository extends AbstractScopedRepository
             'created_at',
             'visibility',
             'cancelled_at',
+            'start_date',
             'plan',
         ];
     }
@@ -444,8 +446,38 @@ final class SubscriptionRepository extends AbstractScopedRepository
             $data['updated_at'] = (new DateTimeImmutable())->format('Y-m-d H:i:s');
 
             $this->updateScoped($scope, $id, $data);
+            $this->moveChildRows($scope, $id, $data);
             $this->syncTags($scope, $id, $tagIds);
         });
+    }
+
+    /**
+     * Carry a change of owner down to the rows that keep their own copy of
+     * it: the price history, the payment ledger and the attachments.
+     *
+     * Those copies are what the scoping layer fences them by, so a copy left
+     * behind would leave the former owner able to change the payments of a
+     * bill that is no longer theirs, and the new owner unable to. Run after
+     * the subscription's own update, which has already asked whether this
+     * scope may write it; a scope fenced to its own rows cannot change the
+     * owner at all (`updateScoped()` drops the column), so it moves nothing.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function moveChildRows(Scope $scope, int $id, array $data): void
+    {
+        if (!array_key_exists('owner_user_id', $data) || $scope->restrictsWritesToOwner() || !$scope->hasHousehold()) {
+            return;
+        }
+
+        foreach (['subscription_price_history', 'subscription_charges', 'attachments'] as $table) {
+            $this->db->execute(
+                'UPDATE ' . $this->quote($table) . ' SET ' . $this->quote('owner_user_id') . ' = :owner'
+                . ' WHERE ' . $this->quote('subscription_id') . ' = :subscription'
+                . ' AND ' . $this->quote('household_id') . ' = :household',
+                ['owner' => (int) $data['owner_user_id'], 'subscription' => $id, 'household' => $scope->householdId],
+            );
+        }
     }
 
     public function delete(Scope $scope, int $id): void
@@ -461,6 +493,93 @@ final class SubscriptionRepository extends AbstractScopedRepository
             );
             $this->deleteScoped($scope, $id);
         });
+    }
+
+    /**
+     * Move a payment date forward only if it still says what the caller read.
+     *
+     * The catch-up's compare-and-set. Two catch-ups running at once — two
+     * members loading the dashboard in the same second, or the scheduler and a
+     * page view — both read the same overdue date; the first to update wins,
+     * and the second matches no row, so only one of them goes on to write the
+     * charges for the dates that passed. Without the guard both would, and
+     * the second would collide with the first on the ledger's unique key.
+     *
+     * @return bool Whether this call moved the date.
+     */
+    public function advanceNextPaymentDate(
+        Scope $scope,
+        int $id,
+        DateTimeImmutable $from,
+        DateTimeImmutable $to,
+    ): bool {
+        $params = [
+            'set_next' => $to->format('Y-m-d'),
+            'set_updated' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+            '__id' => $id,
+            '__from' => $from->format('Y-m-d'),
+        ];
+
+        $sql = 'UPDATE ' . $this->quote($this->table())
+            . ' SET ' . $this->quote('next_payment_date') . ' = :set_next,'
+            . ' ' . $this->quote('updated_at') . ' = :set_updated'
+            . ' WHERE ' . $this->qualify('id') . ' = :__id'
+            . ' AND ' . $this->qualify('next_payment_date') . ' = :__from'
+            . ' AND ' . $this->scopePredicate($scope, $params);
+
+        // The new date always differs from the old one, so MySQL's "changed
+        // rows" and PostgreSQL's "matched rows" agree here.
+        return $this->db->execute($sql, $params) > 0;
+    }
+
+    /**
+     * Every subscription this scope may write, whatever its state — what
+     * `ledger:backfill` walks.
+     *
+     * @return list<Subscription>
+     */
+    public function findAllWritable(Scope $scope): array
+    {
+        $params = [];
+        $sql = $this->selectWithJoins()
+            . $this->writableWhere($scope, Criteria::new(), $params)
+            . ' ORDER BY ' . $this->qualify('id') . ' ASC';
+
+        return $this->hydrateAll($scope, $this->db->fetchAll($sql, $params));
+    }
+
+    /**
+     * One-off and lifetime entries whose date has passed and which have no
+     * charge yet — the catch-up writes each its single row.
+     *
+     * A cancelled entry still gets its row when its date fell on or before the
+     * cancellation, by the reconstruction's "up to the day" rule.
+     *
+     * @return list<Subscription>
+     */
+    public function findUnchargedOneOffs(Scope $scope, DateTimeImmutable $today): array
+    {
+        $criteria = Criteria::new()
+            ->in('subscription_type', [SubscriptionType::OneOff->value, SubscriptionType::Lifetime->value])
+            ->where('start_date', '<', $today->format('Y-m-d'));
+
+        $params = [];
+        $sql = $this->selectWithJoins()
+            . $this->writableWhere($scope, $criteria, $params)
+            . ' AND (' . $this->qualify('cancelled_at') . ' IS NULL'
+            . ' OR ' . $this->qualify('start_date') . ' <= ' . $this->qualify('cancelled_at') . ')'
+            // Its own charge, on its own date: a deposit a member added by hand
+            // on another day does not stand in for it. One added on the day is
+            // still to be adopted — unless it is in another currency than the
+            // entry, which keeps it as it is.
+            . ' AND NOT EXISTS (SELECT 1 FROM ' . $this->quote('subscription_charges') . ' charge'
+            . ' WHERE charge.' . $this->quote('subscription_id') . ' = ' . $this->qualify('id')
+            . ' AND charge.' . $this->quote('due_date') . ' = ' . $this->qualify('start_date')
+            . ' AND (charge.' . $this->quote('source') . ' <> :manual_source'
+            . ' OR charge.' . $this->quote('currency') . ' <> ' . $this->qualify('currency') . '))';
+        $params['manual_source'] = ChargeSource::Manual->value;
+
+        return $this->hydrateAll($scope, $this->db->fetchAll($sql, $params));
     }
 
     /**
@@ -546,6 +665,7 @@ final class SubscriptionRepository extends AbstractScopedRepository
                     $this->updateScoped($scope, $id, $data + [
                         'updated_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
                     ]);
+                    $this->moveChildRows($scope, $id, $data);
                     $changed++;
                 } catch (\App\Security\ScopeViolationException) {
                     // A row that is not this caller's to change is skipped

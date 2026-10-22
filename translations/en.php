@@ -453,6 +453,55 @@ return [
     'price_change.trial_conversion' => 'Free trial ended',
     'price_change.currency_change' => 'Currency converted',
     'price_change.unknown' => 'Price',
+
+    'charge.status.charged' => 'Charged',
+    'charge.status.skipped' => 'Skipped',
+    'charge.source.catch_up' => 'Billing date passed',
+    'charge.source.manual' => 'Added by hand',
+    'charge.source.reconstructed' => 'Reconstructed',
+    'charge.source.one_off' => 'The entry’s own charge',
+    'charge.source.paused' => 'Paused',
+
+    'payments.heading' => 'Payments',
+    'payments.note' => 'One row for each billing date that has passed, at the price due that day. Record what was really charged, or mark a charge that did not happen.',
+    'payments.empty' => 'No payments yet. A row appears here once a billing date has passed.',
+    'payments.status' => 'Status',
+    'payments.invoice' => 'Invoice',
+    'payments.note_column' => 'Note',
+    'payments.reconstructed' => 'reconstructed',
+    'payments.paused' => 'paused',
+    'payments.added_by_hand' => 'added by hand',
+    'payments.recorded' => 'Recorded',
+    'payments.expected' => 'Expected',
+    'payments.charged_as' => 'Charged',
+    'payments.change' => 'Change',
+    'payments.actual_amount' => 'Amount actually charged',
+    'payments.record_amount' => 'Record amount',
+    'payments.mark_skipped' => 'Mark as skipped',
+    'payments.undo' => 'Undo',
+    'payments.remove' => 'Remove payment',
+    'payments.attach_invoice' => 'Attach the invoice for this payment',
+    'payments.pages' => 'Payment pages',
+    'payments.add' => 'Add a payment',
+    'payments.add_hint' => 'For a charge that fell off the cycle, such as a one-time fee. Today or earlier.',
+    'payments.add_submit' => 'Add payment',
+    'payments.amount_in' => 'Amount ({currency})',
+    'confirm.remove_payment' => 'Remove this payment?',
+    'flash.charge_added' => 'Payment added.',
+    'flash.charge_recorded' => 'Amount recorded.',
+    'flash.charge_skipped' => 'Payment marked as skipped.',
+    'flash.charge_undone' => 'Payment put back as it was.',
+    'flash.charge_removed' => 'Payment removed.',
+    'error.charge.not_found' => 'That payment could not be found.',
+    'error.charge.actual_required' => 'Enter the amount that was charged.',
+    'error.charge.amount_required' => 'Enter the amount of the payment.',
+    'error.charge.date_required' => 'Enter the date of the payment.',
+    'error.charge.date_future' => 'A payment is dated today or earlier; one still to come is in the forecast.',
+    'error.charge.date_taken' => 'There is already a payment on that date.',
+    'error.charge.one_off_date_taken' =>
+        'There is already a payment on that date. Change or remove it on the Payments card first, or choose another date.',
+    'error.charge.status_invalid' => 'The status must be charged or skipped.',
+    'error.charge.actual_on_skipped' => 'A skipped payment has no amount.',
     // promo — an introductory price, beside the price it is
     'promo.chip' => 'Promo',
     'promo.chip_until' => 'Promo until {date}',
@@ -824,8 +873,9 @@ return [
         . ' {categories, plural, one {# category} other {# categories}},'
         . ' {payment_methods, plural, one {# payment method} other {# payment methods}},'
         . ' {tags, plural, one {# tag} other {# tags}},'
-        . ' {budgets, plural, one {# budget} other {# budgets}}'
-        . ' and {attachments, plural, one {# attachment} other {# attachments}}.',
+        . ' {budgets, plural, one {# budget} other {# budgets}},'
+        . ' {attachments, plural, one {# attachment} other {# attachments}}'
+        . ' and {charges, plural, one {# payment} other {# payments}}.',
     'flash.restore_skipped' => '{count, plural, one {# item was} other {# items were}} skipped.',
 
     'flash.household_saved' => 'Household settings saved.',
@@ -1258,7 +1308,8 @@ return [
         '{monthly} a month, {yearly} a year. Already included in the forecast.',
     'dashboard.price_rises' => '{name} rises from {from} to {to} on {date}',
     'dashboard.recent' => 'Subscriptions',
-    'dashboard.reconstructed_note' => 'Reconstructed from start dates and price history.',
+    'dashboard.reconstructed_note' =>
+        'From the payment ledger; months before a payment was recorded are rebuilt from start dates and price history.',
     'dashboard.recurring_empty' => 'No active recurring subscriptions yet.',
     'dashboard.renewing_soon' => 'Renewing soon',
     'dashboard.renewing_soon_note' => 'in the next {days} days',
@@ -1291,10 +1342,10 @@ return [
     'dashboard.spend_trend_unconvertible' =>
         'No exchange rate for {currencies}, so these months cannot be added up in one currency.',
     'dashboard.spend_trend_uncategorised' => 'Uncategorised',
-    // Said rather than implied: the application records what is due, not a
-    // ledger of payments taken, so these months were rebuilt from start dates,
-    // billing cycles and price history. A reader comparing them with a bank
-    // statement should know that before they do it.
+    // Said rather than implied: past months come from the payment ledger, and
+    // the months before a subscription's first recorded payment are rebuilt
+    // from start dates, billing cycles and price history. A reader comparing
+    // them with a bank statement should know that before they do it.
     'dashboard.stands_on' => 'Here’s where {household} stands on {date}.',
     'dashboard.still_due' => 'Still due',
     'dashboard.this_month' => 'This month',
@@ -1908,8 +1959,9 @@ return [
         '{count, plural, one {# subscription has} other {# subscriptions have}} no start date and so '
         . 'contribute nothing to either year.',
     'stats.year_over_year_note' =>
-        'Reconstructed from start dates, billing cycles and recorded price history — this application '
-        . 'tracks what is due rather than keeping a ledger of payments taken.',
+        'From the payment ledger, with any amounts members recorded and without skipped charges. Months '
+        . 'before a subscription’s first recorded payment are rebuilt from its start date, billing cycle and '
+        . 'price history.',
 
     // subscriptions
     'subscriptions.add_subscription' => 'Add subscription',
@@ -2340,6 +2392,7 @@ return [
     'error.api.payment_method_not_found' => 'No such payment method.',
     'error.api.read_only_tokens_only' => 'This endpoint accepts read-only tokens only.',
     'error.api.subscription_not_found' => 'No such subscription.',
+    'error.api.charge_not_found' => 'No such charge.',
     'error.api.subscription_unreadable' => 'The subscription could not be read back.',
     'error.api.tag_not_found' => 'No such tag.',
     'error.api.token_invalid' => 'That API token is not valid.',
@@ -2518,6 +2571,9 @@ return [
         'Every subscription you can see, paused and cancelled ones included, as a spreadsheet or as JSON. '
         . 'The importer reads either back.',
     'settings.export_json' => 'JSON',
+    'settings.export_payments_intro' => 'Every payment in the ledger, with the subscription it belongs to.',
+    'settings.export_payments_csv' => 'Payments CSV',
+    'settings.export_payments_json' => 'Payments JSON',
     'settings.full_audit_log' => 'Full audit log',
     'settings.household_name' => 'Household name',
     'settings.import_note' => 'You map the columns and preview every row before anything is saved.',

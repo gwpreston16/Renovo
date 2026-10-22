@@ -23,6 +23,10 @@ enum Permission: string
     // so only the writes need permissions of their own.
     case ManageBudgets = 'budget.manage';
     case ManagePrices = 'price.manage';
+    // Phase 34. Recording what a charge really was, skipping one, or adding
+    // one that fell off the cycle: a write to the money of a row, held with
+    // the price.
+    case ManageCharges = 'charge.manage';
     case ManageSplits = 'split.manage';
     case RecordUsage = 'usage.record';
     case BulkEdit = 'subscription.bulk_edit';

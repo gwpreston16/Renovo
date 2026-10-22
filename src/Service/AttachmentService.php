@@ -8,6 +8,7 @@ use App\Domain\AuditAction;
 use App\Domain\Entity\Attachment;
 use App\Domain\Entity\User;
 use App\Repository\AttachmentRepository;
+use App\Repository\ChargeRepository;
 use App\Repository\SubscriptionRepository;
 use App\Security\Scope;
 use DateTimeImmutable;
@@ -40,6 +41,7 @@ final class AttachmentService
         private readonly SubscriptionRepository $subscriptions,
         private readonly AttachmentStorage $storage,
         private readonly AuditLogService $audit,
+        private readonly ChargeRepository $charges,
     ) {
     }
 
@@ -49,6 +51,24 @@ final class AttachmentService
     public function forSubscription(Scope $scope, int $subscriptionId): array
     {
         return $this->attachments->findForSubscription($scope, $subscriptionId);
+    }
+
+    /**
+     * A subscription's attachments that are a payment's invoice, keyed by the
+     * charge — what the Payments card shows beside each row.
+     *
+     * @return array<int, list<Attachment>>
+     */
+    public function byCharge(Scope $scope, int $subscriptionId): array
+    {
+        $grouped = [];
+        foreach ($this->forSubscription($scope, $subscriptionId) as $attachment) {
+            if ($attachment->chargeId !== null) {
+                $grouped[$attachment->chargeId][] = $attachment;
+            }
+        }
+
+        return $grouped;
     }
 
     public function find(Scope $scope, int $id): ?Attachment
@@ -65,6 +85,7 @@ final class AttachmentService
         int $subscriptionId,
         UploadedFileInterface $file,
         ?string $periodDate = null,
+        ?int $chargeId = null,
     ): int {
         $subscription = $this->subscriptions->find($scope, $subscriptionId);
 
@@ -75,18 +96,30 @@ final class AttachmentService
             throw ValidationException::field('subscription_id', 'error.subscription.not_found');
         }
 
+        // Filed against a payment: the charge must be one of this
+        // subscription's, and the invoice is for its billing date.
+        $period = $this->parseDate($periodDate);
+        if ($chargeId !== null) {
+            $charge = $this->charges->find($scope, $chargeId);
+            if ($charge === null || $charge->subscriptionId !== $subscriptionId) {
+                throw ValidationException::field('charge_id', 'error.charge.not_found');
+            }
+            $period = $charge->dueDate;
+        }
+
         $stored = $this->storage->store($file, $subscription->householdId);
 
         $id = $this->attachments->create(
             $scope,
             $subscriptionId,
             $subscription->ownerUserId,
-            $this->parseDate($periodDate),
+            $period,
             $this->safeFilename($file->getClientFilename()),
             $stored['path'],
             $stored['mime'],
             $stored['size'],
             $actor->id,
+            $chargeId,
         );
 
         $this->audit->record(AuditAction::AttachmentUploaded, $actor, [

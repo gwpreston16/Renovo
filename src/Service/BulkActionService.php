@@ -12,6 +12,7 @@ use App\Repository\MembershipRepository;
 use App\Repository\SubscriptionRepository;
 use App\Repository\TagRepository;
 use App\Security\Scope;
+use App\Support\Clock;
 
 /**
  * Changing one field across many subscriptions at once.
@@ -52,6 +53,8 @@ final class BulkActionService
         private readonly PriceHistoryService $priceHistory,
         private readonly ExchangeRateService $rates,
         private readonly Database $db,
+        private readonly Clock $clock,
+        private readonly SubscriptionService $catchUp,
     ) {
     }
 
@@ -97,14 +100,53 @@ final class BulkActionService
             self::ACTION_CURRENCY => $this->convertCurrency($scope, $ids, $input),
             // Resuming skips cancelled rows: they are finished, and only an
             // explicit un-cancel (which lands on Paused) may bring one back.
-            self::ACTION_ACTIVATE => $this->subscriptions->updateMany(
-                $scope,
-                $this->subscriptions->withoutCancelled($scope, $ids),
-                ['is_active' => true],
-            ),
-            self::ACTION_DEACTIVATE => $this->subscriptions->updateMany($scope, $ids, ['is_active' => false]),
+            self::ACTION_ACTIVATE => $this->resume($scope, $this->subscriptions->withoutCancelled($scope, $ids)),
+            self::ACTION_DEACTIVATE => $this->pause($scope, $ids),
             default => throw new ValidationException(['action' => 'error.bulk.no_action']),
         };
+    }
+
+    /**
+     * Pause a selection, recording first the billing dates each has already
+     * passed — as a single pause does.
+     *
+     * @param list<int> $ids
+     */
+    private function pause(Scope $scope, array $ids): int
+    {
+        foreach ($ids as $id) {
+            $subscription = $this->subscriptions->findForWrite($scope, $id);
+            if ($subscription !== null) {
+                $this->catchUp->settlePassedDates($scope, $subscription);
+            }
+        }
+
+        return $this->subscriptions->updateMany($scope, $ids, ['is_active' => false]);
+    }
+
+    /**
+     * Resume a selection, skipping the dates each one's pause covered — as a
+     * single resume does — so the catch-up writes no charges for them.
+     *
+     * @param list<int> $ids
+     */
+    private function resume(Scope $scope, array $ids): int
+    {
+        return $this->db->transactional(function () use ($scope, $ids): int {
+            $today = $this->clock->today();
+            foreach ($ids as $id) {
+                $subscription = $this->subscriptions->findForWrite($scope, $id);
+                $resumed = $subscription !== null && !$subscription->isActive
+                    ? $subscription->resumedPaymentDate($today)
+                    : null;
+                if ($subscription !== null && $resumed !== null) {
+                    $this->subscriptions->setNextPaymentDate($scope, $id, $resumed);
+                    $this->catchUp->recordPaused($scope, $subscription, $subscription->pausedDates($today));
+                }
+            }
+
+            return $this->subscriptions->updateMany($scope, $ids, ['is_active' => true]);
+        });
     }
 
     /**

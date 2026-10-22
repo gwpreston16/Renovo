@@ -197,6 +197,9 @@ the same values `GET /me` returns in its `permissions` array.
 | `POST` | `/subscriptions/{id}/attachments` | `attachment.manage` |
 | `GET` | `/subscriptions/{id}/attachments/{attachmentId}` | `subscription.view` |
 | `DELETE` | `/subscriptions/{id}/attachments/{attachmentId}` | `attachment.manage` |
+| `GET` | `/subscriptions/{id}/charges` | `subscription.view` |
+| `POST` | `/subscriptions/{id}/charges` | `charge.manage` |
+| `PATCH` | `/charges/{id}` | `charge.manage` |
 | `GET` | `/categories` | `subscription.view` |
 | `POST` | `/categories` | `category.manage` |
 | `PUT` | `/categories/{id}` | `category.manage` |
@@ -235,6 +238,7 @@ The list arrives in the order shown.
 | `tag.manage` | | | ✓ | ✓ |
 | `budget.manage` | | ✓ | ✓ | ✓ |
 | `price.manage` | | ✓ | ✓ | ✓ |
+| `charge.manage` | | ✓ | ✓ | ✓ |
 | `split.manage` | | ✓ | ✓ | ✓ |
 | `usage.record` | | ✓ | ✓ | ✓ |
 | `subscription.bulk_edit` | | | ✓ | ✓ |
@@ -403,6 +407,7 @@ curl -H "Authorization: Bearer rnv_..." \
       "tag.manage",
       "budget.manage",
       "price.manage",
+      "charge.manage",
       "split.manage",
       "usage.record",
       "subscription.bulk_edit",
@@ -429,6 +434,13 @@ Responses: `200`, `401`.
 List subscriptions. Returns only what the token's role and the instance's
 isolation mode allow — the same rows the same user would see in the web
 interface.
+
+With a token that may write, the request first runs the catch-up the web pages
+run, in its order: scheduled prices that have reached their date take effect,
+ended free trials convert, and overdue payment dates move on, each passed
+billing date recorded as a payment. So a `price_minor`, a trial's status or a
+`next_payment_date` can differ from the last response without anybody editing
+the row. A read-only token changes nothing.
 
 | Parameter | Type | Notes |
 | --- | --- | --- |
@@ -520,7 +532,8 @@ Responses: `200`, `401`, `403`, `404`.
 
 Undo a cancellation. The subscription returns to **paused**, not active, so a
 mistake corrected cannot silently restart charges; resume it by `PUT`ting it
-back with `is_active: true`. Responses: `200`, `401`, `403`, `404`.
+back with `is_active: true`, which moves a payment date left in the past on to
+the first billing date from today. Responses: `200`, `401`, `403`, `404`.
 
 ---
 
@@ -568,6 +581,7 @@ Attach a document. `multipart/form-data`:
 | --- | --- |
 | `file` | **Required.** PDF, PNG, JPEG, WebP or GIF. Type determined from contents; filename and declared content type are ignored. |
 | `period_date` | Optional `YYYY-MM-DD`. The billing period this document covers. |
+| `charge_id` | Optional. The payment this is the invoice for — one of this subscription's charges. The attachment is dated to it, whatever `period_date` says. Anything that is not one of its charge ids is a `422`. |
 
 ```bash
 curl -X POST \
@@ -587,6 +601,64 @@ JSON. Responses: `200`, `401`, `403`, `404`.
 #### `DELETE /api/v1/subscriptions/{id}/attachments/{attachmentId}`
 
 Delete it. Responses: `204`, `401`, `403`, `404`.
+
+---
+
+### Payments
+
+The payment ledger: one charge for each billing date that has passed, at the
+price in force on that date, written by Renovo as the date passes; plus any a
+member added by hand. Nothing is read from a bank or a provider. A charge's
+`amount_minor` is what it counts as in every total — the recorded actual when
+there is one, the expected price otherwise, and `0` when it was skipped.
+
+A subscription or charge that does not exist, or is not this token's to see,
+is a `404`. So is a write the token may not make to a row it can see — a
+Contributor's `PATCH` or `POST` on another member's row.
+
+#### `GET /api/v1/subscriptions/{id}/charges`
+
+List the subscription's charges, newest first, a page at a time. With a token
+that may write, the request first runs the same catch-up as the subscription
+list, so every billing date that has passed is there; a read-only token reads
+what the last catch-up wrote. Paged with `page`
+(minimum 1) and `per_page` (1–100, default 25), with a `meta` block shaped like
+the subscription list's. A page past the last returns the last. Responses:
+`200`, `401`, `403`, `404`.
+
+#### `POST /api/v1/subscriptions/{id}/charges`
+
+Add a charge that fell off the cycle, such as a one-time fee. Needs
+`charge.manage`.
+
+| Field | Notes |
+| --- | --- |
+| `date` | **Required.** `YYYY-MM-DD`, today or earlier. One charge a day per subscription. |
+| `amount_minor` | **Required.** Integer minor units, in the subscription's currency. The web form's decimal `amount` is not read. |
+| `note` | Optional, up to 255 characters. |
+
+Responses: `201` with the `Charge`, `401`, `403`, `404`, `422`.
+
+#### `PATCH /api/v1/charges/{id}`
+
+Record what a charge really was, skip it, or annotate it. Needs
+`charge.manage`. Fields not sent keep their value.
+
+| Field | Notes |
+| --- | --- |
+| `actual_minor` | Integer minor units, or `null` to clear a recorded amount. Sent without a `status`, it also sets `charged` — recording an amount says the charge happened, as it does on the web. On a `manual` charge the amount entered is its `expected_minor`, so clearing the actual keeps it; once the charge is adopted that amount is the actual (unless it was skipped, when it is gone), and clearing it leaves the price due. |
+| `status` | `charged` or `skipped`. Skipping clears the actual; sending both `skipped` and an `actual_minor` is a `422`. |
+| `note` | Up to 255 characters, or `null`. |
+
+```bash
+curl -X PATCH \
+     -H "Authorization: Bearer rnv_..." \
+     -H "Content-Type: application/json" \
+     -d '{"actual_minor": 6320, "note": "Winter bill"}' \
+     https://your-instance.example/api/v1/charges/481
+```
+
+Responses: `200` with the `Charge`, `401`, `403`, `404`, `422`.
 
 ---
 
@@ -721,7 +793,7 @@ The writable half of a subscription. Required: `name`, `price_minor`,
 | `cycle_days` | integer, null | 1–3650. Required when `billing_cycle` is `custom_days`. |
 | `cycle_interval` | integer, null | Every N of the cycle's unit — `monthly` with `6` is every six months, `weekly` with `2` fortnightly. Weekly 1–52, monthly 1–24, yearly 1–10; `quarterly` and `custom_days` take only 1, and anything else is a 422, never a clamp. Omitted or null is 1 on a new subscription; on a PUT that keeps the same `billing_cycle`, an absent key keeps the current interval. |
 | `next_payment_date` | date, null | Required for a recurring subscription that is not a trial. |
-| `start_date` | date, null | |
+| `start_date` | date, null | The rules below follow the type the request submits: a one-off turning recurring keeps its payment as history. On a one-off or lifetime entry, changing it moves the entry's own payment (`source: one_off`) to the new date — today included — with any amount, note and invoice on it; a future date removes it until that day passes, when it is written again and its invoice returns to it. A date that already has another payment is a `422` on `start_date`. Other payments, including those the row recorded while it was recurring, are not touched. |
 | `notice_period_amount` | integer, null | 0–3650. |
 | `notice_period_unit` | enum, null | `days`, `weeks`, `months`. |
 | `reminder_days` | int[], null | Max 6 items, each 0–365. Three states — see [Conventions](#conventions). |
@@ -731,7 +803,7 @@ The writable half of a subscription. Required: `name`, `price_minor`,
 | `converts_to_billing_cycle` | enum, null | As `billing_cycle`. |
 | `converts_to_cycle_days` | integer, null | |
 | `converts_to_cycle_interval` | integer, null | As `cycle_interval`, for the cycle it converts to — bounded the same way, and an absent key on a PUT that keeps `converts_to_billing_cycle` keeps it. Null when it converts to the cycle it already has. |
-| `is_active` | boolean | Default `true`. `false` pauses it. Stays `false` while the subscription is cancelled. |
+| `is_active` | boolean | Default `true`. `false` pauses it. Stays `false` while the subscription is cancelled. Resuming skips the paused dates: a past `next_payment_date` moves on to the first billing date from today, so the response may not echo the date sent, and each date it steps over is recorded as a `skipped` charge with `source` `paused` — except one that already has a payment added by hand, which becomes that date's `paused` charge, keeping its status. Billed for one of those months after all? `PATCH` that charge's `actual_minor`; a `POST` on its date is a `422`. |
 | `plan` | string, null | Max 60 — "Standard", "Family". An absent key keeps the current value. |
 | `visibility` | enum | `household` (default) or `payer`. `payer` keeps it to its owner: hidden from every other member in either isolation mode, and out of their totals. Only the owner may set it, only when `payer_user_id` is the owner or null, and never on a split subscription. An absent key keeps the current setting. |
 | `category_id` | integer, null | |
@@ -785,14 +857,15 @@ Returned by `GET /me`. Fields: `user` (`id`, `email`, `display_name`,
 `editor`, `viewer`, or null), `isolation_mode` (`shared`, `isolated`),
 `permissions` (array of strings).
 
-### Category · PaymentMethod · Tag · Attachment
+### Category · PaymentMethod · Tag · Attachment · Charge
 
 | Schema | Fields |
 | --- | --- |
 | `Category` | `id`, `name`, `colour` (nullable) |
 | `PaymentMethod` | `id`, `name`, `colour` (nullable), `icon` (nullable; a generic icon key, never a brand mark), `logo_path` (nullable, read-only) |
 | `Tag` | `id`, `name` |
-| `Attachment` | `id`, `subscription_id`, `filename`, `mime_type`, `size_bytes`, `period_date` (nullable date), `created_at` |
+| `Attachment` | `id`, `subscription_id`, `filename`, `mime_type`, `size_bytes`, `period_date` (nullable date), `charge_id` (nullable; the payment it is the invoice for), `created_at` |
+| `Charge` | `id`, `subscription_id`, `due_date`, `currency`, `expected_minor` (the price due, frozen when written — except on adoption, below), `actual_minor` (nullable), `amount_minor`, `status` (`charged`, `skipped`), `source` (`catch_up`, `manual`, `reconstructed`, `one_off` — a one-off or lifetime entry's own charge; `paused` — a billing date a pause stepped over, written `skipped` when the row was resumed — or, when a payment added by hand stood on it, that payment with its own status; a `manual` charge on a billing date becomes that date's `catch_up`, `reconstructed`, `one_off` or `paused` charge, same id, when the catch-up, the backfill or a resume reaches it — so a later read may differ from the `201` body — its amount moving to `actual_minor` (a skipped one stays skipped, with no actual) and `expected_minor` taking the price due; one in another currency than the price due stays `manual` at the catch-up and the backfill — a resume still makes it the month's `paused` charge, keeping its own `currency` and `expected_minor`), `note` (nullable), `created_at`, `updated_at` |
 
 ---
 

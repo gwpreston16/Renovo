@@ -202,6 +202,7 @@ final class ContributorRoleTest extends DatabaseTestCase
             Permission::DeleteSubscription,
             Permission::ManageBudgets,
             Permission::ManagePrices,
+            Permission::ManageCharges,
             Permission::ManageSplits,
             Permission::RecordUsage,
             Permission::ManageAttachments,

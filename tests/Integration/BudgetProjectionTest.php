@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
+use App\Service\ChargeService;
+use App\Service\ChargeSchedule;
+use App\Repository\ChargeRepository;
 use App\Tests\Support\TestLogoFetcher;
 use App\Domain\BudgetPeriod;
 use App\Domain\IsolationMode;
@@ -95,6 +98,13 @@ final class BudgetProjectionTest extends DatabaseTestCase
             TestLogoFetcher::silent($this->db, $this->clock),
             $memberships,
             $this->priceHistory,
+            new ChargeService(
+                new ChargeRepository($this->db),
+                $this->subscriptions,
+                $this->priceHistory,
+                new ChargeSchedule(),
+                $this->clock,
+            ),
             $this->db,
             $this->clock,
         );

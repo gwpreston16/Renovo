@@ -53,6 +53,7 @@ final class CalendarController extends Controller
         // A day on its own names its month; a month given as well wins.
         $month = $this->calendar->resolveMonth(
             is_string($query['month'] ?? null) ? $query['month'] : $day?->format('Y-m'),
+            $scope,
         );
         if ($month === null) {
             throw $this->notFound($request);

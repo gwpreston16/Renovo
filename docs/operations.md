@@ -18,6 +18,7 @@ php bin/console maintenance:prune   # expired sessions, tokens, throttle, notifi
                                     # records, plus abandoned import uploads
 php bin/console i18n:check          # every locale against the base catalogue; non-zero on drift
 php bin/console assets:offline-check # non-zero if anything the browser loads names a third-party host
+php bin/console ledger:backfill     # once after upgrading: past charges into the payment ledger [--household=ID]
 php bin/console demo:seed           # the demonstration household and its two accounts
 ```
 
@@ -59,8 +60,9 @@ actually sends the mail.
 ## Backup and restore
 
 **Settings → Data & integrations → Backup & restore** downloads a ZIP of everything the household
-has: subscriptions, categories, tags, budgets, logos and attached invoices, as
-JSON plus the original files. Nothing in it needs a database to read.
+has: subscriptions, categories, tags, budgets, payments, logos and attached
+invoices (with the payment each is filed against), as JSON plus the original
+files. Nothing in it needs a database to read.
 
 It is built through the scoping layer rather than by dumping tables, which means
 it contains what *you* can see — on an ISOLATED instance, your own subscriptions
@@ -74,7 +76,10 @@ referenced by email address, which is enough to restore a subscription to the
 right owner and not enough to create an account.
 
 Restoring is **additive**: it creates rows and never deletes or overwrites any,
-so restoring the same file twice leaves two of everything. A member who is still
+so restoring the same file twice leaves two of everything. It is also **all or
+nothing**: a restore that fails part-way — a full disk, a file the server cannot
+write — keeps none of what it had restored, and says so. A row the archive gets
+wrong is skipped and counted rather than failing the rest. A member who is still
 in the household keeps their rows; one who has gone hands theirs to whoever is
 doing the restore. The household's own name is in the archive but is not applied
 — you are restoring into a household that already exists and already has a name

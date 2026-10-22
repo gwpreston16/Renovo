@@ -9,6 +9,7 @@ use App\Application\Api\Resource;
 use App\Application\Http\AttachmentResponse;
 use App\Domain\Entity\Attachment;
 use App\Service\AttachmentService;
+use App\Service\ValidationException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamFactoryInterface;
@@ -63,12 +64,24 @@ final class AttachmentApiController extends ApiController
             ? (string) $body['period_date']
             : null;
 
+        // A charge id that is sent must be one: a mistyped one is refused, not
+        // quietly dropped into an unlinked upload.
+        $chargeId = null;
+        if (isset($body['charge_id']) && $body['charge_id'] !== '') {
+            $raw = $body['charge_id'];
+            if (!is_int($raw) && !(is_string($raw) && ctype_digit($raw))) {
+                throw ValidationException::field('charge_id', 'error.charge.not_found');
+            }
+            $chargeId = (int) $raw;
+        }
+
         $attachmentId = $this->attachments->upload(
             $this->scope($request),
             $this->user($request),
             (int) $id,
             $file,
             $periodDate,
+            $chargeId,
         );
 
         $created = $this->attachments->find($this->scope($request), $attachmentId);

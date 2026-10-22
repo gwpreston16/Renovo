@@ -43,7 +43,12 @@ enum RoleCapability: string
         return match ($this) {
             self::ViewSubscriptions => [Permission::ViewSubscriptions],
             self::AddSubscriptions => [Permission::CreateSubscription],
-            self::EditMoney => [Permission::ManagePrices, Permission::ManageSplits, Permission::ManageAttachments],
+            self::EditMoney => [
+                Permission::ManagePrices,
+                Permission::ManageCharges,
+                Permission::ManageSplits,
+                Permission::ManageAttachments,
+            ],
             self::ManageBudgets => [Permission::ManageBudgets],
             self::ManageShared => [Permission::ManageCategories, Permission::ManageTags],
             self::ImportAndBulkEdit => [Permission::ImportData, Permission::BulkEdit],

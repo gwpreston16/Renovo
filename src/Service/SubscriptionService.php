@@ -45,6 +45,7 @@ final class SubscriptionService
         private readonly LogoFetcher $logoFetcher,
         private readonly MembershipRepository $memberships,
         private readonly PriceHistoryService $priceHistory,
+        private readonly ChargeService $charges,
         private readonly Database $db,
         private readonly Clock $clock,
     ) {
@@ -111,6 +112,30 @@ final class SubscriptionService
         $existing = $this->subscriptions->find($scope, $id);
         [$data, $tagIds, $offer] = $this->validate($scope, $input, $id);
 
+        if ($existing !== null && is_string($data['start_date'] ?? null)) {
+            $start = DateTimeImmutable::createFromFormat('!Y-m-d', $data['start_date']);
+            $submitted = SubscriptionType::from((string) $data['subscription_type']);
+            if ($this->charges->oneOffDateTaken($scope, $existing, $submitted, $start === false ? null : $start)) {
+                // One charge a day per subscription: moving the entry's own
+                // charge onto a day another stands on would drop one of them.
+                throw ValidationException::field('start_date', 'error.charge.one_off_date_taken');
+            }
+        }
+
+        if ($existing !== null && $existing->isActive && $data['is_active'] !== true) {
+            // Paused or cancelled through the edit form, the API or an import:
+            // the dates already passed are recorded first.
+            $this->settlePassedDates($scope, $existing);
+        }
+
+        $paused = [];
+        if ($existing !== null && !$existing->isActive && $data['is_active'] === true) {
+            // Resumed through the edit form or the API: the dates the pause
+            // covered are skipped, as `setActive()` skips them.
+            $paused = $this->pausedDates($existing, $data);
+            $data['next_payment_date'] = $this->resumedDate($existing, $data);
+        }
+
         $price = Money::of((int) $data['price_minor'], (string) $data['currency']);
         // Read before anything is written: a moved price writes a new row
         // that already carries the flag.
@@ -125,8 +150,24 @@ final class SubscriptionService
             $price,
             $offer,
             $wasOnOffer,
+            $paused,
         ): void {
+            // Before the row is saved, so a new owner it is handed to in the
+            // same edit takes the paused months with its other charges.
+            if ($existing !== null) {
+                $this->charges->recordPaused($scope, $existing, $paused);
+            }
             $this->subscriptions->update($scope, $id, $data, $tagIds);
+
+            if ($existing !== null && is_string($data['start_date'] ?? null)) {
+                $start = DateTimeImmutable::createFromFormat('!Y-m-d', $data['start_date']);
+                $this->charges->followDateChange(
+                    $scope,
+                    $existing,
+                    SubscriptionType::from((string) $data['subscription_type']),
+                    $start === false ? null : $start,
+                );
+            }
 
             // A price that has actually moved becomes a new history row rather
             // than overwriting the old one. Editing anything else about a
@@ -362,11 +403,38 @@ final class SubscriptionService
      */
     public function setActive(Scope $scope, int $id, bool $active): void
     {
-        if ($active && $this->subscriptions->find($scope, $id)?->isCancelled() === true) {
+        $subscription = $this->subscriptions->find($scope, $id);
+        if ($active && $subscription?->isCancelled() === true) {
             throw ValidationException::field('is_active', 'error.subscription.cancelled_resume');
         }
 
-        $this->subscriptions->update($scope, $id, ['is_active' => $active], $this->currentTagIds($scope, $id));
+        if (!$active && $subscription !== null) {
+            $this->settlePassedDates($scope, $subscription);
+        }
+
+        $data = ['is_active' => $active];
+
+        // Resuming skips the dates the pause covered. Nothing was billed while
+        // it was paused, so the payment date moves on to the first billing
+        // date that is today or later, in the same transaction, the dates it
+        // steps over are recorded as skipped, and the catch-up finds no passed
+        // dates to record as charges. A member who was in fact billed during
+        // the pause records the amount on that month's row.
+        $paused = [];
+        if ($active && $subscription !== null && !$subscription->isActive) {
+            $resumed = $subscription->resumedPaymentDate($this->clock->today());
+            if ($resumed !== null) {
+                $data['next_payment_date'] = $resumed->format('Y-m-d');
+                $paused = $subscription->pausedDates($this->clock->today());
+            }
+        }
+
+        $this->db->transactional(function () use ($scope, $id, $data, $subscription, $paused): void {
+            $this->subscriptions->update($scope, $id, $data, $this->currentTagIds($scope, $id));
+            if ($subscription !== null) {
+                $this->charges->recordPaused($scope, $subscription, $paused);
+            }
+        });
     }
 
     /**
@@ -394,6 +462,7 @@ final class SubscriptionService
             return;
         }
 
+        $this->settlePassedDates($scope, $subscription);
         $this->subscriptions->setCancelled($scope, $id, $this->clock->today());
     }
 
@@ -442,16 +511,161 @@ final class SubscriptionService
         $advanced = 0;
 
         foreach ($this->subscriptions->findOverdue($scope, $today) as $subscription) {
-            $next = $this->nextDueDateFrom($subscription, $today);
-            if ($next === null || $next == $subscription->nextPaymentDate) {
-                continue;
+            if ($this->settle($scope, $subscription, $today)) {
+                $advanced++;
             }
+        }
 
-            $this->subscriptions->setNextPaymentDate($scope, $subscription->id, $next);
-            $advanced++;
+        // One-off and lifetime entries have no date to move, only their one
+        // charge to write once its day has passed.
+        foreach ($this->subscriptions->findUnchargedOneOffs($scope, $today) as $entry) {
+            $this->charges->recordOneOff($scope, $entry);
         }
 
         return $advanced;
+    }
+
+    /**
+     * Record the billing dates one subscription has passed and move its
+     * payment date on — the catch-up for a single row.
+     *
+     * Asked before a row is paused or cancelled, whichever door that comes
+     * through. A paused or cancelled row is never caught up, so a date that
+     * passed while nobody who can write was looking would otherwise never be
+     * recorded, and past spend — which counts such dates as pending only for
+     * a running row — would quietly lose it.
+     */
+    public function settlePassedDates(Scope $scope, Subscription $subscription): void
+    {
+        if (
+            !$scope->canWrite()
+            || !$subscription->isActive
+            || $subscription->isCancelled()
+            || $subscription->nextPaymentDate === null
+            || $subscription->nextPaymentDate >= $this->clock->today()
+        ) {
+            return;
+        }
+
+        $this->settle($scope, $subscription, $this->clock->today());
+    }
+
+    /**
+     * @return bool Whether this call moved the date.
+     */
+    private function settle(Scope $scope, Subscription $subscription, DateTimeImmutable $today): bool
+    {
+        $passed = $this->passedDueDates($subscription, $today);
+        $next = $passed['next'];
+        if ($next === null || $next == $subscription->nextPaymentDate) {
+            return false;
+        }
+
+        // The date and the ledger move together or not at all. The date is
+        // moved first, as a compare-and-set: a second catch-up running at the
+        // same moment finds the date already moved, matches nothing, and so
+        // writes no charges of its own.
+        return $this->db->transactional(function () use ($scope, $subscription, $next, $passed): bool {
+            $current = $subscription->nextPaymentDate;
+            if (
+                $current === null
+                || !$this->subscriptions->advanceNextPaymentDate($scope, $subscription->id, $current, $next)
+            ) {
+                return false;
+            }
+
+            $this->charges->recordPassed($scope, $subscription, $passed['dates']);
+
+            return true;
+        });
+    }
+
+    /**
+     * The billing dates a subscription has rolled past, and the date it lands
+     * on — the first that is today or later.
+     *
+     * @return array{dates: list<DateTimeImmutable>, next: ?DateTimeImmutable}
+     */
+    private function passedDueDates(Subscription $subscription, DateTimeImmutable $today): array
+    {
+        $cycle = $subscription->billingCycle;
+        $current = $subscription->nextPaymentDate;
+
+        if ($cycle === null || $current === null || !$subscription->type->countsTowardsRecurringTotals()) {
+            return ['dates' => [], 'next' => null];
+        }
+
+        $dates = [];
+        $iterations = 0;
+        while ($current < $today->setTime(0, 0) && $iterations < self::MAX_ADVANCE_ITERATIONS) {
+            $dates[] = $current;
+            $current = $cycle->advance(
+                $current,
+                $subscription->cycleDays,
+                $subscription->anchorDay,
+                $subscription->cycleInterval,
+            );
+            $iterations++;
+        }
+
+        return ['dates' => $dates, 'next' => $current];
+    }
+
+    /**
+     * Record the billing dates a resume steps over as skipped — for a bulk
+     * resume, which moves each row's date itself.
+     *
+     * @param list<DateTimeImmutable> $dates
+     */
+    public function recordPaused(Scope $scope, Subscription $subscription, array $dates): int
+    {
+        return $this->charges->recordPaused($scope, $subscription, $dates);
+    }
+
+    /**
+     * The payment date a resumed row is saved with: the submitted one, moved
+     * past the pause when it is behind today.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function resumedDate(Subscription $existing, array $data): ?string
+    {
+        $submitted = is_string($data['next_payment_date'] ?? null) ? $data['next_payment_date'] : null;
+        $date = $this->submittedDate($data);
+        if ($date === null) {
+            return $submitted;
+        }
+
+        return $existing->resumedPaymentDate($this->clock->today(), $date)?->format('Y-m-d') ?? $submitted;
+    }
+
+    /**
+     * The billing dates a resume through the form steps over: walked from
+     * where the pause left the payment date — not from the date submitted,
+     * so one submitted ahead still records the months behind it — up to
+     * today. A row resumed as a one-off has no billing dates to record.
+     *
+     * @param array<string, mixed> $data
+     * @return list<DateTimeImmutable>
+     */
+    private function pausedDates(Subscription $existing, array $data): array
+    {
+        if (!SubscriptionType::from((string) $data['subscription_type'])->countsTowardsRecurringTotals()) {
+            return [];
+        }
+
+        return $existing->pausedDates($this->clock->today());
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function submittedDate(array $data): ?DateTimeImmutable
+    {
+        $submitted = is_string($data['next_payment_date'] ?? null) ? $data['next_payment_date'] : null;
+        $date = $submitted === null ? false : DateTimeImmutable::createFromFormat('!Y-m-d', $submitted);
+
+        return $date === false ? null : $date;
     }
 
     /**
