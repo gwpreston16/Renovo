@@ -103,8 +103,8 @@ A member who may change the subscription can, per row:
 dated today or earlier. One payment a day per subscription. A payment added on
 a billing date becomes that date's charge once the date passes, with what you
 entered as the amount charged (unless it is in another currency than the price
-that was due, when it stays as you added it) — so Undo then puts back the price that was due,
-rather than leaving the date with nothing.
+that was due, when it stays as you added it) — so Undo then puts back the
+price that was due, rather than leaving the date with nothing.
 
 Pausing stops the payments. Pausing or cancelling first records any billing
 dates that had already passed, so nothing due before the pause is lost; after
@@ -114,7 +114,8 @@ date from today, and each date it steps over is listed as skipped, marked
 *paused*. If you were in fact billed during the pause, record the amount on
 that month's row; Undo puts it back as skipped. A payment you added by hand
 during the pause becomes that month's row when you resume, with what you
-entered as the amount charged. A cancelled subscription writes nothing after its
+entered as the amount charged — in whatever currency you entered it — and
+Undo then marks the month as not billed. A cancelled subscription writes nothing after its
 cancellation.
 
 A one-off or lifetime entry has one payment of its own, on its date. **Changing

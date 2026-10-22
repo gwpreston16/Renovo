@@ -713,7 +713,10 @@ final class PaymentLedgerTest extends DatabaseTestCase
 
         $bob = $this->scope($this->bobId, Role::Contributor);
         $charges = $this->charges->forSubscription($bob, $id);
-        self::assertCount(3, $charges);
+        self::assertSame(
+            [['2026-05-15', 'skipped', 0], ['2026-04-15', 'skipped', 0], ['2026-03-15', 'skipped', 0]],
+            $this->statuses($id),
+        );
         foreach ($charges as $charge) {
             self::assertSame([$this->bobId, true], [$charge->ownerUserId, $this->charges->mayChange($bob, $charge)]);
         }
@@ -736,9 +739,10 @@ final class PaymentLedgerTest extends DatabaseTestCase
         $this->subscriptions->setActive($this->alice, $id, true);
 
         $april = $this->charges->find($this->alice, $manual->id);
-        self::assertSame([ChargeSource::Paused, 'GBP', 5000, false], [
+        self::assertSame([ChargeSource::Paused, 'GBP', 5000, 5000, false], [
             $april?->source,
             $april?->expected->currency,
+            $april?->actualMinor,
             $april?->amount()->amountMinor,
             $april?->isSkipped(),
         ]);

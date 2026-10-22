@@ -160,7 +160,12 @@ Found while starting it:
   are written `skipped`, with their own source, `paused`. Left empty,
   `ledger:backfill` filled them with the reconstruction's charges. A member
   billed during the pause records the amount on that row; Undo puts it back
-  as skipped.
+  as skipped. A payment added by hand on one of those dates becomes that
+  month's `paused` row, still charged, with what was entered as its actual —
+  one in the price's currency takes the price due as expected, one in
+  another currency keeps its own amounts (the row is not relabelled, so its
+  value does not change). The rows are written before the row is saved, so
+  an owner change in the same edit carries them.
 - **`ledger:backfill` stops before the current `next_payment_date`.**
   *Confirmed 2026-10-22.* Per subscription it writes the reconstruction's
   charges from `start_date` up to, not including, `next_payment_date` (and
@@ -202,9 +207,11 @@ Found while starting it:
   passed, not guessed later from the schedule — which would have put back
   charges on paused months, off-cycle days and months before the ledger.
   The catch-up adopts one on a one-off's own date too, as the backfill does.
-  A payment in another currency than the price due is not adopted — one row
-  has one currency, and relabelling it would change its value — and stays
-  the date's only charge; a skipped one stays skipped, with no actual.
+  At the catch-up and the backfill, a payment in another currency than the
+  price due is not adopted — one row has one currency, and relabelling it
+  would change its value — and stays the date's only charge (a resume still
+  makes it a paused month's row, as above); a skipped one stays skipped, with
+  no actual.
 
 ### Known issues taken
 
@@ -247,7 +254,8 @@ both engines. Then mark it ✅ in `ROADMAP.md`.
   the conversion and before the date advances.
 - A Viewer's page view writes no charges (catch-up is a no-op without write).
 - Paused and cancelled rows write no rows for later dates while paused or
-  cancelled; a resume writes the stepped-over dates as skipped.
+  cancelled; a resume writes the stepped-over dates as skipped, and makes a
+  payment added by hand on one of them that month's charged `paused` row.
 - `ledger:backfill` reproduces the year-over-year reconstruction to the minor
   unit, is idempotent, never overwrites a `catch_up` row, and adopts a
   `manual` payment on a reconstructed date with its amount kept.
