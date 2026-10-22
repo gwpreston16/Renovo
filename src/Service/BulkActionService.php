@@ -54,6 +54,7 @@ final class BulkActionService
         private readonly ExchangeRateService $rates,
         private readonly Database $db,
         private readonly Clock $clock,
+        private readonly SubscriptionService $catchUp,
     ) {
     }
 
@@ -100,9 +101,27 @@ final class BulkActionService
             // Resuming skips cancelled rows: they are finished, and only an
             // explicit un-cancel (which lands on Paused) may bring one back.
             self::ACTION_ACTIVATE => $this->resume($scope, $this->subscriptions->withoutCancelled($scope, $ids)),
-            self::ACTION_DEACTIVATE => $this->subscriptions->updateMany($scope, $ids, ['is_active' => false]),
+            self::ACTION_DEACTIVATE => $this->pause($scope, $ids),
             default => throw new ValidationException(['action' => 'error.bulk.no_action']),
         };
+    }
+
+    /**
+     * Pause a selection, recording first the billing dates each has already
+     * passed — as a single pause does.
+     *
+     * @param list<int> $ids
+     */
+    private function pause(Scope $scope, array $ids): int
+    {
+        foreach ($ids as $id) {
+            $subscription = $this->subscriptions->findForWrite($scope, $id);
+            if ($subscription !== null) {
+                $this->catchUp->settlePassedDates($scope, $subscription);
+            }
+        }
+
+        return $this->subscriptions->updateMany($scope, $ids, ['is_active' => false]);
     }
 
     /**

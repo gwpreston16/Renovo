@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
+use App\Tests\Support\TestSubscriptionService;
 use App\Domain\IsolationMode;
 use App\Domain\PriceChangeSource;
 use App\Domain\Role;
@@ -105,6 +106,7 @@ final class BulkActionTest extends DatabaseTestCase
             $rates,
             $this->db,
             $clock,
+            TestSubscriptionService::build($this->db, $clock, $this->priceHistory),
         );
     }
 

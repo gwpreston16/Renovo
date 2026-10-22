@@ -567,8 +567,11 @@ final class SubscriptionRepository extends AbstractScopedRepository
             . $this->writableWhere($scope, $criteria, $params)
             . ' AND (' . $this->qualify('cancelled_at') . ' IS NULL'
             . ' OR ' . $this->qualify('start_date') . ' <= ' . $this->qualify('cancelled_at') . ')'
+            // Its own charge, on its own date: a deposit a member added by hand
+            // on another day does not stand in for it.
             . ' AND NOT EXISTS (SELECT 1 FROM ' . $this->quote('subscription_charges') . ' charge'
-            . ' WHERE charge.' . $this->quote('subscription_id') . ' = ' . $this->qualify('id') . ')';
+            . ' WHERE charge.' . $this->quote('subscription_id') . ' = ' . $this->qualify('id')
+            . ' AND charge.' . $this->quote('due_date') . ' = ' . $this->qualify('start_date') . ')';
 
         return $this->hydrateAll($scope, $this->db->fetchAll($sql, $params));
     }

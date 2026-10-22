@@ -160,6 +160,47 @@ final class PaymentLedgerTest extends DatabaseTestCase
         self::assertSame([], $this->charges->forSubscription($this->alice, $cancelled));
     }
 
+    public function testPausingOrCancellingRecordsTheDatesAlreadyPassedFirst(): void
+    {
+        $history = $this->container->get(SpendHistoryService::class);
+        $spent = fn (): int => $history->spent(
+            $this->alice,
+            new DateTimeImmutable('2025-12-31'),
+            new DateTimeImmutable('2026-05-31'),
+        )['by_currency']['GBP'] ?? 0;
+
+        foreach (['toggle', 'form', 'bulk', 'cancel'] as $door) {
+            $this->db->execute('DELETE FROM subscription_charges');
+            $this->db->execute('DELETE FROM subscription_price_history');
+            $this->db->execute('DELETE FROM subscriptions');
+            $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
+            $id = $this->create('Monthly', '10.00', '2026-03-15', '2026-01-15');
+            $this->clock->advanceTo(new DateTimeImmutable('2026-04-20 08:00:00'));
+            $this->catchUp->run($this->alice);
+
+            // 15 May has passed, and nobody who can write has looked since.
+            $this->clock->advanceTo(new DateTimeImmutable('2026-06-01 09:00:00'));
+            self::assertSame(5000, $spent(), $door . ': before');
+
+            match ($door) {
+                'toggle' => $this->subscriptions->setActive($this->alice, $id, false),
+                'form' => $this->subscriptions->update(
+                    $this->alice,
+                    $id,
+                    $this->input('Monthly', '10.00', '2026-05-15', '2026-01-15', ['is_active' => '0']),
+                ),
+                'bulk' => $this->container->get(BulkActionService::class)->apply($this->alice, [
+                    'action' => BulkActionService::ACTION_DEACTIVATE,
+                    'ids' => [(string) $id],
+                ]),
+                'cancel' => $this->subscriptions->cancel($this->alice, $id),
+            };
+
+            self::assertSame('2026-05-15', $this->dueAndExpected($id)[0][0], $door);
+            self::assertSame(5000, $spent(), $door . ': after');
+        }
+    }
+
     public function testResumingSkipsTheDatesThePauseCovered(): void
     {
         $id = $this->create('Paused', '10.00', '2026-06-15', '2026-01-15');
@@ -218,6 +259,92 @@ final class PaymentLedgerTest extends DatabaseTestCase
         $this->catchUp->run($this->alice);
 
         self::assertSame([['2026-05-20', 15000]], $this->dueAndExpected($id));
+    }
+
+    public function testEditingAOneOffsDateMovesItsChargeRatherThanCountingItTwice(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-10-05 08:00:00'));
+        $desk = fn (string $date): array => [
+            'name' => 'Desk',
+            'price' => '150.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'one_off',
+            'start_date' => $date,
+        ];
+        $id = $this->subscriptions->create($this->alice, $desk('2026-10-01'));
+        $this->catchUp->run($this->alice);
+        $history = $this->container->get(SpendHistoryService::class);
+        $spent = fn (string $from, string $to): int => $history->spent(
+            $this->alice,
+            new DateTimeImmutable($from),
+            new DateTimeImmutable($to),
+        )['by_currency']['GBP'] ?? 0;
+
+        // Earlier: one charge, on the new date.
+        $this->subscriptions->update($this->alice, $id, $desk('2026-09-15'));
+        $this->catchUp->run($this->alice);
+        self::assertSame([['2026-09-15', 15000]], $this->dueAndExpected($id));
+        self::assertSame(15000, $spent('2026-08-31', '2026-10-31'));
+
+        // Later, but still past (a year typo the other way): moved again.
+        $this->subscriptions->update($this->alice, $id, $desk('2025-09-15'));
+        $this->catchUp->run($this->alice);
+        self::assertSame([['2025-09-15', 15000]], $this->dueAndExpected($id));
+        self::assertSame(0, $spent('2026-08-31', '2026-10-31'));
+        self::assertSame(15000, $spent('2025-08-31', '2025-10-31'));
+
+        // Into the future: the charge goes until the day arrives, then returns.
+        $this->subscriptions->update($this->alice, $id, $desk('2026-10-20'));
+        $this->catchUp->run($this->alice);
+        self::assertSame([], $this->dueAndExpected($id));
+        $this->clock->advanceTo(new DateTimeImmutable('2026-10-21 08:00:00'));
+        $this->catchUp->run($this->alice);
+        self::assertSame([['2026-10-20', 15000]], $this->dueAndExpected($id));
+    }
+
+    public function testAMovedOneOffKeepsWhatAMemberRecordedOnIt(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-10-05 08:00:00'));
+        $input = [
+            'name' => 'Desk',
+            'price' => '150.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'one_off',
+            'start_date' => '2026-10-01',
+        ];
+        $id = $this->subscriptions->create($this->alice, $input);
+        $this->catchUp->run($this->alice);
+        $this->charges->recordActual($this->alice, $this->charges->forSubscription($this->alice, $id)[0]->id, [
+            'actual' => '140.00',
+            'note' => 'Discounted',
+        ]);
+
+        $this->subscriptions->update($this->alice, $id, ['start_date' => '2026-09-30'] + $input);
+
+        $charge = $this->charges->forSubscription($this->alice, $id)[0];
+        self::assertSame(['2026-09-30', 14000, 'Discounted'], [
+            $charge->dueDate->format('Y-m-d'),
+            $charge->amount()->amountMinor,
+            $charge->note,
+        ]);
+    }
+
+    public function testADepositAddedByHandDoesNotStandInForTheOneOffsOwnCharge(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-10-01 08:00:00'));
+        $id = $this->subscriptions->create($this->alice, [
+            'name' => 'Sofa',
+            'price' => '900.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'one_off',
+            'start_date' => '2026-10-10',
+        ]);
+        $this->charges->addManual($this->alice, $id, ['date' => '2026-10-01', 'amount' => '100.00']);
+
+        $this->clock->advanceTo(new DateTimeImmutable('2026-10-12 08:00:00'));
+        $this->catchUp->run($this->alice);
+
+        self::assertSame([['2026-10-10', 90000], ['2026-10-01', 10000]], $this->dueAndExpected($id));
     }
 
     public function testRecordingAnActualSkippingAndUndoing(): void

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
+use App\Tests\Support\TestSubscriptionService;
 use App\Service\ChargeService;
 use App\Service\ChargeSchedule;
 use App\Repository\ChargeRepository;
@@ -432,6 +433,7 @@ final class SplitVisibilityTest extends DatabaseTestCase
             $this->rates(),
             $this->db,
             $this->clock,
+            TestSubscriptionService::build($this->db, $this->clock, $this->priceHistory),
         );
 
         $changed = $bulk->apply($bob, [

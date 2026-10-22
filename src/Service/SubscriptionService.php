@@ -112,6 +112,12 @@ final class SubscriptionService
         $existing = $this->subscriptions->find($scope, $id);
         [$data, $tagIds, $offer] = $this->validate($scope, $input, $id);
 
+        if ($existing !== null && $existing->isActive && $data['is_active'] !== true) {
+            // Paused or cancelled through the edit form, the API or an import:
+            // the dates already passed are recorded first.
+            $this->settlePassedDates($scope, $existing);
+        }
+
         if ($existing !== null && !$existing->isActive && $data['is_active'] === true) {
             // Resumed through the edit form or the API: the dates the pause
             // covered are skipped, as `setActive()` skips them.
@@ -134,6 +140,11 @@ final class SubscriptionService
             $wasOnOffer,
         ): void {
             $this->subscriptions->update($scope, $id, $data, $tagIds);
+
+            if ($existing !== null && is_string($data['start_date'] ?? null)) {
+                $start = DateTimeImmutable::createFromFormat('!Y-m-d', $data['start_date']);
+                $this->charges->followDateChange($scope, $existing, $start === false ? null : $start);
+            }
 
             // A price that has actually moved becomes a new history row rather
             // than overwriting the old one. Editing anything else about a
@@ -374,6 +385,10 @@ final class SubscriptionService
             throw ValidationException::field('is_active', 'error.subscription.cancelled_resume');
         }
 
+        if (!$active && $subscription !== null) {
+            $this->settlePassedDates($scope, $subscription);
+        }
+
         $data = ['is_active' => $active];
 
         // Resuming skips the dates the pause covered. Nothing was billed while
@@ -416,6 +431,7 @@ final class SubscriptionService
             return;
         }
 
+        $this->settlePassedDates($scope, $subscription);
         $this->subscriptions->setCancelled($scope, $id, $this->clock->today());
     }
 
@@ -464,31 +480,7 @@ final class SubscriptionService
         $advanced = 0;
 
         foreach ($this->subscriptions->findOverdue($scope, $today) as $subscription) {
-            $passed = $this->passedDueDates($subscription, $today);
-            $next = $passed['next'];
-            if ($next === null || $next == $subscription->nextPaymentDate) {
-                continue;
-            }
-
-            // The date and the ledger move together or not at all. The date is
-            // moved first, as a compare-and-set: a second catch-up running at
-            // the same moment finds the date already moved, matches nothing,
-            // and so writes no charges of its own.
-            $moved = $this->db->transactional(function () use ($scope, $subscription, $next, $passed): bool {
-                $current = $subscription->nextPaymentDate;
-                if (
-                    $current === null
-                    || !$this->subscriptions->advanceNextPaymentDate($scope, $subscription->id, $current, $next)
-                ) {
-                    return false;
-                }
-
-                $this->charges->recordPassed($scope, $subscription, $passed['dates']);
-
-                return true;
-            });
-
-            if ($moved) {
+            if ($this->settle($scope, $subscription, $today)) {
                 $advanced++;
             }
         }
@@ -500,6 +492,61 @@ final class SubscriptionService
         }
 
         return $advanced;
+    }
+
+    /**
+     * Record the billing dates one subscription has passed and move its
+     * payment date on — the catch-up for a single row.
+     *
+     * Asked before a row is paused or cancelled, whichever door that comes
+     * through. A paused or cancelled row is never caught up, so a date that
+     * passed while nobody who can write was looking would otherwise never be
+     * recorded, and past spend — which counts such dates as pending only for
+     * a running row — would quietly lose it.
+     */
+    public function settlePassedDates(Scope $scope, Subscription $subscription): void
+    {
+        if (
+            !$scope->canWrite()
+            || !$subscription->isActive
+            || $subscription->isCancelled()
+            || $subscription->nextPaymentDate === null
+            || $subscription->nextPaymentDate >= $this->clock->today()
+        ) {
+            return;
+        }
+
+        $this->settle($scope, $subscription, $this->clock->today());
+    }
+
+    /**
+     * @return bool Whether this call moved the date.
+     */
+    private function settle(Scope $scope, Subscription $subscription, DateTimeImmutable $today): bool
+    {
+        $passed = $this->passedDueDates($subscription, $today);
+        $next = $passed['next'];
+        if ($next === null || $next == $subscription->nextPaymentDate) {
+            return false;
+        }
+
+        // The date and the ledger move together or not at all. The date is
+        // moved first, as a compare-and-set: a second catch-up running at the
+        // same moment finds the date already moved, matches nothing, and so
+        // writes no charges of its own.
+        return $this->db->transactional(function () use ($scope, $subscription, $next, $passed): bool {
+            $current = $subscription->nextPaymentDate;
+            if (
+                $current === null
+                || !$this->subscriptions->advanceNextPaymentDate($scope, $subscription->id, $current, $next)
+            ) {
+                return false;
+            }
+
+            $this->charges->recordPassed($scope, $subscription, $passed['dates']);
+
+            return true;
+        });
     }
 
     /**

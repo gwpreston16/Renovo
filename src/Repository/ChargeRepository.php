@@ -246,6 +246,61 @@ final class ChargeRepository extends AbstractScopedRepository
     }
 
     /**
+     * Move the charges Renovo wrote for a one-off or lifetime entry to the
+     * date it has just been given — or remove them, when that date has not
+     * yet arrived.
+     *
+     * Such an entry has one charge, on its date, so a corrected date is a
+     * corrected charge: kept, with whatever a member recorded on it, but on
+     * the right day. Left where it was, it would be counted on the old day
+     * and reconstructed again on the new one. A payment a member added by
+     * hand is theirs and is not moved; if one already stands on the new date,
+     * the written charge gives way to it.
+     *
+     * Household-wide, like `existingDates()`: the caller has just written the
+     * entry itself, and the unique key is per subscription.
+     */
+    public function followOneOffDate(
+        Scope $scope,
+        int $subscriptionId,
+        DateTimeImmutable $date,
+        DateTimeImmutable $today,
+    ): void {
+        if (!$scope->hasHousehold()) {
+            return;
+        }
+
+        $base = ' WHERE ' . $this->quote('subscription_id') . ' = :subscription'
+            . ' AND ' . $this->quote('household_id') . ' = :household'
+            . ' AND ' . $this->quote('source') . ' <> :manual';
+        $params = [
+            'subscription' => $subscriptionId,
+            'household' => $scope->householdId,
+            'manual' => ChargeSource::Manual->value,
+        ];
+        $key = $date->format('Y-m-d');
+        $taken = isset($this->existingDates($scope, $subscriptionId)[$key]);
+
+        if ($date >= $today || $taken) {
+            $this->db->execute(
+                'DELETE FROM ' . $this->quote($this->table()) . $base
+                . ' AND ' . $this->quote('due_date') . ' <> :date',
+                $params + ['date' => $key],
+            );
+
+            return;
+        }
+
+        $this->db->execute(
+            'UPDATE ' . $this->quote($this->table())
+            . ' SET ' . $this->quote('due_date') . ' = :date,'
+            . ' ' . $this->quote('updated_at') . ' = :updated'
+            . $base,
+            $params + ['date' => $key, 'updated' => (new DateTimeImmutable())->format('Y-m-d H:i:s')],
+        );
+    }
+
+    /**
      * Write one charge.
      *
      * The household comes from the scope and the owner from the subscription,

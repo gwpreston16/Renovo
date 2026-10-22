@@ -123,6 +123,20 @@ final class ChargeService
     }
 
     /**
+     * Keep a one-off or lifetime entry's charge on the entry's date when that
+     * date is edited. Recurring rows are not touched: their charges are the
+     * billing dates that passed, which an edit does not rewrite.
+     */
+    public function followDateChange(Scope $scope, Subscription $before, ?DateTimeImmutable $start): void
+    {
+        if ($before->type->countsTowardsRecurringTotals() || $start === null || $start == $before->startDate) {
+            return;
+        }
+
+        $this->charges->followOneOffDate($scope, $before->id, $start, $this->clock->today());
+    }
+
+    /**
      * One page of a subscription's charges, newest first.
      *
      * @return array{charges: list<Charge>, page: int, pages: int, total: int}
