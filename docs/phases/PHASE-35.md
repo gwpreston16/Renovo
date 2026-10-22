@@ -113,6 +113,50 @@ Migrations, sequenced after the last existing one, each with an explicit
   expenses") is worth doing once these behaviours exist, as a separate small
   change across the catalogue and README. Not in this phase.
 
+*Confirmed 2026-10-22*, all five as written. The finished term uses
+`setCancelled()` with the computed date (the day after the last charge), not
+`cancel()`, which stamps today. Uncancelling an ended term lands on Paused, as
+any uncancel does; resuming it with the end date still passed ends it again at
+the next catch-up.
+
+Found while starting it:
+
+- **The last charge is the last billing date on or before `payments_end_on`.**
+  *Confirmed 2026-10-22.* Any date is accepted; it need not be a billing date.
+- **A fixed term that ends while paused is ended anyway.** *Confirmed
+  2026-10-22.* The catch-up cancels it as of the day after its last billing
+  date, and the paused dates up to there are written `skipped` with source
+  `paused`, as a resume writes them.
+- **Every reader respects `payments_end_on` on its own** (assumption). The
+  forecast, totals, budget projection and renewal alert stop at the last
+  charge whether or not the catch-up has run, because a Viewer never runs it.
+  The catch-up stops recording at the last charge, so a late run writes no
+  charge after it.
+- **Contract alerts and the insight follow running rows** (assumption).
+  `AlertScanner` already alerts on active rows only; a paused or cancelled row
+  gets no Contract ending alert and no Out of contract insight.
+  `ContractEnding` uses the lead times, as `usesLeadTimes()` already allows.
+- **A passed contract end stays on the cancel-by list** (assumption), first,
+  as a passed deadline does, until the date is moved or the row stops running.
+- **≈ marks forward-looking figures** (assumption, from the ≈ rule): monthly
+  and annual equivalents, the forecast and budget projections. Past spend
+  read from recorded ledger actuals is exact and is not marked.
+
+### Known issues taken
+
+Added *2026-10-22* at the owner's request, as rows in code this phase rewrites:
+
+- **K2** — the budget-alert projection counts a charge due today twice; the
+  projection section B changes.
+- **K11** — an edit re-derives the anchor day from a clamped date, which
+  would throw "Payment N of M" off.
+- **K48** — the importer accepts impossible dates; the new date columns
+  arrive through it.
+- **K72**, **K73** — pausing, cancelling and resuming through the form; the
+  `update()` path the new fields go through.
+- **K78**, **K79**, **K80**, **K81** — the Payments card, which section C
+  rewrites.
+
 ## Status
 
 - [ ] Migrations on both engines; entity, repository, form service
@@ -122,6 +166,7 @@ Migrations, sequenced after the last existing one, each with an explicit
       insight, alert wording
 - [ ] Terms section on the form
 - [ ] API, OpenAPI, `docs/api.md`, import, export, backup
+- [ ] K2, K11, K48, K72, K73, K78–K81 fixed and marked in `known-issues.md`
 - [ ] New strings in `translations/en.php`
 - [ ] `composer check`, `i18n:check`, offline guard green on both engines
 
