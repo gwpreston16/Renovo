@@ -254,6 +254,30 @@ final class ApiChargesTest extends ApiTestCase
         self::assertCount(3, $this->decode($this->api('GET', $path, $this->ownerToken))['data']);
     }
 
+    public function testAnotherHouseholdsChargesAreNotFound(): void
+    {
+        $users = new UserRepository($this->db);
+        $stranger = $users->create('stranger@example.test', 'Stranger', 'hash', false, new DateTimeImmutable());
+        $elsewhere = (new \App\Repository\HouseholdRepository($this->db))->create('Elsewhere', $stranger);
+        (new MembershipRepository($this->db))->create($elsewhere, $stranger, Role::OwnerAdmin);
+        $user = $users->findById($stranger);
+        self::assertNotNull($user);
+        $token = $this->container()->get(ApiTokenService::class)
+            ->issue($user, $elsewhere, 'Stranger', TokenAbility::Write);
+
+        $charge = '/api/v1/charges/' . $this->chargeId;
+        self::assertSame(404, $this->api('GET', $this->chargesPath(), $token)->getStatusCode());
+        self::assertSame(404, $this->api('PATCH', $charge, $token, ['status' => 'skipped'])->getStatusCode());
+        self::assertSame(404, $this->api('POST', $this->chargesPath(), $token, [
+            'date' => (new DateTimeImmutable('-1 day'))->format('Y-m-d'),
+            'amount_minor' => 1,
+        ])->getStatusCode());
+
+        $mine = $this->decode($this->api('GET', $this->chargesPath(), $this->ownerToken))['data'];
+        self::assertCount(2, $mine);
+        self::assertSame('charged', $mine[0]['status']);
+    }
+
     private function chargesPath(): string
     {
         return '/api/v1/subscriptions/' . $this->subscriptionId . '/charges';

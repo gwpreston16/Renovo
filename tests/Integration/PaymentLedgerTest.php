@@ -932,6 +932,76 @@ final class PaymentLedgerTest extends DatabaseTestCase
         self::assertSame([0, 0], [$share($this->aliceId), $share($this->bobId)]);
     }
 
+    public function testAChargesExpectedPriceIsFrozenWhenWritten(): void
+    {
+        $id = $this->create('Streaming', '10.00', '2026-04-15', '2026-01-15');
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-20 08:00:00'));
+        $this->catchUp->run($this->alice);
+        $before = $this->dueAndExpected($id);
+        self::assertSame([['2026-05-15', 1000], ['2026-04-15', 1000]], $before);
+
+        // The price is edited today, and a correction is backdated to before
+        // both charges.
+        $this->subscriptions->update($this->alice, $id, $this->input('Streaming', '14.00', '2026-06-15', '2026-01-15'));
+        $this->container->get(\App\Repository\PriceHistoryRepository::class)->append(
+            $this->alice,
+            $id,
+            \App\Domain\Money::of(1200, 'GBP'),
+            new DateTimeImmutable('2026-03-01'),
+            \App\Domain\PriceChangeSource::Manual,
+            ownerUserId: $this->aliceId,
+        );
+
+        $this->catchUp->run($this->alice);
+        $this->container->get(LedgerBackfillRunner::class)->run();
+
+        $written = array_values(array_filter(
+            $this->charges->forSubscription($this->alice, $id),
+            static fn (Charge $charge): bool => $charge->source === ChargeSource::CatchUp,
+        ));
+        self::assertSame($before, array_map(
+            static fn (Charge $charge): array => [$charge->dueDate->format('Y-m-d'), $charge->expected->amountMinor],
+            $written,
+        ));
+    }
+
+    public function testBackfillInIsolatedModeRebuildsEachMembersOwnRowsOnce(): void
+    {
+        $this->container->get(\App\Service\InstanceSettingsService::class)->setIsolationMode(IsolationMode::Isolated);
+        $alice = Scope::forMember($this->aliceId, false, $this->household, Role::OwnerAdmin, IsolationMode::Isolated);
+        $bob = Scope::forMember($this->bobId, false, $this->household, Role::Contributor, IsolationMode::Isolated);
+
+        $this->clock->advanceTo(new DateTimeImmutable('2026-01-01 08:00:00'));
+        $aliceRow = $this->subscriptions->create($alice, $this->input('Alice', '10.00', '2026-05-15', '2025-11-15'));
+        $bobRow = $this->subscriptions->create($bob, $this->input('Bob', '4.00', '2026-05-03', '2025-12-03'));
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-01 09:00:00'));
+
+        $result = $this->container->get(LedgerBackfillRunner::class)->run();
+        self::assertSame(2, $result['subscriptions']);
+
+        $history = $this->container->get(SpendHistoryService::class);
+        foreach ([[$alice, $aliceRow], [$bob, $bobRow]] as [$scope, $id]) {
+            $expected = [];
+            $walk = $history->charges($scope, new DateTimeImmutable('2000-01-01'), new DateTimeImmutable('2026-04-30'));
+            foreach ($walk['charges'] as $charge) {
+                if ($charge['subscription']->id === $id) {
+                    $expected[] = [$charge['date']->format('Y-m-d'), $charge['amount']->amountMinor];
+                }
+            }
+            $rows = array_map(
+                static fn (Charge $charge): array => [
+                    $charge->dueDate->format('Y-m-d'),
+                    $charge->expected->amountMinor,
+                ],
+                array_reverse($this->charges->forSubscription($scope, $id)),
+            );
+            self::assertNotSame([], $rows);
+            self::assertSame($expected, $rows);
+        }
+
+        self::assertSame(0, $this->container->get(LedgerBackfillRunner::class)->run()['charges']);
+    }
+
     public function testBackfillWritesNothingForAViewer(): void
     {
         $this->create('Monthly', '10.00', '2026-06-15', '2026-01-15');

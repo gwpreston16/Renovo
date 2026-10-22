@@ -243,6 +243,22 @@ final class PaymentsCardTest extends DatabaseTestCase
         self::assertContains('63.20', array_column($rows, 'actual'));
     }
 
+    public function testAnInstanceAdminOutsideTheHouseholdIsRefusedTheExport(): void
+    {
+        $admin = (new UserRepository($this->db))
+            ->create('admin@example.test', 'Admin', 'hash', true, new DateTimeImmutable());
+        $this->session->set(AuthenticationMiddleware::SESSION_USER_ID, $admin);
+        $this->session->remove(AuthenticationMiddleware::SESSION_HOUSEHOLD_ID);
+
+        foreach (['/payments/export.csv', '/payments/export.json'] as $path) {
+            $request = (new ServerRequestFactory())->createServerRequest('GET', 'http://localhost' . $path);
+            $response = $this->app->handle($request);
+            // No household role, so no sight of its subscriptions at all.
+            self::assertSame(403, $response->getStatusCode(), $path);
+            self::assertStringNotContainsString('Energy', (string) $response->getBody(), $path);
+        }
+    }
+
     private function chargePath(int $charge, string $action): string
     {
         return '/subscriptions/' . $this->subscriptionId . '/charges/' . $charge . '/' . $action;
