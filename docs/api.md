@@ -197,6 +197,9 @@ the same values `GET /me` returns in its `permissions` array.
 | `POST` | `/subscriptions/{id}/attachments` | `attachment.manage` |
 | `GET` | `/subscriptions/{id}/attachments/{attachmentId}` | `subscription.view` |
 | `DELETE` | `/subscriptions/{id}/attachments/{attachmentId}` | `attachment.manage` |
+| `GET` | `/subscriptions/{id}/charges` | `subscription.view` |
+| `POST` | `/subscriptions/{id}/charges` | `charge.manage` |
+| `PATCH` | `/charges/{id}` | `charge.manage` |
 | `GET` | `/categories` | `subscription.view` |
 | `POST` | `/categories` | `category.manage` |
 | `PUT` | `/categories/{id}` | `category.manage` |
@@ -592,6 +595,59 @@ Delete it. Responses: `204`, `401`, `403`, `404`.
 
 ---
 
+### Payments
+
+The payment ledger: one charge for each billing date that has passed, at the
+price in force on that date, written by Renovo as the date passes; plus any a
+member added by hand. Nothing is read from a bank or a provider. A charge's
+`amount_minor` is what it counts as in every total — the recorded actual when
+there is one, the expected price otherwise, and `0` when it was skipped.
+
+A subscription or charge that does not exist, or is not this token's to see,
+is a `404`. So is a write the token may not make to a row it can see — a
+Contributor's `PATCH` or `POST` on another member's row.
+
+#### `GET /api/v1/subscriptions/{id}/charges`
+
+List the subscription's charges, newest first. Responses: `200`, `401`, `403`,
+`404`.
+
+#### `POST /api/v1/subscriptions/{id}/charges`
+
+Add a charge that fell off the cycle, such as a one-time fee. Needs
+`charge.manage`.
+
+| Field | Notes |
+| --- | --- |
+| `date` | **Required.** `YYYY-MM-DD`, today or earlier. One charge a day per subscription. |
+| `amount_minor` | **Required.** Integer minor units, in the subscription's currency. |
+| `note` | Optional, up to 255 characters. |
+
+Responses: `201` with the `Charge`, `401`, `403`, `404`, `422`.
+
+#### `PATCH /api/v1/charges/{id}`
+
+Record what a charge really was, skip it, or annotate it. Needs
+`charge.manage`. Fields not sent keep their value.
+
+| Field | Notes |
+| --- | --- |
+| `actual_minor` | Integer minor units, or `null` to clear a recorded amount. |
+| `status` | `charged` or `skipped`. Skipping clears the actual; sending both `skipped` and an `actual_minor` is a `422`. |
+| `note` | Up to 255 characters, or `null`. |
+
+```bash
+curl -X PATCH \
+     -H "Authorization: Bearer rnv_..." \
+     -H "Content-Type: application/json" \
+     -d '{"actual_minor": 6320, "note": "Winter bill"}' \
+     https://your-instance.example/api/v1/charges/481
+```
+
+Responses: `200` with the `Charge`, `401`, `403`, `404`, `422`.
+
+---
+
 ### Categories, payment methods and tags
 
 #### `GET /api/v1/categories`
@@ -787,14 +843,15 @@ Returned by `GET /me`. Fields: `user` (`id`, `email`, `display_name`,
 `editor`, `viewer`, or null), `isolation_mode` (`shared`, `isolated`),
 `permissions` (array of strings).
 
-### Category · PaymentMethod · Tag · Attachment
+### Category · PaymentMethod · Tag · Attachment · Charge
 
 | Schema | Fields |
 | --- | --- |
 | `Category` | `id`, `name`, `colour` (nullable) |
 | `PaymentMethod` | `id`, `name`, `colour` (nullable), `icon` (nullable; a generic icon key, never a brand mark), `logo_path` (nullable, read-only) |
 | `Tag` | `id`, `name` |
-| `Attachment` | `id`, `subscription_id`, `filename`, `mime_type`, `size_bytes`, `period_date` (nullable date), `created_at` |
+| `Attachment` | `id`, `subscription_id`, `filename`, `mime_type`, `size_bytes`, `period_date` (nullable date), `charge_id` (nullable; the payment it is the invoice for), `created_at` |
+| `Charge` | `id`, `subscription_id`, `due_date`, `currency`, `expected_minor` (the price due, frozen when written), `actual_minor` (nullable), `amount_minor`, `status` (`charged`, `skipped`), `source` (`catch_up`, `manual`, `reconstructed`), `note` (nullable), `created_at`, `updated_at` |
 
 ---
 

@@ -89,6 +89,11 @@
                     <a class="button button-outline" href="/subscriptions/export.csv" download>{{ icon('download') }}{{ t('settings.export_csv') }}</a>
                     <a class="button button-outline" href="/subscriptions/export.json" download>{{ icon('download') }}{{ t('settings.export_json') }}</a>
                 </div>
+                <p class="muted">{{ t('settings.export_payments_intro') }}</p>
+                <div class="form-actions">
+                    <a class="button button-outline" href="/payments/export.csv" download>{{ icon('download') }}{{ t('settings.export_payments_csv') }}</a>
+                    <a class="button button-outline" href="/payments/export.json" download>{{ icon('download') }}{{ t('settings.export_payments_json') }}</a>
+                </div>
             </section>
         {% endif %}
 

@@ -115,6 +115,7 @@ final class BackupController extends Controller
             'tags' => $summary['tags'],
             'budgets' => $summary['budgets'],
             'attachments' => $summary['attachments'],
+            'charges' => $summary['charges'],
         ]);
 
         if ($summary['skipped'] > 0) {

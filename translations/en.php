@@ -865,8 +865,9 @@ return [
         . ' {categories, plural, one {# category} other {# categories}},'
         . ' {payment_methods, plural, one {# payment method} other {# payment methods}},'
         . ' {tags, plural, one {# tag} other {# tags}},'
-        . ' {budgets, plural, one {# budget} other {# budgets}}'
-        . ' and {attachments, plural, one {# attachment} other {# attachments}}.',
+        . ' {budgets, plural, one {# budget} other {# budgets}},'
+        . ' {attachments, plural, one {# attachment} other {# attachments}}'
+        . ' and {charges, plural, one {# payment} other {# payments}}.',
     'flash.restore_skipped' => '{count, plural, one {# item was} other {# items were}} skipped.',
 
     'flash.household_saved' => 'Household settings saved.',
@@ -2381,6 +2382,7 @@ return [
     'error.api.payment_method_not_found' => 'No such payment method.',
     'error.api.read_only_tokens_only' => 'This endpoint accepts read-only tokens only.',
     'error.api.subscription_not_found' => 'No such subscription.',
+    'error.api.charge_not_found' => 'No such charge.',
     'error.api.subscription_unreadable' => 'The subscription could not be read back.',
     'error.api.tag_not_found' => 'No such tag.',
     'error.api.token_invalid' => 'That API token is not valid.',
@@ -2559,6 +2561,9 @@ return [
         'Every subscription you can see, paused and cancelled ones included, as a spreadsheet or as JSON. '
         . 'The importer reads either back.',
     'settings.export_json' => 'JSON',
+    'settings.export_payments_intro' => 'Every payment in the ledger, with the subscription it belongs to.',
+    'settings.export_payments_csv' => 'Payments CSV',
+    'settings.export_payments_json' => 'Payments JSON',
     'settings.full_audit_log' => 'Full audit log',
     'settings.household_name' => 'Household name',
     'settings.import_note' => 'You map the columns and preview every row before anything is saved.',

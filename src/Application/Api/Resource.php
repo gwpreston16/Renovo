@@ -6,6 +6,7 @@ namespace App\Application\Api;
 
 use App\Domain\Entity\ApiToken;
 use App\Domain\Entity\Attachment;
+use App\Domain\Entity\Charge;
 use App\Domain\Entity\Category;
 use App\Domain\Entity\PaymentMethod;
 use App\Domain\Entity\Subscription;
@@ -148,7 +149,32 @@ final class Resource
             'mime_type' => $attachment->mimeType,
             'size_bytes' => $attachment->sizeBytes,
             'period_date' => self::date($attachment->periodDate),
+            'charge_id' => $attachment->chargeId,
             'created_at' => self::timestamp($attachment->createdAt),
+        ];
+    }
+
+    /**
+     * One charge in the payment ledger. `amount_minor` is what it counts as:
+     * the actual when recorded, the expected otherwise, zero when skipped.
+     *
+     * @return array<string, mixed>
+     */
+    public static function charge(Charge $charge): array
+    {
+        return [
+            'id' => $charge->id,
+            'subscription_id' => $charge->subscriptionId,
+            'due_date' => self::date($charge->dueDate),
+            'currency' => $charge->expected->currency,
+            'expected_minor' => $charge->expected->amountMinor,
+            'actual_minor' => $charge->actualMinor,
+            'amount_minor' => $charge->amount()->amountMinor,
+            'status' => $charge->status->value,
+            'source' => $charge->source->value,
+            'note' => $charge->note,
+            'created_at' => self::timestamp($charge->createdAt),
+            'updated_at' => self::timestamp($charge->updatedAt),
         ];
     }
 

@@ -50,6 +50,7 @@ servers:
 tags:
   - name: Subscriptions
   - name: Attachments
+  - name: Payments
   - name: Taxonomy
   - name: Calendar
   - name: Meta
@@ -482,6 +483,120 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /api/v1/subscriptions/{id}/charges:
+    parameters:
+      - $ref: "#/components/parameters/SubscriptionId"
+    get:
+      tags: [Payments]
+      summary: List a subscription's charges, newest first.
+      description: |
+        The payment ledger: one charge for each billing date that has passed,
+        at the price in force that day, plus any added by hand. Nothing here
+        is read from a bank.
+      responses:
+        "200":
+          description: The charges.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Charge"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Payments]
+      summary: Add a charge that fell off the billing cycle.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [date, amount_minor]
+              properties:
+                date:
+                  type: string
+                  format: date
+                  description: Today or earlier. One charge a day per subscription.
+                amount_minor:
+                  type: integer
+                  minimum: 0
+                  description: Minor units, in the subscription's currency.
+                note: { type: string, nullable: true, maxLength: 255 }
+      responses:
+        "201":
+          description: Added.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Charge"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /api/v1/charges/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    patch:
+      tags: [Payments]
+      summary: Record what a charge really was, skip it, or annotate it.
+      description: |
+        Fields not sent keep their value. `actual_minor: null` clears a
+        recorded amount; `status: skipped` marks a charge that did not
+        happen, and clears its actual. A charge the token can see but may not
+        change is a 404.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                actual_minor: { type: integer, minimum: 0, nullable: true }
+                status: { type: string, enum: [charged, skipped] }
+                note: { type: string, nullable: true, maxLength: 255 }
+      responses:
+        "200":
+          description: The charge as it now stands.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Charge"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
 
   /api/v1/categories:
     get:
@@ -1058,7 +1173,7 @@ components:
 
     Attachment:
       type: object
-      required: [id, subscription_id, filename, mime_type, size_bytes, period_date, created_at]
+      required: [id, subscription_id, filename, mime_type, size_bytes, period_date, charge_id, created_at]
       properties:
         id: { type: integer }
         subscription_id: { type: integer }
@@ -1066,7 +1181,47 @@ components:
         mime_type: { type: string }
         size_bytes: { type: integer }
         period_date: { type: string, format: date, nullable: true }
+        charge_id:
+          type: integer
+          nullable: true
+          description: The charge this is the invoice for, when it is filed against one.
         created_at: { type: string, format: date-time }
+
+    Charge:
+      type: object
+      required:
+        - id
+        - subscription_id
+        - due_date
+        - currency
+        - expected_minor
+        - actual_minor
+        - amount_minor
+        - status
+        - source
+        - note
+        - created_at
+        - updated_at
+      properties:
+        id: { type: integer }
+        subscription_id: { type: integer }
+        due_date: { type: string, format: date }
+        currency: { type: string }
+        expected_minor:
+          type: integer
+          description: The price in force on the due date, frozen when the charge was written.
+        actual_minor:
+          type: integer
+          nullable: true
+          description: What was really charged, when a member recorded it.
+        amount_minor:
+          type: integer
+          description: What the charge counts as — the actual, else the expected; 0 when skipped.
+        status: { type: string, enum: [charged, skipped] }
+        source: { type: string, enum: [catch_up, manual, reconstructed] }
+        note: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
 
     SubscriptionInput:
       type: object

@@ -153,6 +153,14 @@ final class ChargeService
     }
 
     /**
+     * Whether this scope may add a charge to the subscription.
+     */
+    public function mayAddTo(Scope $scope, int $subscriptionId): bool
+    {
+        return $scope->canWrite() && $this->subscriptions->isWritable($scope, $subscriptionId);
+    }
+
+    /**
      * The earliest month the ledger holds in scope, as the first of that month.
      */
     public function earliestMonth(Scope $scope): ?DateTimeImmutable
@@ -301,7 +309,7 @@ final class ChargeService
      * the unique key says, so a date that already has one is refused with a
      * message rather than a 500.
      *
-     * @param array<string, mixed> $input `date`, `amount`, `note`.
+     * @param array<string, mixed> $input `date`, `amount` (or `amount_minor`), `note`.
      * @throws ValidationException
      */
     public function addManual(Scope $scope, int $subscriptionId, array $input): Charge
@@ -321,8 +329,18 @@ final class ChargeService
             $errors['date'] = 'error.charge.date_taken';
         }
 
-        $amount = $this->amount($this->str($input, 'amount'), $subscription->price->currency, 'amount', $errors);
-        if ($amount === null && !isset($errors['amount'])) {
+        // The API sends minor units, as it does for every price; the form
+        // sends what a member types.
+        if (array_key_exists('amount_minor', $input)) {
+            $minor = $input['amount_minor'];
+            $amount = is_int($minor) && $minor >= 0 ? Money::of($minor, $subscription->price->currency) : null;
+            if ($amount === null) {
+                $errors['amount_minor'] = 'error.price.invalid';
+            }
+        } else {
+            $amount = $this->amount($this->str($input, 'amount'), $subscription->price->currency, 'amount', $errors);
+        }
+        if ($amount === null && !isset($errors['amount']) && !isset($errors['amount_minor'])) {
             $errors['amount'] = 'error.charge.amount_required';
         }
 

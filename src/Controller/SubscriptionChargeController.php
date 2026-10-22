@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\I18n\Translator;
 use App\Security\SessionInterface;
+use App\Service\ChargeExportService;
 use App\Service\ChargeService;
 use App\Service\ValidationException;
 use Psr\Http\Message\ResponseInterface;
@@ -28,6 +29,7 @@ final class SubscriptionChargeController extends Controller
         SessionInterface $session,
         Translator $translator,
         private readonly ChargeService $charges,
+        private readonly ChargeExportService $export,
     ) {
         parent::__construct($view, $session, $translator);
     }
@@ -75,6 +77,40 @@ final class SubscriptionChargeController extends Controller
         $write = fn () => $this->charges->undo($this->scope($request), (int) $charge, (int) $id);
 
         return $this->act($request, $response, (int) $id, 'flash.charge_undone', $write);
+    }
+
+    /**
+     * Every payment in scope, as CSV.
+     */
+    public function export(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $response->getBody()->write($this->export->csv($this->scope($request)));
+
+        return $this->download($response, 'text/csv; charset=utf-8', 'csv');
+    }
+
+    /**
+     * The same rows as `export()`, as JSON.
+     */
+    public function exportJson(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $response->getBody()->write($this->export->json($this->scope($request)));
+
+        return $this->download($response, 'application/json; charset=utf-8', 'json');
+    }
+
+    /**
+     * @param 'csv'|'json' $format
+     */
+    private function download(ResponseInterface $response, string $type, string $format): ResponseInterface
+    {
+        return $response
+            ->withHeader('Content-Type', $type)
+            ->withHeader(
+                'Content-Disposition',
+                'attachment; filename="' . $this->export->filename($this->charges->today(), $format) . '"',
+            )
+            ->withHeader('Cache-Control', 'no-store');
     }
 
     /**

@@ -190,7 +190,8 @@ final class AttachmentStorage
         $name = bin2hex(random_bytes(16)) . '.' . $extension;
         $destination = $folder . '/' . $name;
 
-        $moved = $copy ? copy($source, $destination) : rename($source, $destination);
+        // Silenced: a failure is reported by the exception below, not a warning.
+        $moved = $copy ? @copy($source, $destination) : @rename($source, $destination);
         if (!$moved) {
             if (!$copy) {
                 @unlink($source);

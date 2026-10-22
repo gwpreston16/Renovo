@@ -20,6 +20,7 @@ use App\Application\Middleware\PasswordChangeRequiredMiddleware;
 use App\Application\Middleware\RequirePermissionMiddleware;
 use App\Application\Ops\OpsPath;
 use App\Controller\Api\AttachmentApiController;
+use App\Controller\Api\ChargeApiController;
 use App\Controller\Api\CalendarApiController;
 use App\Controller\Api\MeApiController;
 use App\Controller\Api\OpenApiController;
@@ -175,6 +176,15 @@ return static function (App $app): void {
         // section (Phase 28).
         $group->get('/subscriptions/export.json', [SubscriptionController::class, 'exportJson'])
             ->setName('subscriptions-export-json')
+            ->add($requires(Permission::ViewSubscriptions));
+
+        // Phase 34: the payment ledger, as a file, for Settings' Export card.
+        $group->get('/payments/export.csv', [SubscriptionChargeController::class, 'export'])
+            ->setName('payments-export')
+            ->add($requires(Permission::ViewSubscriptions));
+
+        $group->get('/payments/export.json', [SubscriptionChargeController::class, 'exportJson'])
+            ->setName('payments-export-json')
             ->add($requires(Permission::ViewSubscriptions));
 
         // The form's "≈ base at today's rate" note. It discloses an exchange
@@ -755,6 +765,16 @@ return static function (App $app): void {
             '/subscriptions/{id:[0-9]+}/attachments/{attachmentId:[0-9]+}',
             [AttachmentApiController::class, 'delete'],
         )->add($requires(Permission::ManageAttachments));
+
+        // Phase 34: the payment ledger.
+        $group->get('/subscriptions/{id:[0-9]+}/charges', [ChargeApiController::class, 'index'])
+            ->add($requires(Permission::ViewSubscriptions));
+
+        $group->post('/subscriptions/{id:[0-9]+}/charges', [ChargeApiController::class, 'create'])
+            ->add($requires(Permission::ManageCharges));
+
+        $group->patch('/charges/{id:[0-9]+}', [ChargeApiController::class, 'update'])
+            ->add($requires(Permission::ManageCharges));
 
         $group->get('/categories', [TaxonomyApiController::class, 'categories'])
             ->add($requires(Permission::ViewSubscriptions));

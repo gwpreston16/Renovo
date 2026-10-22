@@ -195,6 +195,32 @@ final class PaymentsCardTest extends DatabaseTestCase
         }
     }
 
+    public function testThePaymentsExportHoldsEveryChargeInBothFormats(): void
+    {
+        $this->charges()->recordActual($this->owner, $this->firstCharge(), ['actual' => '63.20']);
+        $this->signIn($this->viewerId);
+
+        $csv = $this->app->handle((new ServerRequestFactory())->createServerRequest(
+            'GET',
+            'http://localhost/payments/export.csv',
+        ));
+        self::assertSame(200, $csv->getStatusCode());
+        self::assertStringContainsString('payments-', $csv->getHeaderLine('Content-Disposition'));
+        $lines = array_values(array_filter(explode("\n", (string) $csv->getBody())));
+        self::assertSame('subscription,"due date",currency,expected,actual,amount,status,source,note', $lines[0]);
+        self::assertCount(5, $lines);
+        self::assertStringContainsString('Energy', (string) $csv->getBody());
+
+        $json = $this->app->handle((new ServerRequestFactory())->createServerRequest(
+            'GET',
+            'http://localhost/payments/export.json',
+        ));
+        $rows = json_decode((string) $json->getBody(), true);
+        self::assertIsArray($rows);
+        self::assertCount(4, $rows);
+        self::assertContains('63.20', array_column($rows, 'actual'));
+    }
+
     private function chargePath(int $charge, string $action): string
     {
         return '/subscriptions/' . $this->subscriptionId . '/charges/' . $charge . '/' . $action;

@@ -15,6 +15,8 @@ use App\Service\AttachmentStorage;
 use App\Service\BackupService;
 use App\Service\BudgetService;
 use App\Service\CategoryService;
+use App\Service\ChargeService;
+use App\Service\LedgerBackfillRunner;
 use App\Service\PaymentMethodService;
 use App\Service\PriceHistoryService;
 use App\Service\SubscriptionService;
@@ -842,6 +844,139 @@ final class BackupRestoreTest extends DatabaseTestCase
 
         $restored = $this->subscriptions->allForStats($this->target, activeOnly: false)[0];
         self::assertSame(1, $restored->cycleInterval);
+    }
+
+    public function testThePaymentLedgerAndItsInvoicesSurviveTheRoundTrip(): void
+    {
+        $id = $this->subscriptions->create($this->source, [
+            'name' => 'Energy',
+            'price' => '58.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-06-15',
+            'start_date' => '2026-01-15',
+        ]);
+        $charges = $this->container->get(ChargeService::class);
+        $this->container->get(LedgerBackfillRunner::class)->run();
+        $rows = $charges->forSubscription($this->source, $id);
+        self::assertCount(5, $rows);
+        $charges->recordActual($this->source, $rows[0]->id, ['actual' => '63.20', 'note' => 'Winter']);
+        $charges->skip($this->source, $rows[1]->id);
+        $pdf = FakeUpload::pdf('May.pdf');
+        $this->attachments->upload($this->source, $this->sourceUser, $id, $pdf, null, $rows[0]->id);
+
+        $summary = $this->backups->restore($this->target, $this->targetUser, $this->export());
+        self::assertSame(5, $summary['charges']);
+
+        $restored = $this->subscriptions->allForStats($this->target, activeOnly: false)[0];
+        $copies = $charges->forSubscription($this->target, $restored->id);
+        self::assertSame(
+            [['2026-05-15', 6320, 'Winter', 'charged'], ['2026-04-15', 0, null, 'skipped']],
+            array_map(
+                static fn ($charge): array => [
+                    $charge->dueDate->format('Y-m-d'),
+                    $charge->amount()->amountMinor,
+                    $charge->note,
+                    $charge->status->value,
+                ],
+                array_slice($copies, 0, 2),
+            ),
+        );
+        self::assertSame('reconstructed', $copies[4]->source->value);
+
+        $invoice = $this->attachments->forSubscription($this->target, $restored->id)[0];
+        self::assertSame($copies[0]->id, $invoice->chargeId);
+    }
+
+    public function testABackupFromBeforeTheLedgerRestoresWithItEmpty(): void
+    {
+        $this->subscriptions->create($this->source, [
+            'name' => 'Energy',
+            'price' => '58.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-06-15',
+            'start_date' => '2026-01-15',
+        ]);
+        $this->container->get(LedgerBackfillRunner::class)->run();
+
+        $archive = $this->export();
+        $data = $this->readArchiveJson($archive, 'data.json');
+        unset($data['charges']);
+        foreach ($data['attachments'] as $index => $row) {
+            unset($data['attachments'][$index]['charge_index']);
+        }
+        $zip = new ZipArchive();
+        self::assertTrue($zip->open($archive) === true);
+        $zip->addFromString('data.json', json_encode($data, JSON_THROW_ON_ERROR));
+        $zip->close();
+
+        $summary = $this->backups->restore($this->target, $this->targetUser, $archive);
+
+        self::assertSame(1, $summary['subscriptions']);
+        self::assertSame(0, $summary['charges']);
+        self::assertSame([], $this->container->get(ChargeService::class)->all($this->target));
+    }
+
+    public function testARestoreThatFailsPartWayKeepsNothing(): void
+    {
+        $id = $this->subscriptions->create($this->source, [
+            'name' => 'Broadband',
+            'price' => '35.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-12-01',
+        ]);
+        $this->attachments->upload($this->source, $this->sourceUser, $id, FakeUpload::pdf('Bill.pdf'));
+        $archive = $this->export();
+
+        // The target household's folder exists and cannot be written: the
+        // attachment fails to store after its subscription was created (K16).
+        $folder = $this->attachmentDirectory . '/' . $this->target->householdId;
+        mkdir($folder, 0o750, true);
+        chmod($folder, 0o500);
+
+        try {
+            $this->backups->restore($this->target, $this->targetUser, $archive);
+            self::fail('The restore succeeded into an unwritable folder.');
+        } catch (\RuntimeException) {
+            // Expected.
+        } finally {
+            chmod($folder, 0o750);
+        }
+
+        self::assertSame([], $this->subscriptions->allForStats($this->target, activeOnly: false));
+    }
+
+    public function testAnOverlongAttachmentFilenameIsShortenedRatherThanFailingTheRestore(): void
+    {
+        $id = $this->subscriptions->create($this->source, [
+            'name' => 'Broadband',
+            'price' => '35.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-12-01',
+        ]);
+        $this->attachments->upload($this->source, $this->sourceUser, $id, FakeUpload::pdf('Bill.pdf'));
+
+        $archive = $this->export();
+        $data = $this->readArchiveJson($archive, 'data.json');
+        $data['attachments'][0]['filename'] = str_repeat('a', 300) . '.pdf';
+        $zip = new ZipArchive();
+        self::assertTrue($zip->open($archive) === true);
+        $zip->addFromString('data.json', json_encode($data, JSON_THROW_ON_ERROR));
+        $zip->close();
+
+        $summary = $this->backups->restore($this->target, $this->targetUser, $archive);
+
+        self::assertSame(1, $summary['attachments']);
+        $restored = $this->subscriptions->allForStats($this->target, activeOnly: false)[0];
+        $copy = $this->attachments->forSubscription($this->target, $restored->id)[0];
+        self::assertSame(255, mb_strlen($copy->originalFilename));
     }
 
     private function partnerScope(): Scope
