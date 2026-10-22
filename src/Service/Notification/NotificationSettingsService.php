@@ -206,6 +206,9 @@ final class NotificationSettingsService
             array_key_exists('budget_alerts', $input)
                 ? $this->str($input, 'budget_alerts') === '1'
                 : $stored->budgetAlerts,
+            array_key_exists('contract_alerts', $input)
+                ? $this->str($input, 'contract_alerts') === '1'
+                : $stored->contractAlerts,
         ));
     }
 

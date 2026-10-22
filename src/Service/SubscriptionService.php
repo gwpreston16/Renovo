@@ -913,6 +913,8 @@ final class SubscriptionService
 
         $anchorDay = $this->anchorDay($input, $cycle, $nextPaymentDate, $existing, $errors);
 
+        $terms = $this->validateTerms($input, $type, $nextPaymentDate, $startDate, $trial, $existing, $errors);
+
         // Null when the field was not submitted at all, which is what keeps a
         // form that does not show it — a bulk edit, a later API — from wiping a
         // per-subscription reminder schedule it never asked about.
@@ -956,6 +958,9 @@ final class SubscriptionService
                 ? false
                 : ($input['is_active'] ?? '1') !== '0',
             'plan' => $plan === '' ? null : $plan,
+            'contract_ends_on' => $terms['contract_ends_on'],
+            'payments_end_on' => $terms['payments_end_on'],
+            'amount_varies' => $terms['amount_varies'],
             'visibility' => $visibility->value,
             'category_id' => $categoryId,
             'payment_method_id' => $paymentMethodId,
@@ -985,13 +990,77 @@ final class SubscriptionService
             $data['cancelled_at'] = $cancelledAt->format('Y-m-d');
         }
 
-        foreach (['visibility', 'plan'] as $column) {
+        foreach (['visibility', 'plan', 'contract_ends_on', 'payments_end_on', 'amount_varies'] as $column) {
             if ($existing !== null && !array_key_exists($column, $input)) {
                 unset($data[$column]);
             }
         }
 
         return [$data, $tagIds, $offer];
+    }
+
+    /**
+     * Read the Terms fields: when a contract ends, when a fixed term's
+     * payments end, and whether the amount varies.
+     *
+     * A one-off or lifetime entry has no further charges, so it carries no
+     * fixed term. A running row's last charge cannot come before its next
+     * one — that would be a term already over, which the catch-up could not
+     * date — so `payments_end_on` is measured against the next charge (the
+     * conversion, for a trial). A cancelled row is history and is not
+     * measured.
+     *
+     * @param array<string, mixed> $input
+     * @param array<string, mixed> $trial
+     * @param array<string, string> $errors
+     * @return array{contract_ends_on: ?string, payments_end_on: ?string, amount_varies: bool}
+     */
+    private function validateTerms(
+        array $input,
+        SubscriptionType $type,
+        ?DateTimeImmutable $nextPaymentDate,
+        ?DateTimeImmutable $startDate,
+        array $trial,
+        ?Subscription $existing,
+        array &$errors,
+    ): array {
+        $contractEnds = $this->date($this->str($input, 'contract_ends_on'));
+        if ($this->str($input, 'contract_ends_on') !== '' && $contractEnds === null) {
+            $errors['contract_ends_on'] = 'error.date.invalid';
+        }
+
+        $paymentsEnd = $this->date($this->str($input, 'payments_end_on'));
+        if ($this->str($input, 'payments_end_on') !== '' && $paymentsEnd === null) {
+            $errors['payments_end_on'] = 'error.date.invalid';
+        }
+
+        if (!$type->countsTowardsRecurringTotals()) {
+            $paymentsEnd = null;
+        }
+
+        $firstCharge = $trial['is_trial'] && is_string($trial['trial_end_date'])
+            ? $this->date($trial['trial_end_date'])
+            : $nextPaymentDate;
+        $cancelled = $existing?->isCancelled() === true;
+        // An edit that leaves the field out keeps the stored date, which a
+        // moved payment date is measured against all the same.
+        $end = array_key_exists('payments_end_on', $input) || $existing === null
+            ? $paymentsEnd
+            : ($type->countsTowardsRecurringTotals() ? $existing->paymentsEndOn : null);
+
+        if ($end !== null && !$cancelled) {
+            if ($startDate !== null && $end < $startDate) {
+                $errors['payments_end_on'] = 'error.payments_end.before_start';
+            } elseif ($firstCharge !== null && $end < $firstCharge) {
+                $errors['payments_end_on'] = 'error.payments_end.before_next';
+            }
+        }
+
+        return [
+            'contract_ends_on' => $contractEnds?->format('Y-m-d'),
+            'payments_end_on' => $paymentsEnd?->format('Y-m-d'),
+            'amount_varies' => ($input['amount_varies'] ?? '0') === '1',
+        ];
     }
 
     /**

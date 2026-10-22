@@ -239,6 +239,16 @@
                            {{ preferences.priceChangeAlerts ? 'checked' : '' }}>
                 </label>
 
+                <input type="hidden" name="contract_alerts" value="0">
+                <label class="choice toggle-row">
+                    <span>
+                        <span class="choice-title">{{ t('notifications.contract_toggle') }}</span>
+                        <span class="choice-note">{{ t('notifications.contract_hint') }}</span>
+                    </span>
+                    <input type="checkbox" class="toggle" role="switch" name="contract_alerts" value="1"
+                           {{ preferences.contractAlerts ? 'checked' : '' }}>
+                </label>
+
                 <div class="form-actions">
                     <button type="submit" class="button button-outline">{{ t('notifications.save_preferences') }}</button>
                 </div>

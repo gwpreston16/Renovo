@@ -1127,6 +1127,9 @@ final class SubscriptionRepository extends AbstractScopedRepository
             cancelledAt: $this->nullableDate($row['cancelled_at'] ?? null),
             plan: $this->nullableString($row['plan'] ?? null),
             categoryColour: $this->nullableString($row['category_colour'] ?? null),
+            contractEndsOn: $this->nullableDate($row['contract_ends_on'] ?? null),
+            paymentsEndOn: $this->nullableDate($row['payments_end_on'] ?? null),
+            amountVaries: $this->db->platform()->toBoolean($row['amount_varies'] ?? false),
         );
     }
 

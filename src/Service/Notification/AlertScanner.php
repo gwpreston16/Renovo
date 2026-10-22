@@ -67,7 +67,7 @@ final class AlertScanner
                 continue;
             }
 
-            foreach ($this->datedEvents($subscription) as $event) {
+            foreach ($this->datedEvents($subscription, $preferences) as $event) {
                 $days = $this->daysUntil($event['date'], $today);
                 if ($days < 0) {
                     // The date has passed. The catch-up will move it on; there
@@ -93,7 +93,7 @@ final class AlertScanner
      *
      * @return list<Alert>
      */
-    public function alertsWithin(Scope $scope, int $days): array
+    public function alertsWithin(Scope $scope, int $days, ?NotificationPreferences $preferences = null): array
     {
         $today = $this->clock->today();
         $alerts = [];
@@ -106,7 +106,7 @@ final class AlertScanner
                 continue;
             }
 
-            foreach ($this->datedEvents($subscription) as $event) {
+            foreach ($this->datedEvents($subscription, $preferences) as $event) {
                 $until = $this->daysUntil($event['date'], $today);
                 if ($until < 0 || $until > $days) {
                     continue;
@@ -311,16 +311,28 @@ final class AlertScanner
      * same date, and announcing both would be telling somebody twice about one
      * event in two different tones of voice.
      *
+     * A fixed term's charges stop at its last payment, so a date after it is
+     * no renewal, even before the catch-up has ended the row. A contract's
+     * end is its own date, announced unless the member turned it off.
+     *
      * @return list<array{type: AlertType, date: DateTimeImmutable}>
      */
-    private function datedEvents(Subscription $subscription): array
+    private function datedEvents(Subscription $subscription, ?NotificationPreferences $preferences): array
     {
         $events = [];
 
         if ($subscription->isTrial && $subscription->trialEndDate !== null) {
             $events[] = ['type' => AlertType::TrialConversion, 'date' => $subscription->trialEndDate];
-        } elseif ($subscription->nextPaymentDate !== null && $subscription->type->countsTowardsRecurringTotals()) {
+        } elseif (
+            $subscription->nextPaymentDate !== null
+            && $subscription->type->countsTowardsRecurringTotals()
+            && $subscription->chargesOn($subscription->nextPaymentDate)
+        ) {
             $events[] = ['type' => AlertType::Renewal, 'date' => $subscription->nextPaymentDate];
+        }
+
+        if ($subscription->contractEndsOn !== null && ($preferences?->contractAlerts ?? true)) {
+            $events[] = ['type' => AlertType::ContractEnding, 'date' => $subscription->contractEndsOn];
         }
 
         // Only worth a separate alert when it is a separate date. Without a
@@ -350,12 +362,21 @@ final class AlertScanner
             : $subscription->price;
 
         $amount = $this->money->format($price);
+        $estimate = $subscription->amountVaries;
+        if ($estimate) {
+            // An estimate, and the alert says so rather than promising a figure.
+            $amount = $this->translator->trans('alert.about', ['amount' => $amount]);
+        }
         $date = $event['date']->format('j M Y');
 
         [$title, $lines] = match ($event['type']) {
             AlertType::TrialConversion => [
                 $this->translator->trans('alert.trial.title', ['name' => $subscription->name, 'when' => $when]),
                 [$this->translator->trans('alert.trial.line', ['amount' => $amount, 'date' => $date])],
+            ],
+            AlertType::ContractEnding => [
+                $this->translator->trans('alert.contract.title', ['name' => $subscription->name, 'when' => $when]),
+                [$this->translator->trans('alert.contract.line', ['name' => $subscription->name, 'date' => $date])],
             ],
             AlertType::CancelBy => [
                 $this->translator->trans('alert.cancel.title', ['name' => $subscription->name, 'date' => $date]),
@@ -366,7 +387,12 @@ final class AlertScanner
             ],
             default => [
                 $this->translator->trans('alert.renewal.title', ['name' => $subscription->name, 'when' => $when]),
-                [$this->translator->trans('alert.renewal.line', ['amount' => $amount, 'date' => $date])],
+                [$estimate
+                    ? $this->translator->trans('alert.renewal.line_estimate', [
+                        'amount' => $this->money->format($price),
+                        'date' => $date,
+                    ])
+                    : $this->translator->trans('alert.renewal.line', ['amount' => $amount, 'date' => $date])],
             ],
         };
 

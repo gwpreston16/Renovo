@@ -54,6 +54,7 @@ final class NotificationPreferenceRepository extends AbstractRepository
             (int) $row['digest_day'],
             $this->db->platform()->toBoolean($row['price_change_alerts'] ?? true),
             $this->db->platform()->toBoolean($row['budget_alerts'] ?? true),
+            $this->db->platform()->toBoolean($row['contract_alerts'] ?? true),
         );
     }
 
@@ -68,6 +69,7 @@ final class NotificationPreferenceRepository extends AbstractRepository
             . ' ' . $this->quote('digest_day') . ' = :day,'
             . ' ' . $this->quote('price_change_alerts') . ' = :price_change,'
             . ' ' . $this->quote('budget_alerts') . ' = :budget,'
+            . ' ' . $this->quote('contract_alerts') . ' = :contract,'
             . ' ' . $this->quote('updated_at') . ' = :now'
             . ' WHERE ' . $this->quote('user_id') . ' = :user',
             [
@@ -76,6 +78,7 @@ final class NotificationPreferenceRepository extends AbstractRepository
                 'day' => $preferences->digestDay,
                 'price_change' => $this->db->platform()->booleanParameter($preferences->priceChangeAlerts),
                 'budget' => $this->db->platform()->booleanParameter($preferences->budgetAlerts),
+                'contract' => $this->db->platform()->booleanParameter($preferences->contractAlerts),
                 'now' => $now,
                 'user' => $preferences->userId,
             ],
@@ -106,6 +109,7 @@ final class NotificationPreferenceRepository extends AbstractRepository
             'digest_day' => $preferences->digestDay,
             'price_change_alerts' => $this->db->platform()->booleanParameter($preferences->priceChangeAlerts),
             'budget_alerts' => $this->db->platform()->booleanParameter($preferences->budgetAlerts),
+            'contract_alerts' => $this->db->platform()->booleanParameter($preferences->contractAlerts),
             'created_at' => $now,
             'updated_at' => $now,
         ], 'user_id');

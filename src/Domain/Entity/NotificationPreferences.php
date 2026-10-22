@@ -39,6 +39,8 @@ final class NotificationPreferences
         public readonly bool $priceChangeAlerts = true,
         /** Whether to be told when a budget is projected over. On unless turned off. */
         public readonly bool $budgetAlerts = true,
+        /** Whether to be told before a contract ends. On unless turned off. */
+        public readonly bool $contractAlerts = true,
     ) {
         $days = array_values(array_unique(array_filter($leadDays, static fn (int $d): bool => $d >= 0)));
         rsort($days);

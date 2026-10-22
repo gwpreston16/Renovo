@@ -191,6 +191,7 @@ final class SetupWizardService
             'digest_mode' => $preferences->digestMode->value,
             'digest_day' => (string) $preferences->digestDay,
             'price_change_alerts' => $preferences->priceChangeAlerts ? '1' : '0',
+            'contract_alerts' => $preferences->contractAlerts ? '1' : '0',
         ]);
 
         $emailOn = $this->str($input, 'email') === '1';

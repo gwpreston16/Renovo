@@ -34,6 +34,8 @@ enum AlertType: string
      */
     case PriceChange = 'price_change';
 
+    case ContractEnding = 'contract_ending';
+
     /**
      * Whether the alert is anchored to a future date, and therefore fires on
      * the user's lead times.

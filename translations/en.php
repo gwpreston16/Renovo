@@ -533,6 +533,11 @@ return [
     'alert.trial_conversion' => 'Trial about to convert',
     'alert.cancel_by' => 'Cancellation deadline',
     'alert.budget_exceeded' => 'Budget projected to be exceeded',
+    'alert.about' => 'about {amount}',
+    'alert.contract_ending' => 'Contract ending',
+    'alert.contract.line' =>
+        'Your {name} contract ends on {date} — a good time to compare prices or renegotiate.',
+    'alert.contract.title' => '{name}: contract ends {when}',
 
     // -----------------------------------------------------------------------
     // Display preferences
@@ -611,6 +616,8 @@ return [
     'error.note.too_long_255' => 'Note must be 255 characters or fewer.',
     'error.notes.too_long_5000' => 'Notes must be 5000 characters or fewer.',
     'error.date.invalid' => 'Enter a valid date.',
+    'error.payments_end.before_next' => 'The last payment can’t come before the next one.',
+    'error.payments_end.before_start' => 'The last payment can’t come before the start date.',
     'error.file.required' => 'Choose a file to upload.',
     'error.upload.failed' => 'The file could not be uploaded. Try again.',
 
@@ -1639,6 +1646,10 @@ return [
         'When a price is edited or a future one is scheduled, on any subscription you can see. Routed '
         . 'like the other alerts below.',
     'notifications.price_change_toggle' => 'Tell me when a price changes',
+    'notifications.contract_hint' =>
+        'At your lead times before a contract end date you have recorded. Routed like the other alerts '
+        . 'below.',
+    'notifications.contract_toggle' => 'Tell me before a contract ends',
     'notifications.recently_sent' => 'Recently sent',
     'notifications.routing_hint' =>
         'Which channel each alert goes to. Channels that are off are greyed out, and keep their choices '
@@ -2260,6 +2271,7 @@ return [
     'alert.cancel.renews' => 'It renews at {amount}.',
     'alert.cancel.title' => 'Cancel {name} by {date}',
     'alert.renewal.line' => '{amount} is due on {date}.',
+    'alert.renewal.line_estimate' => 'About {amount} is due on {date}.',
     'alert.renewal.title' => '{name} renews {when}',
     'alert.test.line' => 'If you are reading this, {channel} is configured correctly.',
     'alert.test.title' => 'Test notification',
