@@ -109,6 +109,21 @@ final class PaymentsCardTest extends DatabaseTestCase
         self::assertStringContainsString('value="/subscriptions/' . $this->subscriptionId . '/money#payments"', $html);
     }
 
+    public function testOpeningTheCostPageCatchesUpFirst(): void
+    {
+        $id = $this->container->get(SubscriptionService::class)->create($this->owner, $this->input('Gas'));
+        self::assertSame([], $this->charges()->forSubscription($this->owner, $id));
+
+        $this->signIn($this->ownerId);
+        $page = $this->app->handle((new ServerRequestFactory())->createServerRequest(
+            'GET',
+            'http://localhost/subscriptions/' . $id . '/money',
+        ));
+
+        self::assertSame(200, $page->getStatusCode());
+        self::assertCount(2, $this->charges()->forSubscription($this->owner, $id));
+    }
+
     public function testAViewerAndAContributorOnSomebodyElsesRowSeeNoControls(): void
     {
         foreach ([$this->viewerId, $this->contributorId] as $userId) {

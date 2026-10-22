@@ -611,7 +611,10 @@ Contributor's `PATCH` or `POST` on another member's row.
 
 #### `GET /api/v1/subscriptions/{id}/charges`
 
-List the subscription's charges, newest first, a page at a time: `page`
+List the subscription's charges, newest first, a page at a time. With a token
+that may write, the request first runs the same catch-up as the subscription
+list, so every billing date that has passed is there; a read-only token reads
+what the last catch-up wrote. Paged with `page`
 (minimum 1) and `per_page` (1–100, default 25), with a `meta` block shaped like
 the subscription list's. A page past the last returns the last. Responses:
 `200`, `401`, `403`, `404`.

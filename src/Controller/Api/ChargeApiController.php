@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Controller\Api;
 
 use App\Application\Api\Resource;
+use App\Application\Middleware\TokenAuthenticationMiddleware;
+use App\Domain\Entity\ApiToken;
 use App\Domain\Entity\Charge;
 use App\I18n\Translator;
+use App\Service\CatchUpService;
 use App\Service\ChargeService;
 use App\Service\SubscriptionService;
 use Psr\Http\Message\ResponseInterface;
@@ -32,6 +35,7 @@ final class ChargeApiController extends ApiController
         Translator $translator,
         private readonly ChargeService $charges,
         private readonly SubscriptionService $subscriptions,
+        private readonly CatchUpService $catchUp,
     ) {
         parent::__construct($translator);
     }
@@ -39,6 +43,13 @@ final class ChargeApiController extends ApiController
     public function index(ServerRequestInterface $request, ResponseInterface $response, string $id): ResponseInterface
     {
         $scope = $this->scope($request);
+
+        // The catch-up the subscription list runs, for a token that may write,
+        // so a client reading only this endpoint sees every passed date.
+        $token = $request->getAttribute(TokenAuthenticationMiddleware::ATTRIBUTE_TOKEN);
+        if ($token instanceof ApiToken && $token->abilities->allowsWrites()) {
+            $this->catchUp->run($scope);
+        }
         if ($this->subscriptions->find($scope, (int) $id) === null) {
             throw new HttpNotFoundException($request, $this->translator->trans('error.api.subscription_not_found'));
         }

@@ -8,6 +8,7 @@ use App\I18n\Translator;
 use App\Repository\MembershipRepository;
 use App\Security\SessionInterface;
 use App\Service\AttachmentService;
+use App\Service\CatchUpService;
 use App\Service\ChargeService;
 use App\Service\PriceHistoryService;
 use App\Service\ScenarioService;
@@ -41,6 +42,7 @@ final class SubscriptionMoneyController extends Controller
         private readonly AttachmentService $attachments,
         private readonly ScenarioService $scenarios,
         private readonly ChargeService $charges,
+        private readonly CatchUpService $catchUp,
     ) {
         parent::__construct($view, $session, $translator);
     }
@@ -52,6 +54,11 @@ final class SubscriptionMoneyController extends Controller
     public function show(ServerRequestInterface $request, ResponseInterface $response, string $id): ResponseInterface
     {
         $scope = $this->scope($request);
+
+        // The same lazy catch-up as the list, so the Payments card shows every
+        // billing date that has passed — and a no-op for a Viewer.
+        $this->catchUp->run($scope);
+
         $subscription = $this->subscriptions->find($scope, (int) $id);
 
         if ($subscription === null) {

@@ -236,6 +236,24 @@ final class ApiChargesTest extends ApiTestCase
         self::assertSame(422, $future->getStatusCode());
     }
 
+    public function testReadingTheChargesCatchesUpFirstForAWriteToken(): void
+    {
+        $id = $this->createSubscription([
+            'name' => 'Overdue',
+            'price_minor' => 700,
+            'billing_cycle' => 'weekly',
+            'next_payment_date' => (new DateTimeImmutable('-15 days'))->format('Y-m-d'),
+            'start_date' => (new DateTimeImmutable('-15 days'))->format('Y-m-d'),
+        ]);
+        $path = '/api/v1/subscriptions/' . $id . '/charges';
+
+        // A read-only token reads what is there, and writes nothing.
+        self::assertSame([], $this->decode($this->api('GET', $path, $this->readOnlyToken))['data']);
+
+        // A write token's read runs the catch-up: three weekly dates passed.
+        self::assertCount(3, $this->decode($this->api('GET', $path, $this->ownerToken))['data']);
+    }
+
     private function chargesPath(): string
     {
         return '/api/v1/subscriptions/' . $this->subscriptionId . '/charges';

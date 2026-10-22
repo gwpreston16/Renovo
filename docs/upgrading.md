@@ -66,9 +66,16 @@ corrected:
 
 ```sql
 DELETE FROM subscription_charges
- WHERE source = 'reconstructed' AND actual_minor IS NULL AND status = 'charged';
+ WHERE source = 'reconstructed' AND actual_minor IS NULL AND status = 'charged'
+   AND note IS NULL;
 ```
 
-A reconstructed payment a member has recorded an amount on or skipped is left;
-delete those too only if you mean to lose the correction. Invoices filed
+A reconstructed payment a member has recorded an amount on, skipped or written
+a note on is left; delete those too only if you mean to lose the correction. Invoices filed
 against a deleted payment stay, attached to their subscription.
+
+Rolling back the ledger's migration (`20261201000005_create_subscription_charges_table`)
+drops the ledger whole. The catch-up and `ledger:backfill` can write Renovo's own
+rows again, but every amount a member recorded, every charge they skipped, their
+notes and the payments they added by hand are gone. Only a backup — the one you
+took before upgrading, or a household backup from **Settings → Data** — has them.

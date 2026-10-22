@@ -499,7 +499,9 @@ paths:
       description: |
         The payment ledger: one charge for each billing date that has passed,
         at the price in force that day, plus any added by hand. Nothing here
-        is read from a bank. Paged; a page past the last returns the last.
+        is read from a bank. With a token that may write, the request first
+        runs the same catch-up as the subscription list, so every passed date
+        is there. Paged; a page past the last returns the last.
       parameters:
         - { name: page, in: query, schema: { type: integer, minimum: 1 } }
         - name: per_page
