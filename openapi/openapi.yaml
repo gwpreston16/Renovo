@@ -110,6 +110,10 @@ paths:
       description: |
         Returns only what the token's role and the instance's isolation mode
         allow — the same rows the same user would see in the web interface.
+        With a token that may write, it first runs the catch-up: due price
+        changes take effect, ended trials convert and overdue payment dates
+        move on, recording each passed date as a payment. A read-only token
+        changes nothing.
       parameters:
         - { name: q, in: query, schema: { type: string }, description: Search names and notes. }
         - { name: category, in: query, schema: { type: integer }, description: Category id. }
@@ -1294,7 +1298,14 @@ components:
           format: date
           nullable: true
           description: Required for a recurring subscription that is not a trial.
-        start_date: { type: string, format: date, nullable: true }
+        start_date:
+          type: string
+          format: date
+          nullable: true
+          description: |
+            On a one-off or lifetime entry, changing it moves the entry's
+            recorded payment to the new date, or removes it while the new date
+            is still in the future.
         notice_period_amount: { type: integer, nullable: true, minimum: 0, maximum: 3650 }
         notice_period_unit:
           type: string

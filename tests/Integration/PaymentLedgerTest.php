@@ -357,7 +357,10 @@ final class PaymentLedgerTest extends DatabaseTestCase
 
         $this->subscriptions->update($this->alice, $id, ['start_date' => '2026-09-20'] + $input);
 
-        $row = $this->db->fetchOne('SELECT charge_id, period_date FROM attachments WHERE subscription_id = :id', ['id' => $id]);
+        $row = $this->db->fetchOne(
+            'SELECT charge_id, period_date FROM attachments WHERE subscription_id = :id',
+            ['id' => $id],
+        );
         self::assertSame($charge->id, (int) ($row['charge_id'] ?? 0));
         self::assertSame('2026-09-20', substr((string) ($row['period_date'] ?? ''), 0, 10));
     }
@@ -366,7 +369,11 @@ final class PaymentLedgerTest extends DatabaseTestCase
     {
         $this->clock->advanceTo(new DateTimeImmutable('2026-05-15 08:00:00'));
         $id = $this->create('Energy', '58.00', '2026-05-15', '2026-01-15');
-        $this->charges->addManual($this->alice, $id, ['date' => '2026-05-15', 'amount' => '61.00', 'note' => 'Paid early']);
+        $this->charges->addManual($this->alice, $id, [
+            'date' => '2026-05-15',
+            'amount' => '61.00',
+            'note' => 'Paid early',
+        ]);
 
         $this->clock->advanceTo(new DateTimeImmutable('2026-05-16 08:00:00'));
         $this->catchUp->run($this->alice);

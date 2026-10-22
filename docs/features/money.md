@@ -15,10 +15,12 @@ figure is one another screen already shows.
   conversion are not counted as rises.
 - **Twelve months back, twelve ahead.** The dashboard's chart asked for twelve
   months either side instead of six, so its thirteen bars are thirteen of these
-  twenty-five. The past half is reconstructed. The forecast half, hatched,
+  twenty-five. The past half is read from the [payment ledger](#payments),
+  reconstructed before a subscription's first payment. The forecast half, hatched,
   includes trials converting and scheduled price changes.
 - **This year against last.** Same-month bars from last January to this month,
-  reconstructed. The rest of this year is the forecast. Beneath them, the
+  from the payment ledger and reconstructed before it. The rest of this year is
+  the forecast. Beneath them, the
   rolling comparison: the last twelve months against the twelve before.
 - **Who pays what.** The household dashboard's card, scoped the same way.
   Under ISOLATED you see only your own share.
@@ -100,11 +102,19 @@ A member who may change the subscription can, per row:
 **Add a payment** records one that fell off the cycle, such as a one-time fee,
 dated today or earlier. One payment a day per subscription.
 
-Pausing stops the payments: nothing is written while a subscription is paused,
-and **resuming skips the dates the pause covered** — the next payment moves on
-to the first billing date from today. If you were in fact billed during the
-pause, add those payments by hand. A cancelled subscription writes nothing
-after its cancellation.
+Pausing stops the payments. Pausing or cancelling first records any billing
+dates that had already passed, so nothing due before the pause is lost; after
+that, nothing is written while a subscription is paused, and **resuming skips
+the dates the pause covered** — the next payment moves on to the first billing
+date from today. If you were in fact billed during the pause, add those
+payments by hand. A cancelled subscription writes nothing after its
+cancellation.
+
+A one-off or lifetime entry has one payment, on its date. **Changing the date
+moves the payment** to the new day, with any amount or note recorded on it and
+its invoice; a date moved into the future removes the payment until that day
+arrives. The billing dates a subscription recorded before it was turned into a
+one-off stay where they are.
 
 Rows marked *reconstructed* were rebuilt for the months before the ledger
 existed, by `ledger:backfill` ([upgrading](../upgrading.md)). Every payment you
@@ -137,8 +147,9 @@ spend, taken from the same forecast the Forecast page shows, so the two can
 never disagree.
 
 The Budgets screen reads each budget over its **calendar period** — this month,
-or this calendar year — as charged so far (reconstructed from start dates and
-price history, to yesterday) plus the forecast to the period's end, which is how
+or this calendar year — as charged so far (from the payment ledger to
+yesterday, reconstructed before a subscription's first payment) plus the
+forecast to the period's end, which is how
 the dashboard's budget card reads the month. A budget is **Over** when that
 projection, trials converting included, passes its limit, and the card says when
 it is only the trials. It shows **Warning** once the projection reaches its

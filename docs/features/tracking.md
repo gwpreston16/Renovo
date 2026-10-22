@@ -24,11 +24,14 @@ your account, and each view has its own card order and hiding.
 
 Every figure comes from a service the rest of the application already uses. The
 chart's forecast months are the Forecast page's months, and its past months
-come from the same reconstruction year-over-year uses. Renovo keeps no ledger,
-so past spend is **reconstructed** from start dates, billing cycles and price
-history. The cards say so, and say how many subscriptions were left out for
-having no start date. "Already charged" means the charge's date has passed.
-Nothing confirms that it was paid.
+come from the same past-spend reading year-over-year uses: the
+[payment ledger](money.md#payments), with the amounts members recorded and
+without the charges they skipped. The months before a subscription's first
+recorded payment are **reconstructed** from its start date, billing cycle and
+price history. The cards say so, and say how many subscriptions were left out
+for having no start date and no payments. "Already charged" means the charge's
+date has passed; nothing reads a bank, so it is paid only as far as the ledger
+says.
 
 Money follows the usual rule: a combined total only when every currency
 converts, otherwise per-currency figures with the missing rate named. The

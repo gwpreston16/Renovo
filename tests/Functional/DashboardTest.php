@@ -216,7 +216,7 @@ final class DashboardTest extends DatabaseTestCase
         // The trial has no start date, and the card says what that costs it.
         self::assertSame(1, $chart['excluded_count']);
         $body = $this->body($this->get('/', $this->ownerId));
-        self::assertStringContainsString('Reconstructed from start dates and price history.', $body);
+        self::assertStringContainsString('From the payment ledger; months before a payment was recorded', $body);
         self::assertStringContainsString('1 subscription has no start date', $body);
     }
 

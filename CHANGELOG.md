@@ -44,7 +44,12 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   gives the same figures as before. *Phase 34.*
 - **Resuming a paused subscription skips the dates the pause covered**: the
   next payment moves to the first billing date from today, and no payments
-  are written for the paused months. *Phase 34.*
+  are written for the paused months. **Pausing or cancelling first records the
+  billing dates already passed**, through the toggle, the edit form, the API
+  and a bulk pause alike, so none is lost. *Phase 34.*
+- **Changing a one-off or lifetime entry's date moves its payment** to the new
+  day, keeping any amount or note recorded on it and its invoice; a date moved
+  into the future removes the payment until the day arrives. *Phase 34.*
 - **A restore is all or nothing.** One that fails part-way (a full disk, say)
   now keeps none of its rows, rather than rows whose logos and invoices it had
   removed (K16). *Phase 34.*
@@ -54,7 +59,6 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 - **The API's subscription list runs the whole catch-up**, as the web pages
   do: an ended trial converts before its first payment is recorded, where it
   used to have its payment date moved on unconverted. *Phase 34.*
-
 - **The README is now a front page.** It says what Renovo is and who it is
   for, shows seven screenshots (`docs/images/`, taken from `demo:seed`), and
   has a two-path quick start and the features in groups. The detail moved

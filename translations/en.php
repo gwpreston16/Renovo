@@ -1302,7 +1302,8 @@ return [
         '{monthly} a month, {yearly} a year. Already included in the forecast.',
     'dashboard.price_rises' => '{name} rises from {from} to {to} on {date}',
     'dashboard.recent' => 'Subscriptions',
-    'dashboard.reconstructed_note' => 'Reconstructed from start dates and price history.',
+    'dashboard.reconstructed_note' =>
+        'From the payment ledger; months before a payment was recorded are rebuilt from start dates and price history.',
     'dashboard.recurring_empty' => 'No active recurring subscriptions yet.',
     'dashboard.renewing_soon' => 'Renewing soon',
     'dashboard.renewing_soon_note' => 'in the next {days} days',
@@ -1335,10 +1336,10 @@ return [
     'dashboard.spend_trend_unconvertible' =>
         'No exchange rate for {currencies}, so these months cannot be added up in one currency.',
     'dashboard.spend_trend_uncategorised' => 'Uncategorised',
-    // Said rather than implied: the application records what is due, not a
-    // ledger of payments taken, so these months were rebuilt from start dates,
-    // billing cycles and price history. A reader comparing them with a bank
-    // statement should know that before they do it.
+    // Said rather than implied: past months come from the payment ledger, and
+    // the months before a subscription's first recorded payment are rebuilt
+    // from start dates, billing cycles and price history. A reader comparing
+    // them with a bank statement should know that before they do it.
     'dashboard.stands_on' => 'Here’s where {household} stands on {date}.',
     'dashboard.still_due' => 'Still due',
     'dashboard.this_month' => 'This month',
@@ -1952,8 +1953,9 @@ return [
         '{count, plural, one {# subscription has} other {# subscriptions have}} no start date and so '
         . 'contribute nothing to either year.',
     'stats.year_over_year_note' =>
-        'Reconstructed from start dates, billing cycles and recorded price history — this application '
-        . 'tracks what is due rather than keeping a ledger of payments taken.',
+        'From the payment ledger, with any amounts members recorded and without skipped charges. Months '
+        . 'before a subscription’s first recorded payment are rebuilt from its start date, billing cycle and '
+        . 'price history.',
 
     // subscriptions
     'subscriptions.add_subscription' => 'Add subscription',

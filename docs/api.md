@@ -435,6 +435,13 @@ List subscriptions. Returns only what the token's role and the instance's
 isolation mode allow — the same rows the same user would see in the web
 interface.
 
+With a token that may write, the request first runs the catch-up the web pages
+run, in its order: scheduled prices that have reached their date take effect,
+ended free trials convert, and overdue payment dates move on, each passed
+billing date recorded as a payment. So a `price_minor`, a trial's status or a
+`next_payment_date` can differ from the last response without anybody editing
+the row. A read-only token changes nothing.
+
 | Parameter | Type | Notes |
 | --- | --- | --- |
 | `q` | string | Search names and notes. |
@@ -786,7 +793,7 @@ The writable half of a subscription. Required: `name`, `price_minor`,
 | `cycle_days` | integer, null | 1–3650. Required when `billing_cycle` is `custom_days`. |
 | `cycle_interval` | integer, null | Every N of the cycle's unit — `monthly` with `6` is every six months, `weekly` with `2` fortnightly. Weekly 1–52, monthly 1–24, yearly 1–10; `quarterly` and `custom_days` take only 1, and anything else is a 422, never a clamp. Omitted or null is 1 on a new subscription; on a PUT that keeps the same `billing_cycle`, an absent key keeps the current interval. |
 | `next_payment_date` | date, null | Required for a recurring subscription that is not a trial. |
-| `start_date` | date, null | |
+| `start_date` | date, null | On a one-off or lifetime entry, changing it moves the entry's recorded payment to the new date (with any amount, note and invoice on it), or removes it while the new date is still in the future. |
 | `notice_period_amount` | integer, null | 0–3650. |
 | `notice_period_unit` | enum, null | `days`, `weeks`, `months`. |
 | `reminder_days` | int[], null | Max 6 items, each 0–365. Three states — see [Conventions](#conventions). |
