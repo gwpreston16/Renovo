@@ -8,6 +8,7 @@ use App\I18n\Translator;
 use App\Repository\MembershipRepository;
 use App\Security\SessionInterface;
 use App\Service\AttachmentService;
+use App\Service\ChargeService;
 use App\Service\PriceHistoryService;
 use App\Service\ScenarioService;
 use App\Service\SplitService;
@@ -39,6 +40,7 @@ final class SubscriptionMoneyController extends Controller
         private readonly MembershipRepository $memberships,
         private readonly AttachmentService $attachments,
         private readonly ScenarioService $scenarios,
+        private readonly ChargeService $charges,
     ) {
         parent::__construct($view, $session, $translator);
     }
@@ -58,6 +60,7 @@ final class SubscriptionMoneyController extends Controller
         }
 
         $participants = $this->splits->participants($scope, $subscription->id);
+        $page = $request->getQueryParams()['payments_page'] ?? '1';
 
         return $this->render($request, $response, 'subscriptions/money.twig', [
             'subscription' => $subscription,
@@ -73,6 +76,9 @@ final class SubscriptionMoneyController extends Controller
             'max_rating' => UsageService::MAX_RATING,
             'can_plan' => $this->scenarios->isPlannable($subscription),
             'attachments' => $this->attachments->forSubscription($scope, $subscription->id),
+            'payments' => $this->charges->page($scope, $subscription->id, is_numeric($page) ? (int) $page : 1),
+            'invoices' => $this->attachments->byCharge($scope, $subscription->id),
+            'today' => $this->charges->today(),
             'errors' => [],
         ]);
     }

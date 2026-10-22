@@ -78,6 +78,39 @@ knowable. The current price is the latest row whose date has arrived, and a
 forecasts and budgets from their own dates, and become the current price when
 the day arrives.
 
+### Payments
+
+Each subscription's cost page has a **Payments** card: one row for every
+billing date that has passed, newest first, at the price that was due that day.
+Renovo writes the row itself when the date passes — nothing is read from a bank
+or a provider — and the price on it is frozen, so a later price edit does not
+rewrite what was due last month.
+
+A member who may change the subscription can, per row:
+
+- **Record amount** — what was really charged, with a note ("£63.20 this
+  winter"). The amount due stays beside it, struck through.
+- **Mark as skipped** — the charge did not happen: waived, missed or refunded in
+  full. A skipped charge counts as nothing in every total.
+- **Undo** — put the row back as Renovo wrote it. On a payment added by hand,
+  this removes it.
+- **Attach the invoice** for that payment. It is filed against the payment and
+  dated to it, and also appears with the subscription's other attachments.
+
+**Add a payment** records one that fell off the cycle, such as a one-time fee,
+dated today or earlier. One payment a day per subscription.
+
+Pausing stops the payments: nothing is written while a subscription is paused,
+and **resuming skips the dates the pause covered** — the next payment moves on
+to the first billing date from today. If you were in fact billed during the
+pause, add those payments by hand. A cancelled subscription writes nothing
+after its cancellation.
+
+Rows marked *reconstructed* were rebuilt for the months before the ledger
+existed, by `ledger:backfill` ([upgrading](../upgrading.md)). Viewers see the
+card without its controls; a Contributor changes payments only on rows they
+own.
+
 ### Trials
 
 A trial is the subscription it will become, not a separate record. **The trial's
@@ -136,7 +169,9 @@ to reads only, and every write path uses the unwidened predicate.
 
 ### Year over year
 
-Reconstructed from start dates, billing cycles and recorded price history —
-there is no payment ledger. A subscription with no start date contributes
-nothing to either year, which under-reports the past rather than inventing
-spending that may never have happened. The page says how many were excluded.
+Read from the payment ledger where it has rows, so a recorded amount or a
+skipped charge is reflected; the months before a subscription's first row are
+reconstructed from its start date, billing cycle and recorded price history. A
+subscription with no start date and no payments contributes nothing to either
+year, which under-reports the past rather than inventing spending that may
+never have happened. The page says how many were excluded.

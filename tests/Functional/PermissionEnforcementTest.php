@@ -164,6 +164,11 @@ final class PermissionEnforcementTest extends DatabaseTestCase
             ['POST', '/subscriptions/{id}/usage'],
             ['POST', '/subscriptions/{id}/usage/rating'],
             ['POST', '/subscriptions/{id}/usage/reset'],
+            // Phase 34: the payment ledger.
+            ['POST', '/subscriptions/{id}/charges'],
+            ['POST', '/subscriptions/{id}/charges/1/actual'],
+            ['POST', '/subscriptions/{id}/charges/1/skip'],
+            ['POST', '/subscriptions/{id}/charges/1/undo'],
             ['POST', '/budgets'],
             ['POST', '/budgets/1'],
             ['POST', '/budgets/1/delete'],

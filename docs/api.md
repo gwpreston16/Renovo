@@ -235,6 +235,7 @@ The list arrives in the order shown.
 | `tag.manage` | | | ✓ | ✓ |
 | `budget.manage` | | ✓ | ✓ | ✓ |
 | `price.manage` | | ✓ | ✓ | ✓ |
+| `charge.manage` | | ✓ | ✓ | ✓ |
 | `split.manage` | | ✓ | ✓ | ✓ |
 | `usage.record` | | ✓ | ✓ | ✓ |
 | `subscription.bulk_edit` | | | ✓ | ✓ |
@@ -403,6 +404,7 @@ curl -H "Authorization: Bearer rnv_..." \
       "tag.manage",
       "budget.manage",
       "price.manage",
+      "charge.manage",
       "split.manage",
       "usage.record",
       "subscription.bulk_edit",

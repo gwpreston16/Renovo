@@ -130,6 +130,14 @@ final class ChargeService
         return $this->charges->findAllInScope($scope);
     }
 
+    /**
+     * The latest date a payment can be added for.
+     */
+    public function today(): DateTimeImmutable
+    {
+        return $this->clock->today();
+    }
+
     public function find(Scope $scope, int $id): ?Charge
     {
         return $this->charges->find($scope, $id);
@@ -160,12 +168,15 @@ final class ChargeService
      * The status goes back to charged: recording an amount says the charge
      * happened.
      *
-     * @param array<string, mixed> $input `actual`, `note`.
+     * @param array<string, mixed> $input          `actual`, `note`.
+     * @param int|null             $subscriptionId When the request names the
+     *                                             subscription, the charge must
+     *                                             be one of its own.
      * @throws ValidationException
      */
-    public function recordActual(Scope $scope, int $chargeId, array $input): Charge
+    public function recordActual(Scope $scope, int $chargeId, array $input, ?int $subscriptionId = null): Charge
     {
-        $charge = $this->writable($scope, $chargeId);
+        $charge = $this->writable($scope, $chargeId, $subscriptionId);
 
         $errors = [];
         $actual = $this->amount($this->str($input, 'actual'), $charge->expected->currency, 'actual', $errors);
@@ -187,9 +198,9 @@ final class ChargeService
      * @param array<string, mixed> $input `note`.
      * @throws ValidationException
      */
-    public function skip(Scope $scope, int $chargeId, array $input = []): Charge
+    public function skip(Scope $scope, int $chargeId, array $input = [], ?int $subscriptionId = null): Charge
     {
-        $charge = $this->writable($scope, $chargeId);
+        $charge = $this->writable($scope, $chargeId, $subscriptionId);
 
         $errors = [];
         $note = $this->note($input, $errors, $charge->note);
@@ -210,9 +221,9 @@ final class ChargeService
      *                     manual row and has gone.
      * @throws ValidationException
      */
-    public function undo(Scope $scope, int $chargeId): ?Charge
+    public function undo(Scope $scope, int $chargeId, ?int $subscriptionId = null): ?Charge
     {
-        $charge = $this->writable($scope, $chargeId);
+        $charge = $this->writable($scope, $chargeId, $subscriptionId);
 
         if ($charge->isManual()) {
             $this->charges->deleteManual($scope, $charge->id);
@@ -447,10 +458,15 @@ final class ChargeService
      * @throws ValidationException when the charge is absent or not this
      *         scope's to change.
      */
-    private function writable(Scope $scope, int $chargeId): Charge
+    private function writable(Scope $scope, int $chargeId, ?int $subscriptionId = null): Charge
     {
         $charge = $this->charges->find($scope, $chargeId);
-        if ($charge === null || !$scope->canWrite() || !$this->charges->isWritable($scope, $chargeId)) {
+        if (
+            $charge === null
+            || ($subscriptionId !== null && $charge->subscriptionId !== $subscriptionId)
+            || !$scope->canWrite()
+            || !$this->charges->isWritable($scope, $chargeId)
+        ) {
             throw new ValidationException(['charge' => 'error.charge.not_found']);
         }
 

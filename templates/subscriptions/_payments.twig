@@ -1,0 +1,186 @@
+{#
+    The payment ledger for one subscription, newest first: every billing date
+    that passed, what was due, what was really charged when a member said so,
+    and the invoice for it. `payments` is ChargeService::page(); `invoices`
+    maps a charge id to the attachments filed against it. The controls are
+    drawn only for a member who may change the row — the routes refuse
+    everybody else whether or not they are drawn.
+#}
+{% set may_manage = can(scope, 'charge.manage') and can_edit_row(scope, subscription) %}
+<section class="card payments" id="payments" aria-labelledby="payments-heading">
+    <h2 id="payments-heading">{{ t('payments.heading') }}</h2>
+    <p class="muted">{{ t('payments.note') }}</p>
+
+    {% if payments.charges is empty %}
+        <p class="muted empty">{{ t('payments.empty') }}</p>
+    {% else %}
+        <div class="table-scroll">
+            <table class="table payments-table">
+                <thead>
+                <tr>
+                    <th scope="col">{{ t('field.date') }}</th>
+                    <th scope="col" class="numeric">{{ t('field.amount') }}</th>
+                    <th scope="col">{{ t('payments.status') }}</th>
+                    <th scope="col">{{ t('payments.invoice') }}</th>
+                    <th scope="col">{{ t('payments.note_column') }}</th>
+                    {% if may_manage %}
+                        <th scope="col"><span class="visually-hidden">{{ t('field.actions') }}</span></th>
+                    {% endif %}
+                </tr>
+                </thead>
+                <tbody>
+                {% for charge in payments.charges %}
+                    <tr id="charge-{{ charge.id }}" class="{{ charge.isSkipped ? 'is-skipped' : '' }}">
+                        <td class="num">
+                            {{ charge.dueDate|local_date('d MMM y') }}
+                            {% if charge.isReconstructed %}
+                                <span class="hint">{{ t('payments.reconstructed') }}</span>
+                            {% elseif charge.isManual %}
+                                <span class="hint">{{ t('payments.added_by_hand') }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="numeric num">
+                            {% if charge.isSkipped %}
+                                <del class="payments-expected">{{ charge.expected.amountMinor|money(charge.expected.currency) }}</del>
+                            {% elseif charge.differsFromExpected %}
+                                <del class="payments-expected">{{ charge.expected.amountMinor|money(charge.expected.currency) }}</del>
+                                {{ charge.amount.amountMinor|money(charge.amount.currency) }}
+                            {% else %}
+                                {{ charge.amount.amountMinor|money(charge.amount.currency) }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if charge.isSkipped %}
+                                <span class="badge badge-warn">{{ t('charge.status.skipped') }}</span>
+                            {% elseif charge.actualMinor is not null %}
+                                <span class="badge badge-ok">{{ t('payments.recorded') }}</span>
+                            {% else %}
+                                <span class="badge">{{ t('charge.status.charged') }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% for invoice in invoices[charge.id]|default([]) %}
+                                <a href="/subscriptions/{{ subscription.id }}/attachments/{{ invoice.id }}">{{ invoice.originalFilename }}</a>{% if not loop.last %}<br>{% endif %}
+                            {% else %}
+                                <span class="muted">{{ t('common.none_symbol') }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% if charge.note %}{{ charge.note }}{% else %}<span class="muted">{{ t('common.none_symbol') }}</span>{% endif %}
+                            {% if charge.recordedByName and charge.isAdjusted %}
+                                <span class="hint">· {{ charge.recordedByName }}</span>
+                            {% endif %}
+                        </td>
+                        {% if may_manage %}
+                            <td>
+                                <details class="settings-disclosure payments-actions">
+                                    <summary class="button button-quiet">{{ t('payments.change') }}</summary>
+
+                                    <form method="post" class="stack"
+                                          action="/subscriptions/{{ subscription.id }}/charges/{{ charge.id }}/actual">
+                                        {{ csrf_field() }}
+                                        <div class="field">
+                                            <label for="actual-{{ charge.id }}">{{ t('payments.actual_amount') }}</label>
+                                            <input type="text" id="actual-{{ charge.id }}" name="actual" inputmode="decimal"
+                                                   class="num" required
+                                                   value="{{ charge.actual ? charge.actual.toDecimalString : '' }}"
+                                                   placeholder="{{ charge.expected.toDecimalString }}">
+                                        </div>
+                                        <div class="field">
+                                            <label for="actual-note-{{ charge.id }}">{{ t('subscriptions_money.note_optional') }}</label>
+                                            <input type="text" id="actual-note-{{ charge.id }}" name="note" maxlength="255"
+                                                   value="{{ charge.note }}">
+                                        </div>
+                                        <button type="submit" class="button">{{ t('payments.record_amount') }}</button>
+                                    </form>
+
+                                    <div class="form-actions">
+                                        {% if not charge.isSkipped %}
+                                            <form method="post" class="inline"
+                                                  action="/subscriptions/{{ subscription.id }}/charges/{{ charge.id }}/skip">
+                                                {{ csrf_field() }}
+                                                <button type="submit" class="button button-quiet">{{ t('payments.mark_skipped') }}</button>
+                                            </form>
+                                        {% endif %}
+                                        {% if charge.isAdjusted or charge.isManual %}
+                                            <form method="post" class="inline"
+                                                  action="/subscriptions/{{ subscription.id }}/charges/{{ charge.id }}/undo"
+                                                  {% if charge.isManual %}onsubmit="return confirm('{{ t('confirm.remove_payment')|e('js') }}')"{% endif %}>
+                                                {{ csrf_field() }}
+                                                <button type="submit" class="button button-quiet">
+                                                    {{ charge.isManual ? t('payments.remove') : t('payments.undo') }}
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+
+                                    {% if can(scope, 'attachment.manage') %}
+                                        <form method="post" action="/subscriptions/{{ subscription.id }}/attachments"
+                                              enctype="multipart/form-data" class="stack">
+                                            {{ csrf_field() }}
+                                            <input type="hidden" name="return_to" value="/subscriptions/{{ subscription.id }}/money">
+                                            <input type="hidden" name="charge_id" value="{{ charge.id }}">
+                                            <label for="invoice-{{ charge.id }}">{{ t('payments.attach_invoice') }}</label>
+                                            <input type="file" id="invoice-{{ charge.id }}" name="file" required
+                                                   accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,application/pdf,image/*">
+                                            <button type="submit" class="button">{{ t('action.upload') }}</button>
+                                        </form>
+                                    {% endif %}
+                                </details>
+                            </td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if payments.pages > 1 %}
+            <nav class="pager" aria-label="{{ t('payments.pages') }}">
+                {% for step in [{'page': payments.page - 1, 'label': t('action.previous'), 'show': payments.page > 1},
+                                {'page': payments.page + 1, 'label': t('action.next'), 'show': payments.page < payments.pages}] %}
+                    {% if step.show %}
+                        <a class="button button-quiet"
+                           href="/subscriptions/{{ subscription.id }}/money?payments_page={{ step.page }}#payments"
+                           hx-get="/subscriptions/{{ subscription.id }}/money?payments_page={{ step.page }}"
+                           hx-target="#payments" hx-select="#payments"
+                           hx-swap="outerHTML">{{ step.label }}</a>
+                    {% endif %}
+                    {% if loop.first %}
+                        <span class="muted">{{ t('subscriptions_list.pager', {
+                            'page': payments.page,
+                            'pages': payments.pages,
+                            'total': payments.total,
+                        }) }}</span>
+                    {% endif %}
+                {% endfor %}
+            </nav>
+        {% endif %}
+    {% endif %}
+
+    {% if may_manage %}
+        <details class="settings-disclosure">
+            <summary class="button button-outline">{{ icon('add') }}{{ t('payments.add') }}</summary>
+            <p class="hint">{{ t('payments.add_hint') }}</p>
+            <form method="post" action="/subscriptions/{{ subscription.id }}/charges" class="stack">
+                {{ csrf_field() }}
+                <div class="field-grid">
+                    <div class="field">
+                        <label for="payment-date">{{ t('field.date') }}</label>
+                        <input type="date" id="payment-date" name="date" required max="{{ today|date('Y-m-d') }}">
+                    </div>
+                    <div class="field">
+                        <label for="payment-amount">{{ t('payments.amount_in', {'currency': subscription.price.currency}) }}</label>
+                        <input type="text" id="payment-amount" name="amount" inputmode="decimal" class="num" required
+                               placeholder="{{ subscription.price.toDecimalString }}">
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="payment-note">{{ t('subscriptions_money.note_optional') }}</label>
+                    <input type="text" id="payment-note" name="note" maxlength="255">
+                </div>
+                <button type="submit" class="button">{{ t('payments.add_submit') }}</button>
+            </form>
+        </details>
+    {% endif %}
+</section>

@@ -109,6 +109,7 @@ final class AttachmentTest extends DatabaseTestCase
                 $clock,
                 new NullLogger(),
             ),
+            new \App\Repository\ChargeRepository($this->db),
         );
     }
 
@@ -147,6 +148,73 @@ final class AttachmentTest extends DatabaseTestCase
         self::assertNotNull($absolute);
         self::assertFileExists($absolute);
         self::assertStringStartsWith($this->directory, $absolute);
+    }
+
+    public function testAnInvoiceFiledAgainstAPaymentBelongsToItAndItsDate(): void
+    {
+        $charges = new \App\Repository\ChargeRepository($this->db);
+        $chargeId = $charges->record(
+            $this->ownerScope,
+            $this->subscriptionId,
+            $this->owner->id,
+            new DateTimeImmutable('2026-05-01'),
+            \App\Domain\Money::of(3500, 'GBP'),
+            \App\Domain\ChargeSource::CatchUp,
+        );
+
+        $id = $this->attachments->upload(
+            $this->ownerScope,
+            $this->owner,
+            $this->subscriptionId,
+            FakeUpload::pdf('May.pdf'),
+            '2026-01-01',
+            $chargeId,
+        );
+
+        $attachment = $this->attachments->find($this->ownerScope, $id);
+        self::assertSame($chargeId, $attachment?->chargeId);
+        // The payment's own date, whatever the form said.
+        self::assertSame('2026-05-01', $attachment->periodDate?->format('Y-m-d'));
+        $byCharge = $this->attachments->byCharge($this->ownerScope, $this->subscriptionId);
+        self::assertSame([$chargeId], array_keys($byCharge));
+    }
+
+    public function testAnInvoiceCannotBeFiledAgainstAnotherSubscriptionsPayment(): void
+    {
+        $subscriptions = new SubscriptionRepository($this->db);
+        $otherId = $subscriptions->create($this->ownerScope, [
+            'name' => 'Water',
+            'price_minor' => 2000,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-07-01',
+            'is_active' => true,
+        ], []);
+        $chargeId = (new \App\Repository\ChargeRepository($this->db))->record(
+            $this->ownerScope,
+            $otherId,
+            $this->owner->id,
+            new DateTimeImmutable('2026-05-01'),
+            \App\Domain\Money::of(2000, 'GBP'),
+            \App\Domain\ChargeSource::CatchUp,
+        );
+
+        try {
+            $this->attachments->upload(
+                $this->ownerScope,
+                $this->owner,
+                $this->subscriptionId,
+                FakeUpload::pdf('Wrong.pdf'),
+                null,
+                $chargeId,
+            );
+            self::fail('Filed an invoice against another subscription\'s payment.');
+        } catch (ValidationException $exception) {
+            self::assertArrayHasKey('charge_id', $exception->errors());
+        }
+
+        self::assertSame([], $this->filesUnder($this->directory));
     }
 
     public function testAFileThatIsNotWhatItClaimsIsRejected(): void

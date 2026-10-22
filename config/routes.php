@@ -57,6 +57,7 @@ use App\Controller\SettingsController;
 use App\Controller\SetupController;
 use App\Controller\StatsController;
 use App\Controller\SubscriptionController;
+use App\Controller\SubscriptionChargeController;
 use App\Controller\SubscriptionMoneyController;
 use App\Domain\Permission;
 // Imported by name: `App\Security\...` would resolve against the `Slim\App`
@@ -231,6 +232,26 @@ return static function (App $app): void {
             '/subscriptions/{id:[0-9]+}/price-changes',
             [SubscriptionMoneyController::class, 'schedulePriceChange'],
         )->add($requires(Permission::ManagePrices));
+
+        // Phase 34: the payment ledger. Recording, skipping, undoing and
+        // adding a charge are all writes to a row's money.
+        $group->post('/subscriptions/{id:[0-9]+}/charges', [SubscriptionChargeController::class, 'add'])
+            ->add($requires(Permission::ManageCharges));
+
+        $group->post(
+            '/subscriptions/{id:[0-9]+}/charges/{charge:[0-9]+}/actual',
+            [SubscriptionChargeController::class, 'recordActual'],
+        )->add($requires(Permission::ManageCharges));
+
+        $group->post(
+            '/subscriptions/{id:[0-9]+}/charges/{charge:[0-9]+}/skip',
+            [SubscriptionChargeController::class, 'skip'],
+        )->add($requires(Permission::ManageCharges));
+
+        $group->post(
+            '/subscriptions/{id:[0-9]+}/charges/{charge:[0-9]+}/undo',
+            [SubscriptionChargeController::class, 'undo'],
+        )->add($requires(Permission::ManageCharges));
 
         $group->post('/subscriptions/{id:[0-9]+}/split', [SubscriptionMoneyController::class, 'updateSplit'])
             ->add($requires(Permission::ManageSplits));

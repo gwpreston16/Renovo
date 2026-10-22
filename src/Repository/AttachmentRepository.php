@@ -43,7 +43,7 @@ final class AttachmentRepository extends AbstractScopedRepository
 
     protected function filterableColumns(): array
     {
-        return ['id', 'household_id', 'owner_user_id', 'subscription_id', 'period_date', 'created_at'];
+        return ['id', 'household_id', 'owner_user_id', 'subscription_id', 'charge_id', 'period_date', 'created_at'];
     }
 
     /**
@@ -87,9 +87,11 @@ final class AttachmentRepository extends AbstractScopedRepository
         string $mimeType,
         int $sizeBytes,
         int $uploadedByUserId,
+        ?int $chargeId = null,
     ): int {
         return $this->insertScoped($scope, [
             'subscription_id' => $subscriptionId,
+            'charge_id' => $chargeId,
             'owner_user_id' => $ownerUserId,
             'period_date' => $periodDate?->format('Y-m-d'),
             'original_filename' => $originalFilename,
@@ -127,6 +129,7 @@ final class AttachmentRepository extends AbstractScopedRepository
             sizeBytes: (int) $row['size_bytes'],
             uploadedByUserId: isset($row['uploaded_by_user_id']) ? (int) $row['uploaded_by_user_id'] : null,
             createdAt: new DateTimeImmutable((string) $row['created_at']),
+            chargeId: isset($row['charge_id']) ? (int) $row['charge_id'] : null,
         );
     }
 }

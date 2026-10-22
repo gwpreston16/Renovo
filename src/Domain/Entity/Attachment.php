@@ -28,6 +28,8 @@ final class Attachment
         public readonly int $sizeBytes,
         public readonly ?int $uploadedByUserId,
         public readonly DateTimeImmutable $createdAt,
+        // Phase 34: the payment this is the invoice for, when it is one.
+        public readonly ?int $chargeId = null,
     ) {
     }
 
