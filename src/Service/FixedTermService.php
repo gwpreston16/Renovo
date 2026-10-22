@@ -9,6 +9,7 @@ use App\Domain\ChargeSource;
 use App\Domain\Entity\Charge;
 use App\Domain\Entity\Subscription;
 use App\Domain\Money;
+use App\Domain\Rounding;
 use App\Persistence\Database;
 use App\Repository\ChargeRepository;
 use App\Repository\SubscriptionRepository;
@@ -88,7 +89,10 @@ final class FixedTermService
      * one), and otherwise the price. Dates still to come are counted at the
      * current price.
      *
-     * @return array{paid: int, total: int, paid_amount: Money, total_amount: Money}|null
+     * `width` is the paid share of the payments, for the Payments card's
+     * track.
+     *
+     * @return array{paid: int, total: int, paid_amount: Money, total_amount: Money, width: string}|null
      */
     public function progress(Scope $scope, Subscription $subscription): ?array
     {
@@ -146,6 +150,7 @@ final class FixedTermService
             'total' => $total,
             'paid_amount' => Money::of($paidMinor, $currency),
             'total_amount' => Money::of($totalMinor, $currency),
+            'width' => Rounding::divide($paid * 1000, $total) / 10 . '%',
         ];
     }
 

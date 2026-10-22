@@ -142,6 +142,25 @@ Found while starting it:
   and annual equivalents, the forecast and budget projections. Past spend
   read from recorded ledger actuals is exact and is not marked.
 
+Found while reviewing (merge review, 2026-10-22):
+
+- **A finished term is ended by `SubscriptionRepository::endTerm()`**, not
+  `setCancelled()`: the same write with the computed date, as a
+  compare-and-set on `cancelled_at` being empty, so two catch-ups at once end
+  it, and audit it, once.
+- **Use as estimate is offered from the first recorded bill**, averaging up
+  to the last three (assumption); the insight still waits for three.
+- **The budget window bounds each row by its own schedule** (K2): its charges
+  from the first on or after today up to that charge a period on by its own
+  anchor, and none after the same day a period on, clamped to its month. A
+  single cut-off date cannot count rows billed on the 28th to the 31st once
+  each near a month's end.
+- **The calendar feed stops at the last payment**, and drops a cancel-by
+  event that falls after it, like every other reader.
+- **The calendar screen is not marked "≈"** in this phase (assumption): the
+  brief lists totals, the forecast and budgets. Left as a follow-up for the
+  owner.
+
 ### Known issues taken
 
 Added *2026-10-22* at the owner's request, as rows in code this phase rewrites:

@@ -9,7 +9,8 @@ use Phinx\Migration\AbstractMigration;
  *
  * The row keeps running after it — the date marks when the terms lapse, which
  * is when a broadband or mobile plan quietly rolls onto a dearer rate. Indexed
- * because the cancel-by list and the alert scan ask about it.
+ * as `cancelled_at` is, for a list filter on the date; the cancel-by list and
+ * the alert scan read it from rows they have already loaded.
  *
  * On MySQL this is not transactional. Should it stop halfway, the manual
  * rollback is: drop the index `ix_subscriptions_contract_ends_on`, then the

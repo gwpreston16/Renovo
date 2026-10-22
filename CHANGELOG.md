@@ -18,15 +18,19 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 - **Fixed terms.** **Payments end on** sets a term's last charge. Nothing after
   it is forecast or totalled, the subscription ends itself the day after the
   final payment (cancelled that day, with an audit entry), and its cost page
-  shows **Payment N of M** and how much of the whole has been paid. *Phase 35.*
+  shows **Payment N of M** and how much of the whole has been paid. The
+  calendar feed stops at the last payment too. *Phase 35.*
 - **Bills that vary.** **The amount varies** makes the price an estimate: the
   row and every forward-looking total that includes it are shown "≈", the
-  Payments card offers the average of the last three recorded bills with **Use
-  as estimate**, the analytics say when the estimate looks low or high (more
-  than 15% out), and reminders say "about". *Phase 35.*
+  Payments card offers the average of up to the last three recorded bills
+  with **Use as estimate**, the analytics say when the estimate looks low or
+  high (more than 15% out), and reminders say "about". *Phase 35.*
 - `contract_ends_on`, `payments_end_on` and `amount_varies` in the API (the
   OpenAPI contract is now version 1.5.0), the import, the list's CSV and JSON
-  export and household backups; an absent key on a `PUT` keeps the value. *Phase 35.*
+  export (three new columns, before `notes`) and household backups; an absent
+  key on a `PUT` keeps the value. With a token that may write, the API's
+  catch-up now also ends a finished fixed term, so `status` and `cancelled_at`
+  can change without a cancel call. *Phase 35.*
 
 ### Fixed
 
@@ -36,7 +40,9 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 - Saving a subscription whose next payment sat on a shortened month's end moved
   its billing day for good (K11). *Phase 35.*
 - The importer turned impossible dates ("31/02/2026") into real ones and read
-  "12/25/2026" as a day in 2028; such a row is now refused (K48). *Phase 35.*
+  "12/25/2026" as a day in 2028; such a row is now refused (K48). The form and
+  the API refuse an impossible date such as "2026-02-31" too, where they
+  stored the day it rolled over to. *Phase 35.*
 - Pausing or cancelling through the edit form or the API, with billing dates
   passed that nobody had looked at, saved the stale payment date back over the
   moved one (K72); resuming while changing the cycle moved the date on by the

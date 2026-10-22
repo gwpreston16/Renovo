@@ -132,6 +132,55 @@ final class ContractTermsScreensTest extends DatabaseTestCase
         self::assertMatchesRegularExpression('~id="list-summary".*?≈ £68\\.99~s', $body);
     }
 
+    public function testForwardLookingTotalsIncludingAVaryingBillAreEstimates(): void
+    {
+        $this->create('Octopus Energy', 5800, [
+            'amount_varies' => true,
+            'next_payment_date' => (new DateTimeImmutable('+3 days'))->format('Y-m-d'),
+            'anchor_day' => (int) (new DateTimeImmutable('+3 days'))->format('j'),
+        ]);
+        $this->signIn($this->ownerId);
+        $this->request('POST', '/budgets', [
+            'name' => 'Monthly',
+            'period' => 'monthly',
+            'amount' => '500.00',
+            'currency' => 'GBP',
+        ]);
+
+        self::assertMatchesRegularExpression('~≈ £[0-9,.]+~', $this->page('/forecast', $this->ownerId));
+        self::assertStringContainsString('≈ £58.00', $this->page('/', $this->ownerId));
+        self::assertMatchesRegularExpression(
+            '~class="budget-projected num">≈ £~',
+            $this->page('/budgets', $this->ownerId),
+        );
+    }
+
+    public function testFixedRowsOnlyAreNotEstimatesAnywhere(): void
+    {
+        $this->create('Netflix', 1099, [
+            'next_payment_date' => (new DateTimeImmutable('+3 days'))->format('Y-m-d'),
+        ]);
+
+        foreach (['/', '/forecast', '/subscriptions'] as $path) {
+            self::assertStringNotContainsString('≈ £', $this->page($path, $this->ownerId), $path);
+        }
+    }
+
+    public function testUseAsEstimateWithNothingToUseChangesNothing(): void
+    {
+        $id = $this->create('Octopus Energy', 5000, ['amount_varies' => true]);
+        $this->signIn($this->ownerId);
+
+        $response = $this->request('POST', '/subscriptions/' . $id . '/estimate');
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame(5000, $this->subscriptions->find($this->owner, $id)?->price->amountMinor);
+        self::assertSame(0, (int) $this->db->fetchValue(
+            'SELECT COUNT(*) FROM subscription_price_history WHERE subscription_id = :id',
+            ['id' => $id],
+        ));
+    }
+
     public function testATotalOfFixedRowsOnlyIsNotMarked(): void
     {
         $this->create('Netflix', 1099);

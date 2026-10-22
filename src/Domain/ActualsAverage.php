@@ -20,6 +20,13 @@ final class ActualsAverage
     /** How many of the latest actuals are averaged. */
     public const COUNT = 3;
 
+    /**
+     * How many of the latest charges are read to find them: enough to step
+     * over a run of months nobody recorded or that were skipped, without
+     * reading a ledger years deep for three figures.
+     */
+    public const LOOK_BACK = 24;
+
     /** How far, in percent, the average may sit from the estimate before the insight speaks. */
     public const THRESHOLD_PERCENT = 15;
 

@@ -21,14 +21,13 @@
         {% set whole = term.total_amount.amountMinor|money(term.total_amount.currency) %}
         <div class="payments-term">
             <p>
-                <strong>{{ t('payments.term_count', {'paid': term.paid, 'total': term.total}) }}</strong>
+                <strong class="num">{{ t('payments.term_count', {'paid': term.paid, 'total': term.total}) }}</strong>
                 · {{ t('payments.term_amount', {'paid': paid, 'total': whole}) }}
                 · {{ t('payments.term_ends', {'date': subscription.paymentsEndOn|local_date('d MMM y')}) }}
             </p>
             <div class="budget-bar" role="img"
                  aria-label="{{ t('payments.term_count', {'paid': term.paid, 'total': term.total}) }}">
-                <span class="budget-bar-charged"
-                      style="width: {{ (term.total > 0 ? term.paid / term.total * 100 : 0)|round(1) }}%"></span>
+                <span class="budget-bar-charged" style="width: {{ term.width }}"></span>
             </div>
         </div>
     {% endif %}

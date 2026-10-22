@@ -82,6 +82,24 @@ final class CalendarFeedTest extends ApiTestCase
         self::assertStringContainsString('Streaming', $body);
     }
 
+    public function testAFixedTermsPaymentsStopAtItsLastPayment(): void
+    {
+        $this->createSubscription([
+            'name' => 'Phone finance',
+            'next_payment_date' => '2026-12-01',
+            'payments_end_on' => '2027-01-15',
+            'notice_period_amount' => 10,
+            'notice_period_unit' => 'days',
+        ]);
+
+        $body = $this->feed();
+
+        self::assertStringContainsString('DTSTART;VALUE=DATE:20261201', $body);
+        self::assertStringContainsString('DTSTART;VALUE=DATE:20270101', $body);
+        self::assertStringNotContainsString('DTSTART;VALUE=DATE:20270201', $body);
+        self::assertSame(2, substr_count($this->unfold($body), 'SUMMARY:Phone finance'));
+    }
+
     public function testATrialConversionAppears(): void
     {
         $this->createSubscription([

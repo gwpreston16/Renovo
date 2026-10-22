@@ -144,6 +144,32 @@ final class FixedTermTest extends DatabaseTestCase
         self::assertSame(107800 + 300 - 7700, $progress['paid_amount']->amountMinor);
     }
 
+    public function testTheBackfillOfAFinishedTermWritesNothingAfterItsLastPayment(): void
+    {
+        // Ended in October; its stored date was never moved past the end.
+        $id = $this->term('Phone', 3000, start: '2025-01-01', next: '2026-02-01', end: '2025-10-01');
+        $this->charges()->backfill($this->scope());
+
+        $dates = $this->ledgerDates($id);
+        self::assertCount(10, $dates);
+        self::assertSame('2025-10-01', $dates[0]);
+
+        $progress = $this->terms->progress($this->scope(), $this->find($id));
+        self::assertNotNull($progress);
+        self::assertSame(10, $progress['paid']);
+        self::assertSame(10, $progress['total']);
+    }
+
+    public function testAnEmptyLedgerDatesTheLastPaymentFromTheStart(): void
+    {
+        // Paused before its first billing date was ever written, and past
+        // its end by the time anybody looks — walked from the start.
+        $id = $this->term('Phone', 3000, start: '2025-06-15', next: '2025-09-15', end: '2025-08-20', active: false);
+
+        self::assertSame(1, $this->terms->endFinishedTerms($this->scope()));
+        self::assertSame('2025-08-16', $this->find($id)->cancelledAt?->format('Y-m-d'));
+    }
+
     public function testARowWithNoFixedTermHasNoProgress(): void
     {
         $id = $this->term('Netflix', 1099, start: '2024-12-01', next: '2026-02-01', end: null);

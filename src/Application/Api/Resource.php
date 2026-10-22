@@ -76,7 +76,8 @@ final class Resource
             'payments_end_on' => self::date($subscription->paymentsEndOn),
             'amount_varies' => $subscription->amountVaries,
             'visibility' => $subscription->visibility->value,
-            // Read-only: moved by the cancel and uncancel endpoints only.
+            // Read-only: moved by the cancel and uncancel endpoints, and by the
+            // catch-up when a fixed term's last payment has passed.
             'cancelled_at' => self::date($subscription->cancelledAt),
             'category_id' => $subscription->categoryId,
             'category_name' => $subscription->categoryName,

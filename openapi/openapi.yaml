@@ -111,9 +111,10 @@ paths:
         Returns only what the token's role and the instance's isolation mode
         allow — the same rows the same user would see in the web interface.
         With a token that may write, it first runs the catch-up: due price
-        changes take effect, ended trials convert and overdue payment dates
-        move on, recording each passed date as a payment. A read-only token
-        changes nothing.
+        changes take effect, ended trials convert, overdue payment dates
+        move on, recording each passed date as a payment, and a fixed term
+        whose last payment has passed is cancelled as of the day after it. A
+        read-only token changes nothing.
       parameters:
         - { name: q, in: query, schema: { type: string }, description: Search names and notes. }
         - { name: category, in: query, schema: { type: integer }, description: Category id. }
@@ -308,7 +309,9 @@ paths:
       description: |
         Clears `cancelled_at`. The subscription returns to **paused**, not
         active, so an accidental cancel corrected cannot silently restart
-        charges; resume it with a PUT setting `is_active` to true.
+        charges; resume it with a PUT setting `is_active` to true. A fixed
+        term the catch-up ended is ended again by the next catch-up while its
+        `payments_end_on` has passed: move or clear it in the same PUT.
       responses:
         "200":
           description: The subscription, now paused.
@@ -1399,8 +1402,8 @@ components:
           description: |
             The last charge of a fixed term: the last billing date on or
             before it is the final payment. Nothing is charged or forecast
-            after it, and the day after the final payment the subscription is
-            cancelled with `cancelled_at` that day. Recurring subscriptions
+            after it, and when the catch-up next runs after the final payment
+            the subscription is cancelled with `cancelled_at` the day after it. Recurring subscriptions
             only (ignored for a one-off or lifetime entry); it may not come
             before `start_date` or the next charge (`422`). An absent key keeps
             the current value; send null or an empty string to clear it.
@@ -1523,7 +1526,8 @@ components:
               nullable: true
               description: |
                 Read-only. The day it was cancelled. Set and cleared by the
-                cancel and uncancel endpoints only.
+                cancel and uncancel endpoints, and set by the catch-up to the
+                day after a fixed term's last payment.
             status:
               type: string
               enum: [active, trial, paused, cancelled]

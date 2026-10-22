@@ -134,8 +134,16 @@ final class CalendarFeedService
             ];
         }
 
+        // A deadline is for a charge still to come; after a fixed term's
+        // last payment there is none to give notice against.
         $deadline = $subscription->cancellationDeadline();
-        if ($deadline !== null && $deadline >= $today && $deadline <= $horizon) {
+        $charge = $subscription->nextChargeDate();
+        if (
+            $deadline !== null
+            && $deadline >= $today
+            && $deadline <= $horizon
+            && ($charge === null || $subscription->chargesOn($charge))
+        ) {
             $events[] = [
                 'uid' => $this->uid($subscription->id, 'cancel-by', $deadline),
                 'date' => $deadline,
@@ -189,7 +197,8 @@ final class CalendarFeedService
             }
         }
 
-        while ($date <= $horizon && count($dates) < self::MAX_OCCURRENCES) {
+        // A fixed term stops at its last payment (Phase 35).
+        while ($date <= $horizon && $subscription->chargesOn($date) && count($dates) < self::MAX_OCCURRENCES) {
             $dates[] = $date;
             $date = $cycle->advance(
                 $date,

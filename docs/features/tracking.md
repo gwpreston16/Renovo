@@ -135,7 +135,7 @@ row that uses none behaves exactly as before.
   every forward-looking figure that includes it — totals, forecast, budgets —
   are shown with "≈". A total of fixed rows only is not. Past spend read from
   amounts you recorded is exact. The Payments card shows each recorded bill
-  against the estimate, and the average of the last three with **Use as
+  against the estimate, and the average of up to the last three with **Use as
   estimate**, which records a price change like any other. When the last three
   bills average more than 15% from the estimate, the analytics say **An
   estimate looks low** (or high). A renewal reminder says "about £58".
@@ -234,7 +234,12 @@ preview calls valid is one that will be written.
   `1.234,56` are the same number and how many decimal places a currency has.
 - Dates: `YYYY-MM-DD` is tried first because it is unambiguous. `01/03/2026` is
   read **day-first**, so a file written the American way will import dates that
-  are wrong — which the preview shows you before you commit.
+  are wrong — which the preview shows you before you commit. A date that cannot
+  be a real day that way (`31/02/2026`) refuses the row rather than moving it
+  to another day, and one that can only be month-first (`12/25/2026`) is read
+  month-first.
+- The Terms columns — contract ends, payments end, amount varies — are matched
+  by those names.
 - Categories are created by name if they do not already exist; so are tags.
 
 Imported rows land in your household with the ordinary owner rules, exactly as if

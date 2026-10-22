@@ -346,7 +346,7 @@ final class SpendInsightService
             }
 
             $average = ActualsAverage::of(
-                $this->charges->findForSubscription($scope, $subscription->id),
+                $this->charges->findForSubscription($scope, $subscription->id, 1, ActualsAverage::LOOK_BACK),
                 $subscription->price,
             );
             if ($average === null || !$average->isOff()) {

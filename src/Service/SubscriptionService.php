@@ -678,7 +678,11 @@ final class SubscriptionService
             return [];
         }
 
-        return $existing->pausedDates($this->clock->today());
+        // A fixed term had no billing dates after its last payment to skip.
+        return array_values(array_filter(
+            $existing->pausedDates($this->clock->today()),
+            static fn (DateTimeImmutable $date): bool => $existing->chargesOn($date),
+        ));
     }
 
     /**

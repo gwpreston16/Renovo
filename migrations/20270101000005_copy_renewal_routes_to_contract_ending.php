@@ -14,7 +14,11 @@ use Phinx\Migration\AbstractMigration;
  * everywhere and needs nothing.
  *
  * Idempotent — a route that already exists is not copied twice, which the
- * unique index on (channel_id, alert_type) would refuse anyway.
+ * unique index on (channel_id, alert_type) would refuse anyway. One statement:
+ * on MySQL a failure leaves nothing to undo, and re-running is safe.
+ *
+ * Rolling back removes every `contract_ending` route, the copied ones and any
+ * a member made by hand since — the two cannot be told apart.
  */
 final class CopyRenewalRoutesToContractEnding extends AbstractMigration
 {

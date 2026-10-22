@@ -1534,7 +1534,6 @@ return [
     'insight.estimate_off.detail' =>
         '{name}’s last {count} bills averaged {average} against an estimate of {estimate}. Use the '
         . 'average as the estimate from its Payments card.',
-    'insight.estimate_off.headline' => 'An estimate looks off',
     'insight.estimate_off.headline_high' => 'An estimate looks high',
     'insight.estimate_off.headline_low' => 'An estimate looks low',
     'insight.out_of_contract.detail' =>

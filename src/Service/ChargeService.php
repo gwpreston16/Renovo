@@ -501,7 +501,7 @@ final class ChargeService
         }
 
         return ActualsAverage::of(
-            $this->charges->findForSubscription($scope, $subscription->id),
+            $this->charges->findForSubscription($scope, $subscription->id, 1, ActualsAverage::LOOK_BACK),
             $subscription->price,
         );
     }
@@ -531,7 +531,9 @@ final class ChargeService
             $subscription->id,
             $average->average,
             PriceChangeSource::Manual,
-            $scope->userId,
+            // The history row carries the subscription owner's id, as every
+            // other price change does — not whoever pressed the button.
+            $subscription->ownerUserId,
         );
 
         return $average->average;

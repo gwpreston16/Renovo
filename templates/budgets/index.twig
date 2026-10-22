@@ -132,7 +132,9 @@
                         <div class="budget-bar" role="img"
                              aria-label="{{ t('budgets.bar_label', {
                                  'charged': card.charged.amountMinor|money(card.charged.currency),
-                                 'projected': card.projected.amountMinor|money(card.projected.currency),
+                                 'projected': card.estimate
+                                     ? t('subscriptions_list.approximately', {'amount': projected})
+                                     : projected,
                                  'limit': limit,
                              }) }}">
                             <span class="budget-bar-projected" style="width: {{ card.projected_width }}"></span>

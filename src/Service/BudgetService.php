@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Domain\BillingCycle;
 use App\Domain\BudgetPeriod;
 use App\Domain\Currency;
 use App\Domain\Entity\Budget;
@@ -133,29 +134,53 @@ final class BudgetService
     }
 
     /**
-     * The charges inside a rolling window of `$months` from today: today
-     * included, the same day `$months` on not (K2). A monthly charge due
-     * today is counted once, not again a month later, and the window's end
-     * is clamped to its month — 31 January plus a month is 28 February, not
-     * 3 March.
+     * The charges inside a rolling window of `$months` from today (K2).
      *
-     * @param list<WindowCharge> $charges
+     * Two bounds, because no single date counts every row once near a month
+     * end. Each row is bounded by its own schedule: its charges from the
+     * first one on or after today up to, not including, that charge
+     * `$months` on by the row's own anchor — so a monthly charge due today
+     * is not counted again a month later, and one billed on the 31st is
+     * counted once on 31 January whatever February does. And every charge
+     * must fall on or before the same day `$months` on, clamped to its month
+     * (31 January plus a month is 28 February, not 3 March), so a yearly
+     * renewal in July is not in a monthly budget.
+     *
+     * @param list<WindowCharge> $charges Oldest first, as the forecast lists them.
      * @return list<WindowCharge>
      */
     private function withinWindow(array $charges, int $months): array
     {
         $today = $this->clock->today()->setTime(0, 0);
         $month = $today->modify('first day of this month')->modify(sprintf('+%d months', $months));
-        $end = $month->setDate(
+        $last = $month->setDate(
             (int) $month->format('Y'),
             (int) $month->format('n'),
             min((int) $today->format('j'), (int) $month->format('t')),
         );
 
-        return array_values(array_filter(
-            $charges,
-            static fn (array $charge): bool => $charge['date']->setTime(0, 0) < $end,
-        ));
+        $rowEnds = [];
+        $kept = [];
+        foreach ($charges as $charge) {
+            $date = $charge['date']->setTime(0, 0);
+            if ($date < $today || $date > $last) {
+                continue;
+            }
+
+            $subscription = $charge['subscription'];
+            $rowEnds[$subscription->id] ??= BillingCycle::Monthly->advance(
+                $date,
+                null,
+                $subscription->anchorDay ?? (int) $date->format('j'),
+                $months,
+            );
+
+            if ($date < $rowEnds[$subscription->id]) {
+                $kept[] = $charge;
+            }
+        }
+
+        return $kept;
     }
 
     /**

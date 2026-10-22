@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration;
 
 use App\Domain\ChargeSource;
+use App\Domain\ChargeStatus;
 use App\Domain\IsolationMode;
 use App\Domain\Money;
 use App\Domain\PriceChangeSource;
@@ -139,6 +140,61 @@ final class VaryingBillTest extends DatabaseTestCase
                 self::assertSame(['estimate'], $exception->fields());
             }
         }
+    }
+
+    public function testTheNewEstimateBelongsToTheRowsOwnerWhoeverSetsIt(): void
+    {
+        $id = $this->bill('Octopus Energy', 5000, ['2026-03-01' => 6000, '2026-04-01' => 6600, '2026-05-01' => 6300]);
+        $carol = (new UserRepository($this->db))->create('carol@example.test', 'Carol', 'hash');
+        (new MembershipRepository($this->db))->create($this->household, $carol, Role::Editor);
+
+        $this->charges->useAverageAsEstimate(
+            Scope::forMember($carol, false, $this->household, Role::Editor, IsolationMode::Shared),
+            $id,
+        );
+
+        $row = $this->db->fetchOne(
+            'SELECT owner_user_id, created_by_user_id FROM subscription_price_history'
+            . ' WHERE subscription_id = :id ORDER BY id DESC',
+            ['id' => $id],
+        );
+        self::assertNotNull($row);
+        self::assertSame($this->alice, (int) $row['owner_user_id']);
+        self::assertSame($carol, (int) $row['created_by_user_id']);
+    }
+
+    public function testOnlyRecordedBillsAreAveraged(): void
+    {
+        // Newest first: a skipped month and one nobody recorded sit in front
+        // of the three recorded bills, and neither is averaged in.
+        $id = $this->bill('Octopus Energy', 5000, [
+            '2026-02-01' => 6000,
+            '2026-03-01' => 6600,
+            '2026-04-01' => 6300,
+            '2026-05-01' => null,
+        ]);
+        $this->chargeRows->record(
+            $this->scope(),
+            $id,
+            $this->alice,
+            new DateTimeImmutable('2026-06-01'),
+            Money::of(5000, 'GBP'),
+            ChargeSource::CatchUp,
+            status: ChargeStatus::Skipped,
+        );
+
+        $average = $this->charges->averageOfActuals($this->scope(), $this->find($id));
+
+        self::assertNotNull($average);
+        self::assertSame(3, $average->count);
+        self::assertSame(6300, $average->average->amountMinor);
+    }
+
+    public function testExactlyFifteenPercentIsNotOff(): void
+    {
+        $id = $this->bill('Edge', 5000, ['2026-03-01' => 5750, '2026-04-01' => 5750, '2026-05-01' => 5750]);
+
+        self::assertFalse($this->charges->averageOfActuals($this->scope(), $this->find($id))?->isOff());
     }
 
     public function testAContributorCannotChangeSomebodyElsesEstimate(): void

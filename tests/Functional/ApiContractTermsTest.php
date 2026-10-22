@@ -69,6 +69,53 @@ final class ApiContractTermsTest extends ApiTestCase
         self::assertArrayHasKey('payments_end_on', $this->decode($response)['error']['errors']);
     }
 
+    /**
+     * @return array<string, array{array<string, string>, string}>
+     */
+    public static function refusedTerms(): array
+    {
+        return [
+            'impossible contract end' => [['contract_ends_on' => '2026-02-31'], 'contract_ends_on'],
+            'impossible last payment' => [['payments_end_on' => '2027-02-31'], 'payments_end_on'],
+            'last payment before the start' => [
+                ['start_date' => '2026-11-15', 'payments_end_on' => '2026-11-01'],
+                'payments_end_on',
+            ],
+        ];
+    }
+
+    /**
+     * @param array<string, string> $fields
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('refusedTerms')]
+    public function testABadTermIsRefusedAgainstItsField(array $fields, string $field): void
+    {
+        $response = $this->api('POST', '/api/v1/subscriptions', $this->ownerToken, $fields + [
+            'name' => 'Phone',
+            'price_minor' => 3000,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-12-01',
+        ]);
+
+        self::assertSame(422, $response->getStatusCode());
+        self::assertArrayHasKey($field, $this->decode($response)['error']['errors']);
+    }
+
+    public function testAOneOffCarriesNoFixedTerm(): void
+    {
+        $id = $this->createSubscription([
+            'subscription_type' => 'one_off',
+            'billing_cycle' => null,
+            'start_date' => '2026-10-01',
+            'next_payment_date' => null,
+            'payments_end_on' => '2027-01-01',
+        ]);
+
+        self::assertNull($this->show($id)['payments_end_on']);
+    }
+
     public function testAViewerCannotSetTheTerms(): void
     {
         $id = $this->createSubscription();

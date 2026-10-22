@@ -323,8 +323,10 @@ it is a `404` exactly like a row that does not exist.
 
 **Paused and cancelled are different states.** `is_active: false` with no
 `cancelled_at` is *paused*: it may resume. A *cancelled* subscription is
-finished; `cancelled_at` is moved only by the cancel and uncancel endpoints,
-and while it is set `is_active` stays false whatever a `PUT` sends.
+finished; `cancelled_at` is moved by the cancel and uncancel endpoints, and by
+the catch-up when a fixed term's last payment has passed (`payments_end_on`):
+it is set to the day after that payment, which may be in the past. While it is
+set `is_active` stays false whatever a `PUT` sends.
 
 ---
 
@@ -438,10 +440,11 @@ interface.
 
 With a token that may write, the request first runs the catch-up the web pages
 run, in its order: scheduled prices that have reached their date take effect,
-ended free trials convert, and overdue payment dates move on, each passed
-billing date recorded as a payment. So a `price_minor`, a trial's status or a
-`next_payment_date` can differ from the last response without anybody editing
-the row. A read-only token changes nothing.
+ended free trials convert, overdue payment dates move on, each passed
+billing date recorded as a payment, and a fixed term whose last payment has
+passed is cancelled as of the day after it. So a `price_minor`, a trial's or a
+fixed term's status, or a `next_payment_date` can differ from the last response
+without anybody editing the row. A read-only token changes nothing.
 
 | Parameter | Type | Notes |
 | --- | --- | --- |
@@ -534,7 +537,10 @@ Responses: `200`, `401`, `403`, `404`.
 Undo a cancellation. The subscription returns to **paused**, not active, so a
 mistake corrected cannot silently restart charges; resume it by `PUT`ting it
 back with `is_active: true`, which moves a payment date left in the past on to
-the first billing date from today. Responses: `200`, `401`, `403`, `404`.
+the first billing date from today. A fixed term the catch-up ended is ended
+again by the next catch-up while its `payments_end_on` has passed: move or
+clear that date in the same `PUT` to bring it back. Responses: `200`, `401`,
+`403`, `404`.
 
 ---
 
@@ -807,7 +813,7 @@ The writable half of a subscription. Required: `name`, `price_minor`,
 | `is_active` | boolean | Default `true`. `false` pauses it. Stays `false` while the subscription is cancelled. Resuming skips the paused dates: a past `next_payment_date` moves on to the first billing date from today, so the response may not echo the date sent, and each date it steps over is recorded as a `skipped` charge with `source` `paused` — except one that already has a payment added by hand, which becomes that date's `paused` charge, keeping its status. Billed for one of those months after all? `PATCH` that charge's `actual_minor`; a `POST` on its date is a `422`. |
 | `plan` | string, null | Max 60 — "Standard", "Family". An absent key keeps the current value. |
 | `contract_ends_on` | date, null | When its contract ends. It keeps running after; the date is announced at the lead times (`contract_ending` alerts) and listed beside cancel-by deadlines. An absent key keeps the current value. |
-| `payments_end_on` | date, null | The last charge of a fixed term: the last billing date on or before it is the final payment. Nothing is charged or forecast after it, and the day after the final payment the row is cancelled with `cancelled_at` that day. Recurring only; not before `start_date` or the next charge (`422`). An absent key keeps the current value. |
+| `payments_end_on` | date, null | The last charge of a fixed term: the last billing date on or before it is the final payment. Nothing is charged or forecast after it, and when the catch-up next runs after the final payment the row is cancelled with `cancelled_at` the day after it. Recurring only; not before `start_date` or the next charge (`422`). An absent key keeps the current value. |
 | `amount_varies` | boolean | The price is an estimate: the amount varies bill to bill. An absent key keeps the current value; `false` on a new row. |
 | `visibility` | enum | `household` (default) or `payer`. `payer` keeps it to its owner: hidden from every other member in either isolation mode, and out of their totals. Only the owner may set it, only when `payer_user_id` is the owner or null, and never on a split subscription. An absent key keeps the current setting. |
 | `category_id` | integer, null | |
@@ -823,7 +829,7 @@ Everything in `SubscriptionInput`, plus these read-only fields:
 | Field | Type | Notes |
 | --- | --- | --- |
 | `id` | integer | |
-| `anchor_day` | integer, null | The day of the month billing returns to after a short month. `31` on a monthly subscription is the last day of every month, as the web form's "On the last day of the month" sets it; a PUT that leaves the payment date on a month end keeps it. |
+| `anchor_day` | integer, null | The day of the month billing returns to after a short month. `31` on a monthly subscription is the last day of every month, as the web form's "On the last day of the month" sets it; a PUT that leaves the payment date on a month end keeps it. A PUT that leaves the date on the day a later anchor clamps to in a shorter month — the 30th's 28 February — keeps that anchor, unless the cycle changes. |
 | `category_name` | string, null | |
 | `payment_method_name` | string, null | |
 | `split_mode` | string | Shared-cost splits are read here, written in the web interface. |
@@ -838,7 +844,7 @@ Everything in `SubscriptionInput`, plus these read-only fields:
 | `price_is_promotional` | boolean | The current price is an introductory or promotional one. Entered in the web interface, which writes the offer's end as a scheduled price change; a PUT leaves it alone. |
 | `promo_ends_on` | date, null | The day the offer ends and the next price takes effect. Null when the price is not promotional or its end is not known. |
 | `promo_then_price_minor` | integer, null | What it costs from `promo_ends_on`, in minor units of its currency. Null with `promo_ends_on`. |
-| `cancelled_at` | date, null | The day it was cancelled. Moved by the cancel and uncancel endpoints only. |
+| `cancelled_at` | date, null | The day it was cancelled. Moved by the cancel and uncancel endpoints, and set by the catch-up to the day after a fixed term's last payment. |
 | `status` | enum | `active`, `trial`, `paused`, `cancelled` — derived in the order cancelled, paused, trial, active. |
 | `created_at` | date-time | |
 | `updated_at` | date-time | |

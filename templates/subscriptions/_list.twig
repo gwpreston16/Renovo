@@ -335,6 +335,7 @@
         {# A bill whose amount varies carries an estimate, and says so. #}
         <span class="num"{% if subscription.amountVaries %} title="{{ t('subscriptions_list.estimate') }}"{% endif %}>
             {{- subscription.amountVaries ? t('subscriptions_list.approximately', {'amount': amount}) : amount -}}
+            {%- if subscription.amountVaries %}<span class="visually-hidden"> {{ t('subscriptions_list.estimate') }}</span>{% endif -%}
         </span>
         <span class="muted">
             {%- if subscription.billingCycle -%}
