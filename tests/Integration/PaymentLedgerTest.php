@@ -210,7 +210,16 @@ final class PaymentLedgerTest extends DatabaseTestCase
         $this->subscriptions->setActive($this->alice, $id, true);
         $this->catchUp->run($this->alice);
 
-        self::assertSame([], $this->charges->forSubscription($this->alice, $id));
+        // Each month the pause covered is on the record, as not billed.
+        self::assertSame(
+            [
+                ['2026-09-15', 'skipped', 0],
+                ['2026-08-15', 'skipped', 0],
+                ['2026-07-15', 'skipped', 0],
+                ['2026-06-15', 'skipped', 0],
+            ],
+            $this->statuses($id),
+        );
         self::assertSame('2026-10-15', $this->nextPayment($id));
     }
 
@@ -226,7 +235,7 @@ final class PaymentLedgerTest extends DatabaseTestCase
         ]);
         $this->catchUp->run($this->alice);
 
-        self::assertSame([], $this->charges->forSubscription($this->alice, $id));
+        self::assertSame([['2026-07-15', 'skipped', 0], ['2026-06-15', 'skipped', 0]], $this->statuses($id));
         self::assertSame('2026-08-15', $this->nextPayment($id));
     }
 
@@ -243,6 +252,7 @@ final class PaymentLedgerTest extends DatabaseTestCase
         );
 
         self::assertSame('2026-08-15', $this->nextPayment($id));
+        self::assertSame([['2026-07-15', 'skipped', 0], ['2026-06-15', 'skipped', 0]], $this->statuses($id));
     }
 
     public function testAOneOffGetsOneRowOnItsDate(): void
@@ -564,7 +574,7 @@ final class PaymentLedgerTest extends DatabaseTestCase
         self::assertSame([$manual->id, '2026-05-15'], $this->invoiceOf($id));
     }
 
-    public function testUndoingAPaymentAddedByHandOnAPausedMonthRemovesIt(): void
+    public function testAMonthBilledDuringAPauseIsRecordedOnItsSkippedRow(): void
     {
         $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
         $id = $this->create('Energy', '58.00', '2026-03-15', '2026-01-15');
@@ -572,15 +582,46 @@ final class PaymentLedgerTest extends DatabaseTestCase
         $this->clock->advanceTo(new DateTimeImmutable('2026-05-20 08:00:00'));
         $this->subscriptions->setActive($this->alice, $id, true);
         $this->catchUp->run($this->alice);
-        self::assertSame([], $this->dueAndExpected($id));
+        $april = $this->charges->forSubscription($this->alice, $id)[1];
+        self::assertSame(
+            ['2026-04-15', true, ChargeSource::Paused],
+            [$april->dueDate->format('Y-m-d'), $april->isSkipped(), $april->source],
+        );
 
-        $manual = $this->charges->addManual($this->alice, $id, ['date' => '2026-04-15', 'amount' => '58.00']);
-        // The catch-up does not bill a paused month, so it does not claim it.
-        $this->catchUp->run($this->alice);
-        self::assertSame(ChargeSource::Manual, $this->charges->find($this->alice, $manual->id)?->source);
+        // The month has its row, so a second payment is refused; the amount
+        // is recorded on the row, and Undo puts it back as not billed.
+        try {
+            $this->charges->addManual($this->alice, $id, ['date' => '2026-04-15', 'amount' => '58.00']);
+            self::fail('Added a second payment on a paused month.');
+        } catch (ValidationException $exception) {
+            self::assertSame('error.charge.date_taken', $exception->errors()['date']->key ?? null);
+        }
+        self::assertSame(5800, $this->charges->recordActual($this->alice, $april->id, ['actual' => '58.00'])
+            ->amount()->amountMinor);
+        self::assertTrue($this->charges->undo($this->alice, $april->id)?->isSkipped() ?? false);
+    }
 
-        self::assertNull($this->charges->undo($this->alice, $manual->id));
-        self::assertSame([], $this->dueAndExpected($id));
+    public function testBackfillAfterAResumeLeavesThePausedMonthsUnbilled(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
+        $id = $this->create('Energy', '58.00', '2026-03-15', '2026-01-15');
+        $this->subscriptions->setActive($this->alice, $id, false);
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-20 08:00:00'));
+        $this->subscriptions->setActive($this->alice, $id, true);
+
+        $this->container->get(LedgerBackfillRunner::class)->run();
+
+        // Before the pause, rebuilt; during it, still not billed.
+        self::assertSame(
+            [
+                ['2026-05-15', 'skipped', 0],
+                ['2026-04-15', 'skipped', 0],
+                ['2026-03-15', 'skipped', 0],
+                ['2026-02-15', 'charged', 5800],
+                ['2026-01-15', 'charged', 5800],
+            ],
+            $this->statuses($id),
+        );
     }
 
     public function testUndoingAPaymentAddedByHandBeforeTheLedgerBeganLeavesTheReconstruction(): void
@@ -1841,6 +1882,21 @@ final class PaymentLedgerTest extends DatabaseTestCase
 
         $march = $calendar->month($this->alice, new DateTimeImmutable('2026-03-01'), \App\Domain\WeekStart::Monday);
         self::assertNull($march['previous']);
+    }
+
+    /**
+     * @return list<array{string, string, int}> Newest first.
+     */
+    private function statuses(int $subscriptionId): array
+    {
+        return array_map(
+            static fn (Charge $charge): array => [
+                $charge->dueDate->format('Y-m-d'),
+                $charge->status->value,
+                $charge->amount()->amountMinor,
+            ],
+            $this->charges->forSubscription($this->alice, $subscriptionId),
+        );
     }
 
     /**

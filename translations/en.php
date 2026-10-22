@@ -460,6 +460,7 @@ return [
     'charge.source.manual' => 'Added by hand',
     'charge.source.reconstructed' => 'Reconstructed',
     'charge.source.one_off' => 'The entry’s own charge',
+    'charge.source.paused' => 'Paused',
 
     'payments.heading' => 'Payments',
     'payments.note' => 'One row for each billing date that has passed, at the price due that day. Record what was really charged, or mark a charge that did not happen.',
@@ -468,6 +469,7 @@ return [
     'payments.invoice' => 'Invoice',
     'payments.note_column' => 'Note',
     'payments.reconstructed' => 'reconstructed',
+    'payments.paused' => 'paused',
     'payments.added_by_hand' => 'added by hand',
     'payments.recorded' => 'Recorded',
     'payments.expected' => 'Expected',

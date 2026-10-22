@@ -102,6 +102,48 @@ final class ChargeService
     }
 
     /**
+     * Record the billing dates a pause stepped over as skipped: nothing was
+     * billed, and the ledger says so rather than leaving them empty — which
+     * `ledger:backfill` would otherwise fill with the reconstruction's
+     * charges. A date that already has a charge (one added by hand for a
+     * month that was in fact billed) keeps it. Called in the same transaction
+     * as the resume moves the payment date.
+     *
+     * @param list<DateTimeImmutable> $dates From `Subscription::pausedDates()`.
+     * @return int How many rows were written.
+     */
+    public function recordPaused(Scope $scope, Subscription $subscription, array $dates): int
+    {
+        if ($dates === []) {
+            return 0;
+        }
+
+        $existing = $this->charges->existingDates($scope, $subscription->id);
+        $history = $this->priceHistory->historyFor($scope, $subscription->id);
+        $written = 0;
+
+        foreach ($dates as $date) {
+            if (isset($existing[$date->format('Y-m-d')])) {
+                continue;
+            }
+
+            $this->charges->record(
+                $scope,
+                $subscription->id,
+                $subscription->ownerUserId,
+                $date,
+                ChargeSchedule::priceAsAt($history, $date) ?? $subscription->price,
+                ChargeSource::Paused,
+                now: $this->clock->now(),
+                status: ChargeStatus::Skipped,
+            );
+            $written++;
+        }
+
+        return $written;
+    }
+
+    /**
      * Write a one-off or lifetime entry's single charge, once.
      *
      * One-offs have no payment date to compare-and-set, so two catch-ups at
@@ -363,7 +405,7 @@ final class ChargeService
             return null;
         }
 
-        $this->charges->adjust($scope, $charge->id, null, ChargeStatus::Charged, null);
+        $this->charges->adjust($scope, $charge->id, null, $charge->writtenStatus(), null);
 
         return $this->reread($scope, $charge->id);
     }
@@ -643,7 +685,9 @@ final class ChargeService
         }
 
         foreach ($existing as $date => $source) {
-            if ($source === ChargeSource::CatchUp) {
+            // The catch-up's rows and a resume's paused months are the ledger's
+            // own record; the backfill stops before the first of them.
+            if ($source === ChargeSource::CatchUp || $source === ChargeSource::Paused) {
                 $stop = min($stop, new DateTimeImmutable($date));
             }
         }

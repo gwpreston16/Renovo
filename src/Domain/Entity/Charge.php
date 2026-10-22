@@ -76,11 +76,26 @@ final class Charge
 
     /**
      * True when a member has changed it from what the ledger wrote: an actual
-     * recorded or the charge skipped. What "Undo" puts back.
+     * recorded or the status changed — skipped, or a paused month marked as
+     * billed. What "Undo" puts back.
      */
     public function isAdjusted(): bool
     {
-        return $this->actualMinor !== null || $this->status === ChargeStatus::Skipped;
+        return $this->actualMinor !== null || $this->status !== $this->writtenStatus();
+    }
+
+    /**
+     * The status the ledger wrote it with, which Undo restores: a paused
+     * month was not billed; every other charge was.
+     */
+    public function writtenStatus(): ChargeStatus
+    {
+        return $this->isPaused() ? ChargeStatus::Skipped : ChargeStatus::Charged;
+    }
+
+    public function isPaused(): bool
+    {
+        return $this->source === ChargeSource::Paused;
     }
 
     public function isManual(): bool

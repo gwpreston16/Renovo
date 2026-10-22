@@ -37,7 +37,7 @@ ROADMAP's "Not planned" entry stands.
 | `expected_minor`, `currency` | The price in force on `due_date` (`priceOn()`), at the time it was written |
 | `actual_minor` | Nullable. What was really charged, when a member records it |
 | `status` | `charged` (default), `skipped` (did not happen — waived, missed, refunded in full) |
-| `source` | `catch_up`, `manual`, `reconstructed`, `one_off` (added while building: a one-off's own charge) |
+| `source` | `catch_up`, `manual`, `reconstructed`, `one_off` (added while building: a one-off's own charge), `paused` (a date a resume stepped over) |
 | `note`, `recorded_by_user_id`, timestamps | As price history |
 
 Unique on (`subscription_id`, `due_date`). The **amount** of a charge is
@@ -155,6 +155,11 @@ Found while starting it:
   of the pause and write a `charged` row for each. Resuming now moves the date
   forward to the first billing date on or after today, in the same
   transaction, and writes no rows; a member can still add a payment by hand.
+  *Revised 2026-10-22* (found while reviewing): the dates a resume steps over
+  are written `skipped`, with their own source, `paused`. Left empty,
+  `ledger:backfill` filled them with the reconstruction's charges. A member
+  billed during the pause records the amount on that row; Undo puts it back
+  as skipped.
 - **`ledger:backfill` stops before the current `next_payment_date`.**
   *Confirmed 2026-10-22.* Per subscription it writes the reconstruction's
   charges from `start_date` up to, not including, `next_payment_date` (and

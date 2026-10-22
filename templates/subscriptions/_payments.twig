@@ -39,6 +39,8 @@
                                 <span class="hint">{{ t('payments.reconstructed') }}</span>
                             {% elseif charge.isManual %}
                                 <span class="hint">{{ t('payments.added_by_hand') }}</span>
+                            {% elseif charge.isPaused %}
+                                <span class="hint">{{ t('payments.paused') }}</span>
                             {% endif %}
                             {% if may_manage %}
                                 <details class="settings-disclosure payments-actions">

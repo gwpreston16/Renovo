@@ -441,6 +441,7 @@ final class ChargeRepository extends AbstractScopedRepository
         ?int $actualMinor = null,
         ?string $note = null,
         ?DateTimeImmutable $now = null,
+        ChargeStatus $status = ChargeStatus::Charged,
     ): int {
         $stamp = ($now ?? new DateTimeImmutable())->format('Y-m-d H:i:s');
 
@@ -451,7 +452,7 @@ final class ChargeRepository extends AbstractScopedRepository
             'expected_minor' => $expected->amountMinor,
             'currency' => $expected->currency,
             'actual_minor' => $actualMinor,
-            'status' => ChargeStatus::Charged->value,
+            'status' => $status->value,
             'source' => $source->value,
             'note' => $note,
             'recorded_by_user_id' => $source === ChargeSource::Manual ? $scope->userId : null,

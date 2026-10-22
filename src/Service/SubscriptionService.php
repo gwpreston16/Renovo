@@ -128,9 +128,11 @@ final class SubscriptionService
             $this->settlePassedDates($scope, $existing);
         }
 
+        $paused = [];
         if ($existing !== null && !$existing->isActive && $data['is_active'] === true) {
             // Resumed through the edit form or the API: the dates the pause
             // covered are skipped, as `setActive()` skips them.
+            $paused = $this->pausedDates($existing, $data);
             $data['next_payment_date'] = $this->resumedDate($existing, $data);
         }
 
@@ -148,8 +150,12 @@ final class SubscriptionService
             $price,
             $offer,
             $wasOnOffer,
+            $paused,
         ): void {
             $this->subscriptions->update($scope, $id, $data, $tagIds);
+            if ($existing !== null) {
+                $this->charges->recordPaused($scope, $existing, $paused);
+            }
 
             if ($existing !== null && is_string($data['start_date'] ?? null)) {
                 $start = DateTimeImmutable::createFromFormat('!Y-m-d', $data['start_date']);
@@ -408,17 +414,25 @@ final class SubscriptionService
 
         // Resuming skips the dates the pause covered. Nothing was billed while
         // it was paused, so the payment date moves on to the first billing
-        // date that is today or later, in the same write, and the catch-up
-        // finds no passed dates to record as charges. A member who was in
-        // fact billed during the pause adds those payments by hand.
+        // date that is today or later, in the same transaction, the dates it
+        // steps over are recorded as skipped, and the catch-up finds no passed
+        // dates to record as charges. A member who was in fact billed during
+        // the pause records the amount on that month's row.
+        $paused = [];
         if ($active && $subscription !== null && !$subscription->isActive) {
             $resumed = $subscription->resumedPaymentDate($this->clock->today());
             if ($resumed !== null) {
                 $data['next_payment_date'] = $resumed->format('Y-m-d');
+                $paused = $subscription->pausedDates($this->clock->today());
             }
         }
 
-        $this->subscriptions->update($scope, $id, $data, $this->currentTagIds($scope, $id));
+        $this->db->transactional(function () use ($scope, $id, $data, $subscription, $paused): void {
+            $this->subscriptions->update($scope, $id, $data, $this->currentTagIds($scope, $id));
+            if ($subscription !== null) {
+                $this->charges->recordPaused($scope, $subscription, $paused);
+            }
+        });
     }
 
     /**
@@ -596,6 +610,17 @@ final class SubscriptionService
     }
 
     /**
+     * Record the billing dates a resume steps over as skipped — for a bulk
+     * resume, which moves each row's date itself.
+     *
+     * @param list<DateTimeImmutable> $dates
+     */
+    public function recordPaused(Scope $scope, Subscription $subscription, array $dates): int
+    {
+        return $this->charges->recordPaused($scope, $subscription, $dates);
+    }
+
+    /**
      * The payment date a resumed row is saved with: the submitted one, moved
      * past the pause when it is behind today.
      *
@@ -604,16 +629,37 @@ final class SubscriptionService
     private function resumedDate(Subscription $existing, array $data): ?string
     {
         $submitted = is_string($data['next_payment_date'] ?? null) ? $data['next_payment_date'] : null;
-        if ($submitted === null) {
-            return null;
-        }
-
-        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $submitted);
-        if ($date === false) {
+        $date = $this->submittedDate($data);
+        if ($date === null) {
             return $submitted;
         }
 
         return $existing->resumedPaymentDate($this->clock->today(), $date)?->format('Y-m-d') ?? $submitted;
+    }
+
+    /**
+     * The billing dates a resume through the form steps over, from the
+     * submitted payment date.
+     *
+     * @param array<string, mixed> $data
+     * @return list<DateTimeImmutable>
+     */
+    private function pausedDates(Subscription $existing, array $data): array
+    {
+        $date = $this->submittedDate($data);
+
+        return $date === null ? [] : $existing->pausedDates($this->clock->today(), $date);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function submittedDate(array $data): ?DateTimeImmutable
+    {
+        $submitted = is_string($data['next_payment_date'] ?? null) ? $data['next_payment_date'] : null;
+        $date = $submitted === null ? false : DateTimeImmutable::createFromFormat('!Y-m-d', $submitted);
+
+        return $date === false ? null : $date;
     }
 
     /**

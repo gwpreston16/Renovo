@@ -30,6 +30,13 @@ enum ChargeSource: string
      */
     case OneOff = 'one_off';
 
+    /**
+     * A billing date a pause stepped over, written skipped when the row is
+     * resumed: nothing was billed, and the ledger says so. Its own source
+     * because Undo puts it back as skipped, not as charged.
+     */
+    case Paused = 'paused';
+
     public function labelKey(): string
     {
         return 'charge.source.' . $this->value;

@@ -139,8 +139,9 @@ final class BulkActionService
                 $resumed = $subscription !== null && !$subscription->isActive
                     ? $subscription->resumedPaymentDate($today)
                     : null;
-                if ($resumed !== null) {
+                if ($subscription !== null && $resumed !== null) {
                     $this->subscriptions->setNextPaymentDate($scope, $id, $resumed);
+                    $this->catchUp->recordPaused($scope, $subscription, $subscription->pausedDates($today));
                 }
             }
 
