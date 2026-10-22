@@ -13,14 +13,17 @@ use Phinx\Migration\AbstractMigration;
  *
  * The data step links what it can and no more: an existing attachment whose
  * `period_date` is exactly a charge's `due_date` on the same subscription is
- * that charge's invoice. A ledger that is empty at upgrade links nothing; the
- * rest stay attached to the subscription only. Portable SQL: a correlated
+ * that charge's invoice. On an upgrade the ledger is still empty, so it links
+ * nothing — `ledger:backfill` runs the same step once it has written the
+ * payments. It matters on a rollback and re-migrate, where it restores every
+ * link: an invoice filed against a payment carries that payment's date. Portable SQL: a correlated
  * subquery rather than an UPDATE … FROM, which MySQL does not accept.
  *
  * On MySQL, where DDL is not transactional, a failure part-way leaves the
- * column without its foreign key or index; the manual rollback is to drop
- * `fk_attachments_charge`, `ix_attachments_charge` and the column, in that
- * order, whichever exist.
+ * column without its foreign key or index, or — when the link step fails after
+ * all three exist — the column unrecorded in `phinxlog`; either way the manual
+ * rollback is to drop `fk_attachments_charge`, `ix_attachments_charge` and the
+ * column, in that order, whichever exist, and migrate again.
  */
 final class AddChargeIdToAttachments extends AbstractMigration
 {

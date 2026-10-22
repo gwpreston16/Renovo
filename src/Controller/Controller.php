@@ -132,7 +132,9 @@ abstract class Controller
         $money = '/subscriptions/' . $id . '/money';
 
         return match ($target) {
-            $edit, $money => $target,
+            // The cost page's Payments card has its own section id, so a
+            // write made from it lands back on it.
+            $edit, $money, $money . '#payments' => $target,
             default => $fallback !== '' ? $fallback : $money,
         };
     }

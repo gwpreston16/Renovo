@@ -23,58 +23,29 @@
                     <th scope="col">{{ t('payments.status') }}</th>
                     <th scope="col">{{ t('payments.invoice') }}</th>
                     <th scope="col">{{ t('payments.note_column') }}</th>
-                    {% if may_manage %}
-                        <th scope="col"><span class="visually-hidden">{{ t('field.actions') }}</span></th>
-                    {% endif %}
                 </tr>
                 </thead>
                 <tbody>
                 {% for charge in payments.charges %}
                     <tr id="charge-{{ charge.id }}" class="{{ charge.isSkipped ? 'is-skipped' : '' }}">
-                        <td class="num">
-                            {{ charge.dueDate|local_date('d MMM y') }}
+                        {#
+                            The row's controls sit under its date, in the first
+                            column, so they are in reach at phone width without
+                            scrolling the table sideways.
+                        #}
+                        <td>
+                            <span class="num payments-date">{{ charge.dueDate|local_date('d MMM y') }}</span>
                             {% if charge.isReconstructed %}
                                 <span class="hint">{{ t('payments.reconstructed') }}</span>
                             {% elseif charge.isManual %}
                                 <span class="hint">{{ t('payments.added_by_hand') }}</span>
                             {% endif %}
-                        </td>
-                        <td class="numeric num">
-                            {% if charge.isSkipped %}
-                                <del class="payments-expected">{{ charge.expected.amountMinor|money(charge.expected.currency) }}</del>
-                            {% elseif charge.differsFromExpected %}
-                                <del class="payments-expected">{{ charge.expected.amountMinor|money(charge.expected.currency) }}</del>
-                                {{ charge.amount.amountMinor|money(charge.amount.currency) }}
-                            {% else %}
-                                {{ charge.amount.amountMinor|money(charge.amount.currency) }}
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if charge.isSkipped %}
-                                <span class="badge badge-warn">{{ t('charge.status.skipped') }}</span>
-                            {% elseif charge.actualMinor is not null %}
-                                <span class="badge badge-ok">{{ t('payments.recorded') }}</span>
-                            {% else %}
-                                <span class="badge">{{ t('charge.status.charged') }}</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% for invoice in invoices[charge.id]|default([]) %}
-                                <a href="/subscriptions/{{ subscription.id }}/attachments/{{ invoice.id }}">{{ invoice.originalFilename }}</a>{% if not loop.last %}<br>{% endif %}
-                            {% else %}
-                                <span class="muted">{{ t('common.none_symbol') }}</span>
-                            {% endfor %}
-                        </td>
-                        <td>
-                            {% if charge.note %}{{ charge.note }}{% else %}<span class="muted">{{ t('common.none_symbol') }}</span>{% endif %}
-                            {% if charge.recordedByName and charge.isAdjusted %}
-                                <span class="hint">· {{ charge.recordedByName }}</span>
-                            {% endif %}
-                        </td>
-                        {% if may_manage %}
-                            <td>
+                            {% if may_manage %}
                                 <details class="settings-disclosure payments-actions">
-                                    <summary class="button button-quiet">{{ t('payments.change') }}</summary>
+                                    <summary class="button button-quiet">
+                                        {{- t('payments.change') -}}
+                                        <span class="visually-hidden"> {{ charge.dueDate|local_date('d MMM y') }}</span>
+                                    </summary>
 
                                     <form method="post" class="stack"
                                           action="/subscriptions/{{ subscription.id }}/charges/{{ charge.id }}/actual">
@@ -118,7 +89,7 @@
                                         <form method="post" action="/subscriptions/{{ subscription.id }}/attachments"
                                               enctype="multipart/form-data" class="stack">
                                             {{ csrf_field() }}
-                                            <input type="hidden" name="return_to" value="/subscriptions/{{ subscription.id }}/money">
+                                            <input type="hidden" name="return_to" value="/subscriptions/{{ subscription.id }}/money#payments">
                                             <input type="hidden" name="charge_id" value="{{ charge.id }}">
                                             <label for="invoice-{{ charge.id }}">{{ t('payments.attach_invoice') }}</label>
                                             <input type="file" id="invoice-{{ charge.id }}" name="file" required
@@ -127,8 +98,40 @@
                                         </form>
                                     {% endif %}
                                 </details>
-                            </td>
-                        {% endif %}
+                            {% endif %}
+                        </td>
+                        <td class="numeric num">
+                            {% if charge.isSkipped %}
+                                <del class="payments-expected"><span class="visually-hidden">{{ t('payments.expected') }} </span>{{ charge.expected.amountMinor|money(charge.expected.currency) }}</del>
+                            {% elseif charge.differsFromExpected %}
+                                <del class="payments-expected"><span class="visually-hidden">{{ t('payments.expected') }} </span>{{ charge.expected.amountMinor|money(charge.expected.currency) }}</del>
+                                <span class="visually-hidden">{{ t('payments.charged_as') }} </span>{{ charge.amount.amountMinor|money(charge.amount.currency) }}
+                            {% else %}
+                                {{ charge.amount.amountMinor|money(charge.amount.currency) }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if charge.isSkipped %}
+                                <span class="badge badge-warn">{{ t('charge.status.skipped') }}</span>
+                            {% elseif charge.actualMinor is not null %}
+                                <span class="badge badge-ok">{{ t('payments.recorded') }}</span>
+                            {% else %}
+                                <span class="badge">{{ t('charge.status.charged') }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% for invoice in invoices[charge.id]|default([]) %}
+                                <a href="/subscriptions/{{ subscription.id }}/attachments/{{ invoice.id }}">{{ invoice.originalFilename }}</a>{% if not loop.last %}<br>{% endif %}
+                            {% else %}
+                                <span class="muted">{{ t('common.none_symbol') }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% if charge.note %}{{ charge.note }}{% else %}<span class="muted">{{ t('common.none_symbol') }}</span>{% endif %}
+                            {% if charge.recordedByName and charge.isAdjusted %}
+                                <span class="hint">· {{ charge.recordedByName }}</span>
+                            {% endif %}
+                        </td>
                     </tr>
                 {% endfor %}
                 </tbody>

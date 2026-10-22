@@ -21,18 +21,19 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   permission, `charge.manage`, is held by every role that may manage prices;
   a Contributor changes payments only on rows they own. *Phase 34.*
 - **Invoices on payments.** An invoice uploaded from a payment row is filed
-  against that payment and dated to it. Upgrading links existing attachments
-  whose period date is a payment's date. *Phase 34.*
+  against that payment and dated to it. `ledger:backfill` files existing
+  invoices against the payment their period date names. *Phase 34.*
 - **The calendar pages backwards** through the months the ledger holds,
   showing the charges taken at their recorded amounts. *Phase 34.*
 - **`php bin/console ledger:backfill [--household=ID]`** rebuilds the
   payments from before the upgrade, marked *reconstructed*. Run it once after
   upgrading; it is safe to run again and never overwrites a payment the ledger
   wrote or a member recorded. See [upgrading](docs/upgrading.md). *Phase 34.*
-- **Payments in the API**: `GET` and `POST /api/v1/subscriptions/{id}/charges`
-  and `PATCH /api/v1/charges/{id}`, and `charge_id` on an attachment.
-  Payments export as CSV and JSON from **Settings → Data**, and household
-  backups carry them. *Phase 34.*
+- **Payments in the API**: `GET` (paged) and `POST
+  /api/v1/subscriptions/{id}/charges` and `PATCH /api/v1/charges/{id}`, and
+  `charge_id` on an attachment, readable and settable on upload. The OpenAPI
+  contract is now version 1.4.0. Payments export as CSV and JSON from
+  **Settings → Data**, and household backups carry them. *Phase 34.*
 
 ### Changed
 
@@ -46,7 +47,13 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   are written for the paused months. *Phase 34.*
 - **A restore is all or nothing.** One that fails part-way (a full disk, say)
   now keeps none of its rows, rather than rows whose logos and invoices it had
-  removed. *Phase 34.*
+  removed (K16). *Phase 34.*
+- **Changing a subscription's owner moves its price history, payments and
+  invoices with it**, so the new owner — a Contributor included — may correct
+  its payments and the former owner may no longer. *Phase 34.*
+- **The API's subscription list runs the whole catch-up**, as the web pages
+  do: an ended trial converts before its first payment is recorded, where it
+  used to have its payment date moved on unconverted. *Phase 34.*
 
 - **The README is now a front page.** It says what Renovo is and who it is
   for, shows seven screenshots (`docs/images/`, taken from `demo:seed`), and

@@ -102,6 +102,11 @@ final class PaymentsCardTest extends DatabaseTestCase
         self::assertStringContainsString('id="payments"', $html);
         self::assertStringContainsString('/charges/' . $this->firstCharge() . '/actual', $html);
         self::assertStringContainsString('action="/subscriptions/' . $this->subscriptionId . '/charges"', $html);
+
+        // Each row's control is named for its date, and an invoice uploaded
+        // from it comes back to the card.
+        self::assertMatchesRegularExpression('#Change<span class="visually-hidden"> \d{1,2} \w+ \d{4}</span>#', $html);
+        self::assertStringContainsString('value="/subscriptions/' . $this->subscriptionId . '/money#payments"', $html);
     }
 
     public function testAViewerAndAContributorOnSomebodyElsesRowSeeNoControls(): void
@@ -113,6 +118,8 @@ final class PaymentsCardTest extends DatabaseTestCase
             $html = (string) $response->getBody();
             self::assertStringContainsString('id="payments"', $html);
             self::assertStringNotContainsString('/actual"', $html);
+            self::assertStringNotContainsString('/skip"', $html);
+            self::assertStringNotContainsString('/undo"', $html);
             self::assertStringNotContainsString('/charges"', $html);
         }
     }

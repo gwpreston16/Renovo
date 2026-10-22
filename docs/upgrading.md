@@ -57,5 +57,18 @@ payment date, at the price in force on each date, and marks them
 *reconstructed*. It is safe to run again: a date that already has a charge is
 left alone, so it never overwrites a charge the catch-up wrote or one a member
 recorded or added. A paused subscription is rebuilt only up to where its
-payment date stopped. Undo it, if you need to, by deleting the rows it wrote:
-`DELETE FROM subscription_charges WHERE source = 'reconstructed'`.
+payment date stopped. Each household is one transaction, and once its payments
+are written the backfill files each existing invoice against the payment its
+period date names; the rest stay filed against their subscription.
+
+Undo it, if you need to, by deleting the rows it wrote that nobody has since
+corrected:
+
+```sql
+DELETE FROM subscription_charges
+ WHERE source = 'reconstructed' AND actual_minor IS NULL AND status = 'charged';
+```
+
+A reconstructed payment a member has recorded an amount on or skipped is left;
+delete those too only if you mean to lose the correction. Invoices filed
+against a deleted payment stay, attached to their subscription.

@@ -27,6 +27,11 @@ use Phinx\Migration\AbstractMigration;
  *
  * On MySQL, where DDL is not transactional, a failure leaves either the table
  * or nothing; the manual rollback is to drop it.
+ *
+ * Rolling back drops the ledger whole: `ledger:backfill` and the catch-up can
+ * write its own rows again, but an amount a member recorded, a charge they
+ * skipped, a note and a payment added by hand are gone, and only the backup
+ * taken before upgrading has them.
  */
 final class CreateSubscriptionChargesTable extends AbstractMigration
 {

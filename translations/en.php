@@ -469,6 +469,8 @@ return [
     'payments.reconstructed' => 'reconstructed',
     'payments.added_by_hand' => 'added by hand',
     'payments.recorded' => 'Recorded',
+    'payments.expected' => 'Expected',
+    'payments.charged_as' => 'Charged',
     'payments.change' => 'Change',
     'payments.actual_amount' => 'Amount actually charged',
     'payments.record_amount' => 'Record amount',

@@ -973,6 +973,14 @@ tr.is-passed > td {
     margin-inline-end: 0.35rem;
 }
 
+.payments-date {
+    white-space: nowrap;
+}
+
+.payments-actions {
+    margin-top: 0.35rem;
+}
+
 .payments-table tr.is-skipped td {
     color: var(--muted);
 }

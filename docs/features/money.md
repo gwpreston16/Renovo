@@ -107,7 +107,9 @@ pause, add those payments by hand. A cancelled subscription writes nothing
 after its cancellation.
 
 Rows marked *reconstructed* were rebuilt for the months before the ledger
-existed, by `ledger:backfill` ([upgrading](../upgrading.md)). Viewers see the
+existed, by `ledger:backfill` ([upgrading](../upgrading.md)). Every payment you
+can see exports as CSV or JSON from **Settings → Data**, with the subscription it
+belongs to. Changing a subscription's owner moves its payments with it. Viewers see the
 card without its controls; a Contributor changes payments only on rows they
 own.
 
