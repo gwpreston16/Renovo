@@ -84,20 +84,45 @@ final class CalendarFeedTest extends ApiTestCase
 
     public function testAFixedTermsPaymentsStopAtItsLastPayment(): void
     {
+        $first = new \DateTimeImmutable('first day of next month');
+        $second = $first->modify('+1 month');
         $this->createSubscription([
             'name' => 'Phone finance',
-            'next_payment_date' => '2026-12-01',
-            'payments_end_on' => '2027-01-15',
-            'notice_period_amount' => 10,
-            'notice_period_unit' => 'days',
+            'next_payment_date' => $first->format('Y-m-d'),
+            'payments_end_on' => $second->modify('+14 days')->format('Y-m-d'),
         ]);
 
         $body = $this->feed();
 
-        self::assertStringContainsString('DTSTART;VALUE=DATE:20261201', $body);
-        self::assertStringContainsString('DTSTART;VALUE=DATE:20270101', $body);
-        self::assertStringNotContainsString('DTSTART;VALUE=DATE:20270201', $body);
+        self::assertStringContainsString('DTSTART;VALUE=DATE:' . $first->format('Ymd'), $body);
+        self::assertStringContainsString('DTSTART;VALUE=DATE:' . $second->format('Ymd'), $body);
+        self::assertStringNotContainsString(
+            'DTSTART;VALUE=DATE:' . $second->modify('+1 month')->format('Ymd'),
+            $body,
+        );
         self::assertSame(2, substr_count($this->unfold($body), 'SUMMARY:Phone finance'));
+    }
+
+    public function testNoCancelByIsPublishedAfterAFixedTermsLastPayment(): void
+    {
+        // Its stored date is already past the last payment (nobody caught it
+        // up), so its notice deadline is for a charge that will not happen.
+        $id = $this->createSubscription([
+            'name' => 'Phone finance',
+            'next_payment_date' => (new \DateTimeImmutable('+20 days'))->format('Y-m-d'),
+            'payments_end_on' => (new \DateTimeImmutable('+30 days'))->format('Y-m-d'),
+            'notice_period_amount' => 10,
+            'notice_period_unit' => 'days',
+        ]);
+        $this->db->execute(
+            'UPDATE subscriptions SET next_payment_date = :date WHERE id = :id',
+            ['date' => (new \DateTimeImmutable('+40 days'))->format('Y-m-d'), 'id' => $id],
+        );
+
+        $body = $this->unfold($this->feed());
+
+        self::assertStringNotContainsString('Last day to cancel Phone finance', $body);
+        self::assertStringNotContainsString('SUMMARY:Phone finance', $body);
     }
 
     public function testATrialConversionAppears(): void

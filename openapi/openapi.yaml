@@ -310,8 +310,10 @@ paths:
         Clears `cancelled_at`. The subscription returns to **paused**, not
         active, so an accidental cancel corrected cannot silently restart
         charges; resume it with a PUT setting `is_active` to true. A fixed
-        term the catch-up ended is ended again by the next catch-up while its
-        `payments_end_on` has passed: move or clear it in the same PUT.
+        term the catch-up ended is ended again by any catch-up while its
+        `payments_end_on` has passed: to bring one back, PUT a later or empty
+        `payments_end_on` first, while it is still cancelled, then uncancel
+        and resume it.
       responses:
         "200":
           description: The subscription, now paused.
@@ -1405,7 +1407,8 @@ components:
             after it, and when the catch-up next runs after the final payment
             the subscription is cancelled with `cancelled_at` the day after it. Recurring subscriptions
             only (ignored for a one-off or lifetime entry); it may not come
-            before `start_date` or the next charge (`422`). An absent key keeps
+            before `start_date` or the next charge (`422`), which a PUT that
+            leaves it out is measured against too. An absent key keeps
             the current value; send null or an empty string to clear it.
         amount_varies:
           type: boolean

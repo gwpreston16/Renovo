@@ -260,6 +260,37 @@ final class BudgetProjectionTest extends DatabaseTestCase
         self::assertSame(1000, $this->budgets->progress($this->scope($this->alice))[0]['projected']?->amountMinor);
     }
 
+    /**
+     * @return array<string, array{string, int|null}>
+     */
+    public static function dayCycles(): array
+    {
+        return ['weekly' => ['weekly', null], 'every 10 days' => ['custom_days', 10]];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('dayCycles')]
+    public function testADayCycleIsNotCutShortByAStaleAnchor(string $cycle, ?int $days): void
+    {
+        // Today is 15 January. Saved on the 3rd of some month: its anchor is
+        // a day of the month that means nothing to a weekly row.
+        $this->subscriptions->create($this->scope($this->alice), [
+            'name' => 'Cleaner',
+            'price_minor' => 1000,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => $cycle,
+            'cycle_days' => $days,
+            'next_payment_date' => '2026-01-17',
+            'anchor_day' => 3,
+            'is_active' => true,
+        ], []);
+        $this->monthlyBudget('500.00');
+
+        // Weekly: 17, 24, 31 Jan, 7, 14 Feb. Every 10 days: 17, 27 Jan, 6 Feb.
+        $expected = $cycle === 'weekly' ? 5000 : 3000;
+        self::assertSame($expected, $this->budgets->progress($this->scope($this->alice))[0]['projected']?->amountMinor);
+    }
+
     public function testABudgetIsOverWhenProjectedSpendExceedsIt(): void
     {
         $this->createSubscription('Streaming', 2500, '2026-01-20');

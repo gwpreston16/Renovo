@@ -237,6 +237,41 @@ final class FixedTermTest extends DatabaseTestCase
         self::assertCount(1, $this->db->fetchAll('SELECT id FROM audit_log'));
     }
 
+    public function testATermIsEndedOnceWhenTwoCatchUpsMeet(): void
+    {
+        $id = $this->term('Phone', 3000, start: '2024-07-01', next: '2026-02-01', end: '2026-01-01');
+
+        self::assertTrue($this->subscriptions->endTerm($this->scope(), $id, new DateTimeImmutable('2026-01-02')));
+        self::assertFalse($this->subscriptions->endTerm($this->scope(), $id, new DateTimeImmutable('2026-01-09')));
+        self::assertSame('2026-01-02', $this->find($id)->cancelledAt?->format('Y-m-d'));
+    }
+
+    public function testAPaymentAddedByHandIsNotTheTermsLastBillingDate(): void
+    {
+        $id = $this->term('Phone', 3000, start: '2024-07-01', next: '2026-02-01', end: '2026-02-20');
+        $this->clock->advanceTo(new DateTimeImmutable('2026-02-15 09:00:00'));
+        $this->charges()->addManual($this->scope(), $id, ['date' => '2026-02-10', 'amount' => '5.00']);
+
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-05 09:00:00'));
+        $this->catchUp->run($this->scope());
+
+        self::assertSame('2026-02-02', $this->find($id)->cancelledAt?->format('Y-m-d'));
+    }
+
+    public function testAnUncancelledTermIsEndedAgainWhileItsEndHasPassed(): void
+    {
+        $id = $this->term('Phone', 3000, start: '2024-07-01', next: '2026-02-01', end: '2026-02-01');
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 09:00:00'));
+        $this->catchUp->run($this->scope());
+
+        $this->service->uncancel($this->scope(), $id);
+        self::assertSame('paused', $this->find($id)->status()->value);
+
+        self::assertSame(1, $this->catchUp->run($this->scope())['terms']);
+        self::assertTrue($this->find($id)->isCancelled());
+        self::assertCount(2, $this->db->fetchAll("SELECT id FROM audit_log WHERE action = 'subscription.ended'"));
+    }
+
     public function testTheRowEndsTheDayAfterTheLastPaymentAsItHappens(): void
     {
         $id = $this->term('Phone', 3000, start: '2024-07-01', next: '2026-02-01', end: '2026-02-15');

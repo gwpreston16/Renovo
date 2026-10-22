@@ -27,10 +27,16 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   high (more than 15% out), and reminders say "about". *Phase 35.*
 - `contract_ends_on`, `payments_end_on` and `amount_varies` in the API (the
   OpenAPI contract is now version 1.5.0), the import, the list's CSV and JSON
-  export (three new columns, before `notes`) and household backups; an absent
-  key on a `PUT` keeps the value. With a token that may write, the API's
-  catch-up now also ends a finished fixed term, so `status` and `cancelled_at`
-  can change without a cancel call. *Phase 35.*
+  export and household backups; an absent key on a `PUT` keeps the value. *Phase 35.*
+
+### Changed
+
+- The list's CSV and JSON export has three new columns — contract ends,
+  payments end, amount varies — before `notes`, so a script reading it by
+  position must move along. *Phase 35.*
+- With a token that may write, the API's catch-up now also ends a finished
+  fixed term, so a subscription's `status` and `cancelled_at` can change
+  without a cancel call. *Phase 35.*
 
 ### Fixed
 
@@ -39,10 +45,10 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   alert on renewal day (K2). *Phase 35.*
 - Saving a subscription whose next payment sat on a shortened month's end moved
   its billing day for good (K11). *Phase 35.*
-- The importer turned impossible dates ("31/02/2026") into real ones and read
-  "12/25/2026" as a day in 2028; such a row is now refused (K48). The form and
-  the API refuse an impossible date such as "2026-02-31" too, where they
-  stored the day it rolled over to. *Phase 35.*
+- The importer turned an impossible date ("31/02/2026") into a real one, and
+  such a row is now refused; "12/25/2026", which it read as a day in 2028, is
+  read as 25 December 2026 (K48). The form and the API refuse an impossible
+  date such as "2026-02-31" too, where they stored the day it rolled over to. *Phase 35.*
 - Pausing or cancelling through the edit form or the API, with billing dates
   passed that nobody had looked at, saved the stale payment date back over the
   moved one (K72); resuming while changing the cycle moved the date on by the

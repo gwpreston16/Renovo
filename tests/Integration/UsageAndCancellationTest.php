@@ -339,6 +339,14 @@ final class UsageAndCancellationTest extends DatabaseTestCase
         self::assertSame(['notice', 'contract'], array_column($rows, 'kind'));
     }
 
+    public function testAContractEndOutsideTheWindowIsLeftOff(): void
+    {
+        $this->create('Broadband', 3500, nextPayment: '2026-07-01', extra: ['contract_ends_on' => '2026-08-14']);
+
+        self::assertSame([], $this->cancellations->deadlines($this->scope(), 7));
+        self::assertCount(1, $this->cancellations->deadlines($this->scope()));
+    }
+
     public function testAFixedTermPastItsLastPaymentHasNothingToCancel(): void
     {
         // Last payment 1 June; the stored date has not been caught up.

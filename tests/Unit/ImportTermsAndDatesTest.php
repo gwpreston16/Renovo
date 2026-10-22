@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit;
 
+use App\Service\Import\ImportField;
 use App\Service\Import\ImportPreset;
 use App\Service\Import\RowTranslator;
 use PHPUnit\Framework\TestCase;
@@ -48,6 +49,18 @@ final class ImportTermsAndDatesTest extends TestCase
         self::assertSame('contract ends', $mapping['contract_ends_on'] ?? null);
         self::assertSame('payments end', $mapping['payments_end_on'] ?? null);
         self::assertSame('amount varies', $mapping['amount_varies'] ?? null);
+    }
+
+    public function testTheTermsFieldsHaveTheirLabelsAndHints(): void
+    {
+        /** @var array<string, string> $catalogue */
+        $catalogue = require dirname(__DIR__, 2) . '/translations/en.php';
+
+        foreach ([ImportField::ContractEndsOn, ImportField::PaymentsEndOn, ImportField::AmountVaries] as $field) {
+            self::assertArrayHasKey($field->labelKey(), $catalogue);
+            self::assertNotNull($field->hintKey());
+            self::assertArrayHasKey($field->hintKey(), $catalogue);
+        }
     }
 
     public function testAnAmericanDateIsNotRolledIntoAnotherYear(): void

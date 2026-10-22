@@ -113,9 +113,9 @@ Migrations, sequenced after the last existing one, each with an explicit
   expenses") is worth doing once these behaviours exist, as a separate small
   change across the catalogue and README. Not in this phase.
 
-*Confirmed 2026-10-22*, all five as written. The finished term uses
-`setCancelled()` with the computed date (the day after the last charge), not
-`cancel()`, which stamps today. Uncancelling an ended term lands on Paused, as
+*Confirmed 2026-10-22*, all five as written. The finished term is cancelled
+with the computed date (the day after the last charge), not by `cancel()`,
+which stamps today — through `endTerm()` (below). Uncancelling an ended term lands on Paused, as
 any uncancel does; resuming it with the end date still passed ends it again at
 the next catch-up.
 
@@ -157,9 +157,13 @@ Found while reviewing (merge review, 2026-10-22):
   each near a month's end.
 - **The calendar feed stops at the last payment**, and drops a cancel-by
   event that falls after it, like every other reader.
-- **The calendar screen is not marked "≈"** in this phase (assumption): the
-  brief lists totals, the forecast and budgets. Left as a follow-up for the
-  owner.
+- **Where "≈" is drawn** (assumption): the subscription list, the dashboard's
+  totals and due card, the forecast's headline figures and budgets. The
+  calendar screen, the forecast's "If cancelled" and scenario figures and the
+  dashboard's Coming up list are not marked in this phase — left as a
+  follow-up for the owner.
+- **A day-cycle row's window** (K2): a weekly or custom-day row's stored
+  anchor is the day it was saved, so its own charge's day bounds it instead.
 
 ### Known issues taken
 

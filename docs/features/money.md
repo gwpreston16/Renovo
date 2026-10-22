@@ -33,7 +33,9 @@ figure is one another screen already shows.
   shows as Converted with no percentage, and a trial ending is not listed. A
   private subscription's history is visible only to its payer.
 - **Insights.** The Phase 13 rules as a list, each naming its subscriptions and
-  linking to them. When no rule fires there is no list.
+  linking to them, with **Out of contract** and **An estimate looks low/high**
+  among them ([contracts, fixed terms and bills that vary](tracking.md#contracts-fixed-terms-and-bills-that-vary)).
+  When no rule fires there is no list.
 
 Beneath those: the category and payment-method donuts, the same cost by period,
 and the cost-per-use ranking with its "Used it" button. The Forecast page is one
@@ -84,6 +86,9 @@ the day arrives.
 
 Each subscription's cost page has a **Payments** card: one row for every
 billing date that has passed, newest first, at the price that was due that day.
+A fixed term's card also shows **Payment N of M**, and a bill whose amount
+varies its recorded bills against the estimate, with **Use as estimate**
+([contracts, fixed terms and bills that vary](tracking.md#contracts-fixed-terms-and-bills-that-vary)).
 Renovo writes the row itself when the date passes — nothing is read from a bank
 or a provider — and the price on it is frozen, so a later price edit does not
 rewrite what was due last month.

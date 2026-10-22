@@ -301,7 +301,8 @@ easiest mistake to make:
 **Envelopes.** A successful response wraps its payload in `data`. A list adds
 `meta` with the page. An error replaces both with `error`.
 
-**Dates** are `YYYY-MM-DD`. **Timestamps** are ISO 8601 date-times.
+**Dates** are `YYYY-MM-DD`, and must be real days: `2026-02-31` is a `422`,
+not 3 March. **Timestamps** are ISO 8601 date-times.
 
 **Read-only fields** are returned but ignored on write: `id`, `anchor_day`,
 `category_name`, `payment_method_name`, `split_mode`, `usage_count`, `usage_rating`, `logo_path`,
@@ -538,8 +539,9 @@ Undo a cancellation. The subscription returns to **paused**, not active, so a
 mistake corrected cannot silently restart charges; resume it by `PUT`ting it
 back with `is_active: true`, which moves a payment date left in the past on to
 the first billing date from today. A fixed term the catch-up ended is ended
-again by the next catch-up while its `payments_end_on` has passed: move or
-clear that date in the same `PUT` to bring it back. Responses: `200`, `401`,
+again by any catch-up while its `payments_end_on` has passed. To bring one
+back, `PUT` a later or empty `payments_end_on` first, while it is still
+cancelled, then uncancel it, then resume it. Responses: `200`, `401`,
 `403`, `404`.
 
 ---
@@ -813,7 +815,7 @@ The writable half of a subscription. Required: `name`, `price_minor`,
 | `is_active` | boolean | Default `true`. `false` pauses it. Stays `false` while the subscription is cancelled. Resuming skips the paused dates: a past `next_payment_date` moves on to the first billing date from today, so the response may not echo the date sent, and each date it steps over is recorded as a `skipped` charge with `source` `paused` — except one that already has a payment added by hand, which becomes that date's `paused` charge, keeping its status. Billed for one of those months after all? `PATCH` that charge's `actual_minor`; a `POST` on its date is a `422`. |
 | `plan` | string, null | Max 60 — "Standard", "Family". An absent key keeps the current value. |
 | `contract_ends_on` | date, null | When its contract ends. It keeps running after; the date is announced at the lead times (`contract_ending` alerts) and listed beside cancel-by deadlines. An absent key keeps the current value. |
-| `payments_end_on` | date, null | The last charge of a fixed term: the last billing date on or before it is the final payment. Nothing is charged or forecast after it, and when the catch-up next runs after the final payment the row is cancelled with `cancelled_at` the day after it. Recurring only; not before `start_date` or the next charge (`422`). An absent key keeps the current value. |
+| `payments_end_on` | date, null | The last charge of a fixed term: the last billing date on or before it is the final payment. Nothing is charged or forecast after it, and when the catch-up next runs after the final payment the row is cancelled with `cancelled_at` the day after it. Ignored for a one-off or lifetime entry. Not before `start_date` or the next charge (`422`) — measured on a `PUT` that leaves it out, too, so moving `next_payment_date` past a stored end is refused against this field. An absent key keeps the current value. |
 | `amount_varies` | boolean | The price is an estimate: the amount varies bill to bill. An absent key keeps the current value; `false` on a new row. |
 | `visibility` | enum | `household` (default) or `payer`. `payer` keeps it to its owner: hidden from every other member in either isolation mode, and out of their totals. Only the owner may set it, only when `payer_user_id` is the owner or null, and never on a split subscription. An absent key keeps the current setting. |
 | `category_id` | integer, null | |
