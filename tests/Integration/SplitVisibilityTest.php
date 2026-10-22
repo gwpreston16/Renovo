@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
+use App\Service\ChargeService;
+use App\Service\ChargeSchedule;
+use App\Repository\ChargeRepository;
 use App\Domain\IsolationMode;
 use App\Domain\Money;
 use App\Domain\PriceChangeSource;
@@ -428,6 +431,7 @@ final class SplitVisibilityTest extends DatabaseTestCase
             $this->priceHistory,
             $this->rates(),
             $this->db,
+            $this->clock,
         );
 
         $changed = $bulk->apply($bob, [
@@ -603,6 +607,13 @@ final class SplitVisibilityTest extends DatabaseTestCase
                 TestLogoFetcher::silent($this->db, $this->clock),
                 new MembershipRepository($this->db),
                 $this->priceHistory,
+                new ChargeService(
+                    new ChargeRepository($this->db),
+                    $this->subscriptions,
+                    $this->priceHistory,
+                    new ChargeSchedule(),
+                    $this->clock,
+                ),
                 $this->db,
                 $this->clock,
             ),

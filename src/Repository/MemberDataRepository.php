@@ -56,6 +56,7 @@ final class MemberDataRepository extends AbstractRepository
     private const OWNED_TABLES = [
         'subscriptions',
         'subscription_price_history',
+        'subscription_charges',
         'subscription_splits',
         'attachments',
         'budgets',

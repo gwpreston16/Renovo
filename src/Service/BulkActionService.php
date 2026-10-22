@@ -12,6 +12,7 @@ use App\Repository\MembershipRepository;
 use App\Repository\SubscriptionRepository;
 use App\Repository\TagRepository;
 use App\Security\Scope;
+use App\Support\Clock;
 
 /**
  * Changing one field across many subscriptions at once.
@@ -52,6 +53,7 @@ final class BulkActionService
         private readonly PriceHistoryService $priceHistory,
         private readonly ExchangeRateService $rates,
         private readonly Database $db,
+        private readonly Clock $clock,
     ) {
     }
 
@@ -97,14 +99,34 @@ final class BulkActionService
             self::ACTION_CURRENCY => $this->convertCurrency($scope, $ids, $input),
             // Resuming skips cancelled rows: they are finished, and only an
             // explicit un-cancel (which lands on Paused) may bring one back.
-            self::ACTION_ACTIVATE => $this->subscriptions->updateMany(
-                $scope,
-                $this->subscriptions->withoutCancelled($scope, $ids),
-                ['is_active' => true],
-            ),
+            self::ACTION_ACTIVATE => $this->resume($scope, $this->subscriptions->withoutCancelled($scope, $ids)),
             self::ACTION_DEACTIVATE => $this->subscriptions->updateMany($scope, $ids, ['is_active' => false]),
             default => throw new ValidationException(['action' => 'error.bulk.no_action']),
         };
+    }
+
+    /**
+     * Resume a selection, skipping the dates each one's pause covered — as a
+     * single resume does — so the catch-up writes no charges for them.
+     *
+     * @param list<int> $ids
+     */
+    private function resume(Scope $scope, array $ids): int
+    {
+        return $this->db->transactional(function () use ($scope, $ids): int {
+            $today = $this->clock->today();
+            foreach ($ids as $id) {
+                $subscription = $this->subscriptions->findForWrite($scope, $id);
+                $resumed = $subscription !== null && !$subscription->isActive
+                    ? $subscription->resumedPaymentDate($today)
+                    : null;
+                if ($resumed !== null) {
+                    $this->subscriptions->setNextPaymentDate($scope, $id, $resumed);
+                }
+            }
+
+            return $this->subscriptions->updateMany($scope, $ids, ['is_active' => true]);
+        });
     }
 
     /**

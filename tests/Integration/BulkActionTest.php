@@ -104,6 +104,7 @@ final class BulkActionTest extends DatabaseTestCase
             $this->priceHistory,
             $rates,
             $this->db,
+            $clock,
         );
     }
 

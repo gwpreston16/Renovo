@@ -18,6 +18,7 @@ php bin/console maintenance:prune   # expired sessions, tokens, throttle, notifi
                                     # records, plus abandoned import uploads
 php bin/console i18n:check          # every locale against the base catalogue; non-zero on drift
 php bin/console assets:offline-check # non-zero if anything the browser loads names a third-party host
+php bin/console ledger:backfill     # once after upgrading: past charges into the payment ledger [--household=ID]
 php bin/console demo:seed           # the demonstration household and its two accounts
 ```
 

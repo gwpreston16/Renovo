@@ -37,3 +37,25 @@ from the new default arrangement and can rearrange it from their profile.
 Nothing else is touched. The migration's `down()` does nothing, because a
 deletion cannot be undone. The backup you took first is the only way back to
 the old arrangements.
+
+## After upgrading to the payment ledger (Phase 34)
+
+From Phase 34 Renovo writes a ledger row for every billing date that passes.
+The months before the upgrade have no rows yet; past spend still reconstructs
+them, so nothing changes on screen. To give the Payments list and the calendar
+those months, run the backfill once, after the migration, **with a backup
+taken first**:
+
+```bash
+docker compose run --rm app php bin/console ledger:backfill
+# or one household at a time
+docker compose run --rm app php bin/console ledger:backfill --household=3
+```
+
+It rebuilds each subscription's charges from its start date up to its next
+payment date, at the price in force on each date, and marks them
+*reconstructed*. It is safe to run again: a date that already has a charge is
+left alone, so it never overwrites a charge the catch-up wrote or one a member
+recorded or added. A paused subscription is rebuilt only up to where its
+payment date stopped. Undo it, if you need to, by deleting the rows it wrote:
+`DELETE FROM subscription_charges WHERE source = 'reconstructed'`.

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
+use App\Service\ChargeService;
+use App\Service\ChargeSchedule;
+use App\Repository\ChargeRepository;
 use App\Domain\IsolationMode;
 use App\Domain\Money;
 use App\Domain\Role;
@@ -87,6 +90,13 @@ final class YearOverYearTest extends DatabaseTestCase
             TestLogoFetcher::silent($this->db, $clock),
             $memberships,
             $this->priceHistory,
+            new ChargeService(
+                new ChargeRepository($this->db),
+                $this->subscriptions,
+                $this->priceHistory,
+                new ChargeSchedule(),
+                $clock,
+            ),
             $this->db,
             $clock,
         );
@@ -129,6 +139,8 @@ final class YearOverYearTest extends DatabaseTestCase
         $this->history = new SpendHistoryService(
             $subscriptionService,
             $historyRepository,
+            new ChargeRepository($this->db),
+            new ChargeSchedule(),
             new SplitService(new SplitRepository($this->db), $this->subscriptions, $memberships, $this->db),
             $this->stats,
             $rates,

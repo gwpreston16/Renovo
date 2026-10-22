@@ -4,25 +4,40 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Domain\Entity\Charge;
 use App\Domain\Entity\PriceChange;
 use App\Domain\Entity\Subscription;
 use App\Domain\Money;
 use App\Domain\Rounding;
+use App\Repository\ChargeRepository;
 use App\Repository\PriceHistoryRepository;
 use App\Security\Scope;
 use App\Support\Clock;
 use DateTimeImmutable;
 
 /**
- * What the past cost, reconstructed.
+ * What the past cost: the payment ledger where it has rows, reconstructed
+ * where it does not.
  *
- * Renovo keeps no ledger: it tracks what is due, not what was paid. Everything
- * the application says about spending that has already happened — the
- * year-over-year comparison, the months behind on a chart, the year to date —
- * is therefore rebuilt from what is known: each subscription's start date, its
- * billing cycle, and the price history saying what it cost on each of those
- * dates. This is the one place that rebuilding is done, so no two screens can
- * disagree about what last March cost.
+ * Everything the application says about spending that has already happened —
+ * the year-over-year comparison, the months behind on a chart, the year to
+ * date, the month so far — is read here, so no two screens can disagree about
+ * what last March cost. Per subscription, three sources meet without
+ * overlapping:
+ *
+ *  - **before its first ledger row**, the reconstruction: its start date, its
+ *    billing cycle and the price history saying what it cost on each date
+ *    (`ChargeSchedule`);
+ *  - **from that row on**, the ledger — what a member recorded when they
+ *    recorded an actual, nothing for a charge they skipped;
+ *  - **from its payment date to today**, the dates the catch-up has not yet
+ *    written because nobody who can write has looked since. Counted as the
+ *    catch-up will write them, so a Viewer's dashboard is not short.
+ *
+ * For an instance that has run `ledger:backfill` and edited nothing, the three
+ * together equal the reconstruction alone to the minor unit, so switching the
+ * source changed no figure; recording an actual changes its month and no
+ * other.
  *
  * Every caller asks the same question underneath — which charges fell in a
  * window — and `charges()` answers it with the count of subscriptions that
@@ -34,6 +49,11 @@ use DateTimeImmutable;
  *
  * @phpstan-import-type Combined from StatsService
  * @phpstan-import-type MonthTotals from ForecastService
+ * @phpstan-type Sources array{
+ *     history: array<int, list<PriceChange>>,
+ *     ledger: array<int, list<Charge>>,
+ *     first: array<int, DateTimeImmutable>
+ * }
  * @phpstan-type HistoricCharge array{
  *     subscription: Subscription,
  *     date: DateTimeImmutable,
@@ -43,8 +63,6 @@ use DateTimeImmutable;
  */
 final class SpendHistoryService
 {
-    private const MAX_HISTORIC_CHARGES = 500;
-
     /**
      * How many months of reconstructed spend the history chart shows.
      *
@@ -57,6 +75,8 @@ final class SpendHistoryService
     public function __construct(
         private readonly SubscriptionService $subscriptions,
         private readonly PriceHistoryRepository $priceHistory,
+        private readonly ChargeRepository $ledger,
+        private readonly ChargeSchedule $schedule,
         private readonly SplitService $splits,
         private readonly StatsService $stats,
         private readonly ExchangeRateService $rates,
@@ -89,9 +109,12 @@ final class SpendHistoryService
         $charges = [];
         $excluded = 0;
         $splits = $forUserId === null ? [] : $this->splits->allInScope($scope);
+        $sources = $this->sources($scope, $from, $to);
 
         foreach ($this->subscriptions->allForStats($scope, false) as $subscription) {
-            if ($subscription->startDate === null) {
+            // No start date is no evidence of when it began — unless the
+            // ledger has recorded charges for it since.
+            if ($subscription->startDate === null && !isset($sources['first'][$subscription->id])) {
                 $excluded++;
                 continue;
             }
@@ -101,7 +124,7 @@ final class SpendHistoryService
                 continue;
             }
 
-            foreach ($this->historicCharges($scope, $subscription, $from, $to) as $charge) {
+            foreach ($this->historicCharges($sources, $subscription, $from, $to) as $charge) {
                 $charges[] = [
                     'subscription' => $subscription,
                     'date' => $charge['date'],
@@ -164,14 +187,12 @@ final class SpendHistoryService
      * oldest beginning on the first of the month eleven back, the newest
      * ending today.
      *
-     * **This is reconstructed, not recorded**, in the same sense and by the
-     * same code as `yearOverYear()` — the application tracks what is due, not a
-     * ledger of what was paid, so the past is rebuilt from start dates, billing
-     * cycles and recorded price history. Sharing `historicCharges()` with the
+     * Read from the ledger where it has rows and reconstructed before them, by
+     * the same code as `yearOverYear()`. Sharing `historicCharges()` with the
      * comparison card is the point: a chart and a total describing the same
-     * twelve months are read off one reconstruction, so they cannot disagree
-     * about last March. A subscription with no start date contributes nothing,
-     * for the reason given there.
+     * twelve months are read off one source, so they cannot disagree about
+     * last March. A subscription with no start date and no ledger rows
+     * contributes nothing, for the reason given there.
      *
      * Two properties of the window are worth stating because the chart depends
      * on them. The lower bound is the day before the oldest bucket opens, and
@@ -328,9 +349,8 @@ final class SpendHistoryService
     /**
      * Spend over the last twelve months against the twelve before that.
      *
-     * **This is reconstructed, not recorded.** The application keeps no ledger
-     * of payments taken — it tracks what is due, not what has been paid — so
-     * the comparison is rebuilt from what is actually known: each subscription's
+     * Read from the payment ledger where it has rows. Before a subscription's
+     * first row the comparison is rebuilt from what is actually known: its
      * start date, its billing cycle, and the price history saying what it cost
      * on each of those dates.
      *
@@ -360,14 +380,17 @@ final class SpendHistoryService
         $currentByCurrency = [];
         $previousByCurrency = [];
         $excluded = 0;
+        $sources = $this->sources($scope, $previousFrom, $today);
 
         foreach ($this->subscriptions->allForStats($scope, false) as $subscription) {
-            if ($subscription->startDate === null) {
+            // No start date is no evidence of when it began — unless the
+            // ledger has recorded charges for it since.
+            if ($subscription->startDate === null && !isset($sources['first'][$subscription->id])) {
                 $excluded++;
                 continue;
             }
 
-            foreach ($this->historicCharges($scope, $subscription, $previousFrom, $today) as $charge) {
+            foreach ($this->historicCharges($sources, $subscription, $previousFrom, $today) as $charge) {
                 $currency = $charge['amount']->currency;
 
                 // The boundary is exclusive at the start and inclusive at the
@@ -412,94 +435,64 @@ final class SpendHistoryService
     }
 
     /**
-     * Reconstruct the charges a subscription took in `($from, $to]`, stopping
-     * at its cancellation date when it has one.
+     * What every past-spend walk reads, loaded once rather than once per
+     * subscription: each one's price history (K17), the ledger rows in the
+     * window, and where each subscription's ledger begins.
+     *
+     * @return Sources
+     */
+    private function sources(Scope $scope, DateTimeImmutable $from, DateTimeImmutable $to): array
+    {
+        return [
+            'history' => $this->priceHistory->findAllBySubscription($scope),
+            'ledger' => $this->ledger->findInWindow($scope, $from, $to),
+            'first' => $this->ledger->firstDueDates($scope),
+        ];
+    }
+
+    /**
+     * The charges a subscription took in `($from, $to]`, oldest first, from
+     * whichever source covers each date — see the class comment.
      *
      * The lower bound is exclusive so that two adjacent twelve-month windows
-     * partition the charges rather than sharing the one on the boundary.
+     * partition the charges rather than sharing the one on the boundary. A
+     * skipped charge did not happen and is left out.
      *
-     * Walks forward from the start date rather than backwards from the next
-     * payment, because the start date is the only evidence there is that a
-     * subscription existed at a given moment. Each charge is priced at whatever
-     * the history says it cost on that day, so a subscription that was cheaper
-     * last year is counted at last year's price — which is the entire point of
-     * comparing one year with another.
-     *
+     * @param Sources $sources
      * @return list<array{date: DateTimeImmutable, amount: Money}>
      */
     private function historicCharges(
-        Scope $scope,
+        array $sources,
         Subscription $subscription,
         DateTimeImmutable $from,
         DateTimeImmutable $to,
     ): array {
-        $start = $subscription->startDate;
-        if ($start === null) {
-            return [];
+        $history = $sources['history'][$subscription->id] ?? [];
+        $first = $sources['first'][$subscription->id] ?? null;
+
+        if ($first === null) {
+            return $this->schedule->between($subscription, $history, $from, $to);
         }
 
-        // A cancelled subscription stopped charging when it was cancelled. A
-        // charge falling on that day itself still counts: "up to" the day is
-        // the reading that never drops a charge somebody may well have paid.
-        // Paused rows have no such date and are walked through to the end of
-        // the window — there is no evidence of when they stopped, which is the
-        // same judgement a missing start date gets, made in the other
-        // direction because here the row demonstrably existed.
-        if ($subscription->cancelledAt !== null && $subscription->cancelledAt < $to) {
-            $to = $subscription->cancelledAt;
-        }
+        $charges = $this->schedule->between($subscription, $history, $from, min($to, $first->modify('-1 day')));
 
-        if (!$subscription->type->countsTowardsRecurringTotals()) {
-            // A one-off lands on its own date and nowhere else.
-            return $start > $from && $start <= $to
-                ? [['date' => $start, 'amount' => $subscription->price]]
-                : [];
-        }
-
-        $cycle = $subscription->billingCycle;
-        if ($cycle === null) {
-            return [];
-        }
-
-        $history = $this->priceHistory->findForSubscription($scope, $subscription->id);
-
-        $charges = [];
-        $date = $start;
-        $iterations = 0;
-
-        while ($date <= $to && $iterations < self::MAX_HISTORIC_CHARGES) {
-            if ($date > $from) {
-                $charges[] = [
-                    'date' => $date,
-                    'amount' => $this->priceAsAt($history, $date) ?? $subscription->price,
-                ];
+        $recorded = [];
+        foreach ($sources['ledger'][$subscription->id] ?? [] as $charge) {
+            $recorded[$charge->dueDate->format('Y-m-d')] = true;
+            if (!$charge->isSkipped()) {
+                $charges[] = ['date' => $charge->dueDate, 'amount' => $charge->amount()];
             }
-
-            $date = $cycle->advance(
-                $date,
-                $subscription->cycleDays,
-                $subscription->anchorDay,
-                $subscription->cycleInterval,
-            );
-            $iterations++;
         }
+
+        $since = max($from, $first->modify('-1 day'));
+        foreach ($this->schedule->pending($subscription, $history, $since, $to) as $charge) {
+            if (!isset($recorded[$charge['date']->format('Y-m-d')])) {
+                $charges[] = $charge;
+            }
+        }
+
+        usort($charges, static fn (array $a, array $b): int => $a['date'] <=> $b['date']);
 
         return $charges;
-    }
-
-    /**
-     * @param list<PriceChange> $history Oldest first.
-     */
-    private function priceAsAt(array $history, DateTimeImmutable $date): ?Money
-    {
-        $price = null;
-        foreach ($history as $change) {
-            if (!$change->hasTakenEffectOn($date)) {
-                break;
-            }
-            $price = $change->price;
-        }
-
-        return $price;
     }
 }

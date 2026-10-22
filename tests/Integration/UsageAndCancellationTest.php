@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
+use App\Service\ChargeService;
+use App\Service\ChargeSchedule;
+use App\Repository\ChargeRepository;
 use App\Tests\Support\TestLogoFetcher;
 use App\Domain\IsolationMode;
 use App\Domain\NoticePeriod;
@@ -75,6 +78,13 @@ final class UsageAndCancellationTest extends DatabaseTestCase
             TestLogoFetcher::silent($this->db, $this->clock),
             $memberships,
             $priceHistory,
+            new ChargeService(
+                new ChargeRepository($this->db),
+                $this->subscriptions,
+                $priceHistory,
+                new ChargeSchedule(),
+                $this->clock,
+            ),
             $this->db,
             $this->clock,
         );

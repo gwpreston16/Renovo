@@ -188,9 +188,9 @@ Added *2026-10-22* at the owner's request, as rows in code this phase rewires:
 
 ## Status
 
-- [ ] Migrations on both engines; entity, scoped repository, service
-- [ ] Catch-up writes one row per passed date, transactional and idempotent
-- [ ] `ledger:backfill`, documented in the upgrade notes
+- [x] Migrations on both engines; entity, scoped repository, service
+- [x] Catch-up writes one row per passed date, transactional and idempotent
+- [x] `ledger:backfill`, documented in the upgrade notes
 - [ ] Payments card: record amount, skip, undo, add a payment
 - [ ] `attachments.charge_id` and the `period_date` link step
 - [ ] Calendar pages backwards; month-so-far and past spend read the ledger

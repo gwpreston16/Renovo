@@ -28,6 +28,23 @@ final class HouseholdRepository extends AbstractRepository
         return (int) $this->db->fetchValue('SELECT COUNT(*) FROM ' . $this->quote('households'));
     }
 
+    /**
+     * Every household id, lowest first — for an operator command that walks
+     * the whole instance, such as `ledger:backfill`.
+     *
+     * @return list<int>
+     */
+    public function allIds(): array
+    {
+        return array_map(
+            static fn (array $row): int => (int) $row['id'],
+            $this->db->fetchAll(
+                'SELECT ' . $this->quote('id') . ' FROM ' . $this->quote('households')
+                . ' ORDER BY ' . $this->quote('id') . ' ASC',
+            ),
+        );
+    }
+
     public function create(string $name, int $createdByUserId): int
     {
         $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');

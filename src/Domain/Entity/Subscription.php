@@ -397,4 +397,34 @@ final class Subscription
 
         return (int) $today->setTime(0, 0)->diff($date->setTime(0, 0))->format('%r%a');
     }
+
+    /**
+     * Where the payment date goes when a paused row is resumed, or null when
+     * it can stay where it is.
+     *
+     * Nothing was billed while the row was paused, so a date the pause left
+     * behind moves on, by whole cycles, to the first billing date that is
+     * today or later — and the catch-up then finds no passed dates to write
+     * as charges. A date that is still ahead is left alone.
+     *
+     * `$from` stands in for the stored date when the row is being resumed
+     * with a date somebody has just submitted.
+     */
+    public function resumedPaymentDate(DateTimeImmutable $today, ?DateTimeImmutable $from = null): ?DateTimeImmutable
+    {
+        $cycle = $this->billingCycle;
+        $date = $from ?? $this->nextPaymentDate;
+        $today = $today->setTime(0, 0);
+
+        if ($cycle === null || $date === null || !$this->type->countsTowardsRecurringTotals() || $date >= $today) {
+            return null;
+        }
+
+        // The catch-up's guard, for a date centuries behind.
+        for ($i = 0; $date < $today && $i < 15_000; $i++) {
+            $date = $cycle->advance($date, $this->cycleDays, $this->anchorDay, $this->cycleInterval);
+        }
+
+        return $date;
+    }
 }

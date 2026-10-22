@@ -148,6 +148,7 @@ abstract class DatabaseTestCase extends TestCase
             'subscription_splits',
             'budget_alert_state',
             'budgets',
+            'subscription_charges',
             'subscription_price_history',
             'subscriptions',
             'exchange_rates',
