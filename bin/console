@@ -164,10 +164,11 @@ switch ($command) {
 
         $totals = $container->get(LedgerBackfillRunner::class)->run($householdId);
         $out(sprintf(
-            'Backfilled %d charge(s) on %d subscription(s) across %d household(s).',
+            'Backfilled %d charge(s) on %d subscription(s) across %d household(s); filed %d invoice(s) against them.',
             $totals['charges'],
             $totals['subscriptions'],
             $totals['households'],
+            $totals['invoices'],
         ));
         exit(0);
 

@@ -525,7 +525,8 @@ Responses: `200`, `401`, `403`, `404`.
 
 Undo a cancellation. The subscription returns to **paused**, not active, so a
 mistake corrected cannot silently restart charges; resume it by `PUT`ting it
-back with `is_active: true`. Responses: `200`, `401`, `403`, `404`.
+back with `is_active: true`, which moves a payment date left in the past on to
+the first billing date from today. Responses: `200`, `401`, `403`, `404`.
 
 ---
 
@@ -573,6 +574,7 @@ Attach a document. `multipart/form-data`:
 | --- | --- |
 | `file` | **Required.** PDF, PNG, JPEG, WebP or GIF. Type determined from contents; filename and declared content type are ignored. |
 | `period_date` | Optional `YYYY-MM-DD`. The billing period this document covers. |
+| `charge_id` | Optional. The payment this is the invoice for — one of this subscription's charges. The attachment is dated to it, whatever `period_date` says. |
 
 ```bash
 curl -X POST \
@@ -609,8 +611,10 @@ Contributor's `PATCH` or `POST` on another member's row.
 
 #### `GET /api/v1/subscriptions/{id}/charges`
 
-List the subscription's charges, newest first. Responses: `200`, `401`, `403`,
-`404`.
+List the subscription's charges, newest first, a page at a time: `page`
+(minimum 1) and `per_page` (1–100, default 25), with a `meta` block shaped like
+the subscription list's. A page past the last returns the last. Responses:
+`200`, `401`, `403`, `404`.
 
 #### `POST /api/v1/subscriptions/{id}/charges`
 
@@ -620,7 +624,7 @@ Add a charge that fell off the cycle, such as a one-time fee. Needs
 | Field | Notes |
 | --- | --- |
 | `date` | **Required.** `YYYY-MM-DD`, today or earlier. One charge a day per subscription. |
-| `amount_minor` | **Required.** Integer minor units, in the subscription's currency. |
+| `amount_minor` | **Required.** Integer minor units, in the subscription's currency. The web form's decimal `amount` is not read. |
 | `note` | Optional, up to 255 characters. |
 
 Responses: `201` with the `Charge`, `401`, `403`, `404`, `422`.
@@ -632,7 +636,7 @@ Record what a charge really was, skip it, or annotate it. Needs
 
 | Field | Notes |
 | --- | --- |
-| `actual_minor` | Integer minor units, or `null` to clear a recorded amount. |
+| `actual_minor` | Integer minor units, or `null` to clear a recorded amount. Sent without a `status`, it also sets `charged` — recording an amount says the charge happened, as it does on the web. |
 | `status` | `charged` or `skipped`. Skipping clears the actual; sending both `skipped` and an `actual_minor` is a `422`. |
 | `note` | Up to 255 characters, or `null`. |
 
@@ -789,7 +793,7 @@ The writable half of a subscription. Required: `name`, `price_minor`,
 | `converts_to_billing_cycle` | enum, null | As `billing_cycle`. |
 | `converts_to_cycle_days` | integer, null | |
 | `converts_to_cycle_interval` | integer, null | As `cycle_interval`, for the cycle it converts to — bounded the same way, and an absent key on a PUT that keeps `converts_to_billing_cycle` keeps it. Null when it converts to the cycle it already has. |
-| `is_active` | boolean | Default `true`. `false` pauses it. Stays `false` while the subscription is cancelled. |
+| `is_active` | boolean | Default `true`. `false` pauses it. Stays `false` while the subscription is cancelled. Resuming skips the paused dates: a past `next_payment_date` moves on to the first billing date from today, so the response may not echo the date sent, and no payments are recorded for the pause. |
 | `plan` | string, null | Max 60 — "Standard", "Family". An absent key keeps the current value. |
 | `visibility` | enum | `household` (default) or `payer`. `payer` keeps it to its owner: hidden from every other member in either isolation mode, and out of their totals. Only the owner may set it, only when `payer_user_id` is the owner or null, and never on a split subscription. An absent key keeps the current setting. |
 | `category_id` | integer, null | |

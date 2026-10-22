@@ -103,6 +103,41 @@ final class AttachmentRepository extends AbstractScopedRepository
         ]);
     }
 
+    /**
+     * File each unlinked invoice against the payment its period date names —
+     * the same step the `add_charge_id_to_attachments` migration runs, for
+     * the charges `ledger:backfill` has just written.
+     *
+     * The whole household, not this scope's own rows: it links a document to
+     * a charge of the same subscription and changes nothing else, and an
+     * invoice left unlinked because another member wrote the charge would be
+     * the gap this exists to close. A correlated subquery rather than
+     * UPDATE … FROM, which MySQL does not accept.
+     *
+     * @return int How many attachments were linked.
+     */
+    public function linkToCharges(Scope $scope): int
+    {
+        if (!$scope->hasHousehold()) {
+            return 0;
+        }
+
+        $outer = $this->quote('attachments') . '.';
+        $match = ' FROM ' . $this->quote('subscription_charges') . ' charge'
+            . ' WHERE charge.' . $this->quote('subscription_id') . ' = ' . $outer . $this->quote('subscription_id')
+            . ' AND charge.' . $this->quote('due_date') . ' = ' . $outer . $this->quote('period_date');
+
+        return $this->db->execute(
+            'UPDATE ' . $this->quote('attachments')
+            . ' SET ' . $this->quote('charge_id') . ' = (SELECT MIN(charge.' . $this->quote('id') . ')' . $match . ')'
+            . ' WHERE ' . $this->quote('household_id') . ' = :household'
+            . ' AND ' . $this->quote('charge_id') . ' IS NULL'
+            . ' AND ' . $this->quote('period_date') . ' IS NOT NULL'
+            . ' AND EXISTS (SELECT 1' . $match . ')',
+            ['household' => $scope->householdId],
+        );
+    }
+
     public function delete(Scope $scope, int $id): void
     {
         $this->deleteScoped($scope, $id);

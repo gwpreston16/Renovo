@@ -187,6 +187,55 @@ final class ApiChargesTest extends ApiTestCase
         ));
     }
 
+    public function testTheListIsPaged(): void
+    {
+        $response = $this->api('GET', $this->chargesPath() . '?per_page=1&page=2', $this->ownerToken);
+        $body = $this->decode($response);
+
+        self::assertCount(1, $body['data']);
+        self::assertSame(['page' => 2, 'per_page' => 1, 'total' => 2, 'total_pages' => 2], $body['meta']);
+        self::assertNotSame($this->chargeId, $body['data'][0]['id']);
+    }
+
+    public function testAnActualOnASkippedChargeSaysItHappened(): void
+    {
+        $path = '/api/v1/charges/' . $this->chargeId;
+        $this->api('PATCH', $path, $this->ownerToken, ['status' => 'skipped']);
+
+        $data = $this->decode($this->api('PATCH', $path, $this->ownerToken, ['actual_minor' => 6320]))['data'];
+        self::assertSame(['charged', 6320], [$data['status'], $data['amount_minor']]);
+
+        $data = $this->decode($this->api('PATCH', $path, $this->ownerToken, ['actual_minor' => null]))['data'];
+        self::assertSame([null, 5800], [$data['actual_minor'], $data['amount_minor']]);
+
+        foreach ([-1, 'x', 1.5] as $bad) {
+            $response = $this->api('PATCH', $path, $this->ownerToken, ['actual_minor' => $bad]);
+            self::assertSame(422, $response->getStatusCode(), var_export($bad, true));
+            self::assertArrayHasKey('actual_minor', $this->decode($response)['error']['errors'] ?? []);
+        }
+
+        $long = $this->api('PATCH', $path, $this->ownerToken, ['note' => str_repeat('n', 256)]);
+        self::assertSame(422, $long->getStatusCode());
+    }
+
+    public function testAPostReadsMinorUnitsOnly(): void
+    {
+        $date = (new DateTimeImmutable('-1 day'))->format('Y-m-d');
+
+        $missing = $this->api('POST', $this->chargesPath(), $this->ownerToken, ['date' => $date]);
+        self::assertSame(422, $missing->getStatusCode());
+        self::assertArrayHasKey('amount_minor', $this->decode($missing)['error']['errors'] ?? []);
+
+        $decimal = $this->api('POST', $this->chargesPath(), $this->ownerToken, ['date' => $date, 'amount' => '4.00']);
+        self::assertSame(422, $decimal->getStatusCode());
+
+        $future = $this->api('POST', $this->chargesPath(), $this->ownerToken, [
+            'date' => (new DateTimeImmutable('+2 days'))->format('Y-m-d'),
+            'amount_minor' => 100,
+        ]);
+        self::assertSame(422, $future->getStatusCode());
+    }
+
     private function chargesPath(): string
     {
         return '/api/v1/subscriptions/' . $this->subscriptionId . '/charges';

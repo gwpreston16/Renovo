@@ -67,6 +67,9 @@ final class ChargeService
         }
 
         $existing = $this->charges->existingDates($scope, $subscription->id);
+        // The history once, not once per date: a catch-up months late prices
+        // every passed date from the same rows.
+        $history = $this->priceHistory->historyFor($scope, $subscription->id);
         $written = 0;
 
         foreach ($dates as $date) {
@@ -80,7 +83,7 @@ final class ChargeService
                 $subscription->id,
                 $subscription->ownerUserId,
                 $date,
-                $this->priceOn($scope, $subscription, $date),
+                ChargeSchedule::priceAsAt($history, $date) ?? $subscription->price,
                 ChargeSource::CatchUp,
                 now: $this->clock->now(),
             );
@@ -89,6 +92,34 @@ final class ChargeService
         }
 
         return $written;
+    }
+
+    /**
+     * Write a one-off or lifetime entry's single charge, once.
+     *
+     * One-offs have no payment date to compare-and-set, so two catch-ups at
+     * the same moment can both find the entry uncharged. The unique key
+     * decides: the second insert collides, and that is the answer — the row
+     * is there — rather than an error. Called outside any transaction, which
+     * a failed statement would poison on PostgreSQL.
+     *
+     * @return bool Whether this call wrote it.
+     */
+    public function recordOneOff(Scope $scope, Subscription $entry): bool
+    {
+        if ($entry->startDate === null) {
+            return false;
+        }
+
+        return $this->charges->recordUnlessTaken(
+            $scope,
+            $entry->id,
+            $entry->ownerUserId,
+            $entry->startDate,
+            $this->priceHistory->priceOn($scope, $entry->id, $entry->startDate) ?? $entry->price,
+            ChargeSource::CatchUp,
+            now: $this->clock->now(),
+        ) !== null;
     }
 
     /**
@@ -270,7 +301,11 @@ final class ChargeService
             }
         }
 
-        $status = $charge->status;
+        // Recording an amount says the charge happened, as the web form's
+        // Record amount does: an actual sent without a status un-skips it.
+        $status = $actualMinor !== null && array_key_exists('actual_minor', $input)
+            ? ChargeStatus::Charged
+            : $charge->status;
         if (array_key_exists('status', $input)) {
             $status = is_string($input['status']) ? ChargeStatus::tryFrom($input['status']) : null;
             if ($status === null) {
@@ -337,7 +372,7 @@ final class ChargeService
             $minor = $input['amount_minor'];
             $amount = is_int($minor) && $minor >= 0 ? Money::of($minor, $subscription->price->currency) : null;
             if ($amount === null) {
-                $errors['amount_minor'] = 'error.price.invalid';
+                $errors['amount_minor'] = $minor === null ? 'error.charge.amount_required' : 'error.price.invalid';
             }
         } else {
             $amount = $this->amount($this->str($input, 'amount'), $subscription->price->currency, 'amount', $errors);
@@ -352,7 +387,9 @@ final class ChargeService
             throw new ValidationException($errors);
         }
 
-        $id = $this->charges->record(
+        // Checked above, and decided here: a catch-up writing the same date in
+        // the meantime is a date taken, not a 500.
+        $id = $this->charges->recordUnlessTaken(
             $scope,
             $subscription->id,
             $subscription->ownerUserId,
@@ -362,6 +399,9 @@ final class ChargeService
             note: $note,
             now: $this->clock->now(),
         );
+        if ($id === null) {
+            throw new ValidationException(['date' => 'error.charge.date_taken']);
+        }
 
         return $this->reread($scope, $id);
     }
@@ -467,11 +507,6 @@ final class ChargeService
         }
 
         return $stop;
-    }
-
-    private function priceOn(Scope $scope, Subscription $subscription, DateTimeImmutable $date): Money
-    {
-        return $this->priceHistory->priceOn($scope, $subscription->id, $date) ?? $subscription->price;
     }
 
     /**

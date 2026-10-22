@@ -655,6 +655,156 @@ final class PaymentLedgerTest extends DatabaseTestCase
         self::assertSame([['2026-02-15', 1000], ['2026-01-15', 1000]], $this->dueAndExpected($id));
     }
 
+    public function testBackfillFilesExistingInvoicesAgainstTheirPayments(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
+        $id = $this->create('Energy', '58.00', '2026-03-15', '2026-01-15');
+        $this->clock->advanceTo(new DateTimeImmutable('2026-06-01 09:00:00'));
+        foreach (['2026-02-15' => 'feb.pdf', '2026-02-01' => 'other.pdf'] as $period => $name) {
+            $this->db->insert('attachments', [
+                'household_id' => $this->household,
+                'owner_user_id' => $this->aliceId,
+                'subscription_id' => $id,
+                'period_date' => $period,
+                'original_filename' => $name,
+                'stored_path' => 'x/' . $name,
+                'mime_type' => 'application/pdf',
+                'size_bytes' => 1,
+                'created_at' => '2026-03-01 00:00:00',
+            ]);
+        }
+
+        $result = $this->container->get(LedgerBackfillRunner::class)->run();
+        self::assertSame(1, $result['invoices']);
+
+        $february = null;
+        foreach ($this->charges->forSubscription($this->alice, $id) as $charge) {
+            if ($charge->dueDate->format('Y-m-d') === '2026-02-15') {
+                $february = $charge;
+            }
+        }
+        self::assertNotNull($february);
+        $links = [];
+        $rows = $this->db->fetchAll('SELECT original_filename, charge_id FROM attachments ORDER BY original_filename');
+        foreach ($rows as $row) {
+            $links[(string) $row['original_filename']] = $row['charge_id'] === null ? null : (int) $row['charge_id'];
+        }
+        self::assertSame(['feb.pdf' => $february->id, 'other.pdf' => null], $links);
+
+        self::assertSame(0, $this->container->get(LedgerBackfillRunner::class)->run()['invoices']);
+    }
+
+    public function testASecondWriterOnTheSameDateIsTurnedAwayNotFailed(): void
+    {
+        $id = $this->create('Gym', '30.00', '2026-06-15', '2026-01-15');
+        $repository = $this->container->get(\App\Repository\ChargeRepository::class);
+        $date = new DateTimeImmutable('2026-05-28');
+        $price = \App\Domain\Money::of(100, 'GBP');
+
+        $write = fn (ChargeSource $source): ?int => $repository->recordUnlessTaken(
+            $this->alice,
+            $id,
+            $this->aliceId,
+            $date,
+            $price,
+            $source,
+        );
+        self::assertNotNull($write(ChargeSource::Manual));
+        self::assertNull($write(ChargeSource::CatchUp));
+
+        // A one-off whose charge another catch-up wrote first.
+        $entry = $this->subscriptions->create($this->alice, [
+            'name' => 'Desk',
+            'price' => '150.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'one_off',
+            'start_date' => '2026-05-20',
+        ]);
+        $desk = $this->subscriptions->find($this->alice, $entry);
+        self::assertNotNull($desk);
+        self::assertTrue($this->charges->recordOneOff($this->alice, $desk));
+        self::assertFalse($this->charges->recordOneOff($this->alice, $desk));
+    }
+
+    public function testTheCatchUpMovesADateOnlyFromWhatItRead(): void
+    {
+        $id = $this->create('Gym', '30.00', '2026-04-15', '2026-01-15');
+        $repository = $this->container->get(\App\Repository\SubscriptionRepository::class);
+
+        self::assertFalse($repository->advanceNextPaymentDate(
+            $this->alice,
+            $id,
+            new DateTimeImmutable('2026-03-15'),
+            new DateTimeImmutable('2026-06-15'),
+        ));
+        self::assertTrue($repository->advanceNextPaymentDate(
+            $this->alice,
+            $id,
+            new DateTimeImmutable('2026-04-15'),
+            new DateTimeImmutable('2026-06-15'),
+        ));
+        self::assertSame('2026-06-15', $this->nextPayment($id));
+    }
+
+    public function testANoteOver255CharactersIsRefusedEverywhere(): void
+    {
+        $id = $this->create('Energy', '58.00', '2026-05-15', '2026-01-15');
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-20 08:00:00'));
+        $this->catchUp->run($this->alice);
+        $charge = $this->charges->forSubscription($this->alice, $id)[0];
+        $note = str_repeat('n', 256);
+
+        foreach (
+            [
+                fn () => $this->charges->recordActual($this->alice, $charge->id, ['actual' => '1.00', 'note' => $note]),
+                fn () => $this->charges->skip($this->alice, $charge->id, ['note' => $note]),
+                fn () => $this->charges->addManual($this->alice, $id, [
+                    'date' => '2026-05-01',
+                    'amount' => '1',
+                    'note' => $note,
+                ]),
+            ] as $attempt
+        ) {
+            try {
+                $attempt();
+                self::fail('Accepted a 256-character note.');
+            } catch (ValidationException $exception) {
+                self::assertSame('error.note.too_long_255', $exception->errors()['note']->key ?? null);
+            }
+        }
+    }
+
+    public function testEachMembersShareFollowsTheLedger(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
+        $id = $this->create('Broadband', '10.00', '2026-03-15', '2026-01-15');
+        $this->container->get(\App\Service\SplitService::class)->update($this->alice, $id, [
+            'split_mode' => 'equal',
+            'shares' => [(string) $this->aliceId => '1', (string) $this->bobId => '1'],
+        ]);
+        $this->clock->advanceTo(new DateTimeImmutable('2026-04-20 08:00:00'));
+        $this->catchUp->run($this->alice);
+        $march = $this->charges->forSubscription($this->alice, $id)[1];
+        self::assertSame('2026-03-15', $march->dueDate->format('Y-m-d'));
+
+        $history = $this->container->get(SpendHistoryService::class);
+        $share = fn (int $user): int => array_sum(array_map(
+            static fn (array $charge): int => $charge['amount']->amountMinor,
+            $history->charges(
+                $this->alice,
+                new DateTimeImmutable('2026-02-28'),
+                new DateTimeImmutable('2026-03-31'),
+                $user,
+            )['charges'],
+        ));
+
+        $this->charges->recordActual($this->alice, $march->id, ['actual' => '13.00']);
+        self::assertSame([650, 650], [$share($this->aliceId), $share($this->bobId)]);
+
+        $this->charges->skip($this->alice, $march->id);
+        self::assertSame([0, 0], [$share($this->aliceId), $share($this->bobId)]);
+    }
+
     public function testBackfillWritesNothingForAViewer(): void
     {
         $this->create('Monthly', '10.00', '2026-06-15', '2026-01-15');

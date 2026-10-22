@@ -920,6 +920,46 @@ final class BackupRestoreTest extends DatabaseTestCase
         self::assertSame([], $this->container->get(ChargeService::class)->all($this->target));
     }
 
+    public function testABadPaymentRowInAnArchiveIsSkippedNotWritten(): void
+    {
+        $this->subscriptions->create($this->source, [
+            'name' => 'Energy',
+            'price' => '58.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-06-15',
+            'start_date' => '2026-04-15',
+        ]);
+        $this->container->get(LedgerBackfillRunner::class)->run();
+
+        $archive = $this->export();
+        $data = $this->readArchiveJson($archive, 'data.json');
+        $good = $data['charges'][0];
+        $data['charges'] = [
+            $good,
+            'not a row',
+            ['subscription_index' => 99] + $good,
+            ['expected_minor' => -1, 'due_date' => '2026-01-01'] + $good,
+            ['actual_minor' => -5, 'due_date' => '2026-01-02'] + $good,
+            ['status' => 'refunded', 'due_date' => '2026-01-03'] + $good,
+            ['source' => 'bank', 'due_date' => '2026-01-04'] + $good,
+            ['currency' => 'XX', 'due_date' => '2026-01-05'] + $good,
+            ['due_date' => 'soon'] + $good,
+            $good,
+        ];
+        $zip = new ZipArchive();
+        self::assertTrue($zip->open($archive) === true);
+        $zip->addFromString('data.json', json_encode($data, JSON_THROW_ON_ERROR));
+        $zip->close();
+
+        $summary = $this->backups->restore($this->target, $this->targetUser, $archive);
+
+        self::assertSame(1, $summary['charges']);
+        self::assertSame(9, $summary['skipped']);
+        self::assertCount(1, $this->container->get(ChargeService::class)->all($this->target));
+    }
+
     public function testARestoreThatFailsPartWayKeepsNothing(): void
     {
         $id = $this->subscriptions->create($this->source, [

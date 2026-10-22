@@ -9,8 +9,10 @@ use App\Domain\ChargeStatus;
 use App\Domain\Entity\Charge;
 use App\Domain\Money;
 use App\Persistence\Criteria;
+use App\Persistence\Database;
 use App\Security\Scope;
 use DateTimeImmutable;
+use PDOException;
 
 /**
  * The payment ledger, scoped exactly like the subscriptions it describes.
@@ -278,6 +280,46 @@ final class ChargeRepository extends AbstractScopedRepository
             'created_at' => $stamp,
             'updated_at' => $stamp,
         ]);
+    }
+
+    /**
+     * `record()`, unless the subscription already has a charge on that date —
+     * decided by the unique key, so two writers at once cannot both succeed.
+     *
+     * Not for use inside a transaction: on PostgreSQL the failed insert would
+     * abort it.
+     *
+     * @return int|null The new id, or null when the date was taken.
+     */
+    public function recordUnlessTaken(
+        Scope $scope,
+        int $subscriptionId,
+        int $ownerUserId,
+        DateTimeImmutable $dueDate,
+        Money $expected,
+        ChargeSource $source,
+        ?string $note = null,
+        ?DateTimeImmutable $now = null,
+    ): ?int {
+        try {
+            return $this->record(
+                $scope,
+                $subscriptionId,
+                $ownerUserId,
+                $dueDate,
+                $expected,
+                $source,
+                null,
+                $note,
+                $now,
+            );
+        } catch (PDOException $exception) {
+            if (Database::isUniqueViolation($exception)) {
+                return null;
+            }
+
+            throw $exception;
+        }
     }
 
     /**

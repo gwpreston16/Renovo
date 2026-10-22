@@ -496,9 +496,7 @@ final class SubscriptionService
         // One-off and lifetime entries have no date to move, only their one
         // charge to write once its day has passed.
         foreach ($this->subscriptions->findUnchargedOneOffs($scope, $today) as $entry) {
-            if ($entry->startDate !== null) {
-                $this->charges->recordPassed($scope, $entry, [$entry->startDate]);
-            }
+            $this->charges->recordOneOff($scope, $entry);
         }
 
         return $advanced;

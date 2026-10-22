@@ -25,6 +25,9 @@ use Slim\Exception\HttpNotFoundException;
  */
 final class ChargeApiController extends ApiController
 {
+    private const DEFAULT_PER_PAGE = 25;
+    private const MAX_PER_PAGE = 100;
+
     public function __construct(
         Translator $translator,
         private readonly ChargeService $charges,
@@ -40,11 +43,22 @@ final class ChargeApiController extends ApiController
             throw new HttpNotFoundException($request, $this->translator->trans('error.api.subscription_not_found'));
         }
 
+        $query = $request->getQueryParams();
+        $perPage = $this->positive($query['per_page'] ?? null, self::DEFAULT_PER_PAGE, self::MAX_PER_PAGE);
+        $number = $this->positive($query['page'] ?? null, 1, PHP_INT_MAX);
+        $page = $this->charges->page($scope, (int) $id, $number, $perPage);
+
         return $this->json($response, [
             'data' => array_map(
                 static fn (Charge $charge): array => Resource::charge($charge),
-                $this->charges->forSubscription($scope, (int) $id),
+                $page['charges'],
             ),
+            'meta' => [
+                'page' => $page['page'],
+                'per_page' => $perPage,
+                'total' => $page['total'],
+                'total_pages' => (int) ceil($page['total'] / $perPage),
+            ],
         ]);
     }
 
@@ -55,7 +69,14 @@ final class ChargeApiController extends ApiController
             throw new HttpNotFoundException($request, $this->translator->trans('error.api.subscription_not_found'));
         }
 
-        $charge = $this->charges->addManual($scope, (int) $id, $this->payload($request));
+        // Minor units only, as every price over the API is: the web form's
+        // decimal `amount` is not read here, and a missing `amount_minor` is
+        // reported under its own name.
+        $payload = $this->payload($request);
+        unset($payload['amount']);
+        $payload['amount_minor'] ??= null;
+
+        $charge = $this->charges->addManual($scope, (int) $id, $payload);
 
         return $this->json($response, ['data' => Resource::charge($charge)], 201);
     }
@@ -71,5 +92,14 @@ final class ChargeApiController extends ApiController
         return $this->json($response, [
             'data' => Resource::charge($this->charges->patch($scope, $charge->id, $this->payload($request))),
         ]);
+    }
+
+    private function positive(mixed $raw, int $default, int $max): int
+    {
+        if (!is_scalar($raw) || !is_numeric($raw) || (int) $raw < 1) {
+            return $default;
+        }
+
+        return min((int) $raw, $max);
     }
 }

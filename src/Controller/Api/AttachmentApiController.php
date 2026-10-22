@@ -63,12 +63,15 @@ final class AttachmentApiController extends ApiController
             ? (string) $body['period_date']
             : null;
 
+        $chargeId = isset($body['charge_id']) && is_numeric($body['charge_id']) ? (int) $body['charge_id'] : null;
+
         $attachmentId = $this->attachments->upload(
             $this->scope($request),
             $this->user($request),
             (int) $id,
             $file,
             $periodDate,
+            $chargeId,
         );
 
         $created = $this->attachments->find($this->scope($request), $attachmentId);
