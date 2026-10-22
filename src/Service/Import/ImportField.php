@@ -44,6 +44,10 @@ enum ImportField: string
     case TrialEndDate = 'trial_end_date';
     case ConvertsToPrice = 'converts_to_price';
     case ConvertsToPriceMinor = 'converts_to_price_minor';
+    // Phase 35's terms: how a row behaves, each optional.
+    case ContractEndsOn = 'contract_ends_on';
+    case PaymentsEndOn = 'payments_end_on';
+    case AmountVaries = 'amount_varies';
 
     public function labelKey(): string
     {
@@ -68,7 +72,8 @@ enum ImportField: string
         return match ($this) {
             self::Price, self::PriceMinor, self::ConvertsToPriceMinor, self::BillingCycle, self::CycleInterval,
             self::NextPaymentDate, self::StartDate, self::TrialEndDate, self::Tags,
-            self::IsActive, self::NoticePeriodUnit => 'import_field.' . $this->value . '.hint',
+            self::IsActive, self::NoticePeriodUnit, self::ContractEndsOn, self::PaymentsEndOn,
+            self::AmountVaries => 'import_field.' . $this->value . '.hint',
             default => null,
         };
     }

@@ -933,7 +933,16 @@ final class SubscriptionService
 
         $anchorDay = $this->anchorDay($input, $cycle, $nextPaymentDate, $existing, $errors);
 
-        $terms = $this->validateTerms($input, $type, $nextPaymentDate, $startDate, $trial, $existing, $errors);
+        $terms = $this->validateTerms(
+            $input,
+            $type,
+            $nextPaymentDate,
+            $startDate,
+            $trial,
+            $existing,
+            $cancelledAt !== null,
+            $errors,
+        );
 
         // Null when the field was not submitted at all, which is what keeps a
         // form that does not show it — a bulk edit, a later API — from wiping a
@@ -1042,6 +1051,7 @@ final class SubscriptionService
         ?DateTimeImmutable $startDate,
         array $trial,
         ?Subscription $existing,
+        bool $restoringCancelled,
         array &$errors,
     ): array {
         $contractEnds = $this->date($this->str($input, 'contract_ends_on'));
@@ -1061,7 +1071,7 @@ final class SubscriptionService
         $firstCharge = $trial['is_trial'] && is_string($trial['trial_end_date'])
             ? $this->date($trial['trial_end_date'])
             : $nextPaymentDate;
-        $cancelled = $existing?->isCancelled() === true;
+        $cancelled = $existing?->isCancelled() === true || $restoringCancelled;
         // An edit that leaves the field out keeps the stored date, which a
         // moved payment date is measured against all the same.
         $end = array_key_exists('payments_end_on', $input) || $existing === null
@@ -1402,7 +1412,9 @@ final class SubscriptionService
         }
 
         $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        $errors = DateTimeImmutable::getLastErrors();
 
-        return $date === false ? null : $date;
+        // "2026-02-31" is not 3 March: an impossible date is no date.
+        return $date === false || ($errors !== false && $errors['warning_count'] > 0) ? null : $date;
     }
 }

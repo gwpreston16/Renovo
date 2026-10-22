@@ -164,8 +164,8 @@ Added *2026-10-22* at the owner's request, as rows in code this phase rewrites:
 - [ ] Fixed terms: forecast and totals stop, catch-up ends the row, progress
 - [x] Varying bills: estimate wording, ≈ figures, average and Use as estimate,
       insight, alert wording
-- [ ] Terms section on the form
-- [ ] API, OpenAPI, `docs/api.md`, import, export, backup
+- [x] Terms section on the form
+- [x] API, OpenAPI, `docs/api.md`, import, export, backup
 - [ ] K2, K11, K48, K72, K73, K78–K81 fixed and marked in `known-issues.md`
 - [ ] New strings in `translations/en.php`
 - [ ] `composer check`, `i18n:check`, offline guard green on both engines

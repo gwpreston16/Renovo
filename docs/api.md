@@ -308,12 +308,13 @@ easiest mistake to make:
 `monthly_minor`, `yearly_minor`, `next_charge_date`, `cancellation_deadline`,
 `days_until_next_payment`, `cancelled_at`, `status`, `created_at`, `updated_at`.
 
-**Three fields keep their value when omitted**, unlike the rest of a `PUT`:
-`payment_method_id`, `plan` and `visibility`. Each arrived after the API did,
-and a client written before it must not clear it — or, for `visibility`, make a
+**Six fields keep their value when omitted**, unlike the rest of a `PUT`:
+`payment_method_id`, `plan`, `visibility`, `contract_ends_on`,
+`payments_end_on` and `amount_varies`. Each arrived after the API did, and a
+client written before it must not clear it — or, for `visibility`, make a
 private subscription visible to the household — by putting back a
-representation it never knew had the field. Send `null` (or, for `plan`, an
-empty string) to clear one.
+representation it never knew had the field. Send `null` (or, for `plan` and
+the two dates, an empty string) to clear one.
 
 **A private subscription is invisible to everybody but its owner.** With
 `visibility: "payer"`, no other member's token — Owner/Admin included, in
@@ -805,6 +806,9 @@ The writable half of a subscription. Required: `name`, `price_minor`,
 | `converts_to_cycle_interval` | integer, null | As `cycle_interval`, for the cycle it converts to — bounded the same way, and an absent key on a PUT that keeps `converts_to_billing_cycle` keeps it. Null when it converts to the cycle it already has. |
 | `is_active` | boolean | Default `true`. `false` pauses it. Stays `false` while the subscription is cancelled. Resuming skips the paused dates: a past `next_payment_date` moves on to the first billing date from today, so the response may not echo the date sent, and each date it steps over is recorded as a `skipped` charge with `source` `paused` — except one that already has a payment added by hand, which becomes that date's `paused` charge, keeping its status. Billed for one of those months after all? `PATCH` that charge's `actual_minor`; a `POST` on its date is a `422`. |
 | `plan` | string, null | Max 60 — "Standard", "Family". An absent key keeps the current value. |
+| `contract_ends_on` | date, null | When its contract ends. It keeps running after; the date is announced at the lead times (`contract_ending` alerts) and listed beside cancel-by deadlines. An absent key keeps the current value. |
+| `payments_end_on` | date, null | The last charge of a fixed term: the last billing date on or before it is the final payment. Nothing is charged or forecast after it, and the day after the final payment the row is cancelled with `cancelled_at` that day. Recurring only; not before `start_date` or the next charge (`422`). An absent key keeps the current value. |
+| `amount_varies` | boolean | The price is an estimate: the amount varies bill to bill. An absent key keeps the current value; `false` on a new row. |
 | `visibility` | enum | `household` (default) or `payer`. `payer` keeps it to its owner: hidden from every other member in either isolation mode, and out of their totals. Only the owner may set it, only when `payer_user_id` is the owner or null, and never on a split subscription. An absent key keeps the current setting. |
 | `category_id` | integer, null | |
 | `payment_method_id` | integer, null | An absent key leaves the current assignment alone — unlike the other fields, so a client written before it existed does not clear it. Send `null` to clear it. |

@@ -637,6 +637,38 @@ final class BackupRestoreTest extends DatabaseTestCase
         self::assertFalse($restored['Gone']->isActive);
     }
 
+    public function testTheTermsSurviveTheRoundTrip(): void
+    {
+        $base = [
+            'price' => '58.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-12-01',
+        ];
+        $this->subscriptions->create($this->source, [
+            'name' => 'Energy',
+            'contract_ends_on' => '2027-03-14',
+            'payments_end_on' => '2028-11-01',
+            'amount_varies' => '1',
+        ] + $base);
+        $this->subscriptions->create($this->source, ['name' => 'Plain'] + $base);
+
+        $this->backups->restore($this->target, $this->targetUser, $this->export());
+
+        $restored = [];
+        foreach ($this->subscriptions->allForStats($this->target, activeOnly: false) as $subscription) {
+            $restored[$subscription->name] = $subscription;
+        }
+
+        self::assertSame('2027-03-14', $restored['Energy']->contractEndsOn?->format('Y-m-d'));
+        self::assertSame('2028-11-01', $restored['Energy']->paymentsEndOn?->format('Y-m-d'));
+        self::assertTrue($restored['Energy']->amountVaries);
+        self::assertNull($restored['Plain']->contractEndsOn);
+        self::assertNull($restored['Plain']->paymentsEndOn);
+        self::assertFalse($restored['Plain']->amountVaries);
+    }
+
     public function testAnIntroOfferSurvivesTheRoundTrip(): void
     {
         $base = [

@@ -208,6 +208,61 @@ final class ContractTermsScreensTest extends DatabaseTestCase
         self::assertStringContainsString('aria-describedby="invoice-' . $chargeId . '-hint"', $body);
     }
 
+    public function testTheFormSavesTheTermsAndShowsThemBack(): void
+    {
+        $new = $this->page('/subscriptions/new', $this->ownerId);
+        self::assertStringContainsString('name="contract_ends_on"', $new);
+        self::assertStringContainsString('name="payments_end_on"', $new);
+        self::assertStringContainsString('name="amount_varies"', $new);
+        self::assertStringContainsString('Estimated amount', $new);
+        // Collapsed for a row that uses none of them.
+        self::assertStringContainsString('<details class="more-details terms-details" id="terms" >', $new);
+
+        $response = $this->request('POST', '/subscriptions', [
+            'name' => 'Octopus Energy',
+            'price' => '58.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => $this->nextMonth->format('Y-m-d'),
+            'contract_ends_on' => $this->nextMonth->modify('+1 year')->format('Y-m-d'),
+            'payments_end_on' => '',
+            'amount_varies' => '1',
+        ]);
+        self::assertSame(302, $response->getStatusCode(), (string) $response->getBody());
+
+        $saved = $this->subscriptions->findAllForStats($this->owner, false)[0];
+        self::assertTrue($saved->amountVaries);
+        self::assertSame(
+            $this->nextMonth->modify('+1 year')->format('Y-m-d'),
+            $saved->contractEndsOn?->format('Y-m-d'),
+        );
+        self::assertNull($saved->paymentsEndOn);
+
+        $edit = $this->page('/subscriptions/' . $saved->id . '/edit', $this->ownerId);
+        self::assertStringContainsString('<details class="more-details terms-details" id="terms" open>', $edit);
+        self::assertMatchesRegularExpression('~id="amount_varies" name="amount_varies" value="1"\s+checked~', $edit);
+    }
+
+    public function testALastPaymentBeforeTheNextOneIsAFormError(): void
+    {
+        $this->signIn($this->ownerId);
+        $response = $this->request('POST', '/subscriptions', [
+            'name' => 'Phone',
+            'price' => '30.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => $this->nextMonth->format('Y-m-d'),
+            'payments_end_on' => $this->nextMonth->modify('-1 day')->format('Y-m-d'),
+        ]);
+
+        self::assertSame(422, $response->getStatusCode());
+        $body = (string) $response->getBody();
+        self::assertStringContainsString('The last payment can’t come before the next one.', $body);
+        self::assertStringContainsString('id="terms" open', $body);
+    }
+
     public function testTheContractAlertCanBeTurnedOff(): void
     {
         $body = $this->page('/settings/notifications', $this->ownerId);

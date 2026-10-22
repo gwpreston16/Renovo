@@ -2418,6 +2418,16 @@ a.segmented-option {
     display: none;
 }
 
+/* The price's label: "Estimated amount" while the amount varies. */
+.subscription-form .when-varying-amount,
+.subscription-form:has(#amount_varies:checked) .when-fixed-amount {
+    display: none;
+}
+
+.subscription-form:has(#amount_varies:checked) .when-varying-amount {
+    display: inline;
+}
+
 .subscription-form:has(input[name='cycle_kind'][value='custom_days']:checked) .reveal-custom-cycle,
 .subscription-form:has(input[name='cycle_kind'][value='every']:checked) .reveal-cycle-every,
 .subscription-form:has(input[name='cycle_kind'][value='every']:checked):has(#cycle_unit option[value='monthly']:checked) .reveal-last-day,

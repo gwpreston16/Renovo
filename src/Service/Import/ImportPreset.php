@@ -56,6 +56,11 @@ final class ImportPreset
                 'notice_period_unit' => ['notice unit', 'notice period unit'],
                 'trial_end_date' => ['trial end', 'trial end date', 'trial ends', 'trial expiry'],
                 'converts_to_price' => ['price after trial', 'converts to', 'post trial price'],
+                'contract_ends_on' => [
+                    'contract ends', 'contract ends on', 'contract end', 'contract end date', 'end of contract',
+                ],
+                'payments_end_on' => ['payments end', 'payments end on', 'last payment', 'final payment'],
+                'amount_varies' => ['amount varies', 'variable amount', 'varies'],
             ],
         ],
 
@@ -82,6 +87,9 @@ final class ImportPreset
                 'notice_period_unit' => ['notice_period_unit'],
                 'trial_end_date' => ['trial_end_date'],
                 'converts_to_price_minor' => ['converts_to_price_minor'],
+                'contract_ends_on' => ['contract_ends_on'],
+                'payments_end_on' => ['payments_end_on'],
+                'amount_varies' => ['amount_varies'],
             ],
         ],
 

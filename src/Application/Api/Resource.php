@@ -72,6 +72,9 @@ final class Resource
             'promo_then_price_minor' => ($promotion['then'] ?? null)?->amountMinor,
             'is_active' => $subscription->isActive,
             'plan' => $subscription->plan,
+            'contract_ends_on' => self::date($subscription->contractEndsOn),
+            'payments_end_on' => self::date($subscription->paymentsEndOn),
+            'amount_varies' => $subscription->amountVaries,
             'visibility' => $subscription->visibility->value,
             // Read-only: moved by the cancel and uncancel endpoints only.
             'cancelled_at' => self::date($subscription->cancelledAt),
