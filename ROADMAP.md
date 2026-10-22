@@ -42,7 +42,7 @@ can be moved.
 | 31 | [The scenario planner](docs/phases/PHASE-31.md) | — | None | ✅ done |
 | 32 | [Billing every N weeks, months or years](docs/phases/PHASE-32.md) | — | 2 columns | ✅ done |
 | 33 | [Introductory and promotional prices](docs/phases/PHASE-33.md) | — | 1 column | ✅ done |
-| 34 | [The payment ledger](docs/phases/PHASE-34.md) | — | 1 table, 1 column | 📋 planned |
+| 34 | [The payment ledger](docs/phases/PHASE-34.md) | — | 1 table, 1 column | 🚧 in progress |
 | 35 | [Contracts, fixed terms and bills that vary](docs/phases/PHASE-35.md) | 32, 34 | 5 migrations | 📋 planned |
 | 36 | [What you've saved](docs/phases/PHASE-36.md) | 31, 33, 34, 35 | 1 column | 📋 planned |
 | 37 | [The version, and knowing when there is a newer one](docs/phases/PHASE-37.md) | — | 1 column | 📋 planned |

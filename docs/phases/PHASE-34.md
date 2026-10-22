@@ -141,6 +141,51 @@ Migrations, sequenced after the last existing one, each with an explicit
 - **Splits** are applied to a charge's amount when a share is shown, as they
   are to a price today.
 
+*Confirmed 2026-10-22*, all five as written. `ManageCharges` joins the writer
+list in `PermissionService` beside `ManagePrices` and the `EditMoney` row of
+`RoleCapability` (the role matrix refuses a role holding part of a row); the
+Contributor fence comes from `writableWhere()`, as for prices.
+
+Found while starting it:
+
+- **Resuming skips the paused dates.** *Confirmed 2026-10-22.* `setActive()`
+  left `next_payment_date` where the pause found it, so the first catch-up after
+  a resume (or an uncancel, which lands on Paused) would roll through every date
+  of the pause and write a `charged` row for each. Resuming now moves the date
+  forward to the first billing date on or after today, in the same
+  transaction, and writes no rows; a member can still add a payment by hand.
+- **`ledger:backfill` stops before the current `next_payment_date`.**
+  *Confirmed 2026-10-22.* Per subscription it writes the reconstruction's
+  charges from `start_date` up to, not including, `next_payment_date` (and
+  before the earliest `catch_up` row), so it never overlaps the catch-up and
+  does not count a paused row's unbilled months. The reconstruction counts a
+  paused row through today, so the "matches the reconstruction to the minor
+  unit" test holds for active and cancelled rows, not paused ones.
+- **The calendar pages back to the earliest ledger month in scope**
+  (assumption). It was clamped to this month (`CalendarService`).
+- **Which source a past date reads** (assumption). Per subscription, dates
+  before its first ledger row are reconstructed; dates from that row up to its
+  `next_payment_date` are the ledger; dates from `next_payment_date` to today
+  that the catch-up has not yet written (nobody with write access has looked)
+  are the charges the catch-up would write. A charge due today stays the
+  forecast's on the month-so-far card, as it is now.
+- **Zero-amount charges are rows** (assumption). A £0 intro month is a billing
+  date that passed; it counts as nothing in every sum.
+- **Charge routes answer 404** for a subscription or charge that does not exist
+  or is not visible, like the other subscription sub-resources (K42 left as
+  it is for attachments).
+
+### Known issues taken
+
+Added *2026-10-22* at the owner's request, as rows in code this phase rewires:
+
+- **K36** — the reconstruction's 500-charge cap; the backfill would copy the
+  gap.
+- **K17** — one price-history query per subscription per spend walk.
+- **K3** — a split member counted the whole later charge when the current
+  price is £0.
+- **K16** — a restore failing part-way keeps its rows but deletes their files.
+
 ## Status
 
 - [ ] Migrations on both engines; entity, scoped repository, service
@@ -150,7 +195,8 @@ Migrations, sequenced after the last existing one, each with an explicit
 - [ ] `attachments.charge_id` and the `period_date` link step
 - [ ] Calendar pages backwards; month-so-far and past spend read the ledger
 - [ ] API endpoints, OpenAPI, `docs/api.md`, role matrix; export; backup
-- [ ] New strings in `translations/en.php`
+- [ ] K36, K17, K3, K16 fixed and marked in `known-issues.md`
+- [ ] New strings in every catalogue in `translations/`
 - [ ] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done
