@@ -21,6 +21,9 @@ final class Database
 {
     private ?PDO $pdo = null;
 
+    /** How many statements this connection has run — for tests that bound a query count. */
+    private int $statements = 0;
+
     /**
      * @param array{driver: string, host: string, port: int, name: string,
      *              user: string, password: string, charset: string} $config
@@ -29,6 +32,16 @@ final class Database
         private readonly array $config,
         private readonly Platform $platform,
     ) {
+    }
+
+    /**
+     * How many statements have been run through this object. Read by tests
+     * that assert a page's query count does not grow with its rows (K17);
+     * nothing in the application acts on it.
+     */
+    public function statementCount(): int
+    {
+        return $this->statements;
     }
 
     public function platform(): Platform
@@ -213,6 +226,7 @@ final class Database
      */
     private function run(string $sql, array $params): PDOStatement
     {
+        $this->statements++;
         $statement = $this->connection()->prepare($sql);
 
         foreach ($params as $name => $value) {

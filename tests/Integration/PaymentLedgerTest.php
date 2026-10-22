@@ -413,6 +413,106 @@ final class PaymentLedgerTest extends DatabaseTestCase
         }
     }
 
+    public function testASplitParticipantReadsTheChargesOfABillTheyShareButChangesNone(): void
+    {
+        $id = $this->create('Broadband', '30.00', '2026-04-15', '2026-01-15');
+        $this->container->get(\App\Service\SplitService::class)->update($this->alice, $id, [
+            'split_mode' => 'equal',
+            'shares' => [(string) $this->aliceId => '1', (string) $this->bobId => '1'],
+        ]);
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-20 08:00:00'));
+        $this->catchUp->run($this->alice);
+        $charge = $this->charges->forSubscription($this->alice, $id)[0];
+
+        // ISOLATED, and an Editor: only the split lets Bob see Alice's row.
+        $bob = Scope::forMember($this->bobId, false, $this->household, Role::Editor, IsolationMode::Isolated);
+
+        self::assertNotNull($this->charges->find($bob, $charge->id));
+        self::assertCount(2, $this->charges->forSubscription($bob, $id));
+        self::assertCount(2, $this->charges->all($bob));
+        self::assertFalse($this->charges->mayChange($bob, $charge));
+
+        foreach (
+            [
+                fn () => $this->charges->recordActual($bob, $charge->id, ['actual' => '1.00']),
+                fn () => $this->charges->skip($bob, $charge->id),
+                fn () => $this->charges->undo($bob, $charge->id),
+                fn () => $this->charges->patch($bob, $charge->id, ['status' => 'skipped']),
+                fn () => $this->charges->addManual($bob, $id, ['date' => '2026-05-01', 'amount' => '1']),
+            ] as $attempt
+        ) {
+            try {
+                $attempt();
+                self::fail('A split participant changed a charge they may only read.');
+            } catch (ValidationException) {
+                // Refused: the widening is read-only.
+            }
+        }
+        self::assertFalse($this->charges->find($this->alice, $charge->id)?->isAdjusted());
+        self::assertCount(2, $this->charges->forSubscription($this->alice, $id));
+    }
+
+    public function testAPrivateRowsChargesAreHiddenFromEveryoneButItsPayer(): void
+    {
+        $id = $this->create('Therapy', '60.00', '2026-04-15', '2026-01-15', ['visibility' => 'payer']);
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-20 08:00:00'));
+        $this->catchUp->run($this->alice);
+        $charge = $this->charges->forSubscription($this->alice, $id)[0];
+
+        foreach ([IsolationMode::Shared, IsolationMode::Isolated] as $mode) {
+            foreach ([Role::Editor, Role::Contributor, Role::Viewer] as $role) {
+                $bob = Scope::forMember($this->bobId, false, $this->household, $role, $mode);
+                $label = $mode->value . '/' . $role->value;
+
+                self::assertNull($this->charges->find($bob, $charge->id), $label);
+                self::assertSame([], $this->charges->forSubscription($bob, $id), $label);
+                self::assertSame([], $this->charges->all($bob), $label);
+
+                $export = $this->container->get(\App\Service\ChargeExportService::class);
+                self::assertStringNotContainsString('Therapy', $export->csv($bob), $label);
+                self::assertStringNotContainsString('Therapy', $export->json($bob), $label);
+            }
+        }
+
+        self::assertStringContainsString(
+            'Therapy',
+            $this->container->get(\App\Service\ChargeExportService::class)->csv($this->alice),
+        );
+    }
+
+    public function testPastSpendRunsTheSameQueriesHoweverManySubscriptionsThereAre(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
+        $this->create('One', '10.00', '2026-03-15', '2025-01-15');
+        $this->create('Two', '5.00', '2026-03-03', '2025-02-03');
+        $this->clock->advanceTo(new DateTimeImmutable('2026-06-01 09:00:00'));
+        $this->catchUp->run($this->alice);
+
+        $history = $this->container->get(SpendHistoryService::class);
+        $db = $this->container->get(\App\Persistence\Database::class);
+        $count = static function (callable $walk) use ($db): int {
+            $before = $db->statementCount();
+            $walk();
+
+            return $db->statementCount() - $before;
+        };
+        $walk = fn () => $history->yearOverYear($this->alice);
+
+        // Once to warm the settings cache, which is read on the first call only.
+        $walk();
+        $few = $count($walk);
+
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
+        for ($i = 0; $i < 10; $i++) {
+            $this->create('More ' . $i, '3.00', '2026-03-10', '2025-03-10');
+        }
+        $this->clock->advanceTo(new DateTimeImmutable('2026-06-01 09:00:00'));
+        $this->catchUp->run($this->alice);
+
+        // K17: the price history is read once per walk, not once per row.
+        self::assertSame($few, $count($walk));
+    }
+
     public function testIsolatedModeHidesAnotherMembersCharges(): void
     {
         $bobShared = $this->scope($this->bobId, Role::Editor);
