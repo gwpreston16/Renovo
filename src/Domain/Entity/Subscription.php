@@ -317,6 +317,21 @@ final class Subscription
     }
 
     /**
+     * A copy billed on another schedule — what an edit is about to save — so
+     * a date can be walked by the cycle the row will have rather than the one
+     * it had.
+     */
+    public function withSchedule(?BillingCycle $cycle, ?int $cycleDays, int $cycleInterval, ?int $anchorDay): self
+    {
+        return $this->with([
+            'billingCycle' => $cycle,
+            'cycleDays' => $cycleDays,
+            'cycleInterval' => $cycleInterval,
+            'anchorDay' => $anchorDay,
+        ]);
+    }
+
+    /**
      * This subscription's own reminder lead times, or null to use the user's.
      *
      * An empty string is not the same as null and the difference is the point:

@@ -126,6 +126,15 @@ final class SubscriptionService
             // Paused or cancelled through the edit form, the API or an import:
             // the dates already passed are recorded first.
             $this->settlePassedDates($scope, $existing);
+
+            // And the date they moved the row to is kept, unless the save
+            // asked for another: the form was drawn before the catch-up ran,
+            // so it posts back the date the row has just left (K72).
+            $settled = $this->subscriptions->find($scope, $id)?->nextPaymentDate;
+            $stale = $existing->nextPaymentDate?->format('Y-m-d');
+            if ($settled !== null && $stale !== null && ($data['next_payment_date'] ?? null) === $stale) {
+                $data['next_payment_date'] = $settled->format('Y-m-d');
+            }
         }
 
         $paused = [];
@@ -642,7 +651,16 @@ final class SubscriptionService
             return $submitted;
         }
 
-        return $existing->resumedPaymentDate($this->clock->today(), $date)?->format('Y-m-d') ?? $submitted;
+        // Walked by the cycle the save gives the row, not the one it had: a
+        // monthly row resumed as yearly moves on by years (K73).
+        $resumed = $existing->withSchedule(
+            BillingCycle::tryFromString(is_string($data['billing_cycle'] ?? null) ? $data['billing_cycle'] : null),
+            is_int($data['cycle_days'] ?? null) ? $data['cycle_days'] : null,
+            is_int($data['cycle_interval'] ?? null) ? $data['cycle_interval'] : $existing->cycleInterval,
+            is_int($data['anchor_day'] ?? null) ? $data['anchor_day'] : null,
+        );
+
+        return $resumed->resumedPaymentDate($this->clock->today(), $date)?->format('Y-m-d') ?? $submitted;
     }
 
     /**
