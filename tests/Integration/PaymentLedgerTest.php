@@ -498,6 +498,113 @@ final class PaymentLedgerTest extends DatabaseTestCase
         return $this->subscriptions->find($this->alice, $id)?->nextPaymentDate?->format('Y-m-d');
     }
 
+    public function testPastSpendFromTheLedgerEqualsTheReconstructionUntilAnActualIsRecorded(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2025-06-01 08:00:00'));
+        $id = $this->create('Monthly', '10.00', '2025-06-15', '2025-01-15');
+        $this->create('Other', '7.00', '2025-06-03', '2024-11-03');
+        $history = $this->container->get(SpendHistoryService::class);
+
+        $this->clock->advanceTo(new DateTimeImmutable('2026-06-01 09:00:00'));
+        $totals = static fn (array $months): array => array_map(
+            static fn (array $month): array => [$month['month'], $month['by_currency'], $month['combined_minor']],
+            $months,
+        );
+        $before = $totals($history->monthly($this->alice));
+        $yoyBefore = $history->yearOverYear($this->alice);
+
+        // The ledger takes over — backfill, then the catch-up — and nothing moves.
+        $this->container->get(LedgerBackfillRunner::class)->run();
+        $this->catchUp->run($this->alice);
+        self::assertNotSame([], $this->charges->forSubscription($this->alice, $id));
+        self::assertSame($before, $totals($history->monthly($this->alice)));
+        self::assertSame($yoyBefore, $history->yearOverYear($this->alice));
+
+        // An actual changes its own month and no other.
+        $march = null;
+        foreach ($this->charges->forSubscription($this->alice, $id) as $charge) {
+            if ($charge->dueDate->format('Y-m-d') === '2026-03-15') {
+                $march = $charge;
+            }
+        }
+        self::assertNotNull($march);
+        $this->charges->recordActual($this->alice, $march->id, ['actual' => '13.00']);
+
+        $after = $totals($history->monthly($this->alice));
+        foreach ($before as $index => [$key, $byCurrency]) {
+            $delta = ($after[$index][1]['GBP'] ?? 0) - ($byCurrency['GBP'] ?? 0);
+            self::assertSame(str_starts_with($key, '2026-03') ? 300 : 0, $delta, $key);
+        }
+    }
+
+    public function testASkippedChargeCountsAsNothingWhereverSpendIsSummed(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
+        $id = $this->create('Monthly', '10.00', '2026-03-15', '2026-01-15');
+        $this->clock->advanceTo(new DateTimeImmutable('2026-06-01 09:00:00'));
+        $this->catchUp->run($this->alice);
+        $history = $this->container->get(SpendHistoryService::class);
+
+        $from = new DateTimeImmutable('2026-01-01');
+        $to = new DateTimeImmutable('2026-05-31');
+        $before = $history->spent($this->alice, $from, $to);
+        $yoy = $history->yearOverYear($this->alice)['current_by_currency']['GBP'] ?? 0;
+
+        $this->charges->skip($this->alice, $this->charges->forSubscription($this->alice, $id)[0]->id);
+
+        $after = $history->spent($this->alice, $from, $to);
+        self::assertSame(($before['by_currency']['GBP'] ?? 0) - 1000, $after['by_currency']['GBP'] ?? 0);
+        self::assertSame($yoy - 1000, $history->yearOverYear($this->alice)['current_by_currency']['GBP'] ?? 0);
+        self::assertNotContains(
+            '2026-05-15',
+            array_map(
+                static fn (array $charge): string => $charge['date']->format('Y-m-d'),
+                $history->charges($this->alice, $from, $to)['charges'],
+            ),
+        );
+    }
+
+    public function testChargesNobodyHasCaughtUpYetStillCount(): void
+    {
+        // Written up to April, then nobody who can write looked until today.
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
+        $this->create('Monthly', '10.00', '2026-03-15', '2026-01-15');
+        $this->clock->advanceTo(new DateTimeImmutable('2026-04-20 08:00:00'));
+        $this->catchUp->run($this->alice);
+        $this->clock->advanceTo(new DateTimeImmutable('2026-06-01 09:00:00'));
+
+        $spent = $this->container->get(SpendHistoryService::class)
+            ->spent($this->alice, new DateTimeImmutable('2025-12-31'), new DateTimeImmutable('2026-05-31'));
+
+        // Jan, Feb (reconstructed), Mar, Apr (ledger), May (not yet written).
+        self::assertSame(5000, $spent['by_currency']['GBP'] ?? 0);
+    }
+
+    public function testTheCalendarPagesBackThroughTheLedger(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
+        $id = $this->create('Monthly', '10.00', '2026-03-15', '2026-01-15');
+        $this->clock->advanceTo(new DateTimeImmutable('2026-06-01 09:00:00'));
+        $this->catchUp->run($this->alice);
+        $this->charges->recordActual($this->alice, $this->charges->forSubscription($this->alice, $id)[1]->id, [
+            'actual' => '12.50',
+        ]);
+
+        $calendar = $this->container->get(\App\Service\CalendarService::class);
+
+        self::assertNotNull($calendar->resolveMonth('2026-03', $this->alice));
+        self::assertNull($calendar->resolveMonth('2026-02', $this->alice));
+        self::assertNull($calendar->resolveMonth('2026-03'));
+
+        $april = $calendar->month($this->alice, new DateTimeImmutable('2026-04-01'), \App\Domain\WeekStart::Monday);
+        self::assertSame('2026-03', $april['previous']);
+        self::assertSame(1, $april['count']);
+        self::assertSame([['currency' => 'GBP', 'amount_minor' => 1250]], $april['totals']['totals']);
+
+        $march = $calendar->month($this->alice, new DateTimeImmutable('2026-03-01'), \App\Domain\WeekStart::Monday);
+        self::assertNull($march['previous']);
+    }
+
     /**
      * @return list<array{string, int}> Newest first.
      */

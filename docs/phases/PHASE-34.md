@@ -193,7 +193,7 @@ Added *2026-10-22* at the owner's request, as rows in code this phase rewires:
 - [x] `ledger:backfill`, documented in the upgrade notes
 - [x] Payments card: record amount, skip, undo, add a payment
 - [x] `attachments.charge_id` and the `period_date` link step
-- [ ] Calendar pages backwards; month-so-far and past spend read the ledger
+- [x] Calendar pages backwards; month-so-far and past spend read the ledger
 - [ ] API endpoints, OpenAPI, `docs/api.md`, role matrix; export; backup
 - [ ] K36, K17, K3, K16 fixed and marked in `known-issues.md`
 - [ ] New strings in every catalogue in `translations/`

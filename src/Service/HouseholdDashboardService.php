@@ -18,8 +18,9 @@ use DateTimeImmutable;
  * The Household dashboard: how this month is going, who pays what, and the
  * year against its budget pace.
  *
- * Like the Overview, it computes nothing of its own. The month so far is the
- * reconstruction up to yesterday beside the forecast from today — the same
+ * Like the Overview, it computes nothing of its own. The month so far is past
+ * spend up to yesterday — the payment ledger, reconstructed where it has no
+ * rows — beside the forecast from today — the same
  * split the Overview chart draws for this month, from the same two services,
  * so the two views cannot disagree about it. Year to date is the
  * reconstruction; the next twelve months is the forecast; who pays is the

@@ -24,10 +24,12 @@ use DateTimeImmutable;
  * day the trial ends, because the one piece of code that knows those rules is
  * the one being asked.
  *
- * The horizon is the forecast's horizon, and it starts this month. A calendar
- * that could be paged back into last year would be promising a history this
- * application does not keep — it tracks what is due, not a ledger of what was
- * paid — so a month outside it is refused rather than drawn empty.
+ * Forward, the horizon is the forecast's. Backward, it is the payment ledger:
+ * the calendar pages back to the earliest month the ledger holds in scope,
+ * and a past month shows the charges that were taken — read from the same
+ * past-spend source as every other figure about the past, so a recorded
+ * actual shows its real amount and a skipped charge is not drawn. A month
+ * outside both is refused rather than drawn empty.
  *
  * Deadlines come from CancellationService, the cancel-by screen's own reading,
  * and are kept only for subscriptions already among the forecast's charges.
@@ -87,6 +89,8 @@ final class CalendarService
 
     public function __construct(
         private readonly ForecastService $forecast,
+        private readonly SpendHistoryService $history,
+        private readonly ChargeService $charges,
         private readonly CancellationService $cancellations,
         private readonly StatsService $stats,
         private readonly ExchangeRateService $rates,
@@ -117,11 +121,14 @@ final class CalendarService
         ?int $forUserId = null,
         ?DateTimeImmutable $day = null,
     ): array {
-        $month = $this->clamp($month);
+        $earliest = $this->earliest($scope);
+        $month = $this->clamp($month, $earliest);
         $today = $this->clock->today();
         $key = $month->format('Y-m');
 
-        $charges = $this->forecast->charges($scope, self::HORIZON_MONTHS, $forUserId);
+        $charges = $month < $this->firstOfMonth($today)
+            ? $this->pastCharges($scope, $month, $forUserId)
+            : $this->forecast->charges($scope, self::HORIZON_MONTHS, $forUserId);
 
         $byDay = [];
         $first = [];
@@ -185,8 +192,8 @@ final class CalendarService
         return [
             'month' => $month,
             'is_current_month' => $key === $today->format('Y-m'),
-            'previous' => $this->step($month, -1),
-            'next' => $this->step($month, 1),
+            'previous' => $this->step($month, -1, $earliest),
+            'next' => $this->step($month, 1, $earliest),
             'weekdays' => CalendarGrid::weekdays($weekStart),
             'weeks' => $weeks,
             'days' => $days,
@@ -205,7 +212,7 @@ final class CalendarService
      * the page answers 404: clamping it would draw a different month under the
      * address of the one asked for.
      */
-    public function resolveMonth(?string $value): ?DateTimeImmutable
+    public function resolveMonth(?string $value, ?Scope $scope = null): ?DateTimeImmutable
     {
         $current = $this->firstOfMonth($this->clock->today());
 
@@ -220,7 +227,9 @@ final class CalendarService
 
         $asked = new DateTimeImmutable(sprintf('%04d-%02d-01 00:00:00', $year, $month));
 
-        return $this->clamp($asked) == $asked ? $asked : null;
+        $earliest = $scope === null ? $current : $this->earliest($scope);
+
+        return $this->clamp($asked, $earliest) == $asked ? $asked : null;
     }
 
     /**
@@ -482,11 +491,37 @@ final class CalendarService
         return $this->rates->convert($amount, $base);
     }
 
-    private function clamp(DateTimeImmutable $month): DateTimeImmutable
+    /**
+     * The first month the calendar may show: this month, or the earliest month
+     * the payment ledger holds in scope when that is further back.
+     */
+    private function earliest(Scope $scope): DateTimeImmutable
+    {
+        $current = $this->firstOfMonth($this->clock->today());
+        $ledger = $this->charges->earliestMonth($scope);
+
+        return $ledger !== null && $ledger < $current ? $ledger : $current;
+    }
+
+    /**
+     * The charges taken in a past month, shaped as the forecast's are.
+     *
+     * @return list<array{subscription: Subscription, date: DateTimeImmutable, amount: Money, reason: string}>
+     */
+    private function pastCharges(Scope $scope, DateTimeImmutable $month, ?int $forUserId): array
+    {
+        return $this->history->charges(
+            $scope,
+            $month->modify('-1 day'),
+            $month->modify('last day of this month'),
+            $forUserId,
+        )['charges'];
+    }
+
+    private function clamp(DateTimeImmutable $month, DateTimeImmutable $earliest): DateTimeImmutable
     {
         $month = $this->firstOfMonth($month);
-        $earliest = $this->firstOfMonth($this->clock->today());
-        $latest = $earliest->modify(sprintf('+%d months', self::HORIZON_MONTHS));
+        $latest = $this->firstOfMonth($this->clock->today())->modify(sprintf('+%d months', self::HORIZON_MONTHS));
 
         return match (true) {
             $month < $earliest => $earliest,
@@ -499,11 +534,11 @@ final class CalendarService
      * The neighbouring month, or null where the horizon ends — so the template
      * draws that control disabled rather than a link that would be refused.
      */
-    private function step(DateTimeImmutable $month, int $months): ?string
+    private function step(DateTimeImmutable $month, int $months, DateTimeImmutable $earliest): ?string
     {
         $target = $this->firstOfMonth($month->modify(sprintf('%+d months', $months)));
 
-        return $this->clamp($target)->format('Y-m') === $target->format('Y-m')
+        return $this->clamp($target, $earliest)->format('Y-m') === $target->format('Y-m')
             ? $target->format('Y-m')
             : null;
     }

@@ -52,10 +52,12 @@ Paused and cancelled subscriptions are not on it, and a private one only for
 the member it is private to — the same rows as the forecast, on the calendar
 and in the feed alike.
 
-It pages forward as far as the forecast goes and no further back than this
-month — this application tracks what is due, not a ledger of what was paid, so
-a calendar of last year would be an invention. Previous is disabled on this
-month, and an address for a month outside that range answers 404.
+It pages forward as far as the forecast goes, and back as far as the
+[payment ledger](money.md#payments) reaches: a past month shows the charges that
+were taken, at the amount recorded for them, and leaves out any marked as
+skipped. Previous is disabled on the earliest month the ledger holds (this
+month, on an instance with no payments yet), and an address for a month outside
+that range answers 404.
 
 Weeks start on Monday or Sunday, per account, under **Profile → Appearance & preferences**.
 It is a preference rather than a property of the locale on purpose: `en_GB` and
