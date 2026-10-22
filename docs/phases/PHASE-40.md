@@ -1,9 +1,3 @@
-# PHASE.md — current build state
-
-Single source of truth for what to build **right now**. SPEC.md = full plan ·
-build-guide = file map · CLAUDE.md = standing rules. When you start this phase,
-copy this file to `docs/phases/PHASE.md`.
-
 # Phase 40 — secrets at rest, and rotating the key that guards them
 
 Renovo encrypts exactly one kind of secret: two-factor seeds, through
@@ -180,8 +174,7 @@ No recoverable secret is stored in plain text; a dump of `notification_channels`
 or `instance_settings` shows only ciphertext; an operator can replace the
 encryption key and re-encrypt everything with one command, with no TOTP
 re-enrolment and no channel to re-enter; a password change ends every API
-token; the gates pass on both engines. Then update `PHASE.md` to the next
-phase.
+token; the gates pass on both engines. Then mark it ✅ in `ROADMAP.md`.
 
 ## Tests
 

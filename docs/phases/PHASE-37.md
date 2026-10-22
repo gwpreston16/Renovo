@@ -1,9 +1,3 @@
-# PHASE.md — current build state
-
-Single source of truth for what to build **right now**. SPEC.md = full plan ·
-build-guide = file map · CLAUDE.md = standing rules. When you start this phase,
-copy this file to `docs/phases/PHASE.md`.
-
 # Phase 37 — the version, and knowing when there is a newer one
 
 Renovo has no idea which version it is. `CHANGELOG.md` says 1.0.0 and so does
@@ -187,8 +181,8 @@ The running application reports its own version from a single file, inside the
 application and through the API, and never to an anonymous visitor; with checks
 on, an instance admin learns of a newer GitHub release within a day and can
 dismiss the banner until the next one; with checks off, Renovo makes no request
-to GitHub at all; the gates pass on both engines. Then update `PHASE.md` to the
-next phase.
+to GitHub at all; the gates pass on both engines.
+Then mark it ✅ in `ROADMAP.md`.
 
 ## Tests
 

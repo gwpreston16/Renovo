@@ -1,9 +1,3 @@
-# PHASE.md — current build state
-
-Single source of truth for what to build **right now**. SPEC.md = full plan ·
-build-guide = file map · CLAUDE.md = standing rules. When you start this phase,
-copy this file to `docs/phases/PHASE.md`.
-
 # Phase 39 — backups off the server, and proof they restore
 
 Phase 38 makes a verified, encrypted instance backup every day — on the same
@@ -194,8 +188,7 @@ the destination's own checksum or size; each destination keeps its own history
 without ever losing its newest copy; a scheduled rehearsal proves a remote copy
 can be downloaded, decrypted and — given a scratch database — restored; an
 instance admin is told when any step fails; no credential or key is ever shown
-or logged; the gates pass on both engines. Then update `PHASE.md` to the next
-phase.
+or logged; the gates pass on both engines. Then mark it ✅ in `ROADMAP.md`.
 
 ## Tests
 

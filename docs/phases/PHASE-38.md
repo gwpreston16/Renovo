@@ -1,9 +1,3 @@
-# PHASE.md — current build state
-
-Single source of truth for what to build **right now**. SPEC.md = full plan ·
-build-guide = file map · CLAUDE.md = standing rules. When you start this phase,
-copy this file to `docs/phases/PHASE.md`.
-
 # Phase 38 — instance backups: scheduled, encrypted, verified
 
 Renovo's backup today is a **household archive** (Phase 5): a ZIP of what one
@@ -225,8 +219,8 @@ encrypted, verified copy of the database and stored files, pruned by policy
 without ever losing the newest good one; it can be restored by command into an
 empty database on either engine and the application works with the same
 accounts, sign-ins, two-factor and data; nothing about it is available to
-anyone who is not an instance admin; the gates pass on both engines. Then update
-`PHASE.md` to the next phase.
+anyone who is not an instance admin; the gates pass on both engines.
+Then mark it ✅ in `ROADMAP.md`.
 
 ## Tests
 

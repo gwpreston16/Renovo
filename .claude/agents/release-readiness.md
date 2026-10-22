@@ -22,7 +22,8 @@ git diff master...HEAD
 
 Read `CHANGELOG.md` (the `[Unreleased]` section and the last release for
 voice), the `docs/` pages the change affects (and the README, if it changes a
-headline feature), `docs/phases/PHASE.md`, and
+headline feature), the current phase's brief (`docs/phases/PHASE-<n>.md`,
+from the `phase-<n>/` branch or the 🚧 row in `ROADMAP.md`), and
 `.claude/skills/release/SKILL.md` §4–§5 — that skill will consume what this
 PR leaves behind.
 

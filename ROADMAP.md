@@ -1,8 +1,9 @@
 # Roadmap
 
 Where Renovo is, and what may come next. This is a list of **candidates, not
-scope**: nothing here is built until a phase brief in
-[`docs/phases/PHASE.md`](docs/phases/PHASE.md) names it (see `CLAUDE.md`).
+scope**: nothing here is built until it has a phase brief in
+[`docs/phases/`](docs/phases/) and that phase is 🚧 in the table below (see
+`CLAUDE.md`).
 
 ## v1 — Phases 1–29
 
@@ -18,15 +19,16 @@ v1.0.0 was released on 1 October 2026 ([CHANGELOG](CHANGELOG.md)).
 
 ## After v1
 
-Work after v1 continues as numbered phases, each with its own brief in
-`docs/phases/PHASE.md`, and releases group finished phases (v1.1, v1.2, … and
-v2 for anything that breaks an upgrade path).
+Work after v1 continues as numbered phases, each with its own brief,
+`docs/phases/PHASE-<n>.md` in [`docs/phases/`](docs/phases/), and releases
+group finished phases (v1.1, v1.2, … and v2 for anything that breaks an
+upgrade path).
 
-Briefs for phases that have not started are drafted beside the archive, as
-`docs/phases/PHASE-<n>.md` in [`docs/phases/`](docs/phases/). A draft is still
-not scope: it becomes scope when it is copied to `docs/phases/PHASE.md`, and its
-decisions are confirmed or corrected before the build starts. When a phase
-finishes, its brief stays archived as `docs/phases/PHASE-<n>.md`.
+The **Status** column below says where each phase is: 📋 planned (a draft, not
+scope), 🚧 in progress (the one phase that may be built now), ✅ done. A phase
+becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
+confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
+same file throughout.
 
 ## Planned — Phases 30–44
 
@@ -34,23 +36,23 @@ Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
 can be moved.
 
-| Phase | Brief | Needs | Data model |
-| --- | --- | --- | --- |
-| 30 | Shipped as the API catch-up; secrets encryption moved to 40 | — | — |
-| 31 | [The scenario planner](docs/phases/PHASE-31.md) | — | None |
-| 32 | [Billing every N weeks, months or years](docs/phases/PHASE-32.md) | — | 2 columns |
-| 33 | [Introductory and promotional prices](docs/phases/PHASE-33.md) | — | 1 column |
-| 34 | [The payment ledger](docs/phases/PHASE-34.md) | — | 1 table, 1 column |
-| 35 | [Contracts, fixed terms and bills that vary](docs/phases/PHASE-35.md) | 32, 34 | 5 migrations |
-| 36 | [What you've saved](docs/phases/PHASE-36.md) | 31, 33, 34, 35 | 1 column |
-| 37 | [The version, and knowing when there is a newer one](docs/phases/PHASE-37.md) | — | 1 column |
-| 38 | [Instance backups: scheduled, encrypted, verified](docs/phases/PHASE-38.md) | 40 | 1 table |
-| 39 | [Backups off the server, and proof they restore](docs/phases/PHASE-39.md) | 40, 38 | 3 tables, alert preferences |
-| 40 | [Secrets at rest, and rotating the key that guards them](docs/phases/PHASE-40.md) | — | 2–3 migrations (backfill) |
-| 41 | [Security headers and a strict Content-Security-Policy](docs/phases/PHASE-41.md) | — | None |
-| 42 | [API tokens: scopes, lifetimes and rate limits](docs/phases/PHASE-42.md) | 40 | 1 table, 1 column |
-| 43 | [Control over outbound requests, and supply-chain checks](docs/phases/PHASE-43.md) | — | 1 column |
-| 44 | [The README and the docs, rebuilt for the first five minutes](docs/phases/PHASE-44.md) (done) | — | None |
+| Phase | Brief | Needs | Data model | Status |
+| --- | --- | --- | --- | --- |
+| 30 | Shipped as the API catch-up; secrets encryption moved to 40 | — | — | ✅ done |
+| 31 | [The scenario planner](docs/phases/PHASE-31.md) | — | None | ✅ done |
+| 32 | [Billing every N weeks, months or years](docs/phases/PHASE-32.md) | — | 2 columns | ✅ done |
+| 33 | [Introductory and promotional prices](docs/phases/PHASE-33.md) | — | 1 column | ✅ done |
+| 34 | [The payment ledger](docs/phases/PHASE-34.md) | — | 1 table, 1 column | 📋 planned |
+| 35 | [Contracts, fixed terms and bills that vary](docs/phases/PHASE-35.md) | 32, 34 | 5 migrations | 📋 planned |
+| 36 | [What you've saved](docs/phases/PHASE-36.md) | 31, 33, 34, 35 | 1 column | 📋 planned |
+| 37 | [The version, and knowing when there is a newer one](docs/phases/PHASE-37.md) | — | 1 column | 📋 planned |
+| 38 | [Instance backups: scheduled, encrypted, verified](docs/phases/PHASE-38.md) | 40 | 1 table | 📋 planned |
+| 39 | [Backups off the server, and proof they restore](docs/phases/PHASE-39.md) | 40, 38 | 3 tables, alert preferences | 📋 planned |
+| 40 | [Secrets at rest, and rotating the key that guards them](docs/phases/PHASE-40.md) | — | 2–3 migrations (backfill) | 📋 planned |
+| 41 | [Security headers and a strict Content-Security-Policy](docs/phases/PHASE-41.md) | — | None | 📋 planned |
+| 42 | [API tokens: scopes, lifetimes and rate limits](docs/phases/PHASE-42.md) | 40 | 1 table, 1 column | 📋 planned |
+| 43 | [Control over outbound requests, and supply-chain checks](docs/phases/PHASE-43.md) | — | 1 column | 📋 planned |
+| 44 | [The README and the docs, rebuilt for the first five minutes](docs/phases/PHASE-44.md) | — | None | ✅ done |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was

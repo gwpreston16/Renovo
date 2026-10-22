@@ -32,6 +32,9 @@ git status --porcelain        # uncommitted work is NOT reviewed — say so if a
 
 If the diff is empty, stop: there is nothing to review.
 
+Record the **head SHA** (`git rev-parse --short HEAD`, or `headRefOid` from
+`gh pr view`). The decision is for that commit only.
+
 ## 2. Run the agents in parallel
 
 Launch every agent that applies in a **single message** with the Agent
@@ -110,6 +113,12 @@ minor findings — pass them through.
 Also drop duplicates (the same line flagged by two agents counts once, under
 the most severe label).
 
+**New, or already on master?** For every confirmed blocker, check whether the
+problem is already on `master`: look at the same code on a scratch worktree
+(`git worktree add var/merge-review/master origin/master`). A problem already
+on master blocks only if this diff **makes it worse or reachable in a new
+way**; otherwise it moves to *Problems already on master* and doesn't block.
+
 ## 5. Decide
 
 **REJECT** if any of these is true:
@@ -123,23 +132,32 @@ the most severe label).
 - changed-line coverage is **below 80%**, or total coverage is **below 85%**,
   or coverage is **unverified** for a diff that changes `src/`;
 - the phase-scope guard confirms work from a later phase or `ROADMAP.md`, or
-  anything on its forbidden list — nothing beyond `docs/phases/PHASE.md` may
-  merge.
+  anything on its forbidden list — nothing beyond the current phase's brief
+  (`docs/phases/PHASE-<n>.md`, the 🚧 row in `ROADMAP.md`) may merge.
 
 **MERGE** otherwise. Non-blocking findings don't block; list them as
 follow-ups. Pending CI or a draft PR → still decide on the code, but state
 "MERGE once CI is green" / "MERGE once marked ready".
 
-There is no "maybe". If evidence is missing for a deciding point (an agent
-failed, a file couldn't be read), say so and decide on what was verified —
-lean REJECT if the gap is in security or scoping.
+**REJECT — review incomplete** if the review itself has a gap: an agent the
+table in §2 says should run failed or returned no verdict, or its *Checked*
+says it couldn't verify something the diff touches (an engine, a migration's
+rollback, the browser for a template change); or coverage is **unverified**
+for a diff that changes `src/`. An unverified change isn't a mergeable one:
+say exactly what needs running, and where (CI, the dev stack, another
+machine).
+
+There is no "maybe". Don't bend these rules on your own judgement: if you
+think one gives the wrong answer for this diff, say so under *Notes* and
+still give the decision the rules produce. Overriding it is the user's call.
 
 ## 6. Report
 
-Reply in this shape, decision first:
+Save the report as `var/merge-review/<branch>-<short-sha>.md` (`var/` is
+git-ignored) and reply with it, in this shape, decision first:
 
 ```
-# ✅ MERGE  |  ❌ REJECT — <branch or PR #n: title>
+# ✅ MERGE  |  ❌ REJECT  |  ⚠️ REJECT — review incomplete — <branch or PR #n: title> @ <short-sha>
 
 <One or two sentences: why. For REJECT, name the blocking issue(s).>
 
@@ -163,13 +181,40 @@ Reply in this shape, decision first:
 ## Follow-ups (non-blocking)
 - path:line — issue (agent)
 
+## Problems already on master (non-blocking)
+- path:line — issue (agent) — not made worse by this diff
+
 ## Rejected agent findings
 - path:line — what the agent claimed, why it doesn't hold
+
+## Notes
+- rules that may give the wrong answer here, agents that disagreed, what
+  wasn't checked
 ```
 
 Omit an empty section. Link files as `[path:line](path:line)`. Keep it
 scannable — the full agent outputs are not pasted unless the user asks.
 
 Finish by offering the next step that fits: for REJECT, "Want me to fix the
-must-fix items?"; for MERGE on a PR, the merge command for the user to run —
-never merge yourself.
+must-fix items?"; for review incomplete, what to run to complete it; for
+MERGE on a PR, the merge command for the user to run — never merge yourself.
+
+## 7. Recording follow-ups
+
+When the report has *Follow-ups* or *Problems already on master*, and
+especially when this is a phase's final review, offer to run `/issue-sweep`
+on this report, so `finding-reviewer` checks each one and the confirmed ones
+are recorded in `docs/phases/known-issues.md`. Don't write that file from
+this skill.
+
+## 8. Re-reviews
+
+After fixes, review the new head SHA from scratch; don't carry agent results
+over. Add a *Since last review* line under the decision, from the previous
+report in `var/merge-review/`: which blocking items are resolved, which
+remain, and anything new.
+
+## Clean-up
+
+Remove `var/merge-review/master` (`git worktree remove`) and any scratch the
+agents left under `var/`. Keep the reports.

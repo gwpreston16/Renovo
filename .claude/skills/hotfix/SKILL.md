@@ -10,7 +10,8 @@ disable-model-invocation: true
 Ships a fix to the **released** application without waiting for the phase in
 progress. A hotfix is a small phase of its own: a brief, one fix with tests,
 and a **patch** release — `vX.Y.Z` → `vX.Y.(Z+1)`. It never carries feature
-work, and it never touches the phase in progress (`docs/phases/PHASE.md`).
+work, and it never touches the phase in progress (the 🚧 row in `ROADMAP.md`)
+or its ROADMAP row: a hotfix brief has no row in the *Planned* table.
 
 It follows the shape of the `release` skill (`.claude/skills/release/SKILL.md`):
 **one "Release X.Y.Z" commit on master** carrying the CHANGELOG,
@@ -66,12 +67,10 @@ Write it in the voice of the other briefs (read `docs/phases/PHASE-N.md`
 first). Keep it short; a hotfix brief is a page, not a phase plan:
 
 ```markdown
-# PHASE.md — hotfix
-
-A hotfix to the released application. It does not replace
-`docs/phases/PHASE.md`, which is still the phase in progress.
-
 # Phase N.M — <the fix, as a title>
+
+*A hotfix to the released application (vX.Y.Z). It is not a phase in the
+ROADMAP and does not change which phase is in progress.*
 
 <What is wrong, in a user's terms: the screen or endpoint, what they see, what
 they should see. Which release introduced it (`git log -S`/`git bisect` if it
@@ -148,7 +147,7 @@ fix, in order):
 
 Wrap at ~78 columns. If this is the first hotfix, change the list's lead-in to
 "Since v1, each phase has shipped as a minor release, and each hotfix as a
-patch (see …):". Leave the README's "What's new" line (the current phase)
+patch (see …):". Leave the README's "What's new" line (the latest phase)
 alone.
 
 ## 7. Version bump

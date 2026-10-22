@@ -1,9 +1,3 @@
-# PHASE.md — current build state
-
-Single source of truth for what to build **right now**. SPEC.md = full plan ·
-build-guide = file map · CLAUDE.md = standing rules. When you start this phase,
-copy this file to `docs/phases/PHASE.md`.
-
 # Phase 34 — the payment ledger
 
 Renovo knows what is **due**. It does not remember what was **charged**. When a
@@ -165,7 +159,7 @@ Every billing date that passes leaves exactly one ledger row at the price in
 force on that date; a member can correct or skip a charge and attach its
 invoice; the calendar shows past months; spend figures are unchanged until an
 actual is recorded; the ledger respects roles and isolation; the gates pass on
-both engines. Then update `PHASE.md` to the next phase.
+both engines. Then mark it ✅ in `ROADMAP.md`.
 
 ## Tests
 

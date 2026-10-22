@@ -168,9 +168,9 @@ uses it, and a deployment from the published image never installs it. See
 ## What's new
 
 Release notes are in [CHANGELOG.md](CHANGELOG.md), and what each phase built is
-in [docs/history.md](docs/history.md). The current phase is **Phase 44, the
-README and the docs**. Its brief is in
-[`docs/phases/PHASE.md`](docs/phases/PHASE.md).
+in [docs/history.md](docs/history.md). The latest phase is **Phase 44, the
+README and the docs** ([brief](docs/phases/PHASE-44.md)); the
+[roadmap](ROADMAP.md) shows what is in progress and what is planned.
 
 ## Contributing
 

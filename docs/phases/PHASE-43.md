@@ -1,9 +1,3 @@
-# PHASE.md — current build state
-
-Single source of truth for what to build **right now**. SPEC.md = full plan ·
-build-guide = file map · CLAUDE.md = standing rules. When you start this phase,
-copy this file to `docs/phases/PHASE.md`.
-
 # Phase 43 — control over outbound requests, and checking what Renovo is built from
 
 Every request Renovo makes goes through one client. That client already refuses
@@ -223,7 +217,7 @@ context column.
 - **SMTP:** remote relays are certificate-checked.
 - **Gates:** they pass on both engines.
 
-Then update `PHASE.md` to the next phase.
+Then mark it ✅ in `ROADMAP.md`.
 
 ## Tests
 

@@ -383,7 +383,6 @@ Since v1, each phase has shipped as a minor release (see
   A price that has taken effect is never rewritten. One migration. See
   [Price history](features/money.md#price-history).
 
-Each phase's brief, with its scope, decisions and status, is archived in
-[`phases/`](phases/) as `PHASE-<n>.md`, and the current one is
-[`phases/PHASE.md`](phases/PHASE.md). `SPEC.md` has the conventions every
-phase followed.
+Each phase's brief, with its scope, decisions and status, is in
+[`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
+which is in progress. `SPEC.md` has the conventions every phase followed.

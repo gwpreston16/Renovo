@@ -1,9 +1,3 @@
-# PHASE.md — current build state
-
-Single source of truth for what to build **right now**. SPEC.md = full plan ·
-build-guide = file map · CLAUDE.md = standing rules. When you start this phase,
-copy this file to `docs/phases/PHASE.md`.
-
 # Phase 35 — contracts, fixed terms and bills that vary
 
 Renovo was designed around subscriptions: a fixed price, forever, until
@@ -137,8 +131,8 @@ A user can record when a contract ends and be warned before it does; a
 fixed-term payment stops being counted after its last charge and ends itself;
 a varying bill is shown as an estimate everywhere and can be corrected from
 its actuals; every behaviour is optional and a row that uses none behaves
-exactly as before; the gates pass on both engines. Then update `PHASE.md` to the
-next phase.
+exactly as before; the gates pass on both engines.
+Then mark it ✅ in `ROADMAP.md`.
 
 ## Tests
 

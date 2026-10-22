@@ -1,9 +1,3 @@
-# PHASE.md — current build state
-
-Single source of truth for what to build **right now**. SPEC.md = full plan ·
-build-guide = file map · CLAUDE.md = standing rules. When you start this phase,
-copy this file to `docs/phases/PHASE.md`.
-
 # Phase 42 — API tokens: scopes, lifetimes and rate limits
 
 An API token today is **read** or **write** (`TokenAbility`). A token made for a
@@ -207,7 +201,7 @@ lifetime. A token or IP that exceeds its limit gets 429 with standard headers.
 Failed token authentication is audited without flooding the log. Every existing
 token still works with the access it had. Both API references describe the
 scopes and limits, and CI checks them. The gates pass on both engines. Then
-update `PHASE.md` to the next phase.
+mark it ✅ in `ROADMAP.md`.
 
 ## Tests
 

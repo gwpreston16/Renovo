@@ -37,6 +37,6 @@ like, and how to start it.
   how costs are normalised, the front-end build, the design system, the
   application shell, adding a language, and refreshing the screenshots.
 - [history.md](history.md): what each phase built.
-- [phases/](phases/): every phase's brief. `phases/PHASE.md` is the current
-  one.
+- [phases/](phases/): every phase's brief, `PHASE-<n>.md`. The roadmap's Status
+  column says which is in progress.
 - `images/`: the screenshots the README shows.
