@@ -170,6 +170,73 @@ final class FixedTermTest extends DatabaseTestCase
         self::assertSame('2025-08-16', $this->find($id)->cancelledAt?->format('Y-m-d'));
     }
 
+    public function testAScenarioOnAnotherCycleStillStopsAtTheLastPayment(): void
+    {
+        $id = $this->term('Phone', 5000, start: '2024-07-01', next: '2026-02-01', end: '2026-04-01');
+        $scenario = \App\Domain\Scenario::fromQuery(
+            ['change' => [$id => ['price' => '12.00', 'cycle' => 'weekly']]],
+            [$id => $this->find($id)],
+        );
+
+        $dates = array_map(
+            static fn (array $charge): string => $charge['date']->format('Y-m-d'),
+            $this->forecast->charges($this->scope(), 12, null, $scenario),
+        );
+
+        self::assertNotSame([], $dates);
+        self::assertLessThanOrEqual('2026-04-01', max($dates));
+    }
+
+    public function testProgressWithoutAStartDateCountsTheLedgersPayments(): void
+    {
+        $id = $this->subscriptions->create($this->scope(), [
+            'name' => 'Sofa',
+            'price_minor' => 7700,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-02-01',
+            'anchor_day' => 1,
+            'payments_end_on' => '2027-11-01',
+            'is_active' => true,
+        ], []);
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-05 09:00:00'));
+        $this->catchUp->run($this->scope());
+
+        $progress = $this->terms->progress($this->scope(), $this->find($id));
+
+        self::assertNotNull($progress);
+        self::assertSame(2, $progress['paid']);
+        self::assertSame(22, $progress['total']);
+        self::assertSame(15400, $progress['paid_amount']->amountMinor);
+    }
+
+    public function testAQuarterlyTermOnTheLastDayEndsAfterItsClampedPayment(): void
+    {
+        // Every three months on the 31st: 31 Aug, 30 Nov, 28 Feb.
+        $id = $this->subscriptions->create($this->scope(), [
+            'name' => 'Car',
+            'price_minor' => 30000,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'quarterly',
+            'start_date' => '2025-08-31',
+            'next_payment_date' => '2026-02-28',
+            'anchor_day' => 31,
+            'payments_end_on' => '2026-02-28',
+            'is_active' => true,
+        ], []);
+
+        $progress = $this->terms->progress($this->scope(), $this->find($id));
+        self::assertNotNull($progress);
+        self::assertSame(3, $progress['total']);
+        self::assertSame(2, $progress['paid']);
+
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-10 09:00:00'));
+        $this->catchUp->run($this->scope());
+        self::assertSame('2026-03-01', $this->find($id)->cancelledAt?->format('Y-m-d'));
+    }
+
     public function testARowWithNoFixedTermHasNoProgress(): void
     {
         $id = $this->term('Netflix', 1099, start: '2024-12-01', next: '2026-02-01', end: null);

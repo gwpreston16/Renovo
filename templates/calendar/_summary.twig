@@ -22,7 +22,7 @@
             <div class="calendar-summary-item" data-summary="heaviest">
                 <dt>{{ t('calendar.heaviest_day') }}</dt>
                 <dd class="stat-value num">
-                    {{ calendar.heaviest.date|local_date('d MMM') }} · {{ calendar.heaviest.amount.amountMinor|money(calendar.heaviest.amount.currency) }}
+                    {% set heaviest = calendar.heaviest.amount.amountMinor|money(calendar.heaviest.amount.currency) %}{{ calendar.heaviest.date|local_date('d MMM') }} · {{ calendar.heaviest.estimate|default(false) ? t('subscriptions_list.approximately', {'amount': heaviest}) : heaviest }}
                 </dd>
             </div>
         {% endif %}

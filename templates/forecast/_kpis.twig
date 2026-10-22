@@ -24,7 +24,7 @@
     <article class="card stat metric">
         <h2 class="stat-label">{{ t('forecast.kpi_busiest') }}</h2>
         {% if kpis.busiest is not null %}
-            <p class="stat-value num">{{ kpis.busiest.total_display }}</p>
+            <p class="stat-value num">{{ kpis.busiest.estimate ? t('subscriptions_list.approximately', {'amount': kpis.busiest.total_display}) : kpis.busiest.total_display }}</p>
             <p class="kpi-note muted">{{ kpis.busiest.label }}</p>
         {% else %}
             <p class="stat-value num">{{ t('common.none_symbol') }}</p>

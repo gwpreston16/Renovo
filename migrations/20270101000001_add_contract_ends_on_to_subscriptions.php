@@ -9,8 +9,9 @@ use Phinx\Migration\AbstractMigration;
  *
  * The row keeps running after it — the date marks when the terms lapse, which
  * is when a broadband or mobile plan quietly rolls onto a dearer rate. Indexed
- * as `cancelled_at` is, for a list filter on the date; the cancel-by list and
- * the alert scan read it from rows they have already loaded.
+ * within the household, as the list's date filters are, for finding a
+ * household's contracts by the date; the cancel-by list and the alert scan
+ * read it from rows they have already loaded.
  *
  * On MySQL this is not transactional. Should it stop halfway, the manual
  * rollback is: drop the index `ix_subscriptions_contract_ends_on`, then the
@@ -22,7 +23,7 @@ final class AddContractEndsOnToSubscriptions extends AbstractMigration
     {
         $this->table('subscriptions')
             ->addColumn('contract_ends_on', 'date', ['null' => true])
-            ->addIndex(['contract_ends_on'], ['name' => 'ix_subscriptions_contract_ends_on'])
+            ->addIndex(['household_id', 'contract_ends_on'], ['name' => 'ix_subscriptions_contract_ends_on'])
             ->update();
     }
 

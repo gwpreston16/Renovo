@@ -45,9 +45,9 @@
                     {% for bar in chart.bars %}
                         <a class="spend-bar{{ bar.is_busiest ? ' is-busiest' : '' }}"
                            href="/calendar?month={{ bar.key }}{{ mine_only ? '&mine=1' : '' }}" tabindex="-1"
-                           title="{{ bar.long_label }} · {{ bar.total_display }}">
+                           title="{{ bar.long_label }} · {{ bar.estimate ? t('subscriptions_list.approximately', {'amount': bar.total_display}) : bar.total_display }}">
                             {% if bar.is_busiest %}
-                                <b class="spend-bar-peak num">{{ bar.total_display }}</b>
+                                <b class="spend-bar-peak num">{{ bar.estimate ? t('subscriptions_list.approximately', {'amount': bar.total_display}) : bar.total_display }}</b>
                             {% endif %}
                             {% if bar.long_minor > 0 %}
                                 <span class="spend-bar-long" style="height: {{ bar.long_height }}"></span>
@@ -86,7 +86,7 @@
                         <td class="numeric num">{{ bar.regular_display }}</td>
                         <td class="numeric num">{{ bar.long_display }}</td>
                         <td class="numeric num">
-                            {{ bar.total_display }}
+                            {{ bar.estimate ? t('subscriptions_list.approximately', {'amount': bar.total_display}) : bar.total_display }}
                             {% if bar.is_busiest %}<span class="badge badge-warn">{{ t('dashboard.busiest_month') }}</span>{% endif %}
                         </td>
                     </tr>

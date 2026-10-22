@@ -172,15 +172,16 @@ final class BudgetService
             // it was saved on, so its own charge's day stands in. A trial is
             // walked from its conversion day, as the forecast walks it.
             $subscription = $charge['subscription'];
+            $byMonths = in_array(
+                $subscription->billingCycleAfterConversion(),
+                [BillingCycle::Monthly, BillingCycle::Quarterly, BillingCycle::Yearly],
+                true,
+            );
             $anchor = match (true) {
+                !$byMonths => null,
                 $subscription->isTrial && $subscription->trialEndDate !== null
                     => (int) $subscription->trialEndDate->format('j'),
-                in_array(
-                    $subscription->billingCycleAfterConversion(),
-                    [BillingCycle::Monthly, BillingCycle::Quarterly, BillingCycle::Yearly],
-                    true,
-                ) => $subscription->anchorDay,
-                default => null,
+                default => $subscription->anchorDay,
             };
             $rowEnds[$subscription->id] ??= BillingCycle::Monthly->advance(
                 $date,

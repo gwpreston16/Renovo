@@ -22,17 +22,20 @@
 
 {% macro amount(figures, base_currency, estimate = false) %}
     {%- import _self as self -%}
-    {%- if estimate -%}
-        {{ t('subscriptions_list.approximately', {'amount': self.amount(figures, base_currency)}) }}
-    {%- elseif figures.totals is empty -%}
-        {{ 0|money(base_currency) }}
+    {%- if figures.totals is empty -%}
+        {{ self.mark(0|money(base_currency), estimate) }}
     {%- elseif figures.totals|length == 1 -%}
-        {{ figures.totals[0].amount_minor|money(figures.totals[0].currency) }}
+        {{ self.mark(figures.totals[0].amount_minor|money(figures.totals[0].currency), estimate) }}
     {%- elseif figures.combined.amount_minor is not null -%}
-        {{ figures.combined.amount_minor|money(figures.combined.currency) }}
+        {{ self.mark(figures.combined.amount_minor|money(figures.combined.currency), estimate) }}
     {%- else -%}
-        {% for total in figures.totals %}{{ total.amount_minor|money(total.currency) }}{{ not loop.last ? ' · ' : '' }}{% endfor %}
+        {% for total in figures.totals %}{{ self.mark(total.amount_minor|money(total.currency), estimate) }}{{ not loop.last ? ' · ' : '' }}{% endfor %}
     {%- endif -%}
+{% endmacro %}
+
+{# One figure, marked as an estimate when a bill whose amount varies is in it. #}
+{% macro mark(amount, estimate) %}
+    {{- estimate ? t('subscriptions_list.approximately', {'amount': amount}) : amount -}}
 {% endmacro %}
 
 {# A saving below zero is a change that costs more, said so rather than signed. #}

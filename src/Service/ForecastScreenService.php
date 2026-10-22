@@ -129,7 +129,11 @@ final class ForecastScreenService
         $busiest = null;
         if ($chart['is_drawable'] && $chart['busiest_index'] !== null) {
             $bar = $chart['bars'][$chart['busiest_index']];
-            $busiest = ['label' => $bar['long_label'], 'total_display' => $bar['total_display']];
+            $busiest = [
+                'label' => $bar['long_label'],
+                'total_display' => $bar['total_display'],
+                'estimate' => $bar['estimate'],
+            ];
         }
 
         $estimate = StatsService::chargesIncludeEstimate($charges);
@@ -196,6 +200,8 @@ final class ForecastScreenService
                 'regular_display' => $this->money->formatMinor($regular, $currency),
                 'long_display' => $this->money->formatMinor($long, $currency),
                 'total_display' => $this->money->formatMinor($total, $currency),
+                // A bill whose amount varies is in the month: its total is an estimate.
+                'estimate' => StatsService::chargesIncludeEstimate($month['events']),
             ];
 
             // Ties go to the earlier month, as on the spend chart.

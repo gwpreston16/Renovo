@@ -301,8 +301,8 @@ easiest mistake to make:
 **Envelopes.** A successful response wraps its payload in `data`. A list adds
 `meta` with the page. An error replaces both with `error`.
 
-**Dates** are `YYYY-MM-DD`, and must be real days: `2026-02-31` is a `422`,
-not 3 March. **Timestamps** are ISO 8601 date-times.
+**Dates** are `YYYY-MM-DD`. A subscription's and a payment's dates must be real
+days: `2026-02-31` is a `422`, not 3 March. **Timestamps** are ISO 8601 date-times.
 
 **Read-only fields** are returned but ignored on write: `id`, `anchor_day`,
 `category_name`, `payment_method_name`, `split_mode`, `usage_count`, `usage_rating`, `logo_path`,
@@ -813,7 +813,7 @@ The writable half of a subscription. Required: `name`, `price_minor`,
 | `converts_to_billing_cycle` | enum, null | As `billing_cycle`. |
 | `converts_to_cycle_days` | integer, null | |
 | `converts_to_cycle_interval` | integer, null | As `cycle_interval`, for the cycle it converts to — bounded the same way, and an absent key on a PUT that keeps `converts_to_billing_cycle` keeps it. Null when it converts to the cycle it already has. |
-| `is_active` | boolean | Default `true`. `false` pauses it. Stays `false` while the subscription is cancelled. Resuming skips the paused dates: a past `next_payment_date` moves on to the first billing date from today, so the response may not echo the date sent, and each date it steps over is recorded as a `skipped` charge with `source` `paused` — except one that already has a payment added by hand, which becomes that date's `paused` charge, keeping its status. Billed for one of those months after all? `PATCH` that charge's `actual_minor`; a `POST` on its date is a `422`. |
+| `is_active` | boolean | Default `true`. `false` pauses it. Stays `false` while the subscription is cancelled. Pausing records the billing dates already passed first, and keeps the date they move the row to unless the `PUT` sends another: the `next_payment_date` the row was read with is not written back over it. Resuming skips the paused dates: a past `next_payment_date` moves on to the first billing date from today, so the response may not echo the date sent, and each date it steps over is recorded as a `skipped` charge with `source` `paused` — except one that already has a payment added by hand, which becomes that date's `paused` charge, keeping its status. Billed for one of those months after all? `PATCH` that charge's `actual_minor`; a `POST` on its date is a `422`. |
 | `plan` | string, null | Max 60 — "Standard", "Family". An absent key keeps the current value. |
 | `contract_ends_on` | date, null | When its contract ends. It keeps running after; the date is announced at the lead times (`contract_ending` alerts) and listed beside cancel-by deadlines. An absent key keeps the current value. |
 | `payments_end_on` | date, null | The last charge of a fixed term: the last billing date on or before it is the final payment. Nothing is charged or forecast after it, and when the catch-up next runs after the final payment the row is cancelled with `cancelled_at` the day after it. Ignored for a one-off or lifetime entry. Not before `start_date` or the next charge (`422`) — measured on a `PUT` that leaves it out, too, so moving `next_payment_date` past a stored end is refused against this field. An absent key keeps the current value. |

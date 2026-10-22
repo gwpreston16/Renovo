@@ -35,6 +35,9 @@ final class FixedTermService
     /** The catch-up's loop guard, for a schedule centuries long. */
     private const MAX_WALK = 15_000;
 
+    /** The ledger rows that are billing dates, as opposed to payments added by hand. */
+    private const BILLING_SOURCES = [ChargeSource::CatchUp, ChargeSource::Reconstructed, ChargeSource::Paused];
+
     public function __construct(
         private readonly SubscriptionRepository $subscriptions,
         private readonly ChargeRepository $chargeRows,
@@ -98,22 +101,28 @@ final class FixedTermService
     {
         $end = $subscription->paymentsEndOn;
         $cycle = $subscription->billingCycle;
-        $start = $subscription->startDate ?? $subscription->nextChargeDate();
-        if (
-            $end === null
-            || $cycle === null
-            || $start === null
-            || !$subscription->type->countsTowardsRecurringTotals()
-        ) {
+        if ($end === null || $cycle === null || !$subscription->type->countsTowardsRecurringTotals()) {
             return null;
         }
 
         $currency = $subscription->price->currency;
         $ledger = [];
+        $firstBilled = null;
         foreach ($this->chargeRows->findForSubscription($scope, $subscription->id) as $charge) {
             if ($charge->amount()->currency === $currency) {
                 $ledger[$charge->dueDate->format('Y-m-d')] = $charge;
             }
+            if (in_array($charge->source, self::BILLING_SOURCES, true)) {
+                // Newest first, so the last one seen is the earliest.
+                $firstBilled = $charge->dueDate;
+            }
+        }
+
+        // Without a start date, the payments already made are the ledger's:
+        // walked from its first billing date, not from the next charge.
+        $start = $subscription->startDate ?? $firstBilled ?? $subscription->nextChargeDate();
+        if ($start === null) {
+            return null;
         }
 
         $today = $this->clock->today();
@@ -197,12 +206,11 @@ final class FixedTermService
      */
     private function lastPayment(Scope $scope, Subscription $subscription, DateTimeImmutable $end): DateTimeImmutable
     {
-        $billing = [ChargeSource::CatchUp, ChargeSource::Reconstructed, ChargeSource::Paused];
 
         $last = null;
         foreach ($this->chargeRows->existingDates($scope, $subscription->id) as $date => $source) {
             $date = (string) $date;
-            if (!in_array($source, $billing, true) || $date > $end->format('Y-m-d')) {
+            if (!in_array($source, self::BILLING_SOURCES, true) || $date > $end->format('Y-m-d')) {
                 continue;
             }
             if ($last === null || $date > $last) {

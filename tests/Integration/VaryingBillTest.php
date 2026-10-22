@@ -123,6 +123,14 @@ final class VaryingBillTest extends DatabaseTestCase
         self::assertSame('2026-06-15', $latest->effectiveFrom->format('Y-m-d'));
     }
 
+    public function testUseAsEstimateIsOfferedFromTheFirstRecordedBills(): void
+    {
+        $id = $this->bill('Octopus Energy', 5000, ['2026-04-01' => 6000, '2026-05-01' => 6000]);
+
+        self::assertSame(6000, $this->charges->useAverageAsEstimate($this->scope(), $id)->amountMinor);
+        self::assertSame(6000, $this->find($id)->price->amountMinor);
+    }
+
     public function testThereIsNothingToUseWithoutADifferentAverage(): void
     {
         $fixed = $this->bill('Netflix', 1099, ['2026-05-01' => 1299], varies: false);

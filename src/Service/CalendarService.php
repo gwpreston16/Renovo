@@ -469,7 +469,11 @@ final class CalendarService
 
             // Strictly greater, so a tie goes to the earlier day.
             if ($heaviest === null || $total > $heaviest['amount']->amountMinor) {
-                $heaviest = ['date' => $cell['date'], 'amount' => Money::of($total, $base)];
+                $heaviest = [
+                    'date' => $cell['date'],
+                    'amount' => Money::of($total, $base),
+                    'estimate' => in_array(true, array_column($charges, 'estimate'), true),
+                ];
             }
         }
 

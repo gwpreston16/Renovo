@@ -893,6 +893,9 @@ final class SubscriptionService
         }
 
         $startDate = $this->date($this->str($input, 'start_date'));
+        if ($this->str($input, 'start_date') !== '' && $startDate === null) {
+            $errors['start_date'] = 'error.date.invalid';
+        }
 
         [$trial, $trialErrors] = $this->validateTrial($input, $type, $existing);
         $errors += $trialErrors;

@@ -70,13 +70,19 @@ final class ApiContractTermsTest extends ApiTestCase
     }
 
     /**
-     * @return array<string, array{array<string, string>, string}>
+     * @return array<string, array{array<string, string|bool>, string}>
      */
     public static function refusedTerms(): array
     {
         return [
             'impossible contract end' => [['contract_ends_on' => '2026-02-31'], 'contract_ends_on'],
             'impossible last payment' => [['payments_end_on' => '2027-02-31'], 'payments_end_on'],
+            'impossible next payment' => [['next_payment_date' => '2026-02-31'], 'next_payment_date'],
+            'impossible start' => [['start_date' => '2026-02-30'], 'start_date'],
+            'impossible trial end' => [
+                ['is_trial' => true, 'trial_end_date' => '2026-02-31'],
+                'trial_end_date',
+            ],
             'last payment before the start' => [
                 ['start_date' => '2026-11-15', 'payments_end_on' => '2026-11-01'],
                 'payments_end_on',
@@ -85,7 +91,7 @@ final class ApiContractTermsTest extends ApiTestCase
     }
 
     /**
-     * @param array<string, string> $fields
+     * @param array<string, string|bool> $fields
      */
     #[\PHPUnit\Framework\Attributes\DataProvider('refusedTerms')]
     public function testABadTermIsRefusedAgainstItsField(array $fields, string $field): void
@@ -114,6 +120,26 @@ final class ApiContractTermsTest extends ApiTestCase
         ]);
 
         self::assertNull($this->show($id)['payments_end_on']);
+    }
+
+    public function testAWriteTokensListEndsAFinishedTermAndAReadOnlyOneDoesNot(): void
+    {
+        $id = $this->createSubscription(['name' => 'Phone finance']);
+        $last = new \DateTimeImmutable('first day of last month');
+        $this->db->execute(
+            'UPDATE subscriptions SET next_payment_date = :next, anchor_day = 1, payments_end_on = :end'
+            . ' WHERE id = :id',
+            ['next' => $last->format('Y-m-d'), 'end' => $last->format('Y-m-d'), 'id' => $id],
+        );
+
+        $this->api('GET', '/api/v1/subscriptions?inactive=1', $this->readOnlyToken);
+        self::assertSame('active', $this->show($id)['status']);
+
+        $this->api('GET', '/api/v1/subscriptions', $this->ownerToken);
+        $ended = $this->show($id);
+        self::assertSame('cancelled', $ended['status']);
+        self::assertFalse($ended['is_active']);
+        self::assertSame($last->modify('+1 day')->format('Y-m-d'), $ended['cancelled_at']);
     }
 
     public function testAViewerCannotSetTheTerms(): void

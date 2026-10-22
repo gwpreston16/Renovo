@@ -157,9 +157,11 @@
                                     as one, until somebody records the bill.
                                 #}
                                 {% set estimate = charge.expected.amountMinor|money(charge.expected.currency) %}
-                                {% if charge.actualMinor is not null %}
+                                {% if charge.actualMinor is not null or charge.isManual %}
                                     {{ charge.amount.amountMinor|money(charge.amount.currency) }}
-                                    <span class="hint">{{ t('payments.against_estimate', {'estimate': estimate}) }}</span>
+                                    {% if not charge.isManual %}
+                                        <span class="hint">{{ t('payments.against_estimate', {'estimate': estimate}) }}</span>
+                                    {% endif %}
                                 {% else %}
                                     {{ t('subscriptions_list.approximately', {'amount': estimate}) }}
                                 {% endif %}

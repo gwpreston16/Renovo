@@ -163,7 +163,13 @@ Found while reviewing (merge review, 2026-10-22):
   calendar's charges still to come and the totals that include them. A
   charge the ledger recorded is what was charged, and is not marked.
 - **A trial in a budget's window** (K2) is walked from its conversion day, as
-  the forecast walks it.
+  the forecast walks it, when it converts to a cycle counted in months.
+- **A scenario stops at a fixed term's last payment** too, on whatever cycle
+  it walks the row.
+- **Progress without a start date** is counted from the ledger's first billing
+  date.
+- **A payment added by hand on a varying bill** is what was paid, not an
+  estimate, and carries no estimate beside it.
 - **`payments_end_on` is validated** (found while building): it may not come
   before the start date or the next charge, which a save that leaves the field
   out is measured against too; it is ignored for a one-off or lifetime entry.
@@ -184,6 +190,10 @@ Added *2026-10-22* at the owner's request, as rows in code this phase rewrites:
   `update()` path the new fields go through.
 - **K78**, **K79**, **K80**, **K81** — the Payments card, which section C
   rewrites.
+- **K39**, for subscription dates — found while building: the strict date the
+  new Terms fields need is the service's one parser, so the form and the API
+  refuse an impossible next payment, start or trial-end date too. Price-history
+  dates are not this phase's and stay open.
 
 ## Status
 

@@ -155,13 +155,25 @@ final class ContractTermsScreensTest extends DatabaseTestCase
         );
     }
 
+    public function testTheCalendarAndThePlannerMarkAVaryingBill(): void
+    {
+        $id = $this->create('Octopus Energy', 5800, ['amount_varies' => true]);
+        $month = $this->nextMonth->format('Y-m');
+
+        $calendar = $this->page('/calendar?month=' . $month, $this->ownerId);
+        self::assertStringContainsString('≈ £58.00', $calendar);
+
+        $scenario = $this->page('/forecast/scenario?cancel[]=' . $id, $this->ownerId);
+        self::assertMatchesRegularExpression('~id="scenario-results".*?≈ £~s', $scenario);
+    }
+
     public function testFixedRowsOnlyAreNotEstimatesAnywhere(): void
     {
         $this->create('Netflix', 1099, [
             'next_payment_date' => (new DateTimeImmutable('+3 days'))->format('Y-m-d'),
         ]);
 
-        foreach (['/', '/forecast', '/subscriptions'] as $path) {
+        foreach (['/', '/forecast', '/subscriptions', '/calendar'] as $path) {
             self::assertStringNotContainsString('≈ £', $this->page($path, $this->ownerId), $path);
         }
     }

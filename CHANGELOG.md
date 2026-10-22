@@ -37,8 +37,9 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 - With a token that may write, the API's catch-up now also ends a finished
   fixed term, so a subscription's `status` and `cancelled_at` can change
   without a cancel call. *Phase 35.*
-- The API refuses an impossible date such as `2026-02-31` with a `422` on every
-  date field, where it stored the day it rolled over to. *Phase 35.*
+- The API and the form refuse an impossible subscription date such as
+  `2026-02-31` (next payment, start, trial end and the new terms) with a `422`,
+  where they stored the day it rolled over to (K39, subscription dates). *Phase 35.*
 
 ### Fixed
 
@@ -49,8 +50,7 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   its billing day for good (K11). *Phase 35.*
 - The importer turned an impossible date ("31/02/2026") into a real one, and
   such a row is now refused; "12/25/2026", which it read as a day in 2028, is
-  read as 25 December 2026 (K48). The form and the API refuse an impossible
-  date such as "2026-02-31" too, where they stored the day it rolled over to. *Phase 35.*
+  read as 25 December 2026 (K48). *Phase 35.*
 - Pausing or cancelling through the edit form or the API, with billing dates
   passed that nobody had looked at, saved the stale payment date back over the
   moved one (K72); resuming while changing the cycle moved the date on by the
