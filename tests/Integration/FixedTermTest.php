@@ -253,7 +253,14 @@ final class FixedTermTest extends DatabaseTestCase
     public function testAContributorEndsOnlyTheirOwnTerms(): void
     {
         $alices = $this->term('Phone', 3000, start: '2024-07-01', next: '2026-02-01', end: '2026-02-01');
-        $bobs = $this->term('Laptop', 5000, start: '2024-07-01', next: '2026-02-01', end: '2026-02-01', owner: $this->bob);
+        $bobs = $this->term(
+            'Laptop',
+            5000,
+            start: '2024-07-01',
+            next: '2026-02-01',
+            end: '2026-02-01',
+            owner: $this->bob,
+        );
         $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 09:00:00'));
 
         $contributor = Scope::forMember($this->bob, false, $this->household, Role::Contributor, IsolationMode::Shared);
@@ -266,7 +273,14 @@ final class FixedTermTest extends DatabaseTestCase
     public function testIsolatedModeEndsOnlyTheMembersOwnTerms(): void
     {
         $alices = $this->term('Phone', 3000, start: '2024-07-01', next: '2026-02-01', end: '2026-02-01');
-        $bobs = $this->term('Laptop', 5000, start: '2024-07-01', next: '2026-02-01', end: '2026-02-01', owner: $this->bob);
+        $bobs = $this->term(
+            'Laptop',
+            5000,
+            start: '2024-07-01',
+            next: '2026-02-01',
+            end: '2026-02-01',
+            owner: $this->bob,
+        );
         $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 09:00:00'));
 
         $isolated = Scope::forMember($this->alice, false, $this->household, Role::OwnerAdmin, IsolationMode::Isolated);

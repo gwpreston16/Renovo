@@ -6,12 +6,14 @@ namespace App\Tests\Integration;
 
 use App\Domain\Entity\Subscription;
 use App\Domain\ExchangeRate;
+use App\Domain\ChargeSource;
 use App\Domain\InsightKind;
 use App\Domain\IsolationMode;
 use App\Domain\Money;
 use App\Domain\PriceChangeSource;
 use App\Domain\Role;
 use App\Repository\CategoryRepository;
+use App\Repository\ChargeRepository;
 use App\Repository\ExchangeRateRepository;
 use App\Repository\HouseholdRepository;
 use App\Repository\InstanceSettingsRepository;
@@ -101,7 +103,13 @@ final class SpendInsightTest extends DatabaseTestCase
         );
 
         $this->usage = new UsageService($this->subscriptions, $this->clock);
-        $this->insights = new SpendInsightService($this->priceHistory, $rates, $this->settings, $this->clock);
+        $this->insights = new SpendInsightService(
+            $this->priceHistory,
+            new ChargeRepository($this->db),
+            $rates,
+            $this->settings,
+            $this->clock,
+        );
     }
 
     public function testTwoSubscriptionsInOneCategoryAreAnOverlapNamingTheCheaper(): void
@@ -402,6 +410,33 @@ final class SpendInsightTest extends DatabaseTestCase
 
         $this->subscriptions->update($this->scope(), $id, ['contract_ends_on' => '2028-09-17'], []);
         self::assertNotContains(InsightKind::OutOfContract, $this->kinds());
+    }
+
+    public function testAnEstimateOffByMoreThanFifteenPercentIsAnInsight(): void
+    {
+        $high = $this->create('Octopus Energy', 5000, extra: ['amount_varies' => true]);
+        $close = $this->create('Thames Water', 3000, extra: ['amount_varies' => true]);
+        $charges = new ChargeRepository($this->db);
+        foreach (['2026-06-01', '2026-07-01', '2026-08-01'] as $date) {
+            foreach ([[$high, 5000, 6000], [$close, 3000, 3200]] as [$id, $estimate, $paid]) {
+                $charges->record(
+                    $this->scope(),
+                    $id,
+                    $this->ownerId,
+                    new DateTimeImmutable($date),
+                    Money::of($estimate, 'GBP'),
+                    ChargeSource::CatchUp,
+                    $paid,
+                );
+            }
+        }
+
+        $insight = $this->only(InsightKind::EstimateOff);
+
+        self::assertSame('Octopus Energy', $insight['subscription']->name);
+        self::assertSame(6000, $insight['then']->amountMinor);
+        self::assertSame(1000, $insight['difference_minor']);
+        self::assertSame(3, $insight['count']);
     }
 
     public function testAPausedRowIsNotOutOfContract(): void

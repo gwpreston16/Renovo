@@ -456,12 +456,15 @@ return [
 
     'charge.status.charged' => 'Charged',
     'charge.status.skipped' => 'Skipped',
-    'charge.source.catch_up' => 'Billing date passed',
-    'charge.source.manual' => 'Added by hand',
-    'charge.source.reconstructed' => 'Reconstructed',
-    'charge.source.one_off' => 'The entry’s own charge',
-    'charge.source.paused' => 'Paused',
+    'charge.source.manual' => 'added by hand',
+    'charge.source.reconstructed' => 'reconstructed',
+    'charge.source.paused' => 'paused',
 
+    'payments.against_estimate' => 'estimate {estimate}',
+    'payments.estimate_average' =>
+        'The last {count, plural, one {bill was} other {# bills averaged}} {average}, against an estimate of '
+        . '{estimate}.',
+    'payments.use_as_estimate' => 'Use as estimate',
     'payments.term_amount' => '{paid} of {total} paid',
     'payments.term_count' => 'Payment {paid} of {total}',
     'payments.term_ends' => 'last payment by {date}',
@@ -471,9 +474,6 @@ return [
     'payments.status' => 'Status',
     'payments.invoice' => 'Invoice',
     'payments.note_column' => 'Note',
-    'payments.reconstructed' => 'reconstructed',
-    'payments.paused' => 'paused',
-    'payments.added_by_hand' => 'added by hand',
     'payments.recorded' => 'Recorded',
     'payments.expected' => 'Expected',
     'payments.charged_as' => 'Charged',
@@ -490,6 +490,7 @@ return [
     'payments.add_submit' => 'Add payment',
     'payments.amount_in' => 'Amount ({currency})',
     'confirm.remove_payment' => 'Remove this payment?',
+    'flash.estimate_updated' => 'Estimate updated to the average of the latest bills.',
     'flash.charge_added' => 'Payment added.',
     'flash.charge_recorded' => 'Amount recorded.',
     'flash.charge_skipped' => 'Payment marked as skipped.',
@@ -619,6 +620,7 @@ return [
     'error.note.too_long_255' => 'Note must be 255 characters or fewer.',
     'error.notes.too_long_5000' => 'Notes must be 5000 characters or fewer.',
     'error.date.invalid' => 'Enter a valid date.',
+    'error.estimate.nothing_to_use' => 'There is no different average of recorded bills to use yet.',
     'error.payments_end.before_next' => 'The last payment can’t come before the next one.',
     'error.payments_end.before_start' => 'The last payment can’t come before the start date.',
     'error.file.required' => 'Choose a file to upload.',
@@ -1529,6 +1531,12 @@ return [
         . 'subscription\'s own price. Nothing here is estimated, and nothing is converted.',
     'insight.overlap.detail' =>
         'Dropping {name} would remove {amount} a year. Also in this category: {others}.',
+    'insight.estimate_off.detail' =>
+        '{name}’s last {count} bills averaged {average} against an estimate of {estimate}. Use the '
+        . 'average as the estimate from its Payments card.',
+    'insight.estimate_off.headline' => 'An estimate looks off',
+    'insight.estimate_off.headline_high' => 'An estimate looks high',
+    'insight.estimate_off.headline_low' => 'An estimate looks low',
     'insight.out_of_contract.detail' =>
         '{name} has been out of contract since {date} — a good time to compare prices or renegotiate.',
     'insight.out_of_contract.headline' => 'Out of contract',
@@ -2139,6 +2147,7 @@ return [
     'subscriptions_list.add_tag' => 'Add tag',
     'subscriptions_list.add_the_first_one' => 'Add the first one.',
     'subscriptions_list.approximately' => '≈ {amount}',
+    'subscriptions_list.estimate' => 'An estimate — the amount varies from bill to bill.',
     'subscriptions_list.cancel' => 'Cancel',
     'subscriptions_list.cancel_by' => 'Cancel by {date}',
     'subscriptions_list.cancel_name' => 'Cancel {name}',

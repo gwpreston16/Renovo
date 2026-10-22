@@ -33,6 +33,33 @@
         </div>
     {% endif %}
 
+    {#
+        A bill whose amount varies: the average of its latest recorded bills
+        against the estimate, and the offer to make the one the other — a
+        manual price change, so it is in the price history like any other.
+    #}
+    {% if actuals %}
+        {% set average = actuals.average.amountMinor|money(actuals.average.currency) %}
+        <div class="payments-estimate">
+            <p>
+                {{ t('payments.estimate_average', {
+                    'count': actuals.count,
+                    'average': average,
+                    'estimate': actuals.estimate.amountMinor|money(actuals.estimate.currency),
+                }) }}
+            </p>
+            {% if actuals.differs and can(scope, 'price.manage') and can_edit_row(scope, subscription) %}
+                <form method="post" action="/subscriptions/{{ subscription.id }}/estimate" class="inline">
+                    {{ csrf_field() }}
+                    <button type="submit" class="button button-outline">
+                        {{- t('payments.use_as_estimate') -}}
+                        <span class="visually-hidden"> {{ average }}</span>
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    {% endif %}
+
     {% if payments.charges is empty %}
         <p class="muted empty">{{ t('payments.empty') }}</p>
     {% else %}
@@ -57,15 +84,12 @@
                         #}
                         <td>
                             <span class="num payments-date">{{ charge.dueDate|local_date('d MMM y') }}</span>
-                            {% if charge.isReconstructed %}
-                                <span class="hint">{{ t('payments.reconstructed') }}</span>
-                            {% elseif charge.isManual %}
-                                <span class="hint">{{ t('payments.added_by_hand') }}</span>
-                            {% elseif charge.isPaused %}
-                                <span class="hint">{{ t('payments.paused') }}</span>
+                            {% if charge.source.labelKey %}
+                                <span class="hint">{{ t(charge.source.labelKey) }}</span>
                             {% endif %}
                             {% if may_manage %}
-                                <details class="settings-disclosure payments-actions">
+                                {% set failed_here = failed.form|default('') == 'actual' and failed.charge|default(0) == charge.id %}
+                                <details class="settings-disclosure payments-actions" {{ failed_here ? 'open' : '' }}>
                                     <summary class="button button-quiet">
                                         {{- t('payments.change') -}}
                                         <span class="visually-hidden"> {{ charge.dueDate|local_date('d MMM y') }}</span>
@@ -78,13 +102,13 @@
                                             <label for="actual-{{ charge.id }}">{{ t('payments.actual_amount') }}</label>
                                             <input type="text" id="actual-{{ charge.id }}" name="actual" inputmode="decimal"
                                                    class="num" required
-                                                   value="{{ charge.actual ? charge.actual.toDecimalString : '' }}"
+                                                   value="{{ failed_here ? failed.values.actual|default('') : (charge.actual ? charge.actual.toDecimalString : '') }}"
                                                    placeholder="{{ charge.expected.toDecimalString }}">
                                         </div>
                                         <div class="field">
                                             <label for="actual-note-{{ charge.id }}">{{ t('subscriptions_money.note_optional') }}</label>
                                             <input type="text" id="actual-note-{{ charge.id }}" name="note" maxlength="255"
-                                                   value="{{ charge.note }}">
+                                                   value="{{ failed_here ? failed.values.note|default('') : charge.note }}">
                                         </div>
                                         <button type="submit" class="button">{{ t('payments.record_amount') }}</button>
                                     </form>
@@ -117,7 +141,9 @@
                                             <input type="hidden" name="charge_id" value="{{ charge.id }}">
                                             <label for="invoice-{{ charge.id }}">{{ t('payments.attach_invoice') }}</label>
                                             <input type="file" id="invoice-{{ charge.id }}" name="file" required
-                                                   accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,application/pdf,image/*">
+                                                   accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,application/pdf,image/*"
+                                                   aria-describedby="invoice-{{ charge.id }}-hint">
+                                            <p class="hint" id="invoice-{{ charge.id }}-hint">{{ t('subscriptions_money.attachment_hint') }}</p>
                                             <button type="submit" class="button">{{ t('action.upload') }}</button>
                                         </form>
                                     {% endif %}
@@ -125,7 +151,20 @@
                             {% endif %}
                         </td>
                         <td class="numeric num">
-                            {% if charge.isSkipped %}
+                            {% if subscription.amountVaries and not charge.isSkipped %}
+                                {#
+                                    A varying bill: what was recorded, against the
+                                    estimate it was due at — or the estimate, marked
+                                    as one, until somebody records the bill.
+                                #}
+                                {% set estimate = charge.expected.amountMinor|money(charge.expected.currency) %}
+                                {% if charge.actualMinor is not null %}
+                                    {{ charge.amount.amountMinor|money(charge.amount.currency) }}
+                                    <span class="hint">{{ t('payments.against_estimate', {'estimate': estimate}) }}</span>
+                                {% else %}
+                                    {{ t('subscriptions_list.approximately', {'amount': estimate}) }}
+                                {% endif %}
+                            {% elseif charge.isSkipped %}
                                 <del class="payments-expected"><span class="visually-hidden">{{ t('payments.expected') }} </span>{{ charge.expected.amountMinor|money(charge.expected.currency) }}</del>
                             {% elseif charge.differsFromExpected %}
                                 <del class="payments-expected"><span class="visually-hidden">{{ t('payments.expected') }} </span>{{ charge.expected.amountMinor|money(charge.expected.currency) }}</del>
@@ -136,11 +175,11 @@
                         </td>
                         <td>
                             {% if charge.isSkipped %}
-                                <span class="badge badge-warn">{{ t('charge.status.skipped') }}</span>
+                                <span class="badge badge-warn">{{ t(charge.status.labelKey) }}</span>
                             {% elseif charge.actualMinor is not null %}
                                 <span class="badge badge-ok">{{ t('payments.recorded') }}</span>
                             {% else %}
-                                <span class="badge">{{ t('charge.status.charged') }}</span>
+                                <span class="badge">{{ t(charge.status.labelKey) }}</span>
                             {% endif %}
                         </td>
                         <td>
@@ -186,7 +225,8 @@
     {% endif %}
 
     {% if may_manage %}
-        <details class="settings-disclosure">
+        {% set failed_add = failed.form|default('') == 'add' %}
+        <details class="settings-disclosure" {{ failed_add ? 'open' : '' }}>
             <summary class="button button-outline">{{ icon('add') }}{{ t('payments.add') }}</summary>
             <p class="hint">{{ t('payments.add_hint') }}</p>
             <form method="post" action="/subscriptions/{{ subscription.id }}/charges" class="stack">
@@ -194,17 +234,20 @@
                 <div class="field-grid">
                     <div class="field">
                         <label for="payment-date">{{ t('field.date') }}</label>
-                        <input type="date" id="payment-date" name="date" required max="{{ today|date('Y-m-d') }}">
+                        <input type="date" id="payment-date" name="date" required max="{{ today|date('Y-m-d') }}"
+                               value="{{ failed_add ? failed.values.date|default('') : '' }}">
                     </div>
                     <div class="field">
                         <label for="payment-amount">{{ t('payments.amount_in', {'currency': subscription.price.currency}) }}</label>
                         <input type="text" id="payment-amount" name="amount" inputmode="decimal" class="num" required
-                               placeholder="{{ subscription.price.toDecimalString }}">
+                               placeholder="{{ subscription.price.toDecimalString }}"
+                               value="{{ failed_add ? failed.values.amount|default('') : '' }}">
                     </div>
                 </div>
                 <div class="field">
                     <label for="payment-note">{{ t('subscriptions_money.note_optional') }}</label>
-                    <input type="text" id="payment-note" name="note" maxlength="255">
+                    <input type="text" id="payment-note" name="note" maxlength="255"
+                           value="{{ failed_add ? failed.values.note|default('') : '' }}">
                 </div>
                 <button type="submit" class="button">{{ t('payments.add_submit') }}</button>
             </form>

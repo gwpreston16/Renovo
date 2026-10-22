@@ -162,7 +162,7 @@ Added *2026-10-22* at the owner's request, as rows in code this phase rewrites:
 - [x] Migrations on both engines; entity, repository, form service
 - [x] Contracts: field, alert type and routes, insight, cancel-by listing
 - [ ] Fixed terms: forecast and totals stop, catch-up ends the row, progress
-- [ ] Varying bills: estimate wording, ≈ figures, average and Use as estimate,
+- [x] Varying bills: estimate wording, ≈ figures, average and Use as estimate,
       insight, alert wording
 - [ ] Terms section on the form
 - [ ] API, OpenAPI, `docs/api.md`, import, export, backup

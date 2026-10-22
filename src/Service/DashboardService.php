@@ -116,11 +116,14 @@ final class DashboardService
             'stats' => $stats,
             'kpis' => [
                 'monthly' => $this->figures($stats['recurring'], 'monthly_minor', $stats['combined_monthly'])
-                    + ['budget' => $this->budgetNote($stats['combined_monthly'], $monthlyBudget?->amount)],
-                'yearly' => $this->figures($stats['recurring'], 'yearly_minor', $stats['combined_yearly']),
+                    + ['budget' => $this->budgetNote($stats['combined_monthly'], $monthlyBudget?->amount)]
+                    + ['estimate' => $stats['estimate']],
+                'yearly' => $this->figures($stats['recurring'], 'yearly_minor', $stats['combined_yearly'])
+                    + ['estimate' => $stats['estimate']],
                 'due' => [
                     'count' => count($dueSoon),
                     'days' => self::DUE_SOON_DAYS,
+                    'estimate' => StatsService::chargesIncludeEstimate($dueSoon),
                 ] + $this->chargeTotals($dueSoon),
                 'active' => [
                     'count' => $stats['active_count'],

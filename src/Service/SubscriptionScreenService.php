@@ -40,7 +40,8 @@ use InvalidArgumentException;
  * @phpstan-import-type Promotion from PriceHistoryService
  * @phpstan-type Figures array{
  *     totals: list<array{currency: string, amount_minor: int}>,
- *     combined: array{currency: string, amount_minor: int|null, unconvertible: list<string>}
+ *     combined: array{currency: string, amount_minor: int|null, unconvertible: list<string>},
+ *     estimate?: bool
  * }
  * @phpstan-type DeadlineRow array{
  *     subscription: Subscription,
@@ -163,6 +164,7 @@ final class SubscriptionScreenService
     public function summary(Scope $scope, SubscriptionFilter $filter, int $matched): array
     {
         $byCurrency = [];
+        $estimate = false;
         foreach ($this->subscriptions->list($scope, $filter->unpaged()) as $subscription) {
             $monthly = $subscription->isActive && $subscription->hasChargesRemaining($this->clock->today())
                 ? $subscription->monthlyMinor()
@@ -173,6 +175,7 @@ final class SubscriptionScreenService
 
             $currency = $subscription->price->currency;
             $byCurrency[$currency] = ($byCurrency[$currency] ?? 0) + $monthly;
+            $estimate = $estimate || $subscription->amountVaries;
         }
 
         ksort($byCurrency);
@@ -182,7 +185,7 @@ final class SubscriptionScreenService
             // "Of" the list as it stands with nothing chosen: running and
             // paused, the cancelled ones being behind their own filter.
             'of' => $this->subscriptions->count($scope, (new SubscriptionFilter())->withIncludeInactive()),
-            'per_month' => $this->figures($byCurrency),
+            'per_month' => $this->figures($byCurrency) + ['estimate' => $estimate],
         ];
     }
 
@@ -261,6 +264,7 @@ final class SubscriptionScreenService
                     $recurring,
                 ),
                 'combined' => $combined,
+                'estimate' => (bool) ($stats['estimate'] ?? false),
             ],
         ];
     }

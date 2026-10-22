@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Domain\ActualsAverage;
 use App\Domain\ChargeSource;
 use App\Domain\ChargeStatus;
 use App\Domain\Entity\Charge;
 use App\Domain\Entity\Subscription;
 use App\Domain\Money;
+use App\Domain\PriceChangeSource;
 use App\Domain\SubscriptionType;
 use App\Repository\ChargeRepository;
 use App\Repository\SubscriptionRepository;
 use App\Security\Scope;
+use App\Security\ScopeViolationException;
 use App\Support\Clock;
 use DateTimeImmutable;
 use InvalidArgumentException;
@@ -484,6 +487,54 @@ final class ChargeService
         );
 
         return $this->reread($scope, $charge->id);
+    }
+
+    /**
+     * The average of a varying bill's latest recorded amounts against its
+     * estimate, or null for a row whose amount does not vary or that has no
+     * recorded amount yet.
+     */
+    public function averageOfActuals(Scope $scope, Subscription $subscription): ?ActualsAverage
+    {
+        if (!$subscription->amountVaries) {
+            return null;
+        }
+
+        return ActualsAverage::of(
+            $this->charges->findForSubscription($scope, $subscription->id),
+            $subscription->price,
+        );
+    }
+
+    /**
+     * Make a varying bill's estimate the average of its latest recorded
+     * amounts: a manual price change from today, so it is in the price
+     * history like any other edit.
+     *
+     * @throws ScopeViolationException when the row is not this scope's to change.
+     * @throws ValidationException when there is no different average to use.
+     */
+    public function useAverageAsEstimate(Scope $scope, int $subscriptionId): Money
+    {
+        $subscription = $this->subscriptions->findForWrite($scope, $subscriptionId);
+        if ($subscription === null) {
+            throw ScopeViolationException::forRow('subscriptions', $subscriptionId);
+        }
+
+        $average = $this->averageOfActuals($scope, $subscription);
+        if ($average === null || !$average->differs()) {
+            throw new ValidationException(['estimate' => 'error.estimate.nothing_to_use']);
+        }
+
+        $this->priceHistory->recordCurrentPrice(
+            $scope,
+            $subscription->id,
+            $average->average,
+            PriceChangeSource::Manual,
+            $scope->userId,
+        );
+
+        return $average->average;
     }
 
     /**

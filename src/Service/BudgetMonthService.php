@@ -48,7 +48,8 @@ use DateTimeImmutable;
  *     over_if_trials_convert: bool,
  *     is_warning: bool,
  *     remaining: Money|null,
- *     unconvertible: list<string>
+ *     unconvertible: list<string>,
+ *     estimate: bool
  * }
  * @phpstan-type PeriodBudget array{budget: Budget, read: MonthBudget|null}
  */
@@ -248,6 +249,13 @@ final class BudgetMonthService
             'is_warning' => $projected['is_warning'],
             'remaining' => $projected['remaining'],
             'unconvertible' => $unconvertible,
+            // A bill whose amount varies, still to come in the period, makes
+            // the projection an estimate. Past charges are what was recorded.
+            'estimate' => StatsService::chargesIncludeEstimate(array_values(array_filter(
+                $ahead,
+                static fn (array $charge): bool => $budget->categoryId === null
+                    || $charge['subscription']->categoryId === $budget->categoryId,
+            ))),
         ];
     }
 
