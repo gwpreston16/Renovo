@@ -382,6 +382,28 @@ Since v1, each phase has shipped as a minor release (see
   it a rise. Insights flag an offer that is ending and one with no end date.
   A price that has taken effect is never rewritten. One migration. See
   [Price history](features/money.md#price-history).
+- **Phase 34 — the payment ledger — complete (1.5.0).** Renovo now
+  remembers what was charged, not only what is due: a payment is written for
+  every billing date that passes, at the price in force that day. A
+  subscription's cost page has a **Payments** card to record the amount really
+  taken, mark a charge skipped, undo either, add a payment that fell off the
+  cycle and file an invoice against it. Past spend, the budget and the
+  calendar, which now pages backwards, read the ledger; resuming a pause skips
+  the months it covered, and a one-off's payment moves with its date.
+  `php bin/console ledger:backfill` rebuilds the payments from before the
+  upgrade. The API gains `GET`/`POST /api/v1/subscriptions/{id}/charges`,
+  `PATCH /api/v1/charges/{id}`, `charge_id` on attachments and the
+  `charge.manage` permission; the OpenAPI document is version 1.4.0. Payments
+  are in the export and the backup. Two migrations. See
+  [Payments](features/money.md#payments).
+- **Phase 44 — the README and the docs, rebuilt for the first five minutes —
+  complete (1.5.0).** The README is now a front page: what Renovo is and who
+  it is for, screenshots, a two-path quick start and the features in groups.
+  The detail moved whole into `docs/` — installing, upgrading, configuration,
+  operations, security, development, a page per feature group and this
+  history — and `DocsLinkTest` fails on any broken link, anchor or image.
+  Nothing in the application changed. No migrations. See
+  [the documentation index](README.md#renovo-documentation).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
