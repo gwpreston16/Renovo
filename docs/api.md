@@ -581,7 +581,7 @@ Attach a document. `multipart/form-data`:
 | --- | --- |
 | `file` | **Required.** PDF, PNG, JPEG, WebP or GIF. Type determined from contents; filename and declared content type are ignored. |
 | `period_date` | Optional `YYYY-MM-DD`. The billing period this document covers. |
-| `charge_id` | Optional. The payment this is the invoice for — one of this subscription's charges. The attachment is dated to it, whatever `period_date` says. |
+| `charge_id` | Optional. The payment this is the invoice for — one of this subscription's charges. The attachment is dated to it, whatever `period_date` says. Anything that is not one of its charge ids is a `422`. |
 
 ```bash
 curl -X POST \
