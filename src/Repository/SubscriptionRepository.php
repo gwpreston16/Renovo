@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Domain\BillingCycle;
+use App\Domain\ChargeSource;
 use App\Domain\Entity\Subscription;
 use App\Domain\Entity\Tag;
 use App\Domain\Money;
@@ -568,10 +569,15 @@ final class SubscriptionRepository extends AbstractScopedRepository
             . ' AND (' . $this->qualify('cancelled_at') . ' IS NULL'
             . ' OR ' . $this->qualify('start_date') . ' <= ' . $this->qualify('cancelled_at') . ')'
             // Its own charge, on its own date: a deposit a member added by hand
-            // on another day does not stand in for it.
+            // on another day does not stand in for it. One added on the day is
+            // still to be adopted — unless it is in another currency than the
+            // entry, which keeps it as it is.
             . ' AND NOT EXISTS (SELECT 1 FROM ' . $this->quote('subscription_charges') . ' charge'
             . ' WHERE charge.' . $this->quote('subscription_id') . ' = ' . $this->qualify('id')
-            . ' AND charge.' . $this->quote('due_date') . ' = ' . $this->qualify('start_date') . ')';
+            . ' AND charge.' . $this->quote('due_date') . ' = ' . $this->qualify('start_date')
+            . ' AND (charge.' . $this->quote('source') . ' <> :manual_source'
+            . ' OR charge.' . $this->quote('currency') . ' <> ' . $this->qualify('currency') . '))';
+        $params['manual_source'] = ChargeSource::Manual->value;
 
         return $this->hydrateAll($scope, $this->db->fetchAll($sql, $params));
     }

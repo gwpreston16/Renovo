@@ -1232,7 +1232,11 @@ components:
         currency: { type: string }
         expected_minor:
           type: integer
-          description: The price in force on the due date, frozen when the charge was written.
+          description: >-
+            The price in force on the due date, frozen when the charge was
+            written — except that a `manual` charge adopted as a billing
+            date's charge takes the price due, its own amount moving to
+            `actual_minor`.
         actual_minor:
           type: integer
           nullable: true
@@ -1247,8 +1251,11 @@ components:
           description: |
             `one_off` is a one-off or lifetime entry's own charge, the one a
             change of its date moves. A `manual` charge on a billing date
-            becomes that date's `catch_up` (or `reconstructed`) charge, same
-            id, once the date is passed: its amount moves to `actual_minor`.
+            becomes that date's `catch_up` (or `reconstructed`, or `one_off`)
+            charge, same id, when the catch-up or the backfill reaches it —
+            so a later read may differ from the `201` body: its amount moves
+            to `actual_minor` and `expected_minor` takes the price due. One
+            in another currency than the price due stays `manual`.
         note: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }

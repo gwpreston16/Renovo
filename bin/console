@@ -151,7 +151,8 @@ switch ($command) {
     case 'ledger:backfill':
         // Once, after upgrading to the payment ledger: rebuild the charges
         // from before it existed. Idempotent, and never overwrites a charge
-        // the catch-up wrote or a member added or corrected.
+        // the catch-up wrote or an amount a member entered; a payment added by
+        // hand on a rebuilt date becomes that date's charge.
         $householdId = null;
         foreach (array_slice($argv, 2) as $argument) {
             if (preg_match('/^--household=(\d+)$/', $argument, $match) === 1) {

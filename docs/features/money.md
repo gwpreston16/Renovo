@@ -102,7 +102,8 @@ A member who may change the subscription can, per row:
 **Add a payment** records one that fell off the cycle, such as a one-time fee,
 dated today or earlier. One payment a day per subscription. A payment added on
 a billing date becomes that date's charge once the date passes, with what you
-entered as the amount charged — so Undo then puts back the price that was due,
+entered as the amount charged (unless it is in another currency than the price
+that was due, when it stays as you added it) — so Undo then puts back the price that was due,
 rather than leaving the date with nothing.
 
 Pausing stops the payments. Pausing or cancelling first records any billing

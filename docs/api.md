@@ -646,7 +646,7 @@ Record what a charge really was, skip it, or annotate it. Needs
 
 | Field | Notes |
 | --- | --- |
-| `actual_minor` | Integer minor units, or `null` to clear a recorded amount. Sent without a `status`, it also sets `charged` — recording an amount says the charge happened, as it does on the web. |
+| `actual_minor` | Integer minor units, or `null` to clear a recorded amount. Sent without a `status`, it also sets `charged` — recording an amount says the charge happened, as it does on the web. On a `manual` charge the amount entered is its `expected_minor`, so clearing the actual keeps it; once the charge is adopted that amount is the actual, and clearing it leaves the price due. |
 | `status` | `charged` or `skipped`. Skipping clears the actual; sending both `skipped` and an `actual_minor` is a `422`. |
 | `note` | Up to 255 characters, or `null`. |
 
@@ -865,7 +865,7 @@ Returned by `GET /me`. Fields: `user` (`id`, `email`, `display_name`,
 | `PaymentMethod` | `id`, `name`, `colour` (nullable), `icon` (nullable; a generic icon key, never a brand mark), `logo_path` (nullable, read-only) |
 | `Tag` | `id`, `name` |
 | `Attachment` | `id`, `subscription_id`, `filename`, `mime_type`, `size_bytes`, `period_date` (nullable date), `charge_id` (nullable; the payment it is the invoice for), `created_at` |
-| `Charge` | `id`, `subscription_id`, `due_date`, `currency`, `expected_minor` (the price due, frozen when written), `actual_minor` (nullable), `amount_minor`, `status` (`charged`, `skipped`), `source` (`catch_up`, `manual`, `reconstructed`, `one_off` — a one-off or lifetime entry's own charge; a `manual` charge on a billing date becomes that date's `catch_up` or `reconstructed` charge, same id, once the date is passed, its amount moving to `actual_minor`), `note` (nullable), `created_at`, `updated_at` |
+| `Charge` | `id`, `subscription_id`, `due_date`, `currency`, `expected_minor` (the price due, frozen when written — except on adoption, below), `actual_minor` (nullable), `amount_minor`, `status` (`charged`, `skipped`), `source` (`catch_up`, `manual`, `reconstructed`, `one_off` — a one-off or lifetime entry's own charge; a `manual` charge on a billing date becomes that date's `catch_up`, `reconstructed` or `one_off` charge, same id, when the catch-up or the backfill reaches it — so a later read may differ from the `201` body — its amount moving to `actual_minor` and `expected_minor` taking the price due; one in another currency than the price due stays `manual`), `note` (nullable), `created_at`, `updated_at` |
 
 ---
 

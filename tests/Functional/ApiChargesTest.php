@@ -259,6 +259,40 @@ final class ApiChargesTest extends ApiTestCase
         self::assertCount(3, $this->decode($this->api('GET', $path, $this->ownerToken))['data']);
     }
 
+    public function testAManualChargeOnABillingDateBecomesThatDatesChargeOnTheNextWriteRead(): void
+    {
+        $date = (new DateTimeImmutable('-3 days'))->format('Y-m-d');
+        $id = $this->createSubscription([
+            'name' => 'Late',
+            'price_minor' => 700,
+            'billing_cycle' => 'weekly',
+            'next_payment_date' => $date,
+            'start_date' => $date,
+        ]);
+        $path = '/api/v1/subscriptions/' . $id . '/charges';
+
+        $posted = $this->api('POST', $path, $this->ownerToken, ['date' => $date, 'amount_minor' => 1500]);
+        self::assertSame(201, $posted->getStatusCode(), (string) $posted->getBody());
+        $created = $this->decode($posted)['data'];
+        self::assertSame(['manual', 1500, null], [
+            $created['source'],
+            $created['expected_minor'],
+            $created['actual_minor'],
+        ]);
+
+        // A write token's read runs the catch-up, which adopts it: same id,
+        // the price due as expected, what was entered as the actual.
+        $list = $this->decode($this->api('GET', $path, $this->ownerToken))['data'];
+        self::assertCount(1, $list);
+        self::assertSame([$created['id'], 'catch_up', 700, 1500, 1500], [
+            $list[0]['id'],
+            $list[0]['source'],
+            $list[0]['expected_minor'],
+            $list[0]['actual_minor'],
+            $list[0]['amount_minor'],
+        ]);
+    }
+
     public function testAnotherHouseholdsChargesAreNotFound(): void
     {
         $users = new UserRepository($this->db);

@@ -17,7 +17,9 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   member who may change the row can **Record amount** (what was really taken,
   with a note; the amount due is shown struck through beside it), **Mark as
   skipped** (waived, missed or refunded in full: it counts as nothing),
-  **Undo**, and **Add a payment** for one that fell off the cycle. A new
+  **Undo**, and **Add a payment** for one that fell off the cycle; one added
+  on a billing date becomes that date's charge when the catch-up or the
+  backfill reaches it, with the amount entered as what was charged. A new
   permission, `charge.manage`, is held by every role that may manage prices;
   a Contributor changes payments only on rows they own. *Phase 34.*
 - **Invoices on payments.** An invoice uploaded from a payment row is filed
@@ -28,7 +30,7 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 - **`php bin/console ledger:backfill [--household=ID]`** rebuilds the
   payments from before the upgrade, marked *reconstructed*. Run it once after
   upgrading; it is safe to run again and never overwrites a payment the ledger
-  wrote or a member recorded. See [upgrading](docs/upgrading.md). *Phase 34.*
+  wrote or an amount a member entered. See [upgrading](docs/upgrading.md). *Phase 34.*
 - **Payments in the API**: `GET` (paged) and `POST
   /api/v1/subscriptions/{id}/charges` and `PATCH /api/v1/charges/{id}`, and
   `charge_id` on an attachment, readable and settable on upload. The OpenAPI
@@ -53,10 +55,6 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   passes. A date that already has another payment is refused. The payments a
   row recorded while it was recurring are never moved, and a one-off turned
   into a recurring subscription keeps its payment as history. *Phase 34.*
-- **A payment added by hand on a billing date becomes that date's charge** when
-  the catch-up or the backfill reaches it, with the amount entered as what was
-  charged, so undoing it puts back the price due rather than leaving the date
-  with none. *Phase 34.*
 - **A restore is all or nothing.** One that fails part-way (a full disk, say)
   now keeps none of its rows, rather than rows whose logos and invoices it had
   removed (K16). *Phase 34.*

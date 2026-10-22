@@ -181,6 +181,40 @@ final class PaymentsCardTest extends DatabaseTestCase
         self::assertCount(3, $this->charges()->forSubscription($this->owner, $this->subscriptionId));
     }
 
+    public function testUndoSaysWhetherAPaymentWasRemovedOrPutBack(): void
+    {
+        $charge = $this->firstCharge();
+        $base = '/subscriptions/' . $this->subscriptionId . '/charges';
+
+        $this->post($this->ownerId, $base . '/' . $charge . '/skip');
+        $this->session->set('_flashes', []);
+        $this->post($this->ownerId, $base . '/' . $charge . '/undo');
+        self::assertSame(['flash.charge_undone'], $this->flashes());
+
+        // A fee off the weekly cycle: added by hand, and still manual.
+        $fee = $this->charges()->addManual($this->owner, $this->subscriptionId, [
+            'date' => (new DateTimeImmutable('-1 day'))->format('Y-m-d'),
+            'amount' => '4.00',
+        ]);
+        $this->session->set('_flashes', []);
+        $this->post($this->ownerId, $base . '/' . $fee->id . '/undo');
+        self::assertSame(['flash.charge_removed'], $this->flashes());
+        self::assertNull($this->charges()->find($this->owner, $fee->id));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function flashes(): array
+    {
+        $flashes = $this->session->get('_flashes');
+
+        return array_values(array_map(
+            static fn (mixed $flash): string => is_array($flash) ? (string) ($flash['message'] ?? '') : '',
+            is_array($flashes) ? $flashes : [],
+        ));
+    }
+
     public function testAContributorIsRefusedOnARowTheyDoNotOwn(): void
     {
         $charge = $this->firstCharge();

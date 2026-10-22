@@ -347,9 +347,18 @@ final class ChargeRepository extends AbstractScopedRepository
      * entered becomes its actual, with their note kept. The row — and any
      * invoice filed against it — stays; only its source and expected change.
      *
+     * Only a payment in the currency of the price due is adopted: the row has
+     * one currency for both amounts, and relabelling what a member entered
+     * would change its value. One in another currency stays manual. A skipped
+     * payment stays skipped, with no actual.
+     *
      * `actual_minor` is assigned before `expected_minor`: MySQL evaluates a
      * single-table UPDATE's assignments left to right, so the order is what
      * makes both engines copy the entered amount rather than the new one.
+     *
+     * @return bool Whether a payment was adopted — false when there was none
+     *              on the date (removed in the meantime) or its currency
+     *              differs.
      */
     public function adoptManual(
         Scope $scope,
@@ -357,24 +366,26 @@ final class ChargeRepository extends AbstractScopedRepository
         DateTimeImmutable $date,
         Money $due,
         ChargeSource $source,
-    ): void {
+    ): bool {
         if (!$scope->hasHousehold()) {
-            return;
+            return false;
         }
 
-        $this->db->execute(
+        return $this->db->execute(
             'UPDATE ' . $this->quote($this->table())
-            . ' SET ' . $this->quote('actual_minor') . ' = COALESCE(' . $this->quote('actual_minor') . ', '
-            . $this->quote('expected_minor') . '),'
+            . ' SET ' . $this->quote('actual_minor') . ' = CASE WHEN ' . $this->quote('status') . ' = :skipped'
+            . ' THEN NULL ELSE COALESCE(' . $this->quote('actual_minor') . ', '
+            . $this->quote('expected_minor') . ') END,'
             . ' ' . $this->quote('expected_minor') . ' = :due,'
-            . ' ' . $this->quote('currency') . ' = :currency,'
             . ' ' . $this->quote('source') . ' = :source,'
             . ' ' . $this->quote('updated_at') . ' = :updated'
             . ' WHERE ' . $this->quote('subscription_id') . ' = :subscription'
             . ' AND ' . $this->quote('household_id') . ' = :household'
             . ' AND ' . $this->quote('due_date') . ' = :date'
-            . ' AND ' . $this->quote('source') . ' = :manual',
+            . ' AND ' . $this->quote('source') . ' = :manual'
+            . ' AND ' . $this->quote('currency') . ' = :currency',
             [
+                'skipped' => ChargeStatus::Skipped->value,
                 'due' => $due->amountMinor,
                 'currency' => $due->currency,
                 'source' => $source->value,
@@ -384,7 +395,7 @@ final class ChargeRepository extends AbstractScopedRepository
                 'date' => $date->format('Y-m-d'),
                 'manual' => ChargeSource::Manual->value,
             ],
-        );
+        ) > 0;
     }
 
     /**

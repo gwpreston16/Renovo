@@ -56,7 +56,9 @@ It rebuilds each subscription's charges from its start date up to its next
 payment date, at the price in force on each date, and marks them
 *reconstructed*. It is safe to run again: a date that already has a charge is
 left alone, so it never overwrites a charge the catch-up wrote or one a member
-recorded or added. A paused subscription is rebuilt only up to where its
+recorded — except that a payment a member added by hand on one of those dates
+becomes that date's reconstructed charge, with what they entered kept as the
+amount charged. A paused subscription is rebuilt only up to where its
 payment date stopped. Each household is one transaction, and once its payments
 are written the backfill files each existing invoice against the payment its
 period date names; the rest stay filed against their subscription.

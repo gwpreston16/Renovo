@@ -81,13 +81,7 @@ final class ChargeService
             // date's charge, with what they paid as its actual: it becomes the
             // ledger's own row, so Undo later puts back the price due rather
             // than leaving the date with nothing (K70).
-            if (($existing[$key] ?? null) === ChargeSource::Manual) {
-                $this->charges->adoptManual($scope, $subscription->id, $date, $due, ChargeSource::CatchUp);
-                $existing[$key] = ChargeSource::CatchUp;
-                continue;
-            }
-
-            if (isset($existing[$key])) {
+            if (!$this->claimManual($scope, $subscription, $date, $due, ChargeSource::CatchUp, $existing)) {
                 continue;
             }
 
@@ -124,12 +118,21 @@ final class ChargeService
             return false;
         }
 
+        $price = $this->priceHistory->priceOn($scope, $entry->id, $entry->startDate) ?? $entry->price;
+
+        // A payment a member added by hand on the entry's date is its charge,
+        // as the backfill makes it: then a later change of the date moves it,
+        // rather than writing a second beside it.
+        if ($this->charges->adoptManual($scope, $entry->id, $entry->startDate, $price, ChargeSource::OneOff)) {
+            return true;
+        }
+
         $id = $this->charges->recordUnlessTaken(
             $scope,
             $entry->id,
             $entry->ownerUserId,
             $entry->startDate,
-            $this->priceHistory->priceOn($scope, $entry->id, $entry->startDate) ?? $entry->price,
+            $price,
             ChargeSource::OneOff,
             now: $this->clock->now(),
         );
@@ -501,9 +504,10 @@ final class ChargeService
      * Per subscription: the reconstruction's charges from its start date up
      * to, not including, its current `next_payment_date` — and before its
      * earliest catch-up row, so the backfill never writes beside the catch-up.
-     * A date that already has a row is left alone whatever wrote it, so a
-     * second run writes nothing and a member's correction is never
-     * overwritten. Paused rows stop where their payment date stopped: the
+     * A date that already has a row is left alone whatever wrote it — except
+     * a payment a member added by hand there, which becomes the date's charge
+     * with what they entered kept as its actual — so a second run writes
+     * nothing and a member's correction is never overwritten. Paused rows stop where their payment date stopped: the
      * reconstruction counts them through today, and the ledger does not
      * invent charges for months nobody was billed.
      *
@@ -547,13 +551,8 @@ final class ChargeService
 
                 // As the catch-up does: a payment added by hand on a date the
                 // reconstruction bills becomes that date's charge.
-                if (($existing[$key] ?? null) === ChargeSource::Manual) {
-                    $this->charges->adoptManual($scope, $subscription->id, $charge['date'], $charge['amount'], $source);
-                    $existing[$key] = $source;
-                    continue;
-                }
-
-                if (isset($existing[$key])) {
+                $date = $charge['date'];
+                if (!$this->claimManual($scope, $subscription, $date, $charge['amount'], $source, $existing)) {
                     continue;
                 }
 
@@ -577,6 +576,46 @@ final class ChargeService
         }
 
         return ['subscriptions' => $touched, 'charges' => $written];
+    }
+
+    /**
+     * Settle a billing date that may already have a charge, before a new one
+     * is written for it: a payment a member added by hand there is adopted as
+     * the date's charge. Whether the caller should still write one — true
+     * only when the date has nothing on it.
+     *
+     * A manual payment the adoption missed is either gone (removed since the
+     * dates were read), and the date is written after all, or in another
+     * currency, and it stays the date's only charge. `$existing` is kept up
+     * to date.
+     *
+     * @param array<string, ChargeSource> $existing
+     */
+    private function claimManual(
+        Scope $scope,
+        Subscription $subscription,
+        DateTimeImmutable $date,
+        Money $due,
+        ChargeSource $source,
+        array &$existing,
+    ): bool {
+        $key = $date->format('Y-m-d');
+        if (!isset($existing[$key])) {
+            return true;
+        }
+        if ($existing[$key] !== ChargeSource::Manual) {
+            return false;
+        }
+
+        if ($this->charges->adoptManual($scope, $subscription->id, $date, $due, $source)) {
+            $existing[$key] = $source;
+
+            return false;
+        }
+
+        $existing = $this->charges->existingDates($scope, $subscription->id);
+
+        return !isset($existing[$key]);
     }
 
     /**

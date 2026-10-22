@@ -63,8 +63,9 @@ as nothing.
 A console command, `ledger:backfill`, reconstructs rows from each subscription's
 start date to today using the same rules the year-over-year reconstruction uses,
 with `source = reconstructed`. It is run once by the operator (documented in the
-upgrade notes), is idempotent, and never overwrites a `catch_up` or `manual`
-row. Reconstructed rows are shown with a "reconstructed" hint.
+upgrade notes), is idempotent, and never overwrites a `catch_up` row or what
+a member entered: a `manual` payment on a reconstructed date is adopted as
+that date's charge, its amount kept as the actual. Reconstructed rows are shown with a "reconstructed" hint.
 
 ## In scope this phase (build ONLY these)
 
@@ -194,6 +195,10 @@ Found while starting it:
   its actual, so Undo restores the price due. Decided where the date is
   passed, not guessed later from the schedule — which would have put back
   charges on paused months, off-cycle days and months before the ledger.
+  The catch-up adopts one on a one-off's own date too, as the backfill does.
+  A payment in another currency than the price due is not adopted — one row
+  has one currency, and relabelling it would change its value — and stays
+  the date's only charge; a skipped one stays skipped, with no actual.
 
 ### Known issues taken
 
@@ -237,7 +242,8 @@ both engines. Then mark it ✅ in `ROADMAP.md`.
 - A Viewer's page view writes no charges (catch-up is a no-op without write).
 - Paused and cancelled rows write no rows for later dates.
 - `ledger:backfill` reproduces the year-over-year reconstruction to the minor
-  unit, is idempotent, and never overwrites a `catch_up` or `manual` row.
+  unit, is idempotent, never overwrites a `catch_up` row, and adopts a
+  `manual` payment on a reconstructed date with its amount kept.
 - Past-month spend from the ledger equals the reconstruction for unedited data;
   recording an actual changes that month and no other.
 - A skipped charge counts as zero everywhere spend is summed.
