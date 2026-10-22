@@ -50,6 +50,8 @@ enum InsightKind: string
      */
     case PromoNoEnd = 'promo_no_end';
 
+    case OutOfContract = 'out_of_contract';
+
     /**
      * Where this kind sorts against the others. Lower is shown first.
      */
@@ -58,7 +60,7 @@ enum InsightKind: string
         return match ($this) {
             self::TrialConverting => 0,
             self::PriceRising, self::PromoEnding => 1,
-            self::PriceRisen => 2,
+            self::PriceRisen, self::OutOfContract => 2,
             self::Overlap => 3,
             self::RarelyUsed => 4,
             self::PromoNoEnd => 5,
@@ -84,6 +86,7 @@ enum InsightKind: string
             self::Overlap => 'groups',
             self::RarelyUsed => 'rarely-used',
             self::PromoNoEnd => 'clock',
+            self::OutOfContract => 'contract',
         };
     }
 
@@ -98,6 +101,7 @@ enum InsightKind: string
             self::PriceRising, self::PriceRisen, self::PromoEnding => 'warn',
             self::Overlap => 'accent',
             self::RarelyUsed, self::PromoNoEnd => 'neutral',
+            self::OutOfContract => 'info',
         };
     }
 }

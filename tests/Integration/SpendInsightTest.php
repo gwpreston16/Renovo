@@ -387,6 +387,30 @@ final class SpendInsightTest extends DatabaseTestCase
         self::assertSame([], $this->kinds(activeOnly: false));
     }
 
+    public function testOutOfContractAppearsTheDayAfterTheEndAndClearsWhenTheDateMoves(): void
+    {
+        $id = $this->create('Sky Broadband', 3500, extra: ['contract_ends_on' => '2026-09-17']);
+
+        // The last day of the contract is still inside it.
+        self::assertNotContains(InsightKind::OutOfContract, $this->kinds());
+
+        $this->clock->advanceTo(new DateTimeImmutable('2026-09-18 09:00:00'));
+        $insight = $this->only(InsightKind::OutOfContract);
+        self::assertSame('2026-09-17', $insight['date']->format('Y-m-d'));
+        // A year of the current price, for the order and nothing else.
+        self::assertSame(42000, $insight['annual_minor']);
+
+        $this->subscriptions->update($this->scope(), $id, ['contract_ends_on' => '2028-09-17'], []);
+        self::assertNotContains(InsightKind::OutOfContract, $this->kinds());
+    }
+
+    public function testAPausedRowIsNotOutOfContract(): void
+    {
+        $this->create('Sky Broadband', 3500, isActive: false, extra: ['contract_ends_on' => '2026-01-01']);
+
+        self::assertNotContains(InsightKind::OutOfContract, $this->kinds(false));
+    }
+
     /**
      * @return list<InsightKind>
      */
@@ -425,6 +449,9 @@ final class SpendInsightTest extends DatabaseTestCase
         return $this->insights->insights($this->scope(), $rows, $this->usage->valueSignals($rows));
     }
 
+    /**
+     * @param array<string, mixed> $extra
+     */
     private function create(
         string $name,
         int $priceMinor,
@@ -436,6 +463,7 @@ final class SpendInsightTest extends DatabaseTestCase
         ?int $convertsToMinor = null,
         bool $isActive = true,
         int $startedMonthsAgo = 12,
+        array $extra = [],
     ): int {
         $today = $this->clock->today();
 
@@ -458,7 +486,7 @@ final class SpendInsightTest extends DatabaseTestCase
             $attributes['converts_to_price_minor'] = $convertsToMinor;
         }
 
-        $id = $this->subscriptions->create($this->scope(), $attributes, []);
+        $id = $this->subscriptions->create($this->scope(), array_merge($attributes, $extra), []);
 
         // The history the price rules read. `SubscriptionService` records this
         // on every create; these tests go through the repository, so the

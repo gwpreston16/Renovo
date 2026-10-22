@@ -1186,11 +1186,18 @@ return [
     // cancellations
     'cancellations.days_left' => '{days, plural, one {# day left} other {# days left}}',
     'cancellations.deadline_passed' => 'Deadline passed',
-    'cancellations.empty' => 'Nothing with a notice period. Add one to a subscription and it will appear here.',
+    'cancellations.contract_ended' => 'Contract ended',
+    'cancellations.contract_ended_days' =>
+        '{days, plural, one {# day ago} other {# days ago}} — a good time to compare prices or renegotiate.',
+    'cancellations.contract_ends' => 'Contract ends',
+    'cancellations.empty' =>
+        'Nothing with a notice period or a contract end date. Add one to a subscription and it will appear '
+        . 'here.',
     'cancellations.intro' =>
         'The date that matters is not the renewal — it is the last day you can still give notice and '
-        . 'avoid the next charge. Only subscriptions with a notice period appear here; everything else can '
-        . 'be cancelled right up to its renewal date, which the subscriptions list already shows.',
+        . 'avoid the next charge. Only subscriptions with a notice period appear here, with the day any '
+        . 'contract ends; everything else can be cancelled right up to its renewal date, which the '
+        . 'subscriptions list already shows.',
     'cancellations.note' =>
         'Deadlines within {days} days are highlighted. Anything already passed is kept on the list '
         . 'rather than hidden — you have been committed to another period, and that is worth knowing.',
@@ -1518,6 +1525,9 @@ return [
         . 'subscription\'s own price. Nothing here is estimated, and nothing is converted.',
     'insight.overlap.detail' =>
         'Dropping {name} would remove {amount} a year. Also in this category: {others}.',
+    'insight.out_of_contract.detail' =>
+        '{name} has been out of contract since {date} — a good time to compare prices or renegotiate.',
+    'insight.out_of_contract.headline' => 'Out of contract',
     'insight.overlap.headline' =>
         '{count, plural, one {# subscription} other {# subscriptions}} in {category}',
     'insight.price_risen.detail' =>

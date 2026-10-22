@@ -354,7 +354,12 @@ final class CalendarService
         $deadlines = [];
         foreach ($this->cancellations->deadlines($scope) as $row) {
             $charge = $first[$row['subscription']->id] ?? null;
-            if ($charge === null || $row['is_passed'] || $row['deadline']->format('Y-m') !== $monthKey) {
+            if (
+                $row['kind'] !== 'notice'
+                || $charge === null
+                || $row['is_passed']
+                || $row['deadline']->format('Y-m') !== $monthKey
+            ) {
                 continue;
             }
 

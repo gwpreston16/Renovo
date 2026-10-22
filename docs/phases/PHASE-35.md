@@ -159,8 +159,8 @@ Added *2026-10-22* at the owner's request, as rows in code this phase rewrites:
 
 ## Status
 
-- [ ] Migrations on both engines; entity, repository, form service
-- [ ] Contracts: field, alert type and routes, insight, cancel-by listing
+- [x] Migrations on both engines; entity, repository, form service
+- [x] Contracts: field, alert type and routes, insight, cancel-by listing
 - [ ] Fixed terms: forecast and totals stop, catch-up ends the row, progress
 - [ ] Varying bills: estimate wording, ≈ figures, average and Use as estimate,
       insight, alert wording

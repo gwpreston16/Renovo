@@ -31,7 +31,10 @@
                     </a>
                     <span class="hint">
                         <strong class="num">{{ row.date|local_date('d MMM y') }}</strong> ·
-                        {% if row.is_passed %}
+                        {% if row.kind == 'contract' and row.is_passed %}
+                            <span class="badge badge-warn">{{ t('cancellations.contract_ended') }}</span>
+                            {{ t('cancellations.contract_ended_days', {'days': row.days * -1}) }}
+                        {% elseif row.is_passed %}
                             <span class="badge badge-bad">{{ t('cancellations.deadline_passed') }}</span>
                             {{ t('cancellations.passed_days', {'days': row.days * -1}) }}
                         {% elseif row.days == 0 %}
@@ -39,9 +42,13 @@
                         {% else %}
                             {{ t('cancellations.days_left', {'days': row.days}) }}
                         {% endif %}
-                        · {{ t('subscriptions.notice_of', {
-                            'period': notice_label(subscription.noticePeriod.amount, subscription.noticePeriod.unit),
-                        }) }}
+                        · {% if row.kind == 'contract' -%}
+                            {{ t('cancellations.contract_ends') }}
+                        {%- else -%}
+                            {{ t('subscriptions.notice_of', {
+                                'period': notice_label(subscription.noticePeriod.amount, subscription.noticePeriod.unit),
+                            }) }}
+                        {%- endif %}
                     </span>
                 </li>
             {% endfor %}

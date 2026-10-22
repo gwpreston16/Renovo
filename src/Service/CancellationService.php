@@ -21,6 +21,11 @@ use DateTimeImmutable;
  * this week, then the rest. Something whose deadline has passed is not dropped
  * from the list; it is shown first, because the user has just been committed to
  * another period and should know.
+ *
+ * A contract's end date sits beside the deadlines, sorted by the same rule:
+ * it is the other date somebody leaving or renegotiating has to catch. One
+ * that has passed stays, first, until the date is moved — the row is out of
+ * contract, which is when to check.
  */
 final class CancellationService
 {
@@ -37,8 +42,12 @@ final class CancellationService
      * Every active subscription with a cancellation deadline, most urgent
      * first.
      *
+     * `kind` is `notice` for a cancellation deadline and `contract` for a
+     * contract's end date.
+     *
      * @return list<array{
      *     subscription: Subscription,
+     *     kind: 'notice'|'contract',
      *     deadline: DateTimeImmutable,
      *     days_remaining: int,
      *     is_passed: bool,
@@ -55,27 +64,40 @@ final class CancellationService
                 continue;
             }
 
+            if (!$subscription->hasChargesRemaining($today)) {
+                // A fixed term past its last payment: nothing left to stop.
+                continue;
+            }
+
+            $dates = [];
+
+            // No notice period: the deadline is simply the renewal date, which
+            // the upcoming-renewals view already covers. Listing it here as
+            // well would bury the entries that need the warning.
             $deadline = $subscription->cancellationDeadline();
-            if ($deadline === null) {
-                // No notice period: the deadline is simply the renewal date,
-                // which the upcoming-renewals view already covers. Listing it
-                // here as well would bury the entries that need the warning.
-                continue;
+            if ($deadline !== null) {
+                $dates['notice'] = $deadline;
+            }
+            if ($subscription->contractEndsOn !== null) {
+                $dates['contract'] = $subscription->contractEndsOn;
             }
 
-            $days = (int) $today->diff($deadline->setTime(0, 0))->format('%r%a');
+            foreach ($dates as $kind => $date) {
+                $days = (int) $today->diff($date->setTime(0, 0))->format('%r%a');
 
-            if ($withinDays !== null && $days > $withinDays) {
-                continue;
+                if ($withinDays !== null && $days > $withinDays) {
+                    continue;
+                }
+
+                $rows[] = [
+                    'subscription' => $subscription,
+                    'kind' => $kind,
+                    'deadline' => $date,
+                    'days_remaining' => $days,
+                    'is_passed' => $days < 0,
+                    'is_urgent' => $days >= 0 && $days <= self::URGENT_DAYS,
+                ];
             }
-
-            $rows[] = [
-                'subscription' => $subscription,
-                'deadline' => $deadline,
-                'days_remaining' => $days,
-                'is_passed' => $days < 0,
-                'is_urgent' => $days >= 0 && $days <= self::URGENT_DAYS,
-            ];
         }
 
         // Soonest first, so anything already missed leads — that is the row the

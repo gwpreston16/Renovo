@@ -118,6 +118,7 @@ final class SpendInsightService
         $insights = array_merge(
             $this->trialsConverting($subscriptions, $today),
             $this->priceMoves($subscriptions, $history, $today),
+            $this->outOfContract($subscriptions, $today),
             $this->overlaps($subscriptions),
             $this->rarelyUsed($valueSignals),
         );
@@ -282,6 +283,38 @@ final class SpendInsightService
                 $price->currency,
                 days: $days,
                 date: $subscription->trialEndDate,
+            );
+        }
+
+        return $insights;
+    }
+
+    /**
+     * Running rows whose contract has ended — shown from the day after the
+     * end date until somebody moves it.
+     *
+     * It says the contract has ended and that this is the time to check. It
+     * never says the member is overpaying: Renovo does not know the rate the
+     * row rolled onto, only that the terms have lapsed.
+     *
+     * @param list<Subscription> $subscriptions
+     * @return list<Insight>
+     */
+    private function outOfContract(array $subscriptions, DateTimeImmutable $today): array
+    {
+        $insights = [];
+
+        foreach ($subscriptions as $subscription) {
+            if (!$subscription->isOutOfContract($today) || !$subscription->hasChargesRemaining($today)) {
+                continue;
+            }
+
+            $insights[] = $this->insight(
+                InsightKind::OutOfContract,
+                $subscription,
+                $subscription->yearlyMinor() ?? $subscription->price->amountMinor,
+                $subscription->price->currency,
+                date: $subscription->contractEndsOn,
             );
         }
 

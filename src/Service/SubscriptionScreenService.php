@@ -44,6 +44,7 @@ use InvalidArgumentException;
  * }
  * @phpstan-type DeadlineRow array{
  *     subscription: Subscription,
+ *     kind: 'notice'|'contract',
  *     date: DateTimeImmutable,
  *     days: int,
  *     is_passed: bool,
@@ -277,6 +278,7 @@ final class SubscriptionScreenService
         foreach ($this->cancellations->deadlines($scope, self::NEAR_WINDOW_DAYS) as $row) {
             $rows[] = [
                 'subscription' => $row['subscription'],
+                'kind' => $row['kind'],
                 'date' => $row['deadline'],
                 'days' => $row['days_remaining'],
                 'is_passed' => $row['is_passed'],

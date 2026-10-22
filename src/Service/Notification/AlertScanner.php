@@ -331,7 +331,7 @@ final class AlertScanner
             $events[] = ['type' => AlertType::Renewal, 'date' => $subscription->nextPaymentDate];
         }
 
-        if ($subscription->contractEndsOn !== null && ($preferences?->contractAlerts ?? true)) {
+        if ($subscription->contractEndsOn !== null && ($preferences === null || $preferences->contractAlerts)) {
             $events[] = ['type' => AlertType::ContractEnding, 'date' => $subscription->contractEndsOn];
         }
 

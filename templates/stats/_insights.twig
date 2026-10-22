@@ -115,6 +115,11 @@
                 : '',
             'difference': insight.difference_minor|money(insight.currency, true),
         }) }}
+    {%- elseif kind == 'out_of_contract' -%}
+        {{ t('insight.out_of_contract.detail', {
+            'name': insight.subscription.name,
+            'date': insight.date|local_date('d MMM y'),
+        }) }}
     {%- elseif kind == 'promo_no_end' -%}
         {{ t('insight.promo_no_end.detail', {'name': insight.subscription.name}) }}
     {%- elseif kind == 'overlap' -%}
