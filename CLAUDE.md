@@ -100,8 +100,9 @@ public/       Web root (index.php, assets, build). Nothing else is
               web-accessible. `public/build/` is generated — never edit it, and
               never commit it.
 migrations/   Phinx migrations + seeds.
-docs/         `api.md` (the prose API reference), `phases/` (the current
-              phase brief, `PHASE.md`, and every earlier one, `PHASE-<n>.md`),
+docs/         `api.md` (the prose API reference), `phases/` (one brief per
+              phase, `PHASE-<n>.md` — planned, in progress or done, as
+              `ROADMAP.md` says — and the known-issues log, `known-issues.md`),
               the guide pages (`README.md` is their index; install, upgrading,
               operations, configuration, security, development, history, and
               `features/`), and `images/` (the README's screenshots).
@@ -237,19 +238,31 @@ override, and permission/isolation (Viewer 403, ISOLATED hides others' rows).
 - Don't use SQLite — develop and test against Postgres or MySQL, the same
   engines used in production.
 
-## Current phase — READ docs/phases/PHASE.md FIRST
+## Current phase — FIND IT, THEN READ ITS BRIEF FIRST
 
-Before planning or writing any code, read `docs/phases/PHASE.md`. It defines the
-ONLY scope you may build right now. Earlier phases' briefs are archived beside
-it as `docs/phases/PHASE-<n>.md`; when a new phase starts, the finished brief is
-archived there under its number and `PHASE.md` is replaced.
+Every phase has one brief, `docs/phases/PHASE-<n>.md`, from draft to done; the
+file is never copied or renamed. The **Status** column of `ROADMAP.md`'s
+*Planned* table says which phase is current: the one row marked
+**🚧 in progress**. On a phase branch (`phase-<n>/<slug>`) the current phase is
+`<n>`. Before planning or writing any code, read that phase's brief. It defines
+the ONLY scope you may build right now. If no row is 🚧 and you are not on a
+phase branch, nothing is in progress: start the next one with `/next-phase`.
+📋 planned briefs are drafts, and ✅ done briefs are a record.
 
 Do not build features from a later phase, even if they appear in SPEC.md —
-leave clean seams instead. If PHASE.md and this file seem to conflict about
+leave clean seams instead. If the brief and this file seem to conflict about
 scope, stop and ask.
 
 `ROADMAP.md` lists candidates for after v1. It is **not scope**: nothing in it
-may be built until a phase brief in `docs/phases/PHASE.md` names it.
+may be built until it has a brief and that phase is 🚧.
+
+`docs/phases/known-issues.md` records bugs found and not yet fixed (K1, K2, …),
+each confirmed by the `finding-reviewer` agent before `/issue-sweep` adds it.
+It is not scope either: a row is fixed when a brief takes it, and
+`/known-issues-batch` drafts one from a few small rows. Before starting a
+phase, read its *Open* and *Scheduled* rows; mark the ones the phase fixes
+*Fixed (Phase N)*. Never delete a row or reuse its number. `/next-phase`
+picks, starts and builds the next phase this way.
 
 The re-skin that ran from Phase 18 to Phase 28 is complete: every screen now
 follows the prototype. A new screen reuses what those phases built — the shell,

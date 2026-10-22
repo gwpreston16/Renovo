@@ -1,9 +1,3 @@
-# PHASE.md — current build state
-
-Single source of truth for what to build **right now**. SPEC.md = full plan ·
-build-guide = file map · CLAUDE.md = standing rules. When you start this phase,
-copy this file to `docs/phases/PHASE.md`.
-
 # Phase 41 — security headers and a strict Content-Security-Policy
 
 Renovo escapes every template value, and that is its only defence against
@@ -183,7 +177,7 @@ eval, inline style or other origin. Every screen still works with the policy
 enforced, including charts, passkeys, htmx swaps and confirms. An uploaded
 HTML attachment cannot run script. HSTS appears only when turned on and served
 over https. A template that reintroduces inline script or style fails CI. Then
-update `PHASE.md` to the next phase.
+mark it ✅ in `ROADMAP.md`.
 
 ## Tests
 

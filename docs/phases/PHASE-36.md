@@ -1,9 +1,3 @@
-# PHASE.md — current build state
-
-Single source of truth for what to build **right now**. SPEC.md = full plan ·
-build-guide = file map · CLAUDE.md = standing rules. When you start this phase,
-copy this file to `docs/phases/PHASE.md`.
-
 # Phase 36 — what you've saved
 
 Two figures the design has wanted since Phase 8 ("Total Savings"), and that
@@ -142,8 +136,7 @@ No new table. Savings are computed, never stored.
 Analytics shows what offers and cancellations have saved, each figure traceable
 to the charges or cancellations behind it; nothing is counted twice or counted
 that was not avoidable; figures respect roles, isolation, private rows and
-splits; the gates pass on both engines. Then update `PHASE.md` to the next
-phase.
+splits; the gates pass on both engines. Then mark it ✅ in `ROADMAP.md`.
 
 ## Tests
 

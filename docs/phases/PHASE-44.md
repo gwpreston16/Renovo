@@ -1,9 +1,3 @@
-# PHASE.md — current build state
-
-Single source of truth for what to build **right now**. SPEC.md = full plan ·
-build-guide = file map · CLAUDE.md = standing rules. When you start this phase,
-copy this file to `docs/phases/PHASE.md`.
-
 # Phase 44 — the README and the docs, rebuilt for the first five minutes
 
 The README is 2,200 lines, and it is everything at once. It opens with a
@@ -220,15 +214,15 @@ None.
 
 ## Status
 
-- [ ] README rewritten to the A outline, under 300 lines
-- [ ] `docs/` pages created, and every README section moved whole (B)
-- [ ] Screenshots taken from `demo:seed`, with alt text; refresh steps
+- [x] README rewritten to the A outline, under 300 lines
+- [x] `docs/` pages created, and every README section moved whole (B)
+- [x] Screenshots taken from `demo:seed`, with alt text; refresh steps
       documented (C)
-- [ ] Every pointer in D updated
-- [ ] Logo copy corrected; ROADMAP entry removed (E)
-- [ ] `DocsLinkTest` green (F)
-- [ ] ROADMAP: Phase 44 row marked done; CHANGELOG `[Unreleased]` → *Changed*
-- [ ] `composer check`, offline guard, and API doc tests green
+- [x] Every pointer in D updated
+- [x] Logo copy corrected; ROADMAP entry removed (E)
+- [x] `DocsLinkTest` green (F)
+- [x] ROADMAP: Phase 44 row marked done; CHANGELOG `[Unreleased]` → *Changed*
+- [x] `composer check`, offline guard, and API doc tests green
 
 ## Definition of done
 

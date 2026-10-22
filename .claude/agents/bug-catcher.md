@@ -19,8 +19,9 @@ git diff master...HEAD --stat
 git diff master...HEAD
 ```
 
-(or `gh pr diff <n>` for a PR). Read `CLAUDE.md` and `docs/phases/PHASE.md`
-first so you know the conventions and what the change is meant to do. Read
+(or `gh pr diff <n>` for a PR). Read `CLAUDE.md` and the current phase's brief
+(`docs/phases/PHASE-<n>.md`: `<n>` from the `phase-<n>/` branch, or the 🚧 row
+in `ROADMAP.md`) first so you know the conventions and what the change is meant to do. Read
 the full surrounding code of every touched function — a diff hunk alone hides
 most bugs.
 

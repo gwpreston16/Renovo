@@ -101,10 +101,11 @@ before the closing paragraph about the archived briefs:
      the docs page and section that document it, relative to `docs/`.>
    ```
    Wrap at ~78 columns like the surrounding text.
-2. In `README.md`'s **What's new** section, set "The current phase is …"
-   from the `# Phase …` heading of `docs/phases/PHASE.md`.
-   If `PHASE.md` is still the phase being released, leave the line saying so
-   and point that out to the user.
+2. In `README.md`'s **What's new** section, set "The latest phase is …" to
+   the highest phase this release covers, from the `# Phase …` heading of its
+   `docs/phases/PHASE-<n>.md`, with the `([brief](docs/phases/PHASE-<n>.md))`
+   link. Check that phase's row is ✅ in `ROADMAP.md`; if it isn't, the phase
+   isn't finished — stop and say so.
 
 ## 6. Version bump
 
