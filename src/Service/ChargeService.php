@@ -105,9 +105,11 @@ final class ChargeService
      * Record the billing dates a pause stepped over as skipped: nothing was
      * billed, and the ledger says so rather than leaving them empty — which
      * `ledger:backfill` would otherwise fill with the reconstruction's
-     * charges. A date that already has a charge (one added by hand for a
-     * month that was in fact billed) keeps it. Called in the same transaction
-     * as the resume moves the payment date.
+     * charges. A payment a member added by hand on one of those dates — a
+     * month that was in fact billed — becomes its paused row, with what they
+     * entered as its actual, so Undo puts the month back as not billed rather
+     * than leaving it empty. Called in the same transaction as the resume
+     * moves the payment date.
      *
      * @param list<DateTimeImmutable> $dates From `Subscription::pausedDates()`.
      * @return int How many rows were written.
@@ -123,7 +125,8 @@ final class ChargeService
         $written = 0;
 
         foreach ($dates as $date) {
-            if (isset($existing[$date->format('Y-m-d')])) {
+            $due = ChargeSchedule::priceAsAt($history, $date) ?? $subscription->price;
+            if (!$this->claimManual($scope, $subscription, $date, $due, ChargeSource::Paused, $existing)) {
                 continue;
             }
 
@@ -132,7 +135,7 @@ final class ChargeService
                 $subscription->id,
                 $subscription->ownerUserId,
                 $date,
-                ChargeSchedule::priceAsAt($history, $date) ?? $subscription->price,
+                $due,
                 ChargeSource::Paused,
                 now: $this->clock->now(),
                 status: ChargeStatus::Skipped,
@@ -161,6 +164,12 @@ final class ChargeService
         }
 
         $price = $this->priceHistory->priceOn($scope, $entry->id, $entry->startDate) ?? $entry->price;
+        // Judged in the entry's own currency, as `findUnchargedOneOffs()`
+        // selects it: a currency changed since the date would otherwise have
+        // the entry chosen, and missed, on every catch-up.
+        if ($price->currency !== $entry->price->currency) {
+            $price = $entry->price;
+        }
 
         // A payment a member added by hand on the entry's date is its charge,
         // as the backfill makes it: then a later change of the date moves it,

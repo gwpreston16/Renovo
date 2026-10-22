@@ -646,7 +646,7 @@ Record what a charge really was, skip it, or annotate it. Needs
 
 | Field | Notes |
 | --- | --- |
-| `actual_minor` | Integer minor units, or `null` to clear a recorded amount. Sent without a `status`, it also sets `charged` — recording an amount says the charge happened, as it does on the web. On a `manual` charge the amount entered is its `expected_minor`, so clearing the actual keeps it; once the charge is adopted that amount is the actual, and clearing it leaves the price due. |
+| `actual_minor` | Integer minor units, or `null` to clear a recorded amount. Sent without a `status`, it also sets `charged` — recording an amount says the charge happened, as it does on the web. On a `manual` charge the amount entered is its `expected_minor`, so clearing the actual keeps it; once the charge is adopted that amount is the actual (unless it was skipped, when it is gone), and clearing it leaves the price due. |
 | `status` | `charged` or `skipped`. Skipping clears the actual; sending both `skipped` and an `actual_minor` is a `422`. |
 | `note` | Up to 255 characters, or `null`. |
 
@@ -803,7 +803,7 @@ The writable half of a subscription. Required: `name`, `price_minor`,
 | `converts_to_billing_cycle` | enum, null | As `billing_cycle`. |
 | `converts_to_cycle_days` | integer, null | |
 | `converts_to_cycle_interval` | integer, null | As `cycle_interval`, for the cycle it converts to — bounded the same way, and an absent key on a PUT that keeps `converts_to_billing_cycle` keeps it. Null when it converts to the cycle it already has. |
-| `is_active` | boolean | Default `true`. `false` pauses it. Stays `false` while the subscription is cancelled. Resuming skips the paused dates: a past `next_payment_date` moves on to the first billing date from today, so the response may not echo the date sent, and no payments are recorded for the pause. |
+| `is_active` | boolean | Default `true`. `false` pauses it. Stays `false` while the subscription is cancelled. Resuming skips the paused dates: a past `next_payment_date` moves on to the first billing date from today, so the response may not echo the date sent, and each date it steps over is recorded as a `skipped` charge with `source` `paused`. Billed for one of those months after all? `PATCH` that charge's `actual_minor`; a `POST` on its date is a `422`. |
 | `plan` | string, null | Max 60 — "Standard", "Family". An absent key keeps the current value. |
 | `visibility` | enum | `household` (default) or `payer`. `payer` keeps it to its owner: hidden from every other member in either isolation mode, and out of their totals. Only the owner may set it, only when `payer_user_id` is the owner or null, and never on a split subscription. An absent key keeps the current setting. |
 | `category_id` | integer, null | |
@@ -865,7 +865,7 @@ Returned by `GET /me`. Fields: `user` (`id`, `email`, `display_name`,
 | `PaymentMethod` | `id`, `name`, `colour` (nullable), `icon` (nullable; a generic icon key, never a brand mark), `logo_path` (nullable, read-only) |
 | `Tag` | `id`, `name` |
 | `Attachment` | `id`, `subscription_id`, `filename`, `mime_type`, `size_bytes`, `period_date` (nullable date), `charge_id` (nullable; the payment it is the invoice for), `created_at` |
-| `Charge` | `id`, `subscription_id`, `due_date`, `currency`, `expected_minor` (the price due, frozen when written — except on adoption, below), `actual_minor` (nullable), `amount_minor`, `status` (`charged`, `skipped`), `source` (`catch_up`, `manual`, `reconstructed`, `one_off` — a one-off or lifetime entry's own charge; `paused` — a billing date a pause stepped over, written `skipped` when the row was resumed; a `manual` charge on a billing date becomes that date's `catch_up`, `reconstructed` or `one_off` charge, same id, when the catch-up or the backfill reaches it — so a later read may differ from the `201` body — its amount moving to `actual_minor` and `expected_minor` taking the price due; one in another currency than the price due stays `manual`), `note` (nullable), `created_at`, `updated_at` |
+| `Charge` | `id`, `subscription_id`, `due_date`, `currency`, `expected_minor` (the price due, frozen when written — except on adoption, below), `actual_minor` (nullable), `amount_minor`, `status` (`charged`, `skipped`), `source` (`catch_up`, `manual`, `reconstructed`, `one_off` — a one-off or lifetime entry's own charge; `paused` — a billing date a pause stepped over, written `skipped` when the row was resumed; a `manual` charge on a billing date becomes that date's `catch_up`, `reconstructed` or `one_off` charge, same id, when the catch-up or the backfill reaches it — so a later read may differ from the `201` body — its amount moving to `actual_minor` (a skipped one stays skipped, with no actual) and `expected_minor` taking the price due; one in another currency than the price due stays `manual`), `note` (nullable), `created_at`, `updated_at` |
 
 ---
 

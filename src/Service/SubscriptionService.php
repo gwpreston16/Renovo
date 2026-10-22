@@ -132,8 +132,8 @@ final class SubscriptionService
         if ($existing !== null && !$existing->isActive && $data['is_active'] === true) {
             // Resumed through the edit form or the API: the dates the pause
             // covered are skipped, as `setActive()` skips them.
-            $paused = $this->pausedDates($existing, $data);
             $data['next_payment_date'] = $this->resumedDate($existing, $data);
+            $paused = $this->pausedDates($existing, $data);
         }
 
         $price = Money::of((int) $data['price_minor'], (string) $data['currency']);
@@ -638,17 +638,27 @@ final class SubscriptionService
     }
 
     /**
-     * The billing dates a resume through the form steps over, from the
-     * submitted payment date.
+     * The billing dates a resume through the form steps over: walked from
+     * where the pause left the payment date, up to the date being saved —
+     * so a date submitted ahead still records the months behind it, and one
+     * submitted earlier marks nothing already billed as paused. A row
+     * resumed as a one-off has no billing dates to record.
      *
-     * @param array<string, mixed> $data
+     * @param array<string, mixed> $data With the resumed payment date.
      * @return list<DateTimeImmutable>
      */
     private function pausedDates(Subscription $existing, array $data): array
     {
-        $date = $this->submittedDate($data);
+        if (!SubscriptionType::from((string) $data['subscription_type'])->countsTowardsRecurringTotals()) {
+            return [];
+        }
 
-        return $date === null ? [] : $existing->pausedDates($this->clock->today(), $date);
+        $saved = $this->submittedDate($data);
+
+        return array_values(array_filter(
+            $existing->pausedDates($this->clock->today()),
+            static fn (DateTimeImmutable $date): bool => $saved === null || $date < $saved,
+        ));
     }
 
     /**

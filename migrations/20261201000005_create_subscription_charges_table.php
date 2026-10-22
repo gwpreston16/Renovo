@@ -53,7 +53,9 @@ final class CreateSubscriptionChargesTable extends AbstractMigration
             // 'charged' or 'skipped' (did not happen: waived, missed, refunded
             // in full). A skipped charge counts as nothing.
             ->addColumn('status', 'string', ['limit' => 20, 'null' => false, 'default' => 'charged'])
-            // 'catch_up', 'manual' or 'reconstructed'.
+            // 'catch_up', 'manual', 'reconstructed', 'one_off' (a one-off or
+            // lifetime entry's own charge) or 'paused' (a date a resume
+            // stepped over, written skipped).
             ->addColumn('source', 'string', ['limit' => 20, 'null' => false, 'default' => 'catch_up'])
             ->addColumn('note', 'string', ['limit' => 255, 'null' => true])
             ->addColumn('recorded_by_user_id', 'biginteger', ['null' => true])

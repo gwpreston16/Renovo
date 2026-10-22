@@ -56,7 +56,8 @@ as nothing.
 - **One-off** entries get a single row on their date; **lifetime** entries get
   their purchase row.
 - **Paused and cancelled rows** write nothing for dates after the pause or
-  cancellation.
+  cancellation while they stay so; a resume records the dates it stepped over
+  as skipped (`paused`).
 
 ### Before the ledger existed
 
@@ -154,8 +155,8 @@ Found while starting it:
   a resume (or an uncancel, which lands on Paused) would roll through every date
   of the pause and write a `charged` row for each. Resuming now moves the date
   forward to the first billing date on or after today, in the same
-  transaction, and writes no rows; a member can still add a payment by hand.
-  *Revised 2026-10-22* (found while reviewing): the dates a resume steps over
+  transaction. *Revised and confirmed 2026-10-22* (found while reviewing; it
+  wrote no rows at first): the dates a resume steps over
   are written `skipped`, with their own source, `paused`. Left empty,
   `ledger:backfill` filled them with the reconstruction's charges. A member
   billed during the pause records the amount on that row; Undo puts it back
@@ -245,7 +246,8 @@ both engines. Then mark it ✅ in `ROADMAP.md`.
 - A trial converting today: the conversion charge is a ledger row, written after
   the conversion and before the date advances.
 - A Viewer's page view writes no charges (catch-up is a no-op without write).
-- Paused and cancelled rows write no rows for later dates.
+- Paused and cancelled rows write no rows for later dates while paused or
+  cancelled; a resume writes the stepped-over dates as skipped.
 - `ledger:backfill` reproduces the year-over-year reconstruction to the minor
   unit, is idempotent, never overwrites a `catch_up` row, and adopts a
   `manual` payment on a reconstructed date with its amount kept.

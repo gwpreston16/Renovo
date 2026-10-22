@@ -293,6 +293,58 @@ final class ApiChargesTest extends ApiTestCase
         ]);
     }
 
+    public function testAPutResumingAPausedRowRecordsThePausedDatesAsSkipped(): void
+    {
+        $from = new DateTimeImmutable('-10 days');
+        $id = $this->createSubscription([
+            'name' => 'Paused',
+            'price_minor' => 700,
+            'billing_cycle' => 'weekly',
+            'next_payment_date' => $from->format('Y-m-d'),
+            'start_date' => $from->format('Y-m-d'),
+            'is_active' => false,
+        ]);
+        $path = '/api/v1/subscriptions/' . $id . '/charges';
+        self::assertSame([], $this->decode($this->api('GET', $path, $this->ownerToken))['data']);
+
+        $row = $this->decode($this->api('GET', '/api/v1/subscriptions/' . $id, $this->ownerToken))['data'];
+        $row['is_active'] = true;
+        $resumed = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, $row);
+        self::assertSame(200, $resumed->getStatusCode(), (string) $resumed->getBody());
+
+        // The two weekly dates the pause stepped over, not billed.
+        $charges = $this->decode($this->api('GET', $path, $this->ownerToken))['data'];
+        self::assertSame(
+            [
+                [$from->modify('+7 days')->format('Y-m-d'), 'skipped', 'paused', 0],
+                [$from->format('Y-m-d'), 'skipped', 'paused', 0],
+            ],
+            array_map(
+                static fn (array $charge): array => [
+                    $charge['due_date'],
+                    $charge['status'],
+                    $charge['source'],
+                    $charge['amount_minor'],
+                ],
+                $charges,
+            ),
+        );
+
+        // Billed for one after all: a POST on its date is refused, a PATCH records it.
+        $posted = $this->api('POST', $path, $this->ownerToken, [
+            'date' => $from->format('Y-m-d'),
+            'amount_minor' => 700,
+        ]);
+        self::assertSame(422, $posted->getStatusCode());
+        $patched = $this->api('PATCH', '/api/v1/charges/' . $charges[1]['id'], $this->ownerToken, [
+            'actual_minor' => 700,
+        ]);
+        self::assertSame(['charged', 700], [
+            $this->decode($patched)['data']['status'],
+            $this->decode($patched)['data']['amount_minor'],
+        ]);
+    }
+
     public function testAnotherHouseholdsChargesAreNotFound(): void
     {
         $users = new UserRepository($this->db);

@@ -215,6 +215,21 @@ final class PaymentsCardTest extends DatabaseTestCase
         ));
     }
 
+    public function testAResumedRowsCardMarksThePausedMonths(): void
+    {
+        $subscriptions = $this->container->get(SubscriptionService::class);
+        $paused = $subscriptions->create($this->owner, $this->input('Paused') + ['is_active' => '0']);
+        $subscriptions->setActive($this->owner, $paused, true);
+
+        $this->signIn($this->ownerId);
+        $html = (string) $this->app->handle((new ServerRequestFactory())->createServerRequest(
+            'GET',
+            'http://localhost/subscriptions/' . $paused . '/money',
+        ))->getBody();
+
+        self::assertSame(2, substr_count($html, '<span class="hint">paused</span>'));
+    }
+
     public function testAContributorIsRefusedOnARowTheyDoNotOwn(): void
     {
         $charge = $this->firstCharge();
