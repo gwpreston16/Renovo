@@ -342,22 +342,49 @@ final class ChargeRepository extends AbstractScopedRepository
     }
 
     /**
-     * Turn a payment added by hand back into the billing date's own charge:
-     * the expected price due that day, nothing recorded on it. The row — and
-     * any invoice filed against it — stays; only what it says changes.
+     * Make a payment a member added by hand on a billing date into that
+     * date's charge: the price due becomes its expected amount and what they
+     * entered becomes its actual, with their note kept. The row — and any
+     * invoice filed against it — stays; only its source and expected change.
+     *
+     * `actual_minor` is assigned before `expected_minor`: MySQL evaluates a
+     * single-table UPDATE's assignments left to right, so the order is what
+     * makes both engines copy the entered amount rather than the new one.
      */
-    public function restoreAsCycleCharge(Scope $scope, int $id, Money $expected): void
-    {
-        $this->updateScoped($scope, $id, [
-            'source' => ChargeSource::CatchUp->value,
-            'expected_minor' => $expected->amountMinor,
-            'currency' => $expected->currency,
-            'actual_minor' => null,
-            'status' => ChargeStatus::Charged->value,
-            'note' => null,
-            'recorded_by_user_id' => $scope->userId,
-            'updated_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
-        ]);
+    public function adoptManual(
+        Scope $scope,
+        int $subscriptionId,
+        DateTimeImmutable $date,
+        Money $due,
+        ChargeSource $source,
+    ): void {
+        if (!$scope->hasHousehold()) {
+            return;
+        }
+
+        $this->db->execute(
+            'UPDATE ' . $this->quote($this->table())
+            . ' SET ' . $this->quote('actual_minor') . ' = COALESCE(' . $this->quote('actual_minor') . ', '
+            . $this->quote('expected_minor') . '),'
+            . ' ' . $this->quote('expected_minor') . ' = :due,'
+            . ' ' . $this->quote('currency') . ' = :currency,'
+            . ' ' . $this->quote('source') . ' = :source,'
+            . ' ' . $this->quote('updated_at') . ' = :updated'
+            . ' WHERE ' . $this->quote('subscription_id') . ' = :subscription'
+            . ' AND ' . $this->quote('household_id') . ' = :household'
+            . ' AND ' . $this->quote('due_date') . ' = :date'
+            . ' AND ' . $this->quote('source') . ' = :manual',
+            [
+                'due' => $due->amountMinor,
+                'currency' => $due->currency,
+                'source' => $source->value,
+                'updated' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+                'subscription' => $subscriptionId,
+                'household' => $scope->householdId,
+                'date' => $date->format('Y-m-d'),
+                'manual' => ChargeSource::Manual->value,
+            ],
+        );
     }
 
     /**

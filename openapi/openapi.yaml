@@ -1246,7 +1246,9 @@ components:
           enum: [catch_up, manual, reconstructed, one_off]
           description: |
             `one_off` is a one-off or lifetime entry's own charge, the one a
-            change of its date moves.
+            change of its date moves. A `manual` charge on a billing date
+            becomes that date's `catch_up` (or `reconstructed`) charge, same
+            id, once the date is passed: its amount moves to `actual_minor`.
         note: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
@@ -1308,7 +1310,9 @@ components:
           format: date
           nullable: true
           description: |
-            On a one-off or lifetime entry, changing it moves the entry's own
+            The rules follow the type the request submits: a one-off turning
+            recurring keeps its payment as history. On a one-off or lifetime
+            entry, changing it moves the entry's own
             payment (source `one_off`) to the new date, today included, with
             what was recorded on it; a future date removes it until that day
             passes. A date that already has another payment is a 422. Other

@@ -489,6 +489,7 @@ return [
     'flash.charge_recorded' => 'Amount recorded.',
     'flash.charge_skipped' => 'Payment marked as skipped.',
     'flash.charge_undone' => 'Payment put back as it was.',
+    'flash.charge_removed' => 'Payment removed.',
     'error.charge.not_found' => 'That payment could not be found.',
     'error.charge.actual_required' => 'Enter the amount that was charged.',
     'error.charge.amount_required' => 'Enter the amount of the payment.',

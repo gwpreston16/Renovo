@@ -95,14 +95,15 @@ A member who may change the subscription can, per row:
 - **Mark as skipped** — the charge did not happen: waived, missed or refunded in
   full. A skipped charge counts as nothing in every total.
 - **Undo** — put the row back as Renovo wrote it. On a payment added by hand,
-  this removes it — unless it was added on one of the subscription's billing
-  dates, where it stood in for that date's charge: then the charge comes back,
-  at the price due that day.
+  this removes it.
 - **Attach the invoice** for that payment. It is filed against the payment and
   dated to it, and also appears with the subscription's other attachments.
 
 **Add a payment** records one that fell off the cycle, such as a one-time fee,
-dated today or earlier. One payment a day per subscription.
+dated today or earlier. One payment a day per subscription. A payment added on
+a billing date becomes that date's charge once the date passes, with what you
+entered as the amount charged — so Undo then puts back the price that was due,
+rather than leaving the date with nothing.
 
 Pausing stops the payments. Pausing or cancelling first records any billing
 dates that had already passed, so nothing due before the pause is lost; after

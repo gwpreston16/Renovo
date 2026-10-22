@@ -76,7 +76,10 @@ final class SubscriptionChargeController extends Controller
     ): ResponseInterface {
         $write = fn () => $this->charges->undo($this->scope($request), (int) $charge, (int) $id);
 
-        return $this->act($request, $response, (int) $id, 'flash.charge_undone', $write);
+        // A charge put back says so; a payment added by hand is removed.
+        $said = static fn (mixed $result): string => $result === null ? 'flash.charge_removed' : 'flash.charge_undone';
+
+        return $this->act($request, $response, (int) $id, $said, $write);
     }
 
     /**
@@ -117,18 +120,20 @@ final class SubscriptionChargeController extends Controller
      * Run one write and go back to the Payments card, with its message or its
      * errors.
      *
+     * @param string|\Closure(mixed): string $success The message, or how to
+     *                                            pick it from what the write returned.
      * @param callable(): mixed $write
      */
     private function act(
         ServerRequestInterface $request,
         ResponseInterface $response,
         int $id,
-        string $success,
+        string|\Closure $success,
         callable $write,
     ): ResponseInterface {
         try {
-            $write();
-            $this->flash('success', $success);
+            $result = $write();
+            $this->flash('success', is_string($success) ? $success : $success($result));
         } catch (ValidationException $exception) {
             $this->flashErrors($exception);
         }

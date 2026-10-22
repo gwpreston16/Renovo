@@ -547,6 +547,95 @@ final class PaymentLedgerTest extends DatabaseTestCase
         self::assertSame(5800, $may());
     }
 
+    public function testAnAdoptedPaymentIsPricedOnItsDateAndKeepsItsInvoice(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-15 08:00:00'));
+        $id = $this->create('Energy', '58.00', '2026-05-15', '2026-01-15');
+        $manual = $this->charges->addManual($this->alice, $id, ['date' => '2026-05-15', 'amount' => '61.00']);
+        $this->fileInvoice($id, $manual->id, '2026-05-15');
+        // The price moves the next day; the 15th was due at the old one.
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-16 08:00:00'));
+        $this->subscriptions->update($this->alice, $id, $this->input('Energy', '70.00', '2026-05-15', '2026-01-15'));
+        $this->catchUp->run($this->alice);
+
+        $undone = $this->charges->undo($this->alice, $manual->id);
+
+        self::assertSame([5800, ChargeSource::CatchUp], [$undone?->amount()->amountMinor, $undone?->source]);
+        self::assertSame([$manual->id, '2026-05-15'], $this->invoiceOf($id));
+    }
+
+    public function testUndoingAPaymentAddedByHandOnAPausedMonthRemovesIt(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
+        $id = $this->create('Energy', '58.00', '2026-03-15', '2026-01-15');
+        $this->subscriptions->setActive($this->alice, $id, false);
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-20 08:00:00'));
+        $this->subscriptions->setActive($this->alice, $id, true);
+        $this->catchUp->run($this->alice);
+        self::assertSame([], $this->dueAndExpected($id));
+
+        $manual = $this->charges->addManual($this->alice, $id, ['date' => '2026-04-15', 'amount' => '58.00']);
+
+        self::assertNull($this->charges->undo($this->alice, $manual->id));
+        self::assertSame([], $this->dueAndExpected($id));
+    }
+
+    public function testUndoingAPaymentAddedByHandBeforeTheLedgerBeganLeavesTheReconstruction(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-01-01 08:00:00'));
+        $id = $this->create('Energy', '58.00', '2026-06-15', '2025-01-15');
+        $this->clock->advanceTo(new DateTimeImmutable('2026-06-20 08:00:00'));
+        $this->catchUp->run($this->alice);
+        $history = $this->container->get(SpendHistoryService::class);
+        $spring = fn (): int => $history->spent(
+            $this->alice,
+            new DateTimeImmutable('2026-02-28'),
+            new DateTimeImmutable('2026-05-31'),
+        )['by_currency']['GBP'] ?? 0;
+        self::assertSame(17400, $spring());
+
+        $manual = $this->charges->addManual($this->alice, $id, ['date' => '2026-03-15', 'amount' => '61.00']);
+        self::assertSame(17700, $spring());
+
+        self::assertNull($this->charges->undo($this->alice, $manual->id));
+        self::assertSame(17400, $spring());
+        self::assertSame([['2026-06-15', 5800]], $this->dueAndExpected($id));
+    }
+
+    public function testUndoingAFeeOffTheBillingDaysOfAMovedScheduleRemovesIt(): void
+    {
+        // Started on a Wednesday, billed from a Friday: the start date's
+        // weekday is not a billing day.
+        $this->clock->advanceTo(new DateTimeImmutable('2026-01-01 08:00:00'));
+        $id = $this->create('Box', '20.00', '2026-01-09', '2026-01-07', ['billing_cycle' => 'weekly']);
+        $this->clock->advanceTo(new DateTimeImmutable('2026-02-01 08:00:00'));
+        $this->catchUp->run($this->alice);
+        $before = $this->dueAndExpected($id);
+
+        $fee = $this->charges->addManual($this->alice, $id, ['date' => '2026-01-21', 'amount' => '3.00']);
+
+        self::assertNull($this->charges->undo($this->alice, $fee->id));
+        self::assertSame($before, $this->dueAndExpected($id));
+    }
+
+    public function testBackfillAdoptsAPaymentAddedByHandOnAReconstructedDate(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-01-01 08:00:00'));
+        $id = $this->create('Energy', '58.00', '2026-06-15', '2026-01-15');
+        $this->clock->advanceTo(new DateTimeImmutable('2026-06-01 08:00:00'));
+        $manual = $this->charges->addManual($this->alice, $id, ['date' => '2026-03-15', 'amount' => '61.00']);
+
+        $this->container->get(LedgerBackfillRunner::class)->run();
+
+        $adopted = $this->charges->find($this->alice, $manual->id);
+        self::assertSame([ChargeSource::Reconstructed, 5800, 6100], [
+            $adopted?->source,
+            $adopted?->expected->amountMinor,
+            $adopted?->amount()->amountMinor,
+        ]);
+        self::assertSame(5800, $this->charges->undo($this->alice, $manual->id)?->amount()->amountMinor);
+    }
+
     public function testUndoingAPaymentAddedByHandOffTheCycleStillRemovesIt(): void
     {
         $this->clock->advanceTo(new DateTimeImmutable('2026-05-20 08:00:00'));
@@ -707,7 +796,7 @@ final class PaymentLedgerTest extends DatabaseTestCase
         self::assertSame('2026-09-20', substr((string) ($row['period_date'] ?? ''), 0, 10));
     }
 
-    public function testACatchUpLeavesAPaymentAddedByHandOnItsBillingDate(): void
+    public function testACatchUpAdoptsAPaymentAddedByHandOnItsBillingDate(): void
     {
         $this->clock->advanceTo(new DateTimeImmutable('2026-05-15 08:00:00'));
         $id = $this->create('Energy', '58.00', '2026-05-15', '2026-01-15');
@@ -720,10 +809,13 @@ final class PaymentLedgerTest extends DatabaseTestCase
         $this->clock->advanceTo(new DateTimeImmutable('2026-05-16 08:00:00'));
         $this->catchUp->run($this->alice);
 
+        // The date's own charge now, with what was paid as its actual.
         $charges = $this->charges->forSubscription($this->alice, $id);
         self::assertCount(1, $charges);
-        self::assertSame([ChargeSource::Manual, 6100, 'Paid early'], [
+        self::assertSame([ChargeSource::CatchUp, 5800, 6100, 6100, 'Paid early'], [
             $charges[0]->source,
+            $charges[0]->expected->amountMinor,
+            $charges[0]->actualMinor,
             $charges[0]->amount()->amountMinor,
             $charges[0]->note,
         ]);

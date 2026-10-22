@@ -75,6 +75,18 @@ final class ChargeService
 
         foreach ($dates as $date) {
             $key = $date->format('Y-m-d');
+            $due = ChargeSchedule::priceAsAt($history, $date) ?? $subscription->price;
+
+            // A payment a member added by hand on this billing date is this
+            // date's charge, with what they paid as its actual: it becomes the
+            // ledger's own row, so Undo later puts back the price due rather
+            // than leaving the date with nothing (K70).
+            if (($existing[$key] ?? null) === ChargeSource::Manual) {
+                $this->charges->adoptManual($scope, $subscription->id, $date, $due, ChargeSource::CatchUp);
+                $existing[$key] = ChargeSource::CatchUp;
+                continue;
+            }
+
             if (isset($existing[$key])) {
                 continue;
             }
@@ -84,7 +96,7 @@ final class ChargeService
                 $subscription->id,
                 $subscription->ownerUserId,
                 $date,
-                ChargeSchedule::priceAsAt($history, $date) ?? $subscription->price,
+                $due,
                 ChargeSource::CatchUp,
                 now: $this->clock->now(),
             );
@@ -339,18 +351,10 @@ final class ChargeService
     {
         $charge = $this->writable($scope, $chargeId, $subscriptionId);
 
+        // A payment added by hand is still manual only while no billing date
+        // has claimed it — the catch-up and the backfill adopt one that falls
+        // on theirs — so removing it leaves no billing date without a charge.
         if ($charge->isManual()) {
-            // A payment added by hand on a billing date stood in for that
-            // date's charge, which the catch-up then skipped. Undoing it puts
-            // the charge back as the ledger would have written it, rather than
-            // leaving the date with none (K70).
-            $due = $this->cycleChargeOn($scope, $charge);
-            if ($due !== null) {
-                $this->charges->restoreAsCycleCharge($scope, $charge->id, $due);
-
-                return $this->reread($scope, $charge->id);
-            }
-
             $this->charges->deleteManual($scope, $charge->id);
 
             return null;
@@ -359,33 +363,6 @@ final class ChargeService
         $this->charges->adjust($scope, $charge->id, null, ChargeStatus::Charged, null);
 
         return $this->reread($scope, $charge->id);
-    }
-
-    /**
-     * The price due on a manual charge's date when that date is one of its
-     * subscription's billing dates the catch-up has already passed — and so
-     * one it skipped for the manual row standing on it.
-     */
-    private function cycleChargeOn(Scope $scope, Charge $charge): ?Money
-    {
-        $subscription = $this->subscriptions->findForWrite($scope, $charge->subscriptionId);
-        if (
-            $subscription === null
-            || !$subscription->type->countsTowardsRecurringTotals()
-            || $subscription->nextPaymentDate === null
-            || $charge->dueDate >= $subscription->nextPaymentDate
-        ) {
-            return null;
-        }
-
-        $walk = $this->schedule->between(
-            $subscription,
-            $this->priceHistory->historyFor($scope, $subscription->id),
-            $charge->dueDate->modify('-1 day'),
-            $charge->dueDate,
-        );
-
-        return $walk === [] ? null : $walk[0]['amount'];
     }
 
     /**
@@ -561,15 +538,25 @@ final class ChargeService
 
             foreach ($rebuilt as $charge) {
                 $key = $charge['date']->format('Y-m-d');
-                if (isset($existing[$key])) {
-                    continue;
-                }
 
                 // A one-off's single charge is its own, whoever writes it, so a
                 // later change of its date can find it.
                 $source = $subscription->type->countsTowardsRecurringTotals()
                     ? ChargeSource::Reconstructed
                     : ChargeSource::OneOff;
+
+                // As the catch-up does: a payment added by hand on a date the
+                // reconstruction bills becomes that date's charge.
+                if (($existing[$key] ?? null) === ChargeSource::Manual) {
+                    $this->charges->adoptManual($scope, $subscription->id, $charge['date'], $charge['amount'], $source);
+                    $existing[$key] = $source;
+                    continue;
+                }
+
+                if (isset($existing[$key])) {
+                    continue;
+                }
+
                 $this->charges->record(
                     $scope,
                     $subscription->id,

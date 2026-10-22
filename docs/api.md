@@ -865,7 +865,7 @@ Returned by `GET /me`. Fields: `user` (`id`, `email`, `display_name`,
 | `PaymentMethod` | `id`, `name`, `colour` (nullable), `icon` (nullable; a generic icon key, never a brand mark), `logo_path` (nullable, read-only) |
 | `Tag` | `id`, `name` |
 | `Attachment` | `id`, `subscription_id`, `filename`, `mime_type`, `size_bytes`, `period_date` (nullable date), `charge_id` (nullable; the payment it is the invoice for), `created_at` |
-| `Charge` | `id`, `subscription_id`, `due_date`, `currency`, `expected_minor` (the price due, frozen when written), `actual_minor` (nullable), `amount_minor`, `status` (`charged`, `skipped`), `source` (`catch_up`, `manual`, `reconstructed`, `one_off` — a one-off or lifetime entry's own charge), `note` (nullable), `created_at`, `updated_at` |
+| `Charge` | `id`, `subscription_id`, `due_date`, `currency`, `expected_minor` (the price due, frozen when written), `actual_minor` (nullable), `amount_minor`, `status` (`charged`, `skipped`), `source` (`catch_up`, `manual`, `reconstructed`, `one_off` — a one-off or lifetime entry's own charge; a `manual` charge on a billing date becomes that date's `catch_up` or `reconstructed` charge, same id, once the date is passed, its amount moving to `actual_minor`), `note` (nullable), `created_at`, `updated_at` |
 
 ---
 

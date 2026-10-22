@@ -189,8 +189,11 @@ Found while starting it:
   it submits: a one-off becoming recurring keeps its one-off charge as
   history; a recurring row becoming a one-off is refused a date another
   payment stands on.
-- **Undoing a payment added by hand on a billing date restores the charge**
-  (K70): the catch-up had skipped that date for it.
+- **A payment added by hand on a billing date is adopted as that date's
+  charge** (K70) by the catch-up or the backfill, with the amount entered as
+  its actual, so Undo restores the price due. Decided where the date is
+  passed, not guessed later from the schedule — which would have put back
+  charges on paused months, off-cycle days and months before the ledger.
 
 ### Known issues taken
 
