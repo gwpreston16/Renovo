@@ -129,11 +129,23 @@ final class ChargeService
      */
     public function followDateChange(Scope $scope, Subscription $before, ?DateTimeImmutable $start): void
     {
-        if ($before->type->countsTowardsRecurringTotals() || $start === null || $start == $before->startDate) {
+        if (
+            $before->type->countsTowardsRecurringTotals()
+            || $before->startDate === null
+            || $start === null
+            || $start == $before->startDate
+        ) {
             return;
         }
 
-        $this->charges->followOneOffDate($scope, $before->id, $start, $this->clock->today());
+        $this->charges->followOneOffDate(
+            $scope,
+            $before->id,
+            $before->startDate,
+            $start,
+            $this->clock->today(),
+            $this->clock->now(),
+        );
     }
 
     /**

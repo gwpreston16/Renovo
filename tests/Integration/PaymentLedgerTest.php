@@ -302,6 +302,85 @@ final class PaymentLedgerTest extends DatabaseTestCase
         self::assertSame([['2026-10-20', 15000]], $this->dueAndExpected($id));
     }
 
+    public function testARowTurnedIntoAOneOffKeepsTheBillingDatesItRecorded(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
+        $id = $this->create('Gym', '10.00', '2026-03-15', '2026-01-15');
+        $this->clock->advanceTo(new DateTimeImmutable('2026-06-01 09:00:00'));
+        $this->catchUp->run($this->alice);
+        $recorded = $this->dueAndExpected($id);
+        self::assertSame([['2026-05-15', 1000], ['2026-04-15', 1000], ['2026-03-15', 1000]], $recorded);
+
+        $oneOff = fn (string $date): array => [
+            'name' => 'Gym',
+            'price' => '10.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'one_off',
+            'start_date' => $date,
+        ];
+
+        // Turned into a one-off, then its date moved into the future, then
+        // back to an earlier day already in the ledger's past.
+        $this->subscriptions->update($this->alice, $id, $oneOff('2026-01-15'));
+        $this->subscriptions->update($this->alice, $id, $oneOff('2026-07-01'));
+        self::assertSame($recorded, $this->dueAndExpected($id));
+
+        $this->subscriptions->update($this->alice, $id, $oneOff('2026-03-10'));
+        self::assertSame($recorded, $this->dueAndExpected($id));
+    }
+
+    public function testAMovedOneOffsInvoiceMovesWithIt(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-10-05 08:00:00'));
+        $input = [
+            'name' => 'Desk',
+            'price' => '150.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'one_off',
+            'start_date' => '2026-10-01',
+        ];
+        $id = $this->subscriptions->create($this->alice, $input);
+        $this->catchUp->run($this->alice);
+        $charge = $this->charges->forSubscription($this->alice, $id)[0];
+        $this->db->insert('attachments', [
+            'household_id' => $this->household,
+            'owner_user_id' => $this->aliceId,
+            'subscription_id' => $id,
+            'charge_id' => $charge->id,
+            'period_date' => '2026-10-01',
+            'original_filename' => 'desk.pdf',
+            'stored_path' => 'x/desk.pdf',
+            'mime_type' => 'application/pdf',
+            'size_bytes' => 1,
+            'created_at' => '2026-10-02 00:00:00',
+        ]);
+
+        $this->subscriptions->update($this->alice, $id, ['start_date' => '2026-09-20'] + $input);
+
+        $row = $this->db->fetchOne('SELECT charge_id, period_date FROM attachments WHERE subscription_id = :id', ['id' => $id]);
+        self::assertSame($charge->id, (int) ($row['charge_id'] ?? 0));
+        self::assertSame('2026-09-20', substr((string) ($row['period_date'] ?? ''), 0, 10));
+    }
+
+    public function testACatchUpLeavesAPaymentAddedByHandOnItsBillingDate(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-15 08:00:00'));
+        $id = $this->create('Energy', '58.00', '2026-05-15', '2026-01-15');
+        $this->charges->addManual($this->alice, $id, ['date' => '2026-05-15', 'amount' => '61.00', 'note' => 'Paid early']);
+
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-16 08:00:00'));
+        $this->catchUp->run($this->alice);
+
+        $charges = $this->charges->forSubscription($this->alice, $id);
+        self::assertCount(1, $charges);
+        self::assertSame([ChargeSource::Manual, 6100, 'Paid early'], [
+            $charges[0]->source,
+            $charges[0]->amount()->amountMinor,
+            $charges[0]->note,
+        ]);
+        self::assertSame('2026-06-15', $this->nextPayment($id));
+    }
+
     public function testAMovedOneOffKeepsWhatAMemberRecordedOnIt(): void
     {
         $this->clock->advanceTo(new DateTimeImmutable('2026-10-05 08:00:00'));

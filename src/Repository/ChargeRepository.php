@@ -246,16 +246,21 @@ final class ChargeRepository extends AbstractScopedRepository
     }
 
     /**
-     * Move the charges Renovo wrote for a one-off or lifetime entry to the
-     * date it has just been given — or remove them, when that date has not
-     * yet arrived.
+     * Move the charge Renovo wrote for a one-off or lifetime entry from the
+     * date it had to the date it has just been given — or remove it, when the
+     * new date has not yet arrived.
      *
-     * Such an entry has one charge, on its date, so a corrected date is a
-     * corrected charge: kept, with whatever a member recorded on it, but on
-     * the right day. Left where it was, it would be counted on the old day
-     * and reconstructed again on the new one. A payment a member added by
-     * hand is theirs and is not moved; if one already stands on the new date,
-     * the written charge gives way to it.
+     * Such an entry has one charge of its own, on its date, so a corrected
+     * date is a corrected charge: kept, with whatever a member recorded on it,
+     * but on the right day, and its invoices carry the new date with it. Left
+     * where it was, it would be counted on the old day and reconstructed
+     * again on the new one.
+     *
+     * Only the charge on the previous date is touched. Anything else in the
+     * ledger — a payment a member added by hand, or the billing dates a row
+     * recorded while it was recurring, before it was turned into a one-off —
+     * is history, and an edit to the date does not rewrite it. If a charge
+     * already stands on the new date, the moved one gives way to it.
      *
      * Household-wide, like `existingDates()`: the caller has just written the
      * entry itself, and the unique key is per subscription.
@@ -263,40 +268,57 @@ final class ChargeRepository extends AbstractScopedRepository
     public function followOneOffDate(
         Scope $scope,
         int $subscriptionId,
-        DateTimeImmutable $date,
+        DateTimeImmutable $from,
+        DateTimeImmutable $to,
         DateTimeImmutable $today,
+        DateTimeImmutable $now,
     ): void {
-        if (!$scope->hasHousehold()) {
+        if (!$scope->hasHousehold() || $from == $to) {
             return;
         }
 
-        $base = ' WHERE ' . $this->quote('subscription_id') . ' = :subscription'
+        $match = ' WHERE ' . $this->quote('subscription_id') . ' = :subscription'
             . ' AND ' . $this->quote('household_id') . ' = :household'
-            . ' AND ' . $this->quote('source') . ' <> :manual';
+            . ' AND ' . $this->quote('source') . ' <> :manual'
+            . ' AND ' . $this->quote('due_date') . ' = :from';
         $params = [
             'subscription' => $subscriptionId,
             'household' => $scope->householdId,
             'manual' => ChargeSource::Manual->value,
+            'from' => $from->format('Y-m-d'),
         ];
-        $key = $date->format('Y-m-d');
-        $taken = isset($this->existingDates($scope, $subscriptionId)[$key]);
+        $taken = isset($this->existingDates($scope, $subscriptionId)[$to->format('Y-m-d')]);
 
-        if ($date >= $today || $taken) {
-            $this->db->execute(
-                'DELETE FROM ' . $this->quote($this->table()) . $base
-                . ' AND ' . $this->quote('due_date') . ' <> :date',
-                $params + ['date' => $key],
-            );
+        if ($to >= $today || $taken) {
+            $this->db->execute('DELETE FROM ' . $this->quote($this->table()) . $match, $params);
 
+            return;
+        }
+
+        $moved = $this->db->fetchAll(
+            'SELECT ' . $this->quote('id') . ' FROM ' . $this->quote($this->table()) . $match,
+            $params,
+        );
+        if ($moved === []) {
             return;
         }
 
         $this->db->execute(
             'UPDATE ' . $this->quote($this->table())
-            . ' SET ' . $this->quote('due_date') . ' = :date,'
+            . ' SET ' . $this->quote('due_date') . ' = :to,'
             . ' ' . $this->quote('updated_at') . ' = :updated'
-            . $base,
-            $params + ['date' => $key, 'updated' => (new DateTimeImmutable())->format('Y-m-d H:i:s')],
+            . $match,
+            $params + ['to' => $to->format('Y-m-d'), 'updated' => $now->format('Y-m-d H:i:s')],
+        );
+
+        // An invoice filed against the charge is dated to it; it moves too,
+        // so the link step a migration or backfill runs still finds it.
+        $this->db->execute(
+            'UPDATE ' . $this->quote('attachments')
+            . ' SET ' . $this->quote('period_date') . ' = :to'
+            . ' WHERE ' . $this->quote('household_id') . ' = :household'
+            . ' AND ' . $this->quote('charge_id') . ' = :charge',
+            ['to' => $to->format('Y-m-d'), 'household' => $scope->householdId, 'charge' => (int) $moved[0]['id']],
         );
     }
 
