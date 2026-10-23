@@ -313,6 +313,12 @@ final class InstanceSettingsService
     private function set(string $key, string $value): void
     {
         $this->repository->set($key, $value);
-        $this->cache[$key] = $value;
+
+        // Only into a cache that has been loaded. Written into an empty one,
+        // it would become a cache of this one key, and every other setting
+        // would read as its default for the rest of the request.
+        if ($this->cache !== null) {
+            $this->cache[$key] = $value;
+        }
     }
 }

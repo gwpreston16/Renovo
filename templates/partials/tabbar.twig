@@ -57,6 +57,8 @@
                     {% include 'partials/user_card.twig' with {'account': nav.account, 'user': current_user} only %}
 
                     {% include 'partials/nav_links.twig' with {'links': nav.drawer} only %}
+
+                    {% include 'partials/version.twig' %}
                 </div>
             </details>
         </li>

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Application\AppVersion;
+use App\Service\Update\UpdateCheckService;
+use App\Service\Update\UpdateStatus;
+use App\Service\Update\UpdateUnavailable;
 use App\Domain\Currency;
 use App\Domain\Entity\AuditEntry;
 use App\Domain\Entity\Category;
@@ -56,6 +60,8 @@ final class SettingsScreenService
         private readonly AuditLogService $audit,
         private readonly TrustedHostService $trustedHosts,
         private readonly PermissionService $permissions,
+        private readonly UpdateCheckService $updates,
+        private readonly AppVersion $version,
         private readonly string $smtpHost = '',
         private readonly int $smtpPort = 0,
         private readonly string $smtpEncryption = 'none',
@@ -170,7 +176,13 @@ final class SettingsScreenService
      *     trusted_hosts: list<array<string, mixed>>,
      *     smtp: array{host: string, port: int, encryption: string, authenticates: bool},
      *     metrics_enabled: bool,
-     *     scheduler_last_run_at: DateTimeImmutable|null
+     *     scheduler_last_run_at: DateTimeImmutable|null,
+     *     version: string,
+     *     version_build: string|null,
+     *     update: UpdateStatus,
+     *     update_check_enabled: bool,
+     *     update_banner_enabled: bool,
+     *     updates_unavailable: UpdateUnavailable|null
      * }
      */
     public function instance(): array
@@ -189,6 +201,15 @@ final class SettingsScreenService
             ],
             'metrics_enabled' => $this->metricsEnabled,
             'scheduler_last_run_at' => $this->settings->schedulerLastRunAt(),
+            // The Version row and the Updates switches. Unavailable is the
+            // environment ruling checks out (UPDATE_CHECK=false, or a
+            // repository that is not an owner/name), whatever the setting.
+            'version' => $this->version->current(),
+            'version_build' => $this->version->build(),
+            'update' => $this->updates->status(),
+            'update_check_enabled' => $this->settings->updateCheckEnabled(),
+            'update_banner_enabled' => $this->settings->updateBannerEnabled(),
+            'updates_unavailable' => $this->updates->unavailableReason(),
         ];
     }
 

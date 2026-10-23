@@ -182,10 +182,10 @@ Found while starting it:
       VERSION / package.json / CHANGELOG agreement test in CI
 - [ ] Version on the Instance status card, in the sidebar, and on
       `GET /api/v1/instance` (OpenAPI, `docs/api.md`)
-- [ ] `UpdateCheckService`: fetch through the shared client, parse, store,
+- [x] `UpdateCheckService`: fetch through the shared client, parse, store,
       back-off; scheduler step, lazy check, `updates:check`, Check now
-- [ ] Dashboard banner for instance admins; per-admin dismissal by version
-- [ ] Updates fieldset on Settings → Instance; audit entries
+- [x] Dashboard banner for instance admins; per-admin dismissal by version
+- [x] Updates fieldset on Settings → Instance; audit entries
 - [ ] `UPDATE_CHECK_REPOSITORY` and `UPDATE_CHECK` env vars, documented in
       `docs/configuration.md` and `.env.example`
 - [x] Migration on both engines

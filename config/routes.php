@@ -465,6 +465,15 @@ return static function (App $app): void {
         $group->post('/settings/instance', [SettingsController::class, 'updateInstance'])
             ->add($requires(Permission::ManageInstance));
 
+        // Phase 37: Check now on the Instance status card, and Dismiss on the
+        // dashboard's update banner. Both are instance administration: the
+        // banner is drawn for nobody else, and a post from anybody else is 403.
+        $group->post('/settings/updates/check', [SettingsController::class, 'checkForUpdates'])
+            ->add($requires(Permission::ManageInstance));
+
+        $group->post('/updates/dismiss', [DashboardController::class, 'dismissUpdate'])
+            ->add($requires(Permission::ManageInstance));
+
         // ------------------------------------------------------------------
         // Phase 15: household members; Phase 26: Members & roles
         //

@@ -9,6 +9,8 @@
     `nav`    the Navigation for this page
     `shell`  the ShellContext (the household label and the badge), or null
 
+    At its foot, the release this instance runs (`version.twig`).
+
     What is not here: the design's Upgrade Plan card. Renovo is self-hosted and
     there is no plan to upgrade to.
 #}
@@ -69,5 +71,7 @@
         {% endif %}
 
         {% include 'partials/user_card.twig' with {'account': nav.account, 'user': current_user} only %}
+
+        {% include 'partials/version.twig' %}
     </div>
 </aside>

@@ -190,6 +190,23 @@ final class UpdateCheckService
     }
 
     /**
+     * The dashboard's banner for this reader, after the lazy check: an
+     * instance administrator loading the dashboard is what keeps an instance
+     * with no working scheduler learning of releases, at most once a day.
+     * Nobody else's page load asks GitHub anything.
+     */
+    public function forDashboard(User $user): ?UpdateBanner
+    {
+        if (!$user->isInstanceAdmin) {
+            return null;
+        }
+
+        $this->refreshIfDue();
+
+        return $this->bannerFor($user);
+    }
+
+    /**
      * Hide the banner from this administrator until a release newer than the
      * one it announces appears.
      */

@@ -1,0 +1,33 @@
+{#
+    A newer release is out. Instance administrators only, with update checks
+    and the banner both on; `UpdateCheckService::bannerFor()` decides.
+
+    The release notes are GitHub's page, in a new tab: a link, not a load, so
+    nothing on this page comes from a third-party host. The link is drawn only
+    when the stored page is on https://github.com/.
+
+    Dismiss is a form. With script, htmx posts it and the banner goes; without,
+    the post reloads the dashboard without it. Either way it stays gone for
+    this administrator until a newer release appears.
+
+    `banner`  the UpdateBanner
+#}
+<div class="alert callout update-banner" role="status" id="update-banner">
+    <p class="update-banner-text">
+        {{ icon('info') }}
+        <span>
+            {{ t('updates.banner', {'latest': banner.latestVersion, 'current': banner.currentVersion}) }}
+            {% if banner.releaseUrl %}
+                <a href="{{ banner.releaseUrl }}" target="_blank" rel="noopener">
+                    {{- t('updates.release_notes') -}}
+                    <span class="visually-hidden"> {{ t('updates.new_tab') }}</span></a>
+            {% endif %}
+        </span>
+    </p>
+
+    <form method="post" action="/updates/dismiss"
+          hx-post="/updates/dismiss" hx-target="#update-banner" hx-swap="outerHTML">
+        {{ csrf_field() }}
+        <button type="submit" class="button button-quiet">{{ t('updates.dismiss') }}</button>
+    </form>
+</div>

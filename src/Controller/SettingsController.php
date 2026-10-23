@@ -15,6 +15,9 @@ use App\Service\HouseholdSettingsService;
 use App\Service\InstanceAdminService;
 use App\Service\SettingsScreenService;
 use App\Service\TrustedHostService;
+use App\Service\Update\CheckNowResult;
+use App\Service\Update\UpdateCheckService;
+use App\Service\Update\UpdateState;
 use App\Service\ValidationException;
 use App\Support\DateFormatter;
 use Psr\Http\Message\ResponseInterface;
@@ -66,6 +69,7 @@ final class SettingsController extends Controller
         private readonly InstanceAdminService $instanceAdmin,
         private readonly DateFormatter $dates,
         private readonly PermissionService $permissions,
+        private readonly UpdateCheckService $updates,
     ) {
         parent::__construct($view, $session, $translator);
     }
@@ -185,6 +189,31 @@ final class SettingsController extends Controller
         return $this->redirectAfterWrite($request, $response, self::GENERAL . '#exchange-rates');
     }
 
+    /**
+     * Check now: ask GitHub for the latest release, at most once a minute,
+     * and never while checks are off.
+     */
+    public function checkForUpdates(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $result = $this->updates->checkNow();
+        $status = $this->updates->status();
+
+        match ($result) {
+            CheckNowResult::Off => $this->flash('error', 'flash.updates_off'),
+            CheckNowResult::TooSoon => $this->flash('error', 'flash.updates_too_soon'),
+            CheckNowResult::Failed => $this->flash('error', 'flash.updates_check_failed'),
+            CheckNowResult::Checked => match ($status->state) {
+                UpdateState::Available => $this->flash('success', 'flash.updates_available', [
+                    'version' => (string) $status->latestVersion,
+                ]),
+                UpdateState::NoReleases => $this->flash('success', 'flash.updates_no_releases'),
+                default => $this->flash('success', 'flash.updates_up_to_date'),
+            },
+        };
+
+        return $this->redirectAfterWrite($request, $response, self::INSTANCE . '#instance-status');
+    }
+
     public function updateInstance(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $body = $this->body($request);
@@ -201,6 +230,15 @@ final class SettingsController extends Controller
         }
         if (array_key_exists('demo_mode', $body)) {
             $input['demo_mode'] = $body['demo_mode'] === '1';
+        }
+        // The Updates switches post only when they can be changed: a disabled
+        // switch sends nothing, and neither does its hidden "0", so saving
+        // the form while checks are off leaves the banner's choice alone.
+        if (array_key_exists('update_check_enabled', $body)) {
+            $input['update_check_enabled'] = $body['update_check_enabled'] === '1';
+        }
+        if (array_key_exists('update_banner_enabled', $body)) {
+            $input['update_banner_enabled'] = $body['update_banner_enabled'] === '1';
         }
 
         $this->instanceAdmin->apply($this->user($request), $input);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Twig;
 
+use App\Application\AppVersion;
 use App\Domain\AlertType;
 use App\Domain\BillingCycle;
 use App\Domain\IsolationMode;
@@ -74,6 +75,7 @@ final class AppExtension extends AbstractExtension
         private readonly NumberFormat $numbers,
         private readonly IconSprite $icons,
         private readonly RelativeTime $relativeTime,
+        private readonly AppVersion $version,
     ) {
     }
 
@@ -86,6 +88,10 @@ final class AppExtension extends AbstractExtension
             new TwigFunction('icon', $this->icons->render(...), ['is_safe' => ['html']]),
             new TwigFunction('icon_sprite', $this->icons->url(...)),
             new TwigFunction('locale_tag', fn (): string => $this->locale->tag()),
+            // The release, with its build if it has one. Drawn only by the
+            // signed-in shell: an anonymous visitor is never told which
+            // release an instance runs.
+            new TwigFunction('app_version', fn (): string => $this->version->label()),
             new TwigFunction('js_translations', $this->jsTranslations(...)),
             new TwigFunction('error_message', $this->errorMessage(...)),
             new TwigFunction('csrf_token', fn (): string => $this->csrf->token()),

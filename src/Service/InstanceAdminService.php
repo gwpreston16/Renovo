@@ -42,6 +42,8 @@ final class InstanceAdminService
      *     rate_provider_key?: string,
      *     clear_rate_provider_key?: bool,
      *     demo_mode?: bool,
+     *     update_check_enabled?: bool,
+     *     update_banner_enabled?: bool,
      * } $input
      * @return list<string> The settings that changed.
      */
@@ -88,6 +90,18 @@ final class InstanceAdminService
         if ($demoMode !== null && $demoMode !== $this->settings->isDemoMode()) {
             $this->settings->setDemoMode($demoMode);
             $changes[] = 'demo_mode';
+        }
+
+        $updateCheck = $input['update_check_enabled'] ?? null;
+        if ($updateCheck !== null && $updateCheck !== $this->settings->updateCheckEnabled()) {
+            $this->settings->setUpdateCheckEnabled($updateCheck);
+            $changes[] = 'update_check_enabled';
+        }
+
+        $updateBanner = $input['update_banner_enabled'] ?? null;
+        if ($updateBanner !== null && $updateBanner !== $this->settings->updateBannerEnabled()) {
+            $this->settings->setUpdateBannerEnabled($updateBanner);
+            $changes[] = 'update_banner_enabled';
         }
 
         if ($changes !== []) {

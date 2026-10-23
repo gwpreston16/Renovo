@@ -1,0 +1,17 @@
+{#
+    The release this instance runs, in muted text at the foot of the rail and
+    of the narrow screen's sheet: "Renovo 1.7.0", or "Renovo 1.7.0 (a1b2c3d)"
+    for an image built from a commit.
+
+    Signed-in pages only, and the shell is drawn on no other: an anonymous
+    visitor is not told which release to look up known issues for. An
+    instance administrator's links to the Instance status card, where the
+    update check's state is; for everybody else it is text.
+#}
+{% if current_user %}
+    {% if current_user.isInstanceAdmin %}
+        <a class="sidebar-version num" href="/settings/instance#instance-status">{{ t('shell.version', {'version': app_version()}) }}</a>
+    {% else %}
+        <p class="sidebar-version num">{{ t('shell.version', {'version': app_version()}) }}</p>
+    {% endif %}
+{% endif %}
