@@ -186,7 +186,8 @@ Found while starting it:
 - **A manual payment's discount survives its adoption** (assumption, from the
   merge review): moved to the price due while what was paid is still below
   it; an offer's reference on the date replaces it.
-- **The cost page's line is the subscription's whole saving** (assumption):
+- **The cost page's line is the subscription's whole saving.** *Confirmed
+  2026-10-23:*
   the page shows the row's own prices whole, in ISOLATED mode too, so its
   saving is the row's, not the reader's share of it.
 
