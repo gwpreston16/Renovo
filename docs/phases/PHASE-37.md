@@ -159,6 +159,23 @@ Everything else is instance-settings keys (no migration):
 - **A release with no GitHub release yet** (a 404 from `/releases/latest`) is
   "no releases published", not a failure.
 
+*Confirmed 2026-10-23*: checks off by default, the banner on by default once
+they are on, the version in the sidebar for everyone signed in, dismissal per
+admin by version. The repository is settled by the code: the git remote is
+`gwpreston16/Renovo`, public, with releases (v1.7.0 is the latest). Semantic
+comparison and the 404 rule are correctness, not choices.
+
+Found while starting it:
+
+- **`VERSION` starts at 1.7.0**, not 1.0.0: the brief predates releases 1.1.0
+  to 1.7.0, and `package.json` and `CHANGELOG.md` are at 1.7.0.
+- **`/release` writes `VERSION`.** *Confirmed 2026-10-23.* Its version-bump
+  step writes `VERSION` beside `npm version`, so the agreement test holds after
+  every release.
+- **The env vars are documented in `docs/configuration.md`**, not the README.
+  *Changed 2026-10-23:* operator settings live there (`CLAUDE.md`), with
+  `.env.example`; the feature itself on its operator page.
+
 ## Status
 
 - [ ] `VERSION` file, `AppVersion`, `RENOVO_BUILD` build argument; the
@@ -170,7 +187,7 @@ Everything else is instance-settings keys (no migration):
 - [ ] Dashboard banner for instance admins; per-admin dismissal by version
 - [ ] Updates fieldset on Settings → Instance; audit entries
 - [ ] `UPDATE_CHECK_REPOSITORY` and `UPDATE_CHECK` env vars, documented in the
-      README and `.env.example`
+      `docs/configuration.md` and `.env.example`
 - [ ] Migration on both engines
 - [ ] New strings in `translations/en.php`
 - [ ] `composer check`, `i18n:check`, offline guard green on both engines
