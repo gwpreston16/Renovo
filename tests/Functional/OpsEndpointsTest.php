@@ -179,6 +179,36 @@ final class OpsEndpointsTest extends DatabaseTestCase
         self::assertStringContainsString('# TYPE renovo_notifications_total counter', $body);
     }
 
+    public function testTheExpositionCarriesInstanceBackups(): void
+    {
+        $this->signIn($this->adminId);
+        $body = (string) $this->get('/metrics')->getBody();
+
+        // Before any backup: every series, at zero.
+        self::assertStringContainsString('renovo_backup_last_success_timestamp_seconds 0', $body);
+        self::assertStringContainsString('renovo_backup_last_size_bytes 0', $body);
+        self::assertStringContainsString('renovo_backup_runs_total{status="verified"} 0', $body);
+        self::assertStringContainsString('renovo_backup_runs_total{status="failed"} 0', $body);
+        self::assertStringContainsString('# TYPE renovo_backup_runs_total counter', $body);
+
+        $runs = new \App\Repository\BackupRunRepository($this->db);
+        $good = (int) $runs->claim(new \DateTimeImmutable('2026-06-01 03:00:00'), 'schedule');
+        $runs->finish($good, 'verified', new \DateTimeImmutable('2026-06-01 03:00:10'), ['size_bytes' => 4096]);
+        $bad = (int) $runs->claim(new \DateTimeImmutable('2026-06-02 03:00:00'), 'schedule');
+        $runs->finish($bad, 'failed', new \DateTimeImmutable('2026-06-02 03:00:05'), ['error' => 'tampered']);
+
+        $body = (string) $this->get('/metrics')->getBody();
+
+        self::assertStringContainsString(
+            'renovo_backup_last_success_timestamp_seconds '
+            . (new \DateTimeImmutable('2026-06-01 03:00:10', new \DateTimeZone('UTC')))->getTimestamp(),
+            $body,
+        );
+        self::assertStringContainsString('renovo_backup_last_size_bytes 4096', $body);
+        self::assertStringContainsString('renovo_backup_runs_total{status="verified"} 1', $body);
+        self::assertStringContainsString('renovo_backup_runs_total{status="failed"} 1', $body);
+    }
+
     /**
      * With metrics configured, requests are counted by the status the client
      * actually got — which is only true while the counter sits outside the

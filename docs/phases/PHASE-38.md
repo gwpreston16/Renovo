@@ -231,10 +231,10 @@ Found while starting it:
 - [x] `BackupDumper` (repository layer), consistent snapshot, table coverage test
 - [x] Archive writer with manifest and checksums; secretstream encryption
 - [x] Verification; retention with the newest-verified guard
-- [ ] `backup:run`, `backup:verify`, `backup:decrypt`, `backup:restore`;
+- [x] `backup:run`, `backup:verify`, `backup:decrypt`, `backup:restore`;
       scheduler loop
-- [ ] Settings → Instance → Backups card; Instance status line
-- [ ] Metrics and audit entries
+- [x] Settings → Instance → Backups card; Instance status line
+- [x] Metrics and audit entries
 - [ ] `BACKUP_ENCRYPTION_KEY`, `BACKUP_DIRECTORY` in `.env.example`; README
       restore procedure
 - [ ] Migration on both engines

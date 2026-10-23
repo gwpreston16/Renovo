@@ -49,6 +49,7 @@ use App\Controller\PaymentMethodController;
 use App\Controller\DashboardController;
 use App\Controller\ForecastController;
 use App\Controller\ImportController;
+use App\Controller\InstanceBackupController;
 use App\Controller\MemberController;
 use App\Controller\NotificationController;
 use App\Controller\Ops\HealthController;
@@ -473,6 +474,19 @@ return static function (App $app): void {
             ->add($requires(Permission::ManageInstance));
 
         $group->post('/updates/dismiss', [DashboardController::class, 'dismissUpdate'])
+            ->add($requires(Permission::ManageInstance));
+
+        // Phase 38: instance backups. Every route is instance administration,
+        // the download included: a backup holds every household. There is no
+        // restore route; that is `bin/console backup:restore`.
+        $group->post('/settings/backups', [InstanceBackupController::class, 'update'])
+            ->add($requires(Permission::ManageInstance));
+
+        $group->post('/settings/backups/run', [InstanceBackupController::class, 'run'])
+            ->add($requires(Permission::ManageInstance));
+
+        $group->get('/settings/backups/{id:[0-9]+}/download', [InstanceBackupController::class, 'download'])
+            ->setName('instance-backup-download')
             ->add($requires(Permission::ManageInstance));
 
         // ------------------------------------------------------------------
