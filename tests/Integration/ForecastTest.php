@@ -40,6 +40,7 @@ use DateTimeImmutable;
 use Psr\Log\NullLogger;
 use Slim\Psr7\Factory\RequestFactory;
 use App\Tests\Support\TestFixedTermService;
+use App\Tests\Support\TestKeys;
 
 /**
  * The twelve-month forecast.
@@ -80,7 +81,7 @@ final class ForecastTest extends DatabaseTestCase
         $this->subscriptions = new SubscriptionRepository($this->db);
         $this->clock = FrozenClock::at('2026-01-15 09:00:00');
 
-        $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db));
+        $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring());
         $settings->setBaseCurrency('GBP');
 
         $historyRepository = new PriceHistoryRepository($this->db);

@@ -60,6 +60,7 @@ use DateTimeImmutable;
 use Psr\Log\NullLogger;
 use Slim\Psr7\Factory\RequestFactory;
 use App\Tests\Support\TestFixedTermService;
+use App\Tests\Support\TestKeys;
 
 /**
  * The whole notification stack, wired by hand against a real database.
@@ -114,7 +115,10 @@ abstract class NotificationTestCase extends DatabaseTestCase
 
         $this->subscriptions = new SubscriptionRepository($this->db);
         $categories = new CategoryRepository($this->db);
-        $this->instanceSettings = new InstanceSettingsService(new InstanceSettingsRepository($this->db));
+        $this->instanceSettings = new InstanceSettingsService(
+            new InstanceSettingsRepository($this->db),
+            TestKeys::ring(),
+        );
         $this->instanceSettings->setBaseCurrency('GBP');
 
         $historyRepository = new PriceHistoryRepository($this->db);
@@ -189,7 +193,7 @@ abstract class NotificationTestCase extends DatabaseTestCase
         $this->notifier = new RecordingNotifier();
         $this->registry = new NotifierRegistry([$this->notifier]);
 
-        $this->channels = new NotificationChannelRepository($this->db, $this->clock);
+        $this->channels = new NotificationChannelRepository($this->db, $this->clock, TestKeys::ring());
         $this->log = new NotificationLogRepository($this->db, $this->clock);
 
         $this->notificationSettings = new NotificationSettingsService(

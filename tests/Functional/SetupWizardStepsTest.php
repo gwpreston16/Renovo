@@ -26,6 +26,7 @@ use Psr\Http\Message\ResponseInterface;
 use Slim\App;
 use Slim\Psr7\Factory\ServerRequestFactory;
 use Symfony\Component\Mailer\MailerInterface;
+use App\Tests\Support\TestKeys;
 
 /**
  * The wizard's three steps (Phase 29): the owner account, the household, and
@@ -314,8 +315,13 @@ final class SetupWizardStepsTest extends DatabaseTestCase
      */
     private function channels(int $userId): array
     {
-        return (new NotificationChannelRepository($this->db, new SystemClock(new DateTimeZone('UTC'))))
-            ->findAllForUser($userId);
+        $channels = new NotificationChannelRepository(
+            $this->db,
+            new SystemClock(new DateTimeZone('UTC')),
+            TestKeys::ring(),
+        );
+
+        return $channels->findAllForUser($userId);
     }
 
     /**

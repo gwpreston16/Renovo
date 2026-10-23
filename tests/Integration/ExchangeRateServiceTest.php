@@ -17,6 +17,7 @@ use App\Support\FrozenClock;
 use App\Tests\Support\FakeHttpClient;
 use Psr\Log\NullLogger;
 use Slim\Psr7\Factory\RequestFactory;
+use App\Tests\Support\TestKeys;
 
 /**
  * Caching, cross-rating and — the part that matters most — what happens when
@@ -40,7 +41,7 @@ final class ExchangeRateServiceTest extends DatabaseTestCase
     {
         parent::setUp();
 
-        $this->settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db));
+        $this->settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring());
         $this->rates = new ExchangeRateRepository($this->db);
         $this->clock = FrozenClock::at('2026-09-14 09:00:00');
 

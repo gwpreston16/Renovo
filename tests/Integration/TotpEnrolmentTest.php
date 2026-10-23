@@ -172,7 +172,9 @@ final class TotpEnrolmentTest extends DatabaseTestCase
 
         $codes = $this->totp->confirmEnrolment(
             $this->user,
-            $this->codeFor((new SecretCipher(new KeyRing('test-instance-secret-for-totp')))->decrypt($enrolment['secret'])),
+            $this->codeFor(
+                (new SecretCipher(new KeyRing('test-instance-secret-for-totp')))->decrypt($enrolment['secret']),
+            ),
         );
 
         self::assertTrue($this->twoFactor->redeemRecoveryCode($this->user, $codes[0]));

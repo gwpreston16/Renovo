@@ -45,6 +45,7 @@ use App\Tests\Support\TestLogoFetcher;
 use DateTimeImmutable;
 use Psr\Log\NullLogger;
 use Slim\Psr7\Factory\RequestFactory;
+use App\Tests\Support\TestKeys;
 
 /**
  * The exception to data isolation, and — much more importantly — the exact
@@ -497,7 +498,7 @@ final class SplitVisibilityTest extends DatabaseTestCase
             new MembershipRepository($this->db),
             $forecast,
             $this->rates(),
-            new InstanceSettingsService(new InstanceSettingsRepository($this->db)),
+            new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring()),
             $this->clock,
         );
 
@@ -598,7 +599,7 @@ final class SplitVisibilityTest extends DatabaseTestCase
 
     private function forecast(): ForecastService
     {
-        $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db));
+        $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring());
         $settings->setBaseCurrency('GBP');
 
         return new ForecastService(
@@ -642,7 +643,7 @@ final class SplitVisibilityTest extends DatabaseTestCase
                     new RequestFactory(),
                 ),
             ]),
-            new InstanceSettingsService(new InstanceSettingsRepository($this->db)),
+            new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring()),
             $this->clock,
             new NullLogger(),
             43200,

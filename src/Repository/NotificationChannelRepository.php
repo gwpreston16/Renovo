@@ -6,6 +6,9 @@ namespace App\Repository;
 
 use App\Domain\Entity\NotificationChannel;
 use App\Persistence\Database;
+use App\Security\KeyRing;
+use App\Security\SecretCipher;
+use App\Security\UnreadableSecretException;
 use App\Support\Clock;
 use DateTimeImmutable;
 use JsonException;
@@ -22,9 +25,12 @@ use JsonException;
  */
 final class NotificationChannelRepository extends AbstractRepository
 {
-    public function __construct(Database $db, private readonly Clock $clock)
+    private readonly SecretCipher $cipher;
+
+    public function __construct(Database $db, private readonly Clock $clock, KeyRing $keys)
     {
         parent::__construct($db);
+        $this->cipher = new SecretCipher($keys, SecretCipher::PURPOSE_CHANNEL_CONFIG);
     }
 
     protected function table(): string
@@ -160,15 +166,21 @@ final class NotificationChannelRepository extends AbstractRepository
     }
 
     /**
+     * The config as stored: the whole JSON document as one ciphertext, secret
+     * fields and the rest alike. Nothing filters on a field, so nothing is lost
+     * by encrypting the lot, and a dump shows no bot token or webhook URL.
+     *
      * @param array<string, string> $config
      */
     private function encode(array $config): string
     {
         try {
-            return json_encode($config, JSON_THROW_ON_ERROR);
+            $json = json_encode($config, JSON_THROW_ON_ERROR);
         } catch (JsonException) {
-            return '{}';
+            $json = '{}';
         }
+
+        return $this->cipher->encrypt($json);
     }
 
     /**
@@ -178,7 +190,11 @@ final class NotificationChannelRepository extends AbstractRepository
     {
         $config = [];
         try {
-            $decoded = json_decode((string) $row['config'], true, 8, JSON_THROW_ON_ERROR);
+            // An unprefixed row was written before configs were encrypted, and
+            // is read as plain JSON until the backfill migration reaches it.
+            $stored = (string) $row['config'];
+            $json = SecretCipher::isEncrypted($stored) ? $this->cipher->decrypt($stored) : $stored;
+            $decoded = json_decode($json, true, 8, JSON_THROW_ON_ERROR);
             if (is_array($decoded)) {
                 foreach ($decoded as $key => $value) {
                     if (is_string($key) && is_scalar($value)) {
@@ -186,9 +202,10 @@ final class NotificationChannelRepository extends AbstractRepository
                     }
                 }
             }
-        } catch (JsonException) {
-            // A config row that cannot be read is treated as empty rather than
-            // fatal: the channel then reports itself as misconfigured, which is
+        } catch (JsonException | UnreadableSecretException) {
+            // A config row that cannot be read — corrupt, or under a key that
+            // is no longer configured — is treated as empty rather than fatal:
+            // the channel then reports itself as misconfigured, which is
             // exactly what it is, instead of breaking the settings page.
             $config = [];
         }

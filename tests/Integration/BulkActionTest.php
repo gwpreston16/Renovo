@@ -29,6 +29,7 @@ use App\Support\FrozenClock;
 use App\Tests\Support\FakeHttpClient;
 use Psr\Log\NullLogger;
 use Slim\Psr7\Factory\RequestFactory;
+use App\Tests\Support\TestKeys;
 
 /**
  * Bulk actions.
@@ -66,7 +67,7 @@ final class BulkActionTest extends DatabaseTestCase
         $this->categories = new CategoryRepository($this->db);
         $clock = FrozenClock::at('2026-01-15 09:00:00');
 
-        $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db));
+        $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring());
         $settings->setBaseCurrency('GBP');
 
         $this->priceHistory = new PriceHistoryService(

@@ -30,6 +30,7 @@ use App\Support\FrozenClock;
 use App\Tests\Support\TestSubscriptionService;
 use DateTimeImmutable;
 use Psr\Log\NullLogger;
+use App\Tests\Support\TestKeys;
 
 /**
  * The Phase 35 fields under ISOLATED mode and the Contributor fence: what a
@@ -65,7 +66,7 @@ final class TermsIsolationTest extends DatabaseTestCase
         $clock = FrozenClock::at('2026-06-15 09:00:00');
         $rows = new SubscriptionRepository($this->db);
         $priceHistory = new PriceHistoryService(new PriceHistoryRepository($this->db), $rows, $this->db, $clock);
-        $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db));
+        $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring());
         $settings->setBaseCurrency('GBP');
 
         $this->subscriptions = TestSubscriptionService::build($this->db, $clock, $priceHistory);

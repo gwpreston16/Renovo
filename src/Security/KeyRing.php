@@ -38,7 +38,9 @@ final class KeyRing
         private readonly bool $fromSecretsKey = true,
     ) {
         if ($current === '') {
-            throw new RuntimeException('No encryption key is configured. Set SECRETS_KEY or SESSION_KEY (see .env.example).');
+            throw new RuntimeException(
+                'No encryption key is configured. Set SECRETS_KEY or SESSION_KEY (see .env.example).',
+            );
         }
 
         $this->previous = array_values(array_unique(array_filter(

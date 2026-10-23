@@ -29,6 +29,8 @@ use Psr\Http\Message\ResponseInterface;
 use Slim\App;
 use Slim\Psr7\Factory\ServerRequestFactory;
 use Symfony\Component\Mailer\MailerInterface;
+use App\Security\KeyRing;
+use App\Tests\Support\TestKeys;
 
 /**
  * The notification routes through the real middleware stack.
@@ -100,7 +102,7 @@ final class NotificationRoutesTest extends DatabaseTestCase
         // only appear once something is configured: the per-channel
         // description, the routing grid and the recent-deliveries table.
         $clock = new SystemClock(new DateTimeZone('UTC'));
-        $channels = new NotificationChannelRepository($this->db, $clock);
+        $channels = new NotificationChannelRepository($this->db, $clock, TestKeys::ring());
         $id = $channels->create($this->viewerId, 'gotify', 'Phone', [
             'url' => 'https://gotify.example.com',
             'token' => 'AsecretToken1',
@@ -120,6 +122,30 @@ final class NotificationRoutesTest extends DatabaseTestCase
         self::assertStringContainsString('Upcoming renewal', $body);
         // The stored token is never rendered back into the page.
         self::assertStringNotContainsString('AsecretToken1', $body);
+    }
+
+    public function testAChannelNoKeyOpensIsShownAsMisconfiguredNotAnErrorPage(): void
+    {
+        // Written under a key the application does not have — a key removed
+        // from SECRETS_PREVIOUS_KEYS too early.
+        $channels = new NotificationChannelRepository(
+            $this->db,
+            new SystemClock(new DateTimeZone('UTC')),
+            new KeyRing('a-key-this-instance-does-not-have'),
+        );
+        $channels->create(
+            $this->viewerId,
+            'gotify',
+            'Lost phone',
+            ['url' => 'https://lost.example.net', 'token' => 't'],
+        );
+
+        $this->signIn($this->viewerId);
+        $response = $this->request('GET', '/settings/notifications');
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('Lost phone', (string) $response->getBody());
+        self::assertStringNotContainsString('lost.example.net', (string) $response->getBody());
     }
 
     /**
@@ -179,7 +205,11 @@ final class NotificationRoutesTest extends DatabaseTestCase
 
         self::assertSame(302, $response->getStatusCode());
 
-        $channels = new NotificationChannelRepository($this->db, new SystemClock(new DateTimeZone('UTC')));
+        $channels = new NotificationChannelRepository(
+            $this->db,
+            new SystemClock(new DateTimeZone('UTC')),
+            TestKeys::ring(),
+        );
         self::assertCount(1, $channels->findAllForUser($this->viewerId));
     }
 
@@ -189,7 +219,7 @@ final class NotificationRoutesTest extends DatabaseTestCase
         // retype it — which means a blank secret has to mean "unchanged". If it
         // meant "clear it", pausing a channel would silently break it.
         $clock = new SystemClock(new DateTimeZone('UTC'));
-        $channels = new NotificationChannelRepository($this->db, $clock);
+        $channels = new NotificationChannelRepository($this->db, $clock, TestKeys::ring());
         $id = $channels->create($this->viewerId, 'gotify', 'Phone', [
             'url' => 'https://gotify.example.com',
             'token' => 'AsecretToken1',
@@ -217,7 +247,11 @@ final class NotificationRoutesTest extends DatabaseTestCase
 
     public function testOneUserCannotTouchAnothersChannel(): void
     {
-        $channels = new NotificationChannelRepository($this->db, new SystemClock(new DateTimeZone('UTC')));
+        $channels = new NotificationChannelRepository(
+            $this->db,
+            new SystemClock(new DateTimeZone('UTC')),
+            TestKeys::ring(),
+        );
         $id = $channels->create($this->adminId, 'webhook', 'Admin hook', ['url' => 'https://hooks.example/a']);
 
         $this->signIn($this->viewerId);
@@ -232,7 +266,11 @@ final class NotificationRoutesTest extends DatabaseTestCase
 
     public function testATestSendAgainstSomebodyElsesChannelIsNotFound(): void
     {
-        $channels = new NotificationChannelRepository($this->db, new SystemClock(new DateTimeZone('UTC')));
+        $channels = new NotificationChannelRepository(
+            $this->db,
+            new SystemClock(new DateTimeZone('UTC')),
+            TestKeys::ring(),
+        );
         $id = $channels->create($this->adminId, 'webhook', 'Admin hook', ['url' => 'https://hooks.example/a']);
 
         $this->signIn($this->viewerId);
@@ -324,7 +362,11 @@ final class NotificationRoutesTest extends DatabaseTestCase
 
         self::assertSame(302, $response->getStatusCode());
 
-        $channels = new NotificationChannelRepository($this->db, new SystemClock(new DateTimeZone('UTC')));
+        $channels = new NotificationChannelRepository(
+            $this->db,
+            new SystemClock(new DateTimeZone('UTC')),
+            TestKeys::ring(),
+        );
         $saved = $channels->findAllForUser($this->adminId);
         self::assertCount(1, $saved);
         self::assertSame('gotify', $saved[0]->type);

@@ -7,7 +7,11 @@ namespace App\Service;
 use App\Domain\Currency;
 use App\Domain\IsolationMode;
 use App\Repository\InstanceSettingsRepository;
+use App\Security\KeyRing;
+use App\Security\SecretCipher;
+use App\Security\UnreadableSecretException;
 use DateTimeImmutable;
+use SensitiveParameter;
 
 /**
  * Reads and writes the handful of instance-wide settings.
@@ -40,8 +44,11 @@ final class InstanceSettingsService
     /** @var array<string, string>|null */
     private ?array $cache = null;
 
-    public function __construct(private readonly InstanceSettingsRepository $repository)
+    private readonly SecretCipher $rateKeyCipher;
+
+    public function __construct(private readonly InstanceSettingsRepository $repository, KeyRing $keys)
     {
+        $this->rateKeyCipher = new SecretCipher($keys, SecretCipher::PURPOSE_RATE_PROVIDER_KEY);
     }
 
     public function isolationMode(): IsolationMode
@@ -112,12 +119,26 @@ final class InstanceSettingsService
      */
     public function storedRateProviderKey(): string
     {
-        return $this->get(self::KEY_RATE_PROVIDER_KEY, '');
+        $stored = $this->get(self::KEY_RATE_PROVIDER_KEY, '');
+
+        // A value written before the key was encrypted reads as it was stored
+        // until the backfill migration encrypts it. A value no key opens is
+        // no key: the provider then reports it is missing one, which is what
+        // the admin has to fix.
+        if ($stored === '' || !SecretCipher::isEncrypted($stored)) {
+            return $stored;
+        }
+
+        try {
+            return $this->rateKeyCipher->decrypt($stored);
+        } catch (UnreadableSecretException) {
+            return '';
+        }
     }
 
-    public function setRateProviderKey(string $key): void
+    public function setRateProviderKey(#[SensitiveParameter] string $key): void
     {
-        $this->set(self::KEY_RATE_PROVIDER_KEY, $key);
+        $this->set(self::KEY_RATE_PROVIDER_KEY, $key === '' ? '' : $this->rateKeyCipher->encrypt($key));
     }
 
     /**

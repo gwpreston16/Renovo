@@ -38,6 +38,7 @@ use App\Tests\Support\ArraySession;
 use App\Tests\Support\TestTranslator;
 use App\Tests\Support\RecordingMailer;
 use Psr\Log\NullLogger;
+use App\Tests\Support\TestKeys;
 
 /**
  * Sign-up through to sign-in, and the throttling that protects both.
@@ -65,7 +66,7 @@ final class AuthFlowTest extends DatabaseTestCase
 
         $tokens = new TokenRepository($this->db, $this->clock);
         $hasher = new PasswordHasher();
-        $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db));
+        $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring());
         $mailService = new MailerService($this->mailer, new NullLogger(), 'noreply@example.test', 'Test');
 
         $limiter = new RateLimiter($this->attempts, $this->clock, 3, 10, 900, 900);
@@ -131,7 +132,7 @@ final class AuthFlowTest extends DatabaseTestCase
      */
     public function testRegistrationIsClosedUntilAnAdministratorOpensIt(): void
     {
-        $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db));
+        $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring());
         self::assertFalse($settings->registrationAllowed());
 
         $settings->setRegistrationAllowed(true);
@@ -390,7 +391,7 @@ final class AuthFlowTest extends DatabaseTestCase
             $limiter,
             new MailerService($this->mailer, new NullLogger(), 'noreply@example.test', 'Test'),
             $this->auth,
-            new InstanceSettingsService(new InstanceSettingsRepository($this->db)),
+            new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring()),
             TestTranslator::create(),
             new Locales(new CatalogLoader(dirname(__DIR__, 2) . '/translations'), 'en_GB'),
             $this->audit(),

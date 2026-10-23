@@ -27,6 +27,7 @@ use Psr\Http\Message\ResponseInterface;
 use Slim\App;
 use Slim\Psr7\Factory\ServerRequestFactory;
 use Symfony\Component\Mailer\MailerInterface;
+use App\Tests\Support\TestKeys;
 
 /**
  * Read-only demonstration mode.
@@ -265,7 +266,7 @@ final class DemoModeTest extends DatabaseTestCase
         // The service caches for the life of a request; a test asserting on a
         // write made through the app needs a reader that has not already
         // answered the question.
-        return new InstanceSettingsService(new \App\Repository\InstanceSettingsRepository($this->db));
+        return new InstanceSettingsService(new \App\Repository\InstanceSettingsRepository($this->db), TestKeys::ring());
     }
 
     private function signIn(int $userId, ?int $householdId = null): void

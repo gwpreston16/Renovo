@@ -40,6 +40,7 @@ use DateTimeImmutable;
 use Psr\Log\NullLogger;
 use Slim\Psr7\Factory\RequestFactory;
 use App\Tests\Support\TestFixedTermService;
+use App\Tests\Support\TestKeys;
 
 /**
  * Year-over-year comparison and the per-period figures.
@@ -72,7 +73,7 @@ final class YearOverYearTest extends DatabaseTestCase
         $this->subscriptions = new SubscriptionRepository($this->db);
         $clock = FrozenClock::at('2026-06-15 09:00:00');
 
-        $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db));
+        $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring());
         $settings->setBaseCurrency('GBP');
 
         $historyRepository = new PriceHistoryRepository($this->db);

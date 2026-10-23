@@ -22,6 +22,7 @@ use App\Tests\Support\RecordingLogger;
 use DateTimeImmutable;
 use Psr\Http\Client\ClientInterface;
 use Slim\Psr7\Factory\RequestFactory;
+use App\Tests\Support\TestKeys;
 
 /**
  * The update check: what it asks GitHub, what it keeps, when it backs off, and
@@ -39,7 +40,7 @@ final class UpdateCheckServiceTest extends DatabaseTestCase
     {
         parent::setUp();
 
-        $this->settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db));
+        $this->settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring());
         $this->users = new UserRepository($this->db);
         $this->clock = FrozenClock::at('2026-10-23 09:00:00');
         $this->versionFile = (string) tempnam(sys_get_temp_dir(), 'renovo-version-');
