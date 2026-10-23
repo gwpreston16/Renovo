@@ -105,6 +105,28 @@ channel secrets in plain text. Build this phase before Phase 38.
   (`notification_channel.created`, `.updated`, `.deleted`), with type and label
   only — never config.
 
+### E. Settings read when the app runs, not frozen at first build (K4, K5)
+
+Found while starting it: the key rotation above is "set the new key and
+restart", and with `APP_DEBUG=false` a restart changes nothing.
+
+- **K4.** The compiled DI container no longer carries the settings as
+  literals: `settings` is resolved from the environment each time the app
+  starts a request or a command, so a changed `SECRETS_KEY`, `SESSION_KEY`,
+  `DB_PASSWORD` or SMTP setting takes effect on restart. The compiled container
+  is no longer reused across code changes: a new image (or a new
+  `composer install`) compiles afresh instead of resolving a constructor that
+  has since changed. A test builds a compiled container, changes an
+  environment value and sees it.
+- **K5.** Settings stop reading `$_SERVER`, where php-fpm puts request headers
+  (`Proxy:` → `HTTP_PROXY`). They read the process environment and `.env`
+  (through Dotenv) only, so no request header can set an `HTTP_*` setting.
+- **Compose passes the keys.** `app`, `migrate` and `scheduler` each receive
+  `SESSION_KEY` (required, no placeholder), `SECRETS_KEY`,
+  `SECRETS_PREVIOUS_KEYS` and `TOTP_ENCRYPTION_KEY`. Today
+  `TOTP_ENCRYPTION_KEY` reaches no container, and `migrate` and `scheduler`
+  fall back to placeholder session keys a backfill would encrypt under.
+
 ## Data-model changes
 
 Migrations, sequenced after the last existing one, each with an explicit
@@ -155,6 +177,30 @@ touched.
   `SECRETS_KEY` is unset; and moving the old `SESSION_KEY` to
   `SECRETS_PREVIOUS_KEYS` is the documented way to rotate it safely.
 
+*Confirmed 2026-10-23*: one `SECRETS_KEY` for every purpose; token
+revocation on password change and reset is unconditional; the whole channel
+config is one ciphertext; a value no key opens is left as is and listed; the key
+id is derived; with `SECRETS_KEY` unset the README, the backfill and Instance
+status warn, and the old `SESSION_KEY` moves to `SECRETS_PREVIOUS_KEYS` to rotate
+it.
+
+Found while starting it:
+
+- **The widen migration is skipped.** `notification_channels.config` is `TEXT`
+  on both engines (64 KiB on MySQL); a channel config is a few hundred bytes.
+- **K4 and K5 are taken into this phase** (section E). *Confirmed 2026-10-23.*
+- **The legacy keys always decrypt.** *Confirmed 2026-10-23.* When
+  `SECRETS_KEY` is set, `TOTP_ENCRYPTION_KEY` and `SESSION_KEY` are implicit
+  previous keys (decrypt only), so setting `SECRETS_KEY` for the first time
+  loses nothing and `secrets:rotate` moves every value across.
+- **Compose passes every key to every service that reads secrets, with no
+  placeholders.** *Confirmed 2026-10-23.*
+- **One resolver.** The container, the backfill migrations and
+  `secrets:rotate` all build the key ring through one static function, so the
+  fallback chain cannot drift.
+- **New strings go in every catalogue** in `translations/`, not only `en.php`
+  (`CLAUDE.md`).
+
 ## Status
 
 - [ ] `SecretCipher` key ring: `v2:<kid>:`, previous keys, `v1:` fallback;
@@ -164,8 +210,10 @@ touched.
 - [ ] `secrets:rotate` with `--dry-run`; audit entry; README section
 - [ ] API and feed tokens revoked on password change and reset; email copy
 - [ ] Channel create / edit / delete audit entries
+- [ ] Settings read at run time; compiled container rebuilt on code change; no
+      `$_SERVER` settings (K4, K5); compose passes the keys
 - [ ] `.env.example` and the README environment table updated
-- [ ] New strings in `translations/en.php`
+- [ ] New strings in every catalogue in `translations/`
 - [ ] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done
