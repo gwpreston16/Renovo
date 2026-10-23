@@ -148,6 +148,16 @@ the reset may well have been prompted by somebody else having one.
   allow-list before anything is extracted — a `../` path is refused whole rather
   than sanitised — and every file inside is re-validated by its contents exactly
   as an upload is.
+- An **instance backup is always encrypted** (libsodium secretstream,
+  XChaCha20-Poly1305, with the header authenticated and a final chunk required,
+  so a cut-off or altered file fails) under `BACKUP_ENCRYPTION_KEY`, which
+  Renovo never stores, logs or shows; the settings page shows its fingerprint.
+  Every backup is decrypted and checked against its manifest before it counts.
+  Only instance administrators can see, take or download one, and restoring is
+  a console command into an empty database, never a web route. The files it
+  carries are found from the rows, and a stored path is used only if it has the
+  shape its storage class writes, so a tampered row cannot pull another file
+  off the server into a backup.
 - An **imported file is staged under an id held in the session**, never in a URL
   or a form field, so one user cannot step through another's upload. The preview
   writes nothing at all, including the tags it would otherwise create.

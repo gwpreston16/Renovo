@@ -11,8 +11,8 @@ like, and how to start it.
 - [upgrading.md](upgrading.md): upgrading an instance (back up first).
 - [configuration.md](configuration.md): the environment variables.
 - [operations.md](operations.md): console commands, the scheduler and cron,
-  health and metrics, backup and restore, the version and update checks, and
-  demonstration mode.
+  instance backups, household backup and restore, health and metrics, the
+  version and update checks, and demonstration mode.
 
 ## Using it
 

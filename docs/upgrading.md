@@ -8,7 +8,9 @@ To see which release you are on, look at the foot of the sidebar or at
 **Settings → Instance → Instance status**; to be told when a newer one is out,
 turn on [update checks](operations.md#version-and-updates).
 
-**Back up your database first.** Then, from the project directory:
+**Back up your database first.** With [instance backups](operations.md#instance-backups)
+set up, `docker compose exec app php bin/console backup:run --force` takes and
+checks one. Then, from the project directory:
 
 ```bash
 docker compose pull && docker compose up -d --build

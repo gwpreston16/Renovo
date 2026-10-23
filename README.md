@@ -116,6 +116,8 @@ for both accounts (an Owner/Admin and a Contributor) when it is ready.
 **Your data** ([docs](docs/operations.md))
 
 - Import and export, and whole-household backup and restore, files included.
+- Scheduled instance backups of everything: encrypted, checked after they are
+  written, pruned by policy, and restorable into PostgreSQL or MySQL.
 - An iCalendar feed of what is due ([calendar](docs/features/calendar.md)).
 - Invoices and receipts attached to a subscription.
 - A versioned JSON API with an OpenAPI contract ([API](docs/api.md)).
@@ -153,7 +155,8 @@ uses it, and a deployment from the published image never installs it. See
 - [Upgrading](docs/upgrading.md): back up first, then migrate.
 - [Configuration](docs/configuration.md): the environment variables.
 - [Operations](docs/operations.md): console commands, the scheduler and cron,
-  health and metrics, backup and restore, and demonstration mode.
+  instance backups, household backup and restore, health and metrics, and
+  demonstration mode.
 - Features: [tracking](docs/features/tracking.md),
   [money](docs/features/money.md),
   [notifications](docs/features/notifications.md),
