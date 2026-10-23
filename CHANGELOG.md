@@ -8,6 +8,61 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Added
+
+- **Backups off the server.** Every verified instance backup is sent to each
+  enabled destination in **Settings → Instance → Destinations**: S3-compatible
+  storage (AWS S3, Backblaze B2, Cloudflare R2, Wasabi, MinIO), a WebDAV folder
+  (Nextcloud, ownCloud, most NAS boxes) or a mounted directory. It is the
+  encrypted file that leaves; an S3 upload is signed with the backup's own
+  SHA-256 so the service refuses one that arrives different, WebDAV is checked
+  by its stored size, and a directory copy is checked before it is renamed into
+  place. Each destination keeps its own daily / weekly / monthly retention and
+  never loses its newest copy; Renovo deletes only what it uploaded. A failed
+  upload is retried on the next two scheduler passes and never fails the local
+  backup. **Test connection** writes, reads back and deletes a marker and says
+  which step failed; removing a destination deletes nothing stored there.
+  Credentials are stored encrypted, never shown again and never logged.
+  *Phase 39.*
+- **Restore rehearsal.** `backup:rehearse` (monthly from the scheduler by
+  default; weekly, monthly or off on the card) downloads the newest copy from a
+  destination — not the local file — and verifies it; given an empty scratch
+  database (`BACKUP_REHEARSAL_DB_*`, with a commented-out `rehearsal-db` service
+  in `docker-compose.yml`), it restores into it, checks every row count, every
+  encrypted value and every password hash, and empties it again. Without one,
+  the rehearsal is download-verified and says so. `backup:fetch` downloads one
+  stored copy for `backup:restore`. *Phase 39.*
+- **Backup alerts for instance administrators**: a backup failed or reached no
+  destination, nothing has been stored off the server for two schedule
+  periods, or a rehearsal failed — once per incident, through their own
+  channels and routes, each with its own switch on the Notifications page.
+  Their renewal routes are copied to the new alerts on upgrade. *Phase 39.*
+- **The backup history shows where each run was sent**, and whether it is
+  verified locally or stored off the server; the "only on this server" warning
+  clears once a destination holds a copy. `/metrics` gains
+  `renovo_backup_offsite_last_success_timestamp_seconds{destination}` and
+  `renovo_backup_rehearsal_last_success_timestamp_seconds`. *Phase 39.*
+- `BACKUP_TRANSFER_TIMEOUT_SECONDS` (default 1800): how long one backup
+  transfer may take, in place of the general HTTP limits. *Phase 39.*
+
+### Changed
+
+- **Back up now sends the backup to the destinations after the page has come
+  back**, so a slow upload never times the page out. *Phase 39.*
+- Five migrations add the destinations, copies and rehearsals tables and the
+  backup alert switches, and copy instance administrators' renewal routes to
+  the new alerts. Back up first, then run `vendor/bin/phinx migrate`.
+  *Phase 39.*
+
+### Fixed
+
+- A lowercase `http_proxy` or `https_proxy` in the environment is now honoured
+  as the proxy, and libcurl can no longer use one the address check does not
+  know about (K25). *Phase 39.*
+- An instance backup taken before a later migration drops a table will still
+  verify and restore (K111), and a restore prepares each table's insert once
+  instead of once per row (K112). *Phase 39.*
+
 ## [1.9.0] - 2026-10-23
 
 ### Added

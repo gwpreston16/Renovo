@@ -236,6 +236,42 @@ Found while starting it:
   destinations rely on), K113 (the backup run, which this phase changes), and
   K111 and K112 (restore, which the rehearsal runs).
 
+Found while building it:
+
+- **No code path makes an existing user an instance administrator.** Only the
+  setup wizard creates one, before any channel or route exists, and a user
+  with no routes already gets every alert everywhere. The route copy on
+  promotion therefore has nothing to hook into yet; whatever phase adds a
+  promotion must copy the user's renewal routes to the three backup alerts, as
+  the migration does.
+- **CI's S3-compatible store is RustFS, not MinIO.** MinIO no longer publishes
+  a pullable image. RustFS speaks the same API and refuses a body that does not
+  match its signed `x-amz-content-sha256`, which is what the test needs; the
+  S3 tests run when `TEST_S3_*` is set and skip otherwise.
+- **WebDAV is tested against a small PHP WebDAV server on loopback**
+  (`tests/Support/servers/webdav.php`), started by the test, with an honest
+  folder and one that misreports sizes.
+- **A WebDAV upload whose size does not match is deleted**, so no object under
+  a backup's name is a bad one.
+- **Retries are one attempt per scheduler pass**, guarded by a lease on the
+  copy (the transfer timeout plus ten minutes), so the upload after Back up now
+  and a scheduled pass never send the same copy twice.
+- **A disabled destination's pending copies wait without spending an
+  attempt**; one whose local file was pruned first is given up on at once.
+- **Backup alerts look back seven days**, and stale is measured from the last
+  upload anywhere (pruned copies included), or from when the first enabled
+  destination was added. "Two schedule periods" is two days on a daily
+  schedule and two weeks on a weekly one.
+- **The rehearsal has no button.** A restore into the scratch database
+  outlasts any page; `backup:rehearse --force` runs one now.
+- **A Directory destination may not be inside the application root,
+  `BACKUP_DIRECTORY` or any upload directory**, nor hold one of them.
+- **The restore check uses `StoredSecretRepository` on the scratch database**,
+  so every kind of stored secret is checked by the same code that rotates it.
+- **`/metrics` names each destination by the name an administrator gave it**,
+  escaped as the exposition format requires; nothing about its address or
+  credentials is emitted.
+
 ## Status
 
 - [x] `BackupDestination` interface; S3-compatible (with `S3Signer`), WebDAV,
