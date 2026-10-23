@@ -214,6 +214,43 @@ final class Database
      * by the time an exception surfaces the transaction may already be gone,
      * and rolling back then would itself throw.
      */
+    /**
+     * Run `$work` inside a read-only transaction that sees one consistent
+     * snapshot of every table (Platform::snapshotStatements()).
+     *
+     * It must be the outermost transaction: inside another one the isolation
+     * level can no longer be chosen, and the reads would see whatever that
+     * transaction had already seen.
+     *
+     * @template T
+     * @param callable(self): T $work
+     * @return T
+     */
+    public function snapshot(callable $work): mixed
+    {
+        $pdo = $this->connection();
+
+        if ($pdo->inTransaction()) {
+            throw new \LogicException('A snapshot cannot be taken inside another transaction.');
+        }
+
+        foreach ($this->platform->snapshotStatements() as $statement) {
+            $pdo->exec($statement);
+        }
+
+        try {
+            $result = $work($this);
+        } catch (Throwable $exception) {
+            $pdo->exec('ROLLBACK');
+
+            throw $exception;
+        }
+
+        $pdo->exec('COMMIT');
+
+        return $result;
+    }
+
     private function rollBackIfOpen(PDO $pdo): void
     {
         if ($pdo->inTransaction()) {

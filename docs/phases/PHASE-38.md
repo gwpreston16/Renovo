@@ -228,7 +228,7 @@ Found while starting it:
 
 ## Status
 
-- [ ] `BackupDumper` (repository layer), consistent snapshot, table coverage test
+- [x] `BackupDumper` (repository layer), consistent snapshot, table coverage test
 - [ ] Archive writer with manifest and checksums; secretstream encryption
 - [ ] Verification; retention with the newest-verified guard
 - [ ] `backup:run`, `backup:verify`, `backup:decrypt`, `backup:restore`;

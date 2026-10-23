@@ -83,4 +83,42 @@ final class PostgresPlatform implements Platform
         // Keep timestamp handling predictable regardless of server locale.
         return ["SET TIME ZONE 'UTC'"];
     }
+
+    public function snapshotStatements(): array
+    {
+        return ['BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY'];
+    }
+
+    public function currentSchema(): string
+    {
+        return 'current_schema()';
+    }
+
+    public function booleanColumnCondition(): string
+    {
+        return "data_type = 'boolean'";
+    }
+
+    public function foreignKeysSql(): string
+    {
+        return 'SELECT tc.table_name AS child, ccu.table_name AS parent'
+            . ' FROM information_schema.table_constraints tc'
+            . ' JOIN information_schema.constraint_column_usage ccu'
+            . ' ON ccu.constraint_name = tc.constraint_name AND ccu.constraint_schema = tc.constraint_schema'
+            . " WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = current_schema()";
+    }
+
+    public function resetIdentityStatement(string $table, string $column): string
+    {
+        // `is_called` false on an empty table, so the next id is 1 rather
+        // than 2; otherwise the next id is one past the highest.
+        return sprintf(
+            "SELECT setval(pg_get_serial_sequence('%s', '%s'), COALESCE(MAX(%s), 1), MAX(%s) IS NOT NULL) FROM %s",
+            str_replace("'", "''", $this->quoteIdentifier($table)),
+            str_replace("'", "''", $column),
+            $this->quoteIdentifier($column),
+            $this->quoteIdentifier($column),
+            $this->quoteIdentifier($table),
+        );
+    }
 }

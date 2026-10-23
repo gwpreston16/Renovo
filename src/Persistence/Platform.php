@@ -94,4 +94,44 @@ interface Platform
      * @return list<string>
      */
     public function initialStatements(): array;
+
+    /**
+     * Statements that open a read-only transaction whose every read sees the
+     * database as it stood at one instant — what an instance backup reads all
+     * of its tables inside, so the rows agree with each other.
+     *
+     * Run on the raw connection rather than through `transactional()`: the
+     * isolation level has to be set before the transaction begins, and a
+     * snapshot that joined somebody else's transaction would not be one.
+     *
+     * @return list<string>
+     */
+    public function snapshotStatements(): array;
+
+    /**
+     * The SQL expression naming the schema the application's tables are in,
+     * for `information_schema` queries.
+     */
+    public function currentSchema(): string;
+
+    /**
+     * An `information_schema.columns` condition that is true for the columns
+     * this application writes as booleans. PostgreSQL has the type; MySQL
+     * stores them as `tinyint(1)`.
+     */
+    public function booleanColumnCondition(): string;
+
+    /**
+     * A query listing every foreign key in the current schema, one row per
+     * edge, as `child` (the table holding the key) and `parent` (the table it
+     * references).
+     */
+    public function foreignKeysSql(): string;
+
+    /**
+     * A statement that moves a table's identity sequence past the highest id
+     * it holds, after rows were inserted with explicit ids; null when the
+     * engine does that by itself.
+     */
+    public function resetIdentityStatement(string $table, string $column): ?string;
 }

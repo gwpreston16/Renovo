@@ -111,4 +111,36 @@ final class MySqlPlatform implements Platform
             "SET SESSION sql_mode = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ENGINE_SUBSTITUTION'",
         ];
     }
+
+    public function snapshotStatements(): array
+    {
+        // The level applies to the next transaction only, and a consistent
+        // snapshot is only consistent at REPEATABLE READ.
+        return [
+            'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ',
+            'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY',
+        ];
+    }
+
+    public function currentSchema(): string
+    {
+        return 'DATABASE()';
+    }
+
+    public function booleanColumnCondition(): string
+    {
+        return "column_type = 'tinyint(1)'";
+    }
+
+    public function foreignKeysSql(): string
+    {
+        return 'SELECT table_name AS child, referenced_table_name AS parent'
+            . ' FROM information_schema.referential_constraints WHERE constraint_schema = DATABASE()';
+    }
+
+    public function resetIdentityStatement(string $table, string $column): ?string
+    {
+        // InnoDB moves AUTO_INCREMENT past any explicit id it is given.
+        return null;
+    }
 }
