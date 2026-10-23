@@ -32,7 +32,12 @@ final class Environment
             return;
         }
 
-        foreach (Dotenv::createImmutable($root)->safeLoad() as $key => $value) {
+        Dotenv::createImmutable($root)->safeLoad();
+
+        // Kept from the file itself, not from what safeLoad() reports: a
+        // request header already in $_SERVER (HTTP_PROXY) makes Dotenv skip
+        // that name, and would otherwise hide the operator's value.
+        foreach (Dotenv::parse((string) file_get_contents($root . '/.env')) as $key => $value) {
             if ($value !== null) {
                 self::$dotenv[$key] = $value;
             }

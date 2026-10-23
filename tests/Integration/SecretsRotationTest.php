@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
+use App\Service\Auth\TotpService;
+use App\Service\Auth\RecoveryCodeService;
+use App\Security\Totp;
+use App\Security\PasswordHasher;
+use App\Repository\WebAuthnCredentialRepository;
+use App\Repository\RecoveryCodeRepository;
 use App\Repository\AuditLogRepository;
 use App\Repository\InstanceSettingsRepository;
 use App\Repository\MembershipRepository;
@@ -74,6 +80,29 @@ final class SecretsRotationTest extends DatabaseTestCase
         $entry = $this->db->fetchOne("SELECT * FROM audit_log WHERE action = 'secrets.rotated'");
         self::assertNotNull($entry);
         self::assertStringContainsString('"rotated":2', (string) $entry['context']);
+    }
+
+    public function testTwoFactorStillVerifiesUnderOnlyTheNewKey(): void
+    {
+        $this->seed(new KeyRing('key-one'));
+        $step = Totp::stepAt($this->clock->now()->getTimestamp());
+        (new TotpRepository($this->db))->confirm($this->alice, $this->clock->now(), $step - 10);
+
+        $this->service(new KeyRing('key-two', ['key-one']))->rotate();
+
+        $audit = $this->audit();
+        $totp = new TotpService(
+            new TotpRepository($this->db),
+            new RecoveryCodeService(new RecoveryCodeRepository($this->db), new PasswordHasher(), $audit, $this->clock),
+            new WebAuthnCredentialRepository($this->db),
+            new SecretCipher(new KeyRing('key-two'), SecretCipher::PURPOSE_TOTP),
+            new PasswordHasher(),
+            $audit,
+            $this->clock,
+            new NullLogger(),
+        );
+
+        self::assertTrue($totp->verify($this->alice, Totp::codeForStep(self::SEED, $step)));
     }
 
     public function testASecondRunChangesNothing(): void
@@ -154,13 +183,18 @@ final class SecretsRotationTest extends DatabaseTestCase
             new StoredSecretRepository($this->db),
             $ring,
             $this->db,
-            new AuditLogService(
-                new AuditLogRepository($this->db),
-                new MembershipRepository($this->db),
-                new RequestContextHolder(RequestContext::of('127.0.0.1', 'console')),
-                $this->clock,
-                new NullLogger(),
-            ),
+            $this->audit(),
+        );
+    }
+
+    private function audit(): AuditLogService
+    {
+        return new AuditLogService(
+            new AuditLogRepository($this->db),
+            new MembershipRepository($this->db),
+            new RequestContextHolder(RequestContext::of('127.0.0.1', 'console')),
+            $this->clock,
+            new NullLogger(),
         );
     }
 

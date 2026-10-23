@@ -44,11 +44,12 @@ final class InstanceSettingsService
     /** @var array<string, string>|null */
     private ?array $cache = null;
 
-    private readonly SecretCipher $rateKeyCipher;
+    private ?SecretCipher $rateKeyCipher = null;
 
-    public function __construct(private readonly InstanceSettingsRepository $repository, KeyRing $keys)
-    {
-        $this->rateKeyCipher = new SecretCipher($keys, SecretCipher::PURPOSE_RATE_PROVIDER_KEY);
+    public function __construct(
+        private readonly InstanceSettingsRepository $repository,
+        private readonly KeyRing $keys,
+    ) {
     }
 
     public function isolationMode(): IsolationMode
@@ -130,7 +131,7 @@ final class InstanceSettingsService
         }
 
         try {
-            return $this->rateKeyCipher->decrypt($stored);
+            return $this->rateKeyCipher()->decrypt($stored);
         } catch (UnreadableSecretException) {
             return '';
         }
@@ -138,7 +139,16 @@ final class InstanceSettingsService
 
     public function setRateProviderKey(#[SensitiveParameter] string $key): void
     {
-        $this->set(self::KEY_RATE_PROVIDER_KEY, $key === '' ? '' : $this->rateKeyCipher->encrypt($key));
+        $this->set(self::KEY_RATE_PROVIDER_KEY, $key === '' ? '' : $this->rateKeyCipher()->encrypt($key));
+    }
+
+    /**
+     * Built on first use: this service is consulted on every scoped request,
+     * and only the rate refresh and the settings form need the key.
+     */
+    private function rateKeyCipher(): SecretCipher
+    {
+        return $this->rateKeyCipher ??= new SecretCipher($this->keys, SecretCipher::PURPOSE_RATE_PROVIDER_KEY);
     }
 
     /**

@@ -208,6 +208,11 @@ Found while starting it:
 - **`secrets:rotate` exits 2 when a value could not be opened** (found while
   building it), so a script or a person notices; the values are still listed
   and left as they are.
+- **Only the two paths that change an existing password revoke tokens**
+  (found while building it). The other writes of a password hash are a
+  rehash at sign-in (the same password), accepting an invitation and an
+  Owner's temporary password (both a new account, with no tokens yet). An
+  Owner's "Send reset" goes through the reset link, which revokes.
 - **The channel on/off switch is audited as an edit**
   (`notification_channel.updated`), since it changes the channel.
 - **`bin/dev-setup.sh` generates a `SECRETS_KEY` for a new `.env` only.** An

@@ -57,6 +57,24 @@ final class EnvironmentTest extends TestCase
         self::assertSame('http://from-dotenv:3128', Environment::get('HTTP_RENOVO_TEST_DOTENV'));
     }
 
+    public function testARequestHeaderCannotHideTheDotenvValue(): void
+    {
+        $_SERVER['HTTP_RENOVO_TEST_HIDDEN'] = 'http://attacker.example:8080';
+        $root = sys_get_temp_dir() . '/renovo-env-' . bin2hex(random_bytes(4));
+        mkdir($root);
+        file_put_contents($root . '/.env', "HTTP_RENOVO_TEST_HIDDEN=http://operator-proxy:3128\n");
+
+        try {
+            Environment::loadDotenv($root);
+        } finally {
+            unlink($root . '/.env');
+            rmdir($root);
+            unset($_SERVER['HTTP_RENOVO_TEST_HIDDEN'], $_ENV['HTTP_RENOVO_TEST_HIDDEN']);
+        }
+
+        self::assertSame('http://operator-proxy:3128', Environment::get('HTTP_RENOVO_TEST_HIDDEN'));
+    }
+
     public function testOtherNamesReadEnvThenTheProcessAndNeverServer(): void
     {
         $_SERVER['RENOVO_TEST_VALUE'] = 'from-server';
