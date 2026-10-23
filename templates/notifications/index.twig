@@ -251,6 +251,30 @@
                            {{ preferences.contractAlerts ? 'checked' : '' }}>
                 </label>
 
+                {#
+                    Phase 39: the backup alerts, for instance administrators
+                    only — nobody else is ever sent them, so nobody else is
+                    offered the switches.
+                #}
+                {% if current_user.isInstanceAdmin %}
+                    <fieldset class="stack" id="backup-alerts">
+                        <legend>{{ t('notifications.backup_heading') }}</legend>
+                        <p class="hint">{{ t('notifications.backup_hint') }}</p>
+                        {% for switch in [
+                            {'name': 'backup_failed_alerts', 'on': preferences.backupFailedAlerts},
+                            {'name': 'backup_stale_alerts', 'on': preferences.backupStaleAlerts},
+                            {'name': 'backup_rehearsal_alerts', 'on': preferences.backupRehearsalAlerts},
+                        ] %}
+                            <input type="hidden" name="{{ switch.name }}" value="0">
+                            <label class="choice toggle-row">
+                                <span class="choice-title">{{ t('notifications.' ~ switch.name) }}</span>
+                                <input type="checkbox" class="toggle" role="switch" name="{{ switch.name }}" value="1"
+                                       {{ switch.on ? 'checked' : '' }}>
+                            </label>
+                        {% endfor %}
+                    </fieldset>
+                {% endif %}
+
                 <div class="form-actions">
                     <button type="submit" class="button button-outline">{{ t('notifications.save_preferences') }}</button>
                 </div>

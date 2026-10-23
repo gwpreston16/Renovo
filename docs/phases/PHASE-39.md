@@ -245,7 +245,7 @@ Found while starting it:
 - [x] `backup:rehearse`, `backup:fetch`; scratch-database restore and checks
 - [x] `BackupFailed`, `BackupStale`, `BackupRehearsalFailed` alerts, preference
       columns and route copy for instance admins
-- [ ] Destinations, rehearsal and history on Settings → Instance → Backups;
+- [x] Destinations, rehearsal and history on Settings → Instance → Backups;
       metrics
 - [ ] `docs/operations.md` and `docs/configuration.md`: destinations,
       least-privilege keys, object lock, rehearsal database

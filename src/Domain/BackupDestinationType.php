@@ -21,6 +21,42 @@ enum BackupDestinationType: string
     }
 
     /**
+     * The form's fields, in order. A field's label and hint are
+     * `backup.destination.field.<name>` and `….<name>_hint`.
+     *
+     * @return list<array{name: string, input: string, secret: bool, hint: bool}>
+     */
+    public function fields(): array
+    {
+        $field = static fn (string $name, string $input = 'text', bool $hint = false): array => [
+            'name' => $name,
+            'input' => $input,
+            'secret' => in_array($name, ['access_key_id', 'secret_key', 'password'], true),
+            'hint' => $hint,
+        ];
+
+        return match ($this) {
+            self::S3 => [
+                $field('endpoint', 'url', true),
+                $field('region'),
+                $field('bucket'),
+                $field('prefix', 'text', true),
+                $field('path_style', 'checkbox', true),
+                $field('access_key_id', 'password'),
+                $field('secret_key', 'password'),
+            ],
+            self::WebDav => [
+                $field('url', 'url', true),
+                $field('username'),
+                $field('password', 'password'),
+            ],
+            self::Directory => [
+                $field('path', 'text', true),
+            ],
+        };
+    }
+
+    /**
      * The settings that are credentials: stored encrypted, never shown again.
      *
      * @return list<string>

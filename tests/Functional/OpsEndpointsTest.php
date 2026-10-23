@@ -209,6 +209,57 @@ final class OpsEndpointsTest extends DatabaseTestCase
         self::assertStringContainsString('renovo_backup_runs_total{status="failed"} 1', $body);
     }
 
+    public function testTheExpositionCarriesEachDestinationAndTheRehearsalButNoCredential(): void
+    {
+        $this->signIn($this->adminId);
+        $destinations = new \App\Repository\BackupDestinationRepository(
+            $this->db,
+            \App\Support\FrozenClock::at('2026-06-01 00:00:00'),
+            new \App\Security\KeyRing('metrics-test-key'),
+        );
+        $nas = $destinations->create(
+            \App\Domain\BackupDestinationType::S3,
+            'Office "NAS"',
+            ['endpoint' => 'https://minio.lan', 'bucket' => 'b'],
+            ['access_key_id' => 'AKIA-canary', 'secret_key' => 'canary-metrics-secret'],
+            true,
+            new \App\Service\Backup\BackupRetention(7, 4, 6),
+        );
+
+        $body = (string) $this->get('/metrics')->getBody();
+        self::assertStringContainsString(
+            'renovo_backup_offsite_last_success_timestamp_seconds{destination="Office \\"NAS\\""} 0',
+            $body,
+        );
+        self::assertStringContainsString('renovo_backup_rehearsal_last_success_timestamp_seconds 0', $body);
+
+        $runs = new \App\Repository\BackupRunRepository($this->db);
+        $run = (int) $runs->claim(new \DateTimeImmutable('2026-06-01 03:00:00'), 'schedule');
+        $runs->finish($run, 'verified', new \DateTimeImmutable('2026-06-01 03:00:10'), ['file' => 'x']);
+        $copies = new \App\Repository\BackupCopyRepository($this->db);
+        $copies->queue($run, $nas, 'x');
+        $copy = $copies->pending()[0];
+        $copies->confirm($copy->id, new \DateTimeImmutable('2026-06-01 03:05:00'));
+        $rehearsals = new \App\Repository\BackupRehearsalRepository($this->db);
+        $rehearsal = $rehearsals->start($copy->id, 'Office', 'download', new \DateTimeImmutable('2026-06-02 04:00:00'));
+        $finished = new \DateTimeImmutable('2026-06-02 04:01:00');
+        $rehearsals->finish($rehearsal, 'passed', 'download', null, null, $finished);
+
+        $body = (string) $this->get('/metrics')->getBody();
+        $utc = new \DateTimeZone('UTC');
+        self::assertStringContainsString(
+            '{destination="Office \\"NAS\\""} ' . (new \DateTimeImmutable('2026-06-01 03:05:00', $utc))->getTimestamp(),
+            $body,
+        );
+        self::assertStringContainsString(
+            'renovo_backup_rehearsal_last_success_timestamp_seconds '
+            . (new \DateTimeImmutable('2026-06-02 04:01:00', $utc))->getTimestamp(),
+            $body,
+        );
+        self::assertStringNotContainsString('canary', $body);
+        self::assertStringNotContainsString('minio.lan', $body);
+    }
+
     /**
      * With metrics configured, requests are counted by the status the client
      * actually got — which is only true while the counter sits outside the

@@ -49,6 +49,7 @@ use App\Controller\PaymentMethodController;
 use App\Controller\DashboardController;
 use App\Controller\ForecastController;
 use App\Controller\ImportController;
+use App\Controller\BackupDestinationController;
 use App\Controller\InstanceBackupController;
 use App\Controller\MemberController;
 use App\Controller\NotificationController;
@@ -487,6 +488,30 @@ return static function (App $app): void {
 
         $group->get('/settings/backups/{id:[0-9]+}/download', [InstanceBackupController::class, 'download'])
             ->setName('instance-backup-download')
+            ->add($requires(Permission::ManageInstance));
+
+        // Phase 39: destinations and the restore rehearsal. Instance
+        // administration, every one: a destination receives every household.
+        $group->post('/settings/backups/destinations', [BackupDestinationController::class, 'create'])
+            ->add($requires(Permission::ManageInstance));
+
+        $group->post('/settings/backups/destinations/{id:[0-9]+}', [BackupDestinationController::class, 'update'])
+            ->add($requires(Permission::ManageInstance));
+
+        $group->post(
+            '/settings/backups/destinations/{id:[0-9]+}/enabled',
+            [BackupDestinationController::class, 'setEnabled'],
+        )->add($requires(Permission::ManageInstance));
+
+        $group->post('/settings/backups/destinations/{id:[0-9]+}/test', [BackupDestinationController::class, 'test'])
+            ->add($requires(Permission::ManageInstance));
+
+        $group->post(
+            '/settings/backups/destinations/{id:[0-9]+}/delete',
+            [BackupDestinationController::class, 'delete'],
+        )->add($requires(Permission::ManageInstance));
+
+        $group->post('/settings/backups/rehearsal', [BackupDestinationController::class, 'updateRehearsal'])
             ->add($requires(Permission::ManageInstance));
 
         // ------------------------------------------------------------------
