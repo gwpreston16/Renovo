@@ -72,8 +72,9 @@ run a compose file of your own, copy these changes from `docker-compose.yml`:
   `backup:run`, or rehearsals never run;
 - optionally, the commented-out `rehearsal-db` service and its volume.
 
-An administrator who routes no renewals anywhere gets no route for the backup
-alerts: tick them in the routing grid on the Notifications page. Then follow
+An administrator who has set up routing but sends renewals to no channel gets
+no route for the backup alerts (one with no routing at all already gets every
+alert everywhere): tick them in the routing grid on the Notifications page. Then follow
 [Sending backups off the server](operations.md#sending-backups-off-the-server).
 
 ## After upgrading to secrets at rest (Phase 40)

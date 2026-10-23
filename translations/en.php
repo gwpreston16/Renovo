@@ -2951,7 +2951,7 @@ return [
     'backup.rehearsal.database_missing' =>
         'Not configured: rehearsals download and verify a copy, without restoring it. Set {variable} '
         . 'to an empty database to restore into.',
-    'backup.rehearsal.database_set' => 'Configured: rehearsals restore into it and drop it again.',
+    'backup.rehearsal.database_set' => 'Rehearsals restore into it and drop it again.',
     'backup.rehearsal.heading' => 'Restore rehearsal',
     'backup.rehearsal.history' => 'Recent rehearsals',
     'backup.rehearsal.intro' =>
@@ -3001,6 +3001,8 @@ return [
     'flash.backup_destination_test_failed' => 'The connection test failed while {step}: {reason}',
     'flash.backup_destination_test_passed' => 'Connected: a test file was written, read back and deleted.',
     'flash.backup_rehearsal_saved' => 'Rehearsal schedule saved.',
+    'flash.instance_backup_taken_queued' =>
+        'Backed up and verified. Another upload is running, so the scheduler will send this one.',
     'flash.instance_backup_taken_sending' =>
         'Backed up and verified. Sending it to {count, plural, one {# destination} other {# destinations}} now.',
     'notifications.backup_failed_alerts' => 'A backup fails, or reaches no destination',

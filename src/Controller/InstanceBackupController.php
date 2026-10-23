@@ -93,7 +93,8 @@ final class InstanceBackupController extends Controller
         $queued = $outcome->result === BackupOutcome::VERIFIED && $outcome->run !== null
             ? $this->offsite->queue($outcome->run)
             : 0;
-        if ($queued > 0 && $outcome->run !== null && !$this->offsite->isSending()) {
+        $deferred = $queued > 0 && $outcome->run !== null && !$this->offsite->isSending();
+        if ($deferred && $outcome->run !== null) {
             $runId = $outcome->run->id;
             $this->afterResponse->defer(function () use ($runId): void {
                 $this->offsite->sendPending($runId);
@@ -102,9 +103,12 @@ final class InstanceBackupController extends Controller
         }
 
         match ($outcome->result) {
-            BackupOutcome::VERIFIED => $queued > 0
-                ? $this->flash('success', 'flash.instance_backup_taken_sending', ['count' => $queued])
-                : $this->flash('success', 'flash.instance_backup_taken'),
+            BackupOutcome::VERIFIED => match (true) {
+                $deferred => $this->flash('success', 'flash.instance_backup_taken_sending', ['count' => $queued]),
+                // Another upload is running: this one waits for the scheduler.
+                $queued > 0 => $this->flash('success', 'flash.instance_backup_taken_queued'),
+                default => $this->flash('success', 'flash.instance_backup_taken'),
+            },
             BackupOutcome::TOO_SOON => $this->flash('error', 'flash.instance_backup_too_soon'),
             BackupOutcome::BUSY => $this->flash('error', 'flash.instance_backup_busy'),
             default => $this->flash('error', 'flash.instance_backup_failed', [

@@ -453,6 +453,7 @@
                                                    placeholder="{{ t('backup.destination.credential_replace') }}">
                                         {% else %}
                                             <input type="{{ field.input }}" id="{{ id }}" name="{{ field.name }}" autocomplete="off"
+                                                   {{ field.required ? 'required' : '' }}
                                                    value="{{ edit ? edit.values[field.name]|default('') : destination.configString(field.name) }}">
                                             {% if field.hint %}<p class="hint">{{ t('backup.destination.field.' ~ field.name ~ '_hint') }}</p>{% endif %}
                                         {% endif %}
@@ -471,7 +472,7 @@
                                                 <label for="destination_{{ destination.id }}_keep_{{ period }}">{{ t('backup.instance_keep_' ~ period) }}</label>
                                                 <input type="number" id="destination_{{ destination.id }}_keep_{{ period }}" name="keep_{{ period }}" class="num"
                                                        min="0" max="{{ backups.max_retention }}" required
-                                                       value="{{ attribute(destination.retention, period) }}">
+                                                       value="{{ edit ? edit.values['keep_' ~ period]|default(attribute(destination.retention, period)) : attribute(destination.retention, period) }}">
                                             </div>
                                         {% endfor %}
                                     </div>

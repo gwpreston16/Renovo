@@ -189,8 +189,10 @@ final class BackupDestinationService
                 $values[$field['name']] = mb_substr($value, 0, self::FIELD_MAX);
             }
         }
-        $name = $input['name'] ?? '';
-        $values['name'] = is_string($name) ? mb_substr($name, 0, self::NAME_MAX) : '';
+        foreach (['name', 'keep_daily', 'keep_weekly', 'keep_monthly'] as $field) {
+            $value = $input[$field] ?? '';
+            $values[$field] = is_string($value) ? mb_substr($value, 0, self::NAME_MAX) : '';
+        }
 
         $errors = [];
         foreach ($exception->errors() as $field => $error) {

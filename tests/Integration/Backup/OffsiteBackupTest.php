@@ -166,6 +166,11 @@ final class OffsiteBackupTest extends DatabaseTestCase
         self::assertTrue($this->copies()->claim($copy->id, $this->clock->now(), 3600));
         self::assertTrue($this->service()->isSending());
 
+        // An attempt that failed is not one in flight.
+        $this->copies()->recordFailure($copy->id, $this->clock->now(), 'connect: down', false);
+        self::assertFalse($this->service()->isSending());
+        $this->db->execute('UPDATE backup_copies SET error = NULL');
+
         self::assertSame(0, array_sum($this->service()->sendPending()));
         self::assertFileDoesNotExist($this->root . '/nas/' . $run->file);
     }

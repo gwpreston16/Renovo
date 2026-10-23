@@ -112,6 +112,8 @@ final class BackupDestinationsTest extends TestCase
             self::assertSame(DestinationException::STEP_VERIFY, $exception->step);
             self::assertSame('size', $exception->reason);
         }
+        // Not left behind under a backup's name.
+        self::assertFileDoesNotExist(self::$webdavRoot . '/renovo-instance-x.renovo-backup');
     }
 
     public function testAPrivateAddressIsRefusedUnlessItIsTrusted(): void
@@ -324,6 +326,47 @@ final class BackupDestinationsTest extends TestCase
             'https://my-bucket.s3.eu-west-2.amazonaws.com/renovo/renovo-instance-a.renovo-backup',
             $make(false)->url('renovo/renovo-instance-a.renovo-backup'),
         );
+    }
+
+    public function testTestConnectionUsesItsOwnExchangeAndTheContainerGivesItOne(): void
+    {
+        $record = new BackupDestinationRecord(
+            1,
+            \App\Domain\BackupDestinationType::WebDav,
+            'NAS',
+            ['url' => self::$webdav->url('/dav/', 'nas.test'), 'username' => self::USER],
+            ['password' => self::PASSWORD],
+            false,
+            true,
+            new \App\Service\Backup\BackupRetention(7, 4, 6),
+            null,
+        );
+        // The transfer exchange may not reach the NAS; the test exchange may.
+        $factory = new BackupDestinationFactory(
+            $this->exchange([]),
+            new RequestFactory(),
+            new StreamFactory(),
+            new SystemClock(new \DateTimeZone('UTC')),
+            $this->exchange(['nas.test']),
+        );
+
+        $factory->createForTest($record)->test();
+        try {
+            $factory->create($record)->test();
+            self::fail('The transfer exchange was used for the test.');
+        } catch (DestinationException $exception) {
+            self::assertSame('blocked', $exception->reason);
+        }
+
+        $quick = new \ReflectionProperty(BackupDestinationFactory::class, 'quick');
+        $container = (static function (): \Psr\Container\ContainerInterface {
+            $settings = require dirname(__DIR__, 3) . '/config/settings.php';
+            $builder = new \DI\ContainerBuilder();
+            (require dirname(__DIR__, 3) . '/config/container.php')($builder, $settings);
+
+            return $builder->build();
+        })();
+        self::assertNotNull($quick->getValue($container->get(BackupDestinationFactory::class)));
     }
 
     public function testAStoredS3KeyCarriesThePrefixOnceAndAChangedPrefixDoesNotMoveIt(): void

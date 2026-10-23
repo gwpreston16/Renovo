@@ -20,7 +20,8 @@ interruption and nothing else is:
 Everything is configured per user on the **Notifications** page; each member of
 a household sets their own. One set of lead times (any of 1, 3, 7, 14 and 30
 days) applies to renewals, trial conversions and cancel-by deadlines alike;
-budget alerts, price changes and contract endings each have a switch; and the routing grid has a
+budget alerts, price changes and contract endings each have a switch, as do,
+for instance administrators, the three backup alerts; and the routing grid has a
 column for every channel, with a channel that is switched off greyed out but
 keeping its choices. You are notified about the subscriptions you own and
 the ones you pay for, not about everything in the household — a household of

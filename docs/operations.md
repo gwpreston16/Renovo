@@ -479,8 +479,10 @@ The compose file points nginx's healthcheck at `/readyz`.
 
 `/metrics` carries counts of accounts, households, subscriptions, notification
 outcomes, rate freshness, instance backups (`renovo_backup_last_success_timestamp_seconds`,
-`renovo_backup_last_size_bytes`, `renovo_backup_runs_total{status}`) and
-requests by status class. Those are not secrets,
+`renovo_backup_last_size_bytes`, `renovo_backup_runs_total{status}`), backups off
+the server (`renovo_backup_offsite_last_success_timestamp_seconds{destination,id}`,
+`renovo_backup_rehearsal_last_success_timestamp_seconds`) and requests by status
+class. Those are not secrets,
 but they describe an instance, so it is closed by default: set `METRICS_TOKEN`
 and give the same value to the scrape job as a bearer credential. An instance
 administrator signed in to a browser can also read it. Anybody else gets 404 —

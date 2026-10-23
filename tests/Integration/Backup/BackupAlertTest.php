@@ -189,11 +189,62 @@ final class BackupAlertTest extends NotificationTestCase
         self::assertSame([], $this->notifier->sent);
     }
 
+    public function testTheUpgradeCopiesRenewalRoutesToTheBackupAlertsForAdministratorsOnly(): void
+    {
+        $routes = new \App\Repository\NotificationRouteRepository($this->db, $this->clock);
+        $aliceChannel = $this->channels->findAllForUser($this->alice)[0]->id;
+        $adminChannel = $this->channels->findAllForUser($this->admin)[0]->id;
+        $routes->replaceForUser($this->alice, [$aliceChannel => [AlertType::Renewal]]);
+        $routes->replaceForUser($this->admin, [$adminChannel => [AlertType::Renewal]]);
+        $this->db->execute(
+            'DELETE FROM notification_routes WHERE alert_type IN'
+            . " ('backup_failed', 'backup_stale', 'backup_rehearsal_failed')",
+        );
+
+        $this->copyRoutes();
+        $this->copyRoutes();
+
+        $backup = ['backup_failed', 'backup_rehearsal_failed', 'backup_stale'];
+        $types = $routes->findForUser($this->admin)[$adminChannel];
+        sort($types);
+        self::assertSame([...$backup, 'renewal'], $types);
+        self::assertSame(['renewal'], $routes->findForUser($this->alice)[$aliceChannel]);
+
+        $this->copyRoutes('down');
+        self::assertSame(['renewal'], $routes->findForUser($this->admin)[$adminChannel]);
+    }
+
+    public function testStaleWhenNothingWasEverStoredSaysSo(): void
+    {
+        $this->destination('NAS', '2026-09-01 00:00:00');
+
+        $this->alerts()->notify();
+
+        self::assertStringContainsString(
+            'No backup has been stored off the server yet.',
+            $this->notifier->sent[0]['alert']->body(),
+        );
+    }
+
     public function testTheTypesAreOnlyInAnAdministratorsRoutingGrid(): void
     {
         self::assertContains(AlertType::BackupStale, AlertType::forUser(true));
         self::assertNotContains(AlertType::BackupStale, AlertType::forUser(false));
         self::assertFalse(AlertType::BackupFailed->usesLeadTimes());
+    }
+
+    private function copyRoutes(string $direction = 'up'): void
+    {
+        require_once dirname(__DIR__, 3) . '/migrations/20270601000005_copy_renewal_routes_to_backup_alerts.php';
+
+        $adapter = $this->createMock(\Phinx\Db\Adapter\AdapterInterface::class);
+        $adapter->method('execute')->willReturnCallback(
+            fn (string $sql): int => $this->db->execute($sql),
+        );
+
+        $migration = new \CopyRenewalRoutesToBackupAlerts('testing', 20270601000005);
+        $migration->setAdapter($adapter);
+        $migration->{$direction}();
     }
 
     private function alerts(): BackupAlertService

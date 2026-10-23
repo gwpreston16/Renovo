@@ -55,15 +55,20 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   backup alert switches, and copy instance administrators' renewal routes to
   the new alerts. Back up first, then run `vendor/bin/phinx migrate`.
   *Phase 39.*
+- **`docker-compose.yml` passes `BACKUP_TRANSFER_TIMEOUT_SECONDS` and
+  `BACKUP_REHEARSAL_DB_*` to the app and scheduler, adds `backup:rehearse` to
+  the scheduler's daily loop, and has a commented-out `rehearsal-db` service.**
+  Copy the change into a compose file of your own; see *After upgrading to
+  off-site backups* in `docs/upgrading.md`. *Phase 39.*
 
 ### Fixed
 
 - A lowercase `http_proxy` or `https_proxy` in the environment is now honoured
   as the proxy, and libcurl can no longer use one the address check does not
-  know about (K25). *Phase 39.*
+  know about. *Phase 39.* (K25)
 - An instance backup taken before a later migration drops a table will still
-  verify and restore (K111), and a restore prepares each table's insert once
-  instead of once per row (K112). *Phase 39.*
+  verify and restore, and a restore prepares each table's insert once
+  instead of once per row. *Phase 39.* (K111, K112)
 
 ## [1.9.0] - 2026-10-23
 

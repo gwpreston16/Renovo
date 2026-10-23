@@ -286,12 +286,17 @@ final class BackupDestinationScreensTest extends DatabaseTestCase
         // A bad edit is refused, and changes nothing.
         $this->request('POST', '/settings/backups/destinations', $this->directoryForm());
         $id = $this->onlyDestination();
-        $this->request('POST', '/settings/backups/destinations/' . $id, ['name' => '', 'path' => '/nowhere']);
+        $this->request('POST', '/settings/backups/destinations/' . $id, [
+            'name' => '',
+            'path' => '/nowhere',
+            'keep_daily' => '21',
+        ]);
         self::assertSame('NAS', $this->destinations()->find($id)?->name);
         $page = $this->page();
         self::assertStringContainsString('Enter a name of up to 100 characters.', $page);
         // The edit comes back open, with the path that was typed.
         self::assertStringContainsString('value="/nowhere"', $page);
+        self::assertStringContainsString('value="21"', $page);
         self::assertStringContainsString('That directory does not exist inside the container.', $page);
     }
 
@@ -361,6 +366,7 @@ final class BackupDestinationScreensTest extends DatabaseTestCase
         $this->db->execute("UPDATE backup_runs SET started_at = '2020-01-01 00:00:00'");
         $this->request('POST', '/settings/backups/run');
         self::assertCount(1, $this->after->work);
+        self::assertStringContainsString('the scheduler will send this one', $this->page());
         $this->db->execute('UPDATE backup_copies SET attempted_at = NULL');
 
         $this->after->runAll();

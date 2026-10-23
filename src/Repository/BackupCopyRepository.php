@@ -75,7 +75,10 @@ final class BackupCopyRepository extends AbstractRepository
     public function claim(int $id, DateTimeImmutable $now, int $leaseSeconds): bool
     {
         return $this->db->execute(
-            'UPDATE ' . $this->quote($this->table()) . ' SET ' . $this->quote('attempted_at') . ' = :now'
+            // The last attempt's error goes as the copy is taken: a pending
+            // copy with no error and a recent attempt is one being sent.
+            'UPDATE ' . $this->quote($this->table()) . ' SET ' . $this->quote('attempted_at') . ' = :now,'
+            . ' ' . $this->quote('error') . ' = NULL'
             . ' WHERE ' . $this->quote('id') . ' = :id AND ' . $this->quote('status') . ' = :pending'
             . ' AND (' . $this->quote('attempted_at') . ' IS NULL OR ' . $this->quote('attempted_at') . ' < :lease)',
             [
@@ -88,14 +91,16 @@ final class BackupCopyRepository extends AbstractRepository
     }
 
     /**
-     * Whether some copy is being sent right now: pending, and taken within
-     * the lease.
+     * Whether some copy is being sent right now: pending, taken within the
+     * lease, and with no error yet — an attempt that failed has recorded one
+     * and is no longer in flight.
      */
     public function isSending(DateTimeImmutable $now, int $leaseSeconds): bool
     {
         return $this->db->fetchValue(
             'SELECT 1 FROM ' . $this->quote($this->table())
             . ' WHERE ' . $this->quote('status') . ' = :pending'
+            . ' AND ' . $this->quote('error') . ' IS NULL'
             . ' AND ' . $this->quote('attempted_at') . ' >= :lease LIMIT 1',
             ['pending' => BackupCopy::PENDING, 'lease' => $now->modify('-' . max(1, $leaseSeconds) . ' seconds')],
         ) !== null;
