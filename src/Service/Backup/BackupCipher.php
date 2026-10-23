@@ -98,7 +98,11 @@ class BackupCipher
     public function decryptFile(string $encryptedPath, string $plainPath, BackupKey $key): void
     {
         $in = $this->open($encryptedPath, 'rb');
-        $out = $this->open($plainPath, 'wb');
+        // The plaintext is every row and file: created new (never through a
+        // link someone planted, never over an existing file) and private
+        // before the first byte is written.
+        $out = $this->open($plainPath, 'xb');
+        @chmod($plainPath, 0o600);
 
         try {
             $prefix = $this->readPrefix($in);
@@ -145,9 +149,18 @@ class BackupCipher
                     'The backup has data after its final chunk; it has been altered.',
                 );
             }
+        } catch (BackupException $exception) {
+            // Whatever decrypted before the failure is plaintext of a file
+            // that is not trusted; none of it is left behind.
+            fclose($out);
+            @unlink($plainPath);
+
+            throw $exception;
         } finally {
             fclose($in);
-            fclose($out);
+            if (is_resource($out)) {
+                fclose($out);
+            }
         }
     }
 
@@ -184,6 +197,9 @@ class BackupCipher
     private function open(string $path, string $mode)
     {
         $handle = @fopen($path, $mode);
+        if ($handle === false && $mode === 'xb' && file_exists($path)) {
+            throw new BackupException('io', sprintf('%s already exists.', basename($path)));
+        }
         if ($handle === false) {
             throw new BackupException('io', sprintf('Could not open %s.', basename($path)));
         }

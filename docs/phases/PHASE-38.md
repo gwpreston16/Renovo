@@ -134,7 +134,8 @@ never counts towards retention or "last good backup".
   dependency order in one transaction where the engine allows, resets identity
   sequences, and writes the files.
 - After restore, `phinx migrate` brings it to the running version.
-- Documented in the README as a numbered procedure, including the keys.
+- Documented as a numbered procedure, including the keys — in
+  `docs/operations.md` (see *Found while starting it*).
 
 ### C. Settings → Instance → Backups (instance admin)
 
@@ -146,8 +147,8 @@ never counts towards retention or "last good backup".
   Failed with reason), warnings — and **Download** for a verified backup (the
   encrypted file, streamed; audit-logged).
 - A warning while backups exist **only on this server**: "These backups are on
-  the same server as your data. Phase 39 can send them elsewhere; until then,
-  copy `BACKUP_DIRECTORY` off this machine."
+  the same server as your data. Copy `BACKUP_DIRECTORY` off this machine as
+  well." (Phase 39 sends them elsewhere; see *Found while building it*.)
 - The **Instance status** card gains **Last instance backup**.
 
 ### D. Observability

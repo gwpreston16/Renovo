@@ -132,12 +132,21 @@ final class InstanceBackupTest extends DatabaseTestCase
         self::assertSame($before, $this->everyRow($this->db));
         self::assertSame($files, $this->fileHashes());
 
-        // Ids continue past the highest restored one.
-        $maxId = (int) $this->db->fetchValue('SELECT MAX(id) FROM subscriptions');
+        // Ids continue past the highest restored one, table by table.
         $users = new UserRepository($this->db);
         $newId = $users->create('after@example.test', 'After', 'x', false, $this->clock->now());
         self::assertGreaterThan((int) max(array_column($before['users'], 'id')), $newId);
-        self::assertGreaterThan(0, $maxId);
+        $household = (int) $before['households'][0]['id'];
+        foreach (['tags', 'categories'] as $table) {
+            $id = $this->db->insert($table, [
+                'household_id' => $household,
+                'name' => 'after-restore',
+                'created_at' => '2026-06-01 09:00:00',
+                'updated_at' => '2026-06-01 09:00:00',
+            ]);
+            self::assertGreaterThan((int) max(array_column($before[$table], 'id')), $id, $table);
+        }
+        $this->assertNoKeyAnywhere();
 
         // The same account signs in with the same password and two-factor.
         $restored = $users->findByEmail($user->email);
@@ -219,7 +228,7 @@ final class InstanceBackupTest extends DatabaseTestCase
         $run = $this->service()->runScheduled(force: true)->run;
         $path = $this->root . '/backups/' . $run?->file;
 
-        $this->expectVerifyFails('wrong_key', $path, $this->service(self::OTHER_KEY));
+        $this->expectVerifyFails('wrong_key', $path, self::OTHER_KEY);
 
         $copy = $this->copy($path);
         file_put_contents($copy, substr((string) file_get_contents($copy), 0, -100));
@@ -249,12 +258,47 @@ final class InstanceBackupTest extends DatabaseTestCase
         $this->expectVerifyFails('unexpected_entry', $this->rewritten($path, static function (ZipArchive $zip): void {
             $zip->addFromString('files/logos/../../../../etc/cron.d/evil', 'x');
         }));
+
+        // An entry the manifest does not list, and one it lists that is gone.
+        $this->expectVerifyFails('manifest_mismatch', $this->rewritten($path, static function (ZipArchive $zip): void {
+            $zip->addFromString('files/logos/' . str_repeat('e', 32) . '.png', 'unlisted');
+        }));
+        $this->expectVerifyFails('manifest_mismatch', $this->rewritten($path, static function (ZipArchive $zip): void {
+            $zip->deleteName('files/logos/' . str_repeat('a', 32) . '.png');
+        }));
+
+        // Rows for a table no instance backup carries.
+        $this->expectVerifyFails('manifest_mismatch', $this->rewritten($path, static function (ZipArchive $zip): void {
+            $manifest = json_decode((string) $zip->getFromName('manifest.json'), true);
+            $manifest['entries']['tables/evil.jsonl'] = ['sha256' => hash('sha256', ''), 'size' => 0];
+            $zip->addFromString('manifest.json', (string) json_encode($manifest));
+            $zip->addFromString('tables/evil.jsonl', '');
+        }));
+
+        // No manifest worth the name.
+        $this->expectVerifyFails('manifest_invalid', $this->rewritten($path, static function (ZipArchive $zip): void {
+            $zip->addFromString('manifest.json', '{}');
+        }));
+
+        // Encrypted under the right key, but not an archive at all.
+        $plain = $this->root . '/not-a-zip.bin';
+        file_put_contents($plain, random_bytes(500));
+        $out = $this->root . '/not-a-zip.renovo-backup';
+        (new BackupCipher())->encryptFile($plain, $out, BackupKey::fromHex(self::KEY));
+        $this->expectVerifyFails('not_an_archive', $out);
     }
 
     public function testARunThatFailsVerificationIsKeptMarkedFailedAndPrunesNothing(): void
     {
         $this->seed();
+        // A policy that would prune all but one of these, and a failed run
+        // old enough to go: after a failed run, neither may.
+        $this->container()->get(InstanceSettingsService::class)->setBackupRetention(new BackupRetention(0, 0, 0));
         $old = $this->verifiedRunsBefore(3);
+        $oldFailed = (int) $this->runs()->claim($this->clock->now()->modify('-10 days'), BackupRun::TRIGGER_SCHEDULE);
+        $this->runs()->finish($oldFailed, BackupRun::FAILED, $this->clock->now()->modify('-10 days'), [
+            'error' => 'tampered',
+        ]);
 
         $outcome = $this->service(cipher: new class () extends BackupCipher {
             public function encryptFile(string $plainPath, string $encryptedPath, BackupKey $key): void
@@ -291,6 +335,10 @@ final class InstanceBackupTest extends DatabaseTestCase
         $this->runs()->finish((int) $oldFailed, BackupRun::FAILED, $this->clock->now()->modify('-10 days'), [
             'error' => 'tampered',
         ]);
+        $recentFailed = (int) $this->runs()->claim($this->clock->now()->modify('-3 days'), BackupRun::TRIGGER_SCHEDULE);
+        $this->runs()->finish($recentFailed, BackupRun::FAILED, $this->clock->now()->modify('-3 days'), [
+            'error' => 'tampered',
+        ]);
 
         $outcome = $this->service()->runScheduled(force: true);
 
@@ -303,8 +351,9 @@ final class InstanceBackupTest extends DatabaseTestCase
             self::assertFileDoesNotExist($this->root . '/backups/' . $run->file);
         }
         self::assertNotNull($this->runs()->find((int) $oldFailed)?->prunedAt);
+        self::assertNull($this->runs()->find($recentFailed)?->prunedAt, 'A failed run is kept for a week.');
         self::assertSame([(string) $outcome->run?->file], $this->listDirectory($this->root . '/backups'));
-        self::assertSame(['verified' => 4, 'failed' => 1], $this->service()->counts(), 'Rows are never deleted.');
+        self::assertSame(['verified' => 4, 'failed' => 2], $this->service()->counts(), 'Rows are never deleted.');
     }
 
     public function testOnlyOneRunAtATime(): void
@@ -381,17 +430,35 @@ final class InstanceBackupTest extends DatabaseTestCase
 
     public function testTheBackupDirectoryIsNeverInTheArchive(): void
     {
-        $this->seed();
+        [$user] = $this->seed();
         // The worst place to put it: the attachments directory itself.
         $service = $this->service(directory: $this->root . '/attachments');
         $first = $service->runScheduled(force: true)->run;
+        self::assertNotNull($first);
+
+        // And a row that names the first backup, as an attachment would.
+        $this->db->execute(
+            'INSERT INTO attachments (household_id, owner_user_id, subscription_id, original_filename, stored_path,'
+            . ' mime_type, size_bytes, uploaded_by_user_id, created_at)'
+            . " SELECT household_id, owner_user_id, id, 'x', :p, 'application/pdf', 1, owner_user_id,"
+            . " '2026-05-01 10:00:00' FROM subscriptions WHERE owner_user_id = :u ORDER BY id LIMIT 1",
+            ['p' => (string) $first->file, 'u' => $user->id],
+        );
+
         $this->clock->advanceTo($this->clock->now()->modify('+1 day'));
         $second = $service->runScheduled(force: true)->run;
+        self::assertNotNull($second);
 
-        $entries = $this->entries($this->root . '/attachments/' . $second?->file);
+        $entries = $this->entries($this->root . '/attachments/' . $second->file);
 
-        self::assertSame([], preg_grep('#renovo-backup|\.work-#', $entries));
-        self::assertNotSame($first?->file, $second?->file);
+        self::assertSame([], preg_grep('#renovo-backup|-work#', $entries));
+        self::assertContains(
+            ['code' => 'unrecognised_path', 'detail' => 'attachments.stored_path #' . $this->db->fetchValue(
+                'SELECT MAX(id) FROM attachments',
+            )],
+            $second->warnings,
+        );
+        self::assertNotSame($first->file, $second->file);
     }
 
     public function testDownloadRecordsWhoTookItAndOnlyServesAvailableBackups(): void
@@ -449,6 +516,84 @@ final class InstanceBackupTest extends DatabaseTestCase
         self::assertSame(1, (int) $this->db->fetchValue(
             "SELECT COUNT(*) FROM audit_log WHERE action = 'instance.settings_changed'",
         ));
+    }
+
+    public function testARunSweepsWhatAKilledRunLeftBehind(): void
+    {
+        $this->seed();
+        // A run killed part-way: its plaintext workspace beside the backup
+        // directory, and a half-written file inside it.
+        $stale = $this->root . '/.backups-work/run-deadbeef';
+        mkdir($stale, 0o700, true);
+        file_put_contents($stale . '/users.jsonl', '{"email":"plaintext@example.test"}');
+        $partial = $this->root . '/backups/renovo-instance-20260101-000000-abcdef.renovo-backup.partial';
+        file_put_contents($partial, 'half');
+
+        $run = $this->service()->runScheduled(force: true)->run;
+
+        self::assertDirectoryDoesNotExist($stale);
+        self::assertFileDoesNotExist($partial);
+        self::assertSame([(string) $run?->file], $this->listDirectory($this->root . '/backups'));
+        self::assertSame([], $this->listDirectory($this->root . '/.backups-work'), 'The run removed its own too.');
+    }
+
+    public function testTheHistoryListsTheFirstFiftyWarnings(): void
+    {
+        [$user] = $this->seed();
+        for ($i = 0; $i < 60; $i++) {
+            $this->db->execute(
+                'INSERT INTO attachments (household_id, owner_user_id, subscription_id, original_filename,'
+                . ' stored_path, mime_type, size_bytes, uploaded_by_user_id, created_at)'
+                . " SELECT household_id, owner_user_id, id, 'x', :p, 'application/pdf', 1, owner_user_id,"
+                . " '2026-05-01 10:00:00' FROM subscriptions WHERE owner_user_id = :u ORDER BY id LIMIT 1",
+                ['p' => '1/' . str_pad(dechex($i), 32, '0', STR_PAD_LEFT) . '.pdf', 'u' => $user->id],
+            );
+        }
+
+        $run = $this->service()->runScheduled(force: true)->run;
+        self::assertNotNull($run);
+
+        self::assertCount(InstanceBackupService::LISTED_WARNINGS + 1, $run->warnings);
+        $last = $run->warnings[InstanceBackupService::LISTED_WARNINGS];
+        self::assertSame('more', $last['code']);
+        // 60 missing attachments, and the seed's own missing logo and
+        // unrecognised logo path: 62, of which 50 are listed.
+        self::assertSame('12', $last['detail']);
+    }
+
+    public function testDecryptNeverWritesOverAFile(): void
+    {
+        $this->seed();
+        $run = $this->service()->runScheduled(force: true)->run;
+        $existing = $this->root . '/existing.zip';
+        file_put_contents($existing, 'keep me');
+
+        try {
+            $this->service()->decryptFile($this->root . '/backups/' . $run?->file, $existing);
+            self::fail('Decryption wrote over an existing file.');
+        } catch (BackupException $exception) {
+            self::assertSame('io', $exception->reason);
+        }
+
+        self::assertSame('keep me', file_get_contents($existing));
+    }
+
+    public function testAFailedDecryptionLeavesNoPlaintext(): void
+    {
+        $this->seed();
+        $run = $this->service()->runScheduled(force: true)->run;
+        $copy = $this->copy($this->root . '/backups/' . $run?->file);
+        $this->flipByte($copy, (int) filesize($copy) - 20);
+        $out = $this->root . '/partial.zip';
+
+        try {
+            $this->service()->decryptFile($copy, $out);
+            self::fail('A damaged backup decrypted.');
+        } catch (BackupException $exception) {
+            self::assertSame('tampered', $exception->reason);
+        }
+
+        self::assertFileDoesNotExist($out);
     }
 
     // ------------------------------------------------------------------
@@ -694,14 +839,14 @@ final class InstanceBackupTest extends DatabaseTestCase
         return $out;
     }
 
-    private function expectVerifyFails(string $reason, string $path, ?InstanceBackupService $service = null): void
+    private function expectVerifyFails(string $reason, string $path, string $key = self::KEY): void
     {
         try {
-            ($service ?? $this->service())->verifyFile($path);
+            $this->service($key)->verifyFile($path);
             self::fail('The backup verified, and should not have (' . $reason . ').');
         } catch (BackupException $exception) {
             self::assertSame($reason, $exception->reason, $exception->getMessage());
-            self::assertStringNotContainsString(self::KEY, $exception->getMessage());
+            self::assertStringNotContainsString($key, $exception->getMessage());
         }
     }
 
@@ -713,6 +858,8 @@ final class InstanceBackupTest extends DatabaseTestCase
         } catch (BackupException $exception) {
             self::assertSame($reason, $exception->reason, $exception->getMessage());
             self::assertStringContainsString('othing', $exception->getMessage());
+            self::assertStringNotContainsString(self::KEY, $exception->getMessage());
+            $this->assertNoKeyAnywhere();
 
             return $exception->getMessage();
         }

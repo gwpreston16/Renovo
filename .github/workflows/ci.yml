@@ -78,9 +78,13 @@ jobs:
           - engine: postgres
             driver: pgsql
             port: 5432
+            other_driver: mysql
+            other_port: 3306
           - engine: mysql
             driver: mysql
             port: 3306
+            other_driver: pgsql
+            other_port: 5432
 
     services:
       postgres:
@@ -118,6 +122,14 @@ jobs:
       DB_PASSWORD: renovo
       SESSION_KEY: ci-session-key-not-a-secret-0000000000000000
       SESSION_COOKIE_SECURE: 'false'
+      # Both engines run on every leg, so the instance-backup test restores a
+      # backup taken on this leg's engine into the other one (Phase 38).
+      CROSS_ENGINE_DB_DRIVER: ${{ matrix.other_driver }}
+      CROSS_ENGINE_DB_HOST: 127.0.0.1
+      CROSS_ENGINE_DB_PORT: ${{ matrix.other_port }}
+      CROSS_ENGINE_DB_NAME: renovo_test
+      CROSS_ENGINE_DB_USER: renovo
+      CROSS_ENGINE_DB_PASSWORD: renovo
 
     steps:
       # Full history, so the coverage step can diff this branch against the
@@ -158,6 +170,14 @@ jobs:
         run: |
           vendor/bin/phinx rollback --configuration phinx.php --target=0 --force
           vendor/bin/phinx migrate --configuration phinx.php
+
+      # The other engine's database, at the same version, for the
+      # cross-engine restore test.
+      - name: Apply migrations to the other engine
+        env:
+          DB_DRIVER: ${{ matrix.other_driver }}
+          DB_PORT: ${{ matrix.other_port }}
+        run: vendor/bin/phinx migrate --configuration phinx.php
 
       - name: PHPUnit
         if: matrix.driver != 'pgsql'

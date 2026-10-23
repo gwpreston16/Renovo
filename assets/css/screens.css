@@ -4895,6 +4895,8 @@ a.segmented-option {
 .instance-backup-warnings ul {
     margin: 0.25rem 0 0;
     padding-left: 1.1rem;
+    /* A stored path has nowhere to break; on a phone it must still wrap. */
+    overflow-wrap: anywhere;
 }
 
 .instance-backup-warnings summary {

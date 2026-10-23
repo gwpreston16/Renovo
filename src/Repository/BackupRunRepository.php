@@ -173,6 +173,16 @@ final class BackupRunRepository extends AbstractRepository
         return array_map($this->hydrate(...), $rows);
     }
 
+    public function hasUnpruned(string $status): bool
+    {
+        return $this->db->fetchValue(
+            'SELECT 1 FROM ' . $this->quote($this->table())
+            . ' WHERE ' . $this->quote('status') . ' = :status AND ' . $this->quote('pruned_at') . ' IS NULL'
+            . ' LIMIT 1',
+            ['status' => $status],
+        ) !== null;
+    }
+
     public function markPruned(int $id, DateTimeImmutable $at): void
     {
         $this->db->execute(

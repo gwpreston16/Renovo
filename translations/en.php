@@ -2826,6 +2826,7 @@ return [
     'backup.status.verified' => 'Verified',
     'backup.trigger.manual' => 'By hand',
     'backup.trigger.schedule' => 'Scheduled',
+    'backup.warning.more' => 'More warnings, not listed here (the backup\'s manifest has them all):',
     'backup.warning.missing_file' => 'A file a row names was not there:',
     'backup.warning.unrecognised_path' => 'A stored path was not one Renovo writes, so it was left out:',
     'backup.warnings' => '{count, plural, one {# warning} other {# warnings}}',
@@ -2835,6 +2836,7 @@ return [
     'flash.instance_backup_taken' => 'Backed up and verified.',
     'flash.instance_backup_too_soon' => 'An instance backup started less than a minute ago. Try again shortly.',
     'settings.status_instance_backup' => 'Last instance backup',
+    'settings.status_instance_backup_bad_key' => 'Off: {variable} is not a valid key',
     'settings.status_instance_backup_never' => 'Not yet',
     'settings.status_instance_backup_no_key' => 'Off: {variable} is not set',
 ];

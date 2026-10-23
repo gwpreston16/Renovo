@@ -198,6 +198,8 @@
                         <a class="num" href="#instance-backups">{{ backups.last_verified.startedAt|local_date('d MMM y, HH:mm') }}</a>
                     {% elseif backups.key_state == 'ok' %}
                         <span class="muted">{{ t('settings.status_instance_backup_never') }}</span>
+                    {% elseif backups.key_state == 'invalid' %}
+                        <span class="muted">{{ t('settings.status_instance_backup_bad_key', {'variable': 'BACKUP_ENCRYPTION_KEY'}) }}</span>
                     {% else %}
                         <span class="muted">{{ t('settings.status_instance_backup_no_key', {'variable': 'BACKUP_ENCRYPTION_KEY'}) }}</span>
                     {% endif %}
@@ -264,7 +266,7 @@
                 {% endfor %}
             </fieldset>
 
-            <fieldset class="stack" id="backup-retention">
+            <fieldset class="stack" id="backup-retention" {{ backup_ready ? '' : 'disabled' }}>
                 <legend>{{ t('backup.instance_retention') }}</legend>
                 <p class="hint">{{ t('backup.instance_retention_hint') }}</p>
                 <div class="field-grid field-grid-3">
@@ -280,7 +282,7 @@
             </fieldset>
 
             <div class="form-actions">
-                <button type="submit" class="button button-outline">{{ t('backup.instance_save') }}</button>
+                <button type="submit" class="button button-outline" {{ backup_ready ? '' : 'disabled' }}>{{ t('backup.instance_save') }}</button>
             </div>
         </form>
 

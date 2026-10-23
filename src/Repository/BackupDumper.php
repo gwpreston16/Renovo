@@ -79,7 +79,8 @@ final class BackupDumper
      *    it would list files the new server does not have.
      *
      * A migration that adds a table must put it in one list or the other;
-     * BackupTableCoverageTest fails until it does.
+     * `BackupDumperTest::testEveryTableIsEitherBackedUpOrExcluded` fails until
+     * it does.
      */
     public const EXCLUDED = [
         'sessions',
@@ -195,8 +196,8 @@ final class BackupDumper
      * Every row of a table, in primary-key order, a page at a time.
      *
      * Keyset paging rather than OFFSET: each page starts after the last key
-     * the previous one returned, so a large table costs the same per page at
-     * the end as at the start. Inside a snapshot every page sees the same
+     * the previous one returned, through the primary key's index, so a large
+     * table costs the same per page at the end as at the start. Inside a snapshot every page sees the same
      * rows.
      *
      * @return iterable<array<string, mixed>>
@@ -207,17 +208,13 @@ final class BackupDumper
         $key = $this->primaryKey($table);
         $booleans = $this->booleanColumns($table);
         $quotedKey = implode(', ', array_map($this->quote(...), $key));
-        $placeholders = implode(', ', array_map(static fn (int $i): string => ':k' . $i, array_keys($key)));
         $after = null;
 
         do {
             $sql = 'SELECT * FROM ' . $this->quote($table);
             $params = [];
             if ($after !== null) {
-                $sql .= sprintf(' WHERE (%s) > (%s)', $quotedKey, $placeholders);
-                foreach ($key as $i => $column) {
-                    $params['k' . $i] = $after[$column];
-                }
+                $sql .= ' WHERE ' . $this->after($key, $after, $params);
             }
             $sql .= ' ORDER BY ' . $quotedKey . ' LIMIT ' . self::PAGE;
 
@@ -234,6 +231,36 @@ final class BackupDumper
                 $after = $row;
             }
         } while (count($page) === self::PAGE);
+    }
+
+    /**
+     * "Comes after this key" as `a > :x OR (a = :x AND b > :y) …` rather than
+     * the row comparison `(a, b) > (:x, :y)`: the two mean the same, but
+     * MySQL does not use the primary key for a row comparison, and each page
+     * would scan the table from the start. Every placeholder is its own, as
+     * MySQL's native prepares need.
+     *
+     * @param list<string> $key
+     * @param array<string, mixed> $after
+     * @param array<string, mixed> $params
+     */
+    private function after(array $key, array $after, array &$params): string
+    {
+        $terms = [];
+        foreach ($key as $i => $column) {
+            $parts = [];
+            foreach (array_slice($key, 0, $i) as $j => $equal) {
+                $name = sprintf('e%d_%d', $i, $j);
+                $parts[] = $this->quote($equal) . ' = :' . $name;
+                $params[$name] = $after[$equal];
+            }
+            $name = 'g' . $i;
+            $parts[] = $this->quote($column) . ' > :' . $name;
+            $params[$name] = $after[$column];
+            $terms[] = '(' . implode(' AND ', $parts) . ')';
+        }
+
+        return '(' . implode(' OR ', $terms) . ')';
     }
 
     /**

@@ -37,7 +37,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   portable rows, so a PostgreSQL backup restores into MySQL and the other way
   round. The card shows the key's fingerprint, the last 30 runs with their
   outcome, and a Download for each verified one; **Back up now** takes one on
-  the spot. Instance administrators only. *Phase 38.*
+  the spot. Instance administrators only. One migration adds the
+  `backup_runs` table; nothing beyond `phinx migrate` is needed. *Phase 38.*
 - **`backup:run [--force]`, `backup:verify`, `backup:decrypt` and
   `backup:restore`.** The scheduler runs `backup:run` daily. Restoring is a
   command only, into an empty database at the backup's migration version, and

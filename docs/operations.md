@@ -165,6 +165,11 @@ weekly, none in the last 6 days 23 hours. One runs at a time.
    is never pruned**, whatever the counts. Failed runs' files go after seven
    days. Pruning happens only after a backup verifies.
 
+While a run works, its plaintext sits in a private directory beside
+`BACKUP_DIRECTORY` (`var/.backups-work` by default), never inside it, so a copy
+of `BACKUP_DIRECTORY` taken mid-run holds only ciphertext. A run that was killed
+part-way leaves it behind; the next run removes it.
+
 A backup that fails verification is kept for inspection, marked **Failed** with
 the reason, and never counts as the last good one. Left out on purpose:
 sessions, sign-in throttling, request counters, the logo download cache and the

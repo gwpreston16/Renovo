@@ -44,6 +44,20 @@ Nothing else is touched. The migration's `down()` does nothing, because a
 deletion cannot be undone. The backup you took first is the only way back to
 the old arrangements.
 
+## After upgrading to instance backups (Phase 38)
+
+Nothing is needed beyond `phinx migrate` (one new table, `backup_runs`), and
+instance backups stay off until you turn them on. If you run a compose file of
+your own, copy three changes from `docker-compose.yml` first:
+
+- `BACKUP_ENCRYPTION_KEY` and `BACKUP_DIRECTORY` in the `app` **and**
+  `scheduler` environments;
+- the `logos` volume, read-only, on the `scheduler`, or scheduled backups
+  carry no logos (and warn about each one);
+- `php bin/console backup:run || true` in the scheduler's loop.
+
+Then follow [Turning them on](operations.md#turning-them-on).
+
 ## After upgrading to secrets at rest (Phase 40)
 
 **Back up your database first**, as for every upgrade. Then:

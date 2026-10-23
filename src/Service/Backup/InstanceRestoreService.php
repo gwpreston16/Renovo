@@ -31,6 +31,9 @@ use App\Repository\MigrationRepository;
  */
 final class InstanceRestoreService
 {
+    /** @var list<string> The files this restore has written. */
+    private array $written = [];
+
     public function __construct(
         private readonly BackupDumper $dumper,
         private readonly InstanceBackupArchive $archive,
@@ -103,11 +106,8 @@ final class InstanceRestoreService
                 return $count;
             });
 
-            $files = 0;
-            foreach ($this->archive->fileEntries($plain) as $entry) {
-                $this->writeFile($plain, $entry);
-                $files++;
-            }
+            $files = $this->archive->copyFiles($plain, $this->destinationFor(...));
+            $this->setModes();
 
             return [
                 'tables' => count($this->dataTables()),
@@ -132,11 +132,12 @@ final class InstanceRestoreService
     }
 
     /**
-     * Write one file where its storage class keeps it. Only names an instance
-     * backup writes reach here (`check()` refused anything else), and only
-     * through `BackupFiles::pathFor()`, which maps them inside the directory.
+     * Where one file goes: where its storage class keeps it. Only names an
+     * instance backup writes reach here (`check()` refused anything else),
+     * and only through `BackupFiles::pathFor()`, which maps them inside the
+     * directory.
      */
-    private function writeFile(string $plain, string $entry): void
+    private function destinationFor(string $entry): string
     {
         $destination = $this->files->pathFor($entry);
         if ($destination === null) {
@@ -148,16 +149,21 @@ final class InstanceRestoreService
             throw new BackupException('write_failed', sprintf('Could not create %s.', $folder));
         }
 
-        $partial = $destination . '.partial';
-        $this->archive->extract($plain, $entry, $partial);
-        if (!@rename($partial, $destination)) {
-            @unlink($partial);
+        $this->written[] = $destination;
 
-            throw new BackupException('write_failed', sprintf('Could not write %s.', $destination));
+        return $destination;
+    }
+
+    /**
+     * Logos are served by the web server straight from the public directory;
+     * invoices and pictures only ever through the application.
+     */
+    private function setModes(): void
+    {
+        $logos = rtrim($this->files->directories()['logos'], '/') . '/';
+        foreach ($this->written as $path) {
+            @chmod($path, str_starts_with($path, $logos) ? 0o644 : 0o640);
         }
-
-        // Logos are served by the web server straight from the public
-        // directory; invoices and pictures only ever through the application.
-        @chmod($destination, str_starts_with($entry, 'files/logos/') ? 0o644 : 0o640);
+        $this->written = [];
     }
 }

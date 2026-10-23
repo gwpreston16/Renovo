@@ -69,12 +69,18 @@ final class InstanceBackupScreensTest extends DatabaseTestCase
 
     protected function tearDown(): void
     {
-        foreach ((array) glob($this->directory . '/{,.}*', GLOB_BRACE) as $file) {
-            if (is_file((string) $file)) {
-                unlink((string) $file);
+        $work = dirname($this->directory) . '/.' . basename($this->directory) . '-work';
+        foreach ([$this->directory, $work] as $directory) {
+            if (!is_dir($directory)) {
+                continue;
             }
+            foreach ((array) scandir($directory) as $name) {
+                if ($name !== '.' && $name !== '..' && is_file($directory . '/' . $name)) {
+                    unlink($directory . '/' . $name);
+                }
+            }
+            @rmdir($directory);
         }
-        @rmdir($this->directory);
         parent::tearDown();
     }
 
@@ -110,7 +116,8 @@ final class InstanceBackupScreensTest extends DatabaseTestCase
             ] as [$method, $path]
         ) {
             $response = $this->request($method, $path);
-            self::assertContains($response->getStatusCode(), [302, 303, 403], $path);
+            self::assertSame(302, $response->getStatusCode(), $path);
+            self::assertStringStartsWith('/login', $response->getHeaderLine('Location'), $path);
             self::assertSame(0, (int) $this->db->fetchValue('SELECT COUNT(*) FROM backup_runs'));
         }
     }
@@ -146,6 +153,11 @@ final class InstanceBackupScreensTest extends DatabaseTestCase
             '~<button type="submit" class="button button-primary"\s+disabled>~',
             $page,
         );
+        self::assertMatchesRegularExpression('~<fieldset class="stack" id="backup-retention"\s+disabled>~', $page);
+        self::assertMatchesRegularExpression(
+            '~<button type="submit" class="button button-outline"\s+disabled>Save backup settings~',
+            $page,
+        );
         self::assertStringContainsString('Off: BACKUP_ENCRYPTION_KEY is not set', $page);
 
         $this->request('POST', '/settings/backups/run');
@@ -160,6 +172,7 @@ final class InstanceBackupScreensTest extends DatabaseTestCase
         $page = $this->page();
 
         self::assertStringContainsString('must be 64 hexadecimal characters', $page);
+        self::assertStringContainsString('Off: BACKUP_ENCRYPTION_KEY is not a valid key', $page);
         self::assertStringNotContainsString('not-a-key-at-all', $page);
     }
 
@@ -234,6 +247,21 @@ final class InstanceBackupScreensTest extends DatabaseTestCase
         $page = $this->page();
         self::assertStringContainsString('Backup settings saved.', $page);
         self::assertMatchesRegularExpression('~value="weekly"\s+checked~', $page);
+    }
+
+    public function testAPostWithoutAFieldKeepsWhatIsStored(): void
+    {
+        $settings = $this->container()->get(InstanceSettingsService::class);
+        $settings->setBackupSchedule(BackupSchedule::Daily);
+        $this->signIn($this->adminId);
+
+        // What a form with its schedule disabled posts: the counts alone.
+        $this->request('POST', '/settings/backups', ['keep_daily' => '2']);
+
+        $settings = $this->container()->get(InstanceSettingsService::class);
+        self::assertSame(BackupSchedule::Daily, $settings->backupSchedule());
+        $retention = $settings->backupRetention();
+        self::assertSame([2, 4, 6], [$retention->daily, $retention->weekly, $retention->monthly]);
     }
 
     public function testAMissingOrPrunedBackupIsNotFound(): void

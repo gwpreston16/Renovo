@@ -42,15 +42,24 @@ final class InstanceBackupController extends Controller
     public function update(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $body = $this->body($request);
-        $count = static fn (string $field): int => is_scalar($body[$field] ?? null)
+
+        // A field the form did not post — a disabled control posts nothing —
+        // keeps what is stored. It is never read as "off" or as zero.
+        $current = $this->backups->retention();
+        $count = static fn (string $field, int $stored): int => is_scalar($body[$field] ?? null)
+            && (string) $body[$field] !== ''
             ? (int) $body[$field]
-            : 0;
+            : $stored;
 
         $this->backups->updateSettings(
             $this->user($request),
             BackupSchedule::tryFrom(is_string($body['schedule'] ?? null) ? $body['schedule'] : '')
-                ?? BackupSchedule::Off,
-            new BackupRetention($count('keep_daily'), $count('keep_weekly'), $count('keep_monthly')),
+                ?? $this->backups->schedule(),
+            new BackupRetention(
+                $count('keep_daily', $current->daily),
+                $count('keep_weekly', $current->weekly),
+                $count('keep_monthly', $current->monthly),
+            ),
         );
         $this->flash('success', 'flash.instance_backup_settings_saved');
 

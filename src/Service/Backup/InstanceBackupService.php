@@ -52,6 +52,9 @@ final class InstanceBackupService
     /** A run still holding the lock after this long is not running. */
     public const ABANDONED_AFTER_SECONDS = 6 * 3600;
 
+    /** How many of a run's warnings its history row lists. */
+    public const LISTED_WARNINGS = 50;
+
     /** The only names this service writes into BACKUP_DIRECTORY. */
     public const FILE_PATTERN = '#^renovo-instance-[0-9]{8}-[0-9]{6}-[0-9a-f]{6}\.renovo-backup$#';
 
@@ -165,7 +168,9 @@ final class InstanceBackupService
     public function verifyFile(string $path): array
     {
         $key = $this->key();
-        $work = $this->workDirectory();
+        // The system temporary directory, not the run's: a check from the
+        // console holds no lock, and a run sweeps its own workspace clean.
+        $work = Workspace::create(sys_get_temp_dir(), 'renovo-verify-');
 
         try {
             return $this->verify($path, $key, $work);
@@ -233,7 +238,7 @@ final class InstanceBackupService
      */
     public function hasLocalBackups(): bool
     {
-        return $this->runs->unpruned(BackupRun::VERIFIED) !== [];
+        return $this->runs->hasUnpruned(BackupRun::VERIFIED);
     }
 
     /**
@@ -269,6 +274,16 @@ final class InstanceBackupService
         ]);
 
         return ['path' => $path, 'name' => (string) $run->file, 'size' => $size];
+    }
+
+    public function schedule(): BackupSchedule
+    {
+        return $this->settings->backupSchedule();
+    }
+
+    public function retention(): BackupRetention
+    {
+        return $this->settings->backupRetention();
     }
 
     /**
@@ -318,8 +333,13 @@ final class InstanceBackupService
             return BackupOutcome::skipped(BackupOutcome::BUSY);
         }
 
+        // Holding the lock, nothing else can be writing: whatever a killed
+        // run left behind — its plaintext, a half-written file — goes now.
+        $this->sweepLeftovers();
+
         $work = $this->workDirectory();
         $file = null;
+        $partial = null;
 
         try {
             $manifest = $this->archive->write($work . '/archive.zip', $work);
@@ -351,7 +371,7 @@ final class InstanceBackupService
                 'sha256' => (string) hash_file('sha256', $this->path($file)),
                 'key_fingerprint' => $key->fingerprint,
                 'migration_version' => (string) $manifest['migration_version'],
-                'warnings' => $warnings,
+                'warnings' => self::listed($warnings),
             ]);
 
             $run = $this->runs->find($id);
@@ -391,6 +411,9 @@ final class InstanceBackupService
 
             return BackupOutcome::failed($this->runs->find($id), $message);
         } finally {
+            if ($partial !== null && is_file($partial)) {
+                @unlink($partial);
+            }
             Workspace::remove($work);
         }
     }
@@ -479,15 +502,65 @@ final class InstanceBackupService
     }
 
     /**
-     * A private directory for the plaintext while it exists: under
+     * A private directory for the plaintext while it exists: beside
      * BACKUP_DIRECTORY, on the volume that has room for the backup anyway,
-     * readable by nobody else and removed when the run ends.
+     * but never inside it — operators are told to copy that directory off
+     * the server, and a copy taken mid-run must hold nothing but ciphertext.
+     * Readable by nobody else, removed when the run ends, and swept by the
+     * next run if a killed one could not remove it.
      */
     private function workDirectory(): string
     {
-        $this->ensureDirectory();
+        $parent = $this->workParent();
+        if (!is_dir($parent) && !@mkdir($parent, 0o700, true) && !is_dir($parent)) {
+            throw new BackupException('write_failed', 'A working directory for the backup could not be created.');
+        }
 
-        return Workspace::create($this->directory, '.work-');
+        return Workspace::create($parent, 'run-');
+    }
+
+    /**
+     * The warnings the history keeps: the first few, and how many more there
+     * were. A missing attachments directory can mean a warning per invoice,
+     * and the settings page draws every one it is given. The manifest inside
+     * the backup keeps them all.
+     *
+     * @param list<array{code: string, detail: string}> $warnings
+     * @return list<array{code: string, detail: string}>
+     */
+    private static function listed(array $warnings): array
+    {
+        if (count($warnings) <= self::LISTED_WARNINGS) {
+            return $warnings;
+        }
+
+        return [
+            ...array_slice($warnings, 0, self::LISTED_WARNINGS),
+            ['code' => 'more', 'detail' => (string) (count($warnings) - self::LISTED_WARNINGS)],
+        ];
+    }
+
+    private function workParent(): string
+    {
+        $directory = rtrim($this->directory, '/');
+
+        return dirname($directory) . '/.' . basename($directory) . '-work';
+    }
+
+    /**
+     * Remove what a run killed part-way left: its workspace (plaintext) and
+     * a `.partial` file in BACKUP_DIRECTORY. Called only while holding the
+     * run lock.
+     */
+    private function sweepLeftovers(): void
+    {
+        foreach ((array) glob($this->workParent() . '/run-*', GLOB_ONLYDIR) as $stale) {
+            Workspace::remove((string) $stale);
+        }
+
+        foreach ((array) glob(rtrim($this->directory, '/') . '/*' . BackupCipher::EXTENSION . '.partial') as $partial) {
+            @unlink((string) $partial);
+        }
     }
 
     private function path(string $file): string

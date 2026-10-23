@@ -109,6 +109,10 @@ final class InstanceBackupArchive
             }
 
             $zip->addFile($path, $entry);
+            // Invoices, pictures and logos are already compressed; deflating
+            // them again costs CPU and saves nothing. The rows are text, and
+            // stay deflated.
+            $zip->setCompressionName($entry, ZipArchive::CM_STORE);
             $entries[$entry] = ['sha256' => $hash, 'size' => $size];
         }
 
@@ -233,47 +237,50 @@ final class InstanceBackupArchive
     }
 
     /**
-     * The files in an archive `check()` has passed, as entry names.
+     * Copy every stored file out of an archive `check()` has passed, opening
+     * it once. `$destinationFor` names where each entry goes; the bytes are
+     * written beside it as `.partial` and moved into place, so a file is
+     * either whole or absent.
      *
-     * @return list<string>
+     * @param callable(string): string $destinationFor
+     * @return int The files written.
      */
-    public function fileEntries(string $zipPath): array
+    public function copyFiles(string $zipPath, callable $destinationFor): int
     {
         $zip = $this->openZip($zipPath);
-        $names = [];
-        for ($i = 0; $i < $zip->numFiles; $i++) {
-            $name = (string) $zip->getNameIndex($i);
-            if (preg_match(BackupFiles::ENTRY_PATTERN, $name) === 1) {
-                $names[] = $name;
-            }
-        }
-        $zip->close();
-
-        return $names;
-    }
-
-    /**
-     * Copy one entry of a checked archive to a file.
-     */
-    public function extract(string $zipPath, string $entry, string $destination): void
-    {
-        $zip = $this->openZip($zipPath);
-        $stream = $zip->getStream($entry);
-        $out = @fopen($destination, 'wb');
+        $count = 0;
 
         try {
-            if ($stream === false || $out === false || stream_copy_to_stream($stream, $out) === false) {
-                throw new BackupException('write_failed', sprintf('Could not write %s.', $entry));
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $entry = (string) $zip->getNameIndex($i);
+                if (preg_match(BackupFiles::ENTRY_PATTERN, $entry) !== 1) {
+                    continue;
+                }
+
+                $destination = $destinationFor($entry);
+                $partial = $destination . '.partial';
+                $stream = $zip->getStream($entry);
+                $out = @fopen($partial, 'wb');
+                $copied = $stream !== false && $out !== false && stream_copy_to_stream($stream, $out) !== false;
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
+                if (is_resource($out)) {
+                    fclose($out);
+                }
+
+                if (!$copied || !@rename($partial, $destination)) {
+                    @unlink($partial);
+
+                    throw new BackupException('write_failed', sprintf('Could not write %s.', $destination));
+                }
+                $count++;
             }
         } finally {
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
-            if (is_resource($out)) {
-                fclose($out);
-            }
             $zip->close();
         }
+
+        return $count;
     }
 
     /**
