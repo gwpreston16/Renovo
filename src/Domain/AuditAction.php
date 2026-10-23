@@ -58,6 +58,11 @@ enum AuditAction: string
     case InstanceBackupFailed = 'instance_backup.failed';
     case InstanceBackupDownloaded = 'instance_backup.downloaded';
     case InstanceBackupPruned = 'instance_backup.pruned';
+    // Phase 39: where backups are sent. The context names the destination,
+    // never its credentials.
+    case BackupDestinationAdded = 'backup_destination.added';
+    case BackupDestinationChanged = 'backup_destination.changed';
+    case BackupDestinationRemoved = 'backup_destination.removed';
     case NotificationChannelCreated = 'notification_channel.created';
     case NotificationChannelUpdated = 'notification_channel.updated';
     case NotificationChannelDeleted = 'notification_channel.deleted';

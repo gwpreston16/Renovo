@@ -70,6 +70,13 @@ final class StoredSecretRepository
         return match ($kind) {
             StoredSecretKind::TotpSecret => ['user_totp', 'user_id', 'secret', ''],
             StoredSecretKind::ChannelConfig => ['notification_channels', 'id', 'config', ''],
+            // A destination with no credentials (a directory) stores NULL.
+            StoredSecretKind::BackupDestinationSecret => [
+                'backup_destinations',
+                'id',
+                'secret',
+                ' AND secret IS NOT NULL',
+            ],
             // One row: its "id" is a constant 0, so the batch reads it once.
             StoredSecretKind::RateProviderKey => [
                 'instance_settings',

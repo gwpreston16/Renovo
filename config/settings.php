@@ -176,6 +176,23 @@ return [
         // On the appvar volume by default, which the app and the scheduler
         // share: the scheduler writes what the settings page lists.
         'directory' => $env('BACKUP_DIRECTORY', dirname(__DIR__) . '/var/backups'),
+        // Phase 39. Sending a backup to a destination, or fetching one back,
+        // takes far longer than any other request, so it has its own limit
+        // rather than HTTP_TIMEOUT_SECONDS.
+        'transfer_timeout' => (int) $env('BACKUP_TRANSFER_TIMEOUT_SECONDS', '1800'),
+        // An empty database a restore rehearsal may restore into and drop
+        // again. Unset (no name), rehearsals download and verify only.
+        'rehearsal_db' => [
+            'driver' => $env('BACKUP_REHEARSAL_DB_DRIVER', $env('DB_DRIVER', 'pgsql')),
+            'host' => $env('BACKUP_REHEARSAL_DB_HOST', $env('DB_HOST', 'database')),
+            'port' => (int) $env(
+                'BACKUP_REHEARSAL_DB_PORT',
+                $env('BACKUP_REHEARSAL_DB_DRIVER', $env('DB_DRIVER', 'pgsql')) === 'mysql' ? '3306' : '5432',
+            ),
+            'name' => $env('BACKUP_REHEARSAL_DB_NAME', ''),
+            'user' => $env('BACKUP_REHEARSAL_DB_USER', ''),
+            'password' => $env('BACKUP_REHEARSAL_DB_PASSWORD', ''),
+        ],
     ],
 
     'uploads' => [

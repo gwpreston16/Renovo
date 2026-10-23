@@ -44,6 +44,7 @@ class BackupDumper
         'household_memberships',
         'instance_settings',
         'trusted_hosts',
+        'backup_destinations',
         'categories',
         'tags',
         'payment_methods',
@@ -79,7 +80,10 @@ class BackupDumper
      *  - `logo_cache` — rows describing files in `var/logo-cache`, a download
      *    cache that is not backed up and refills itself;
      *  - `backup_runs` — the history of backups on *this* server. Restored,
-     *    it would list files the new server does not have.
+     *    it would list files the new server does not have;
+     *  - `backup_copies`, `backup_rehearsals` — what was sent where and
+     *    rehearsed, for those same runs (Phase 39). The destinations
+     *    themselves are configuration, and are carried.
      *
      * A migration that adds a table must put it in one list or the other;
      * `BackupDumperTest::testEveryTableIsEitherBackedUpOrExcluded` fails until
@@ -91,6 +95,8 @@ class BackupDumper
         'http_metrics',
         'logo_cache',
         'backup_runs',
+        'backup_copies',
+        'backup_rehearsals',
     ];
 
     public const MIGRATIONS_TABLE = 'phinxlog';

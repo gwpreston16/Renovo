@@ -20,6 +20,9 @@ namespace App\Service\Backup\Destination;
  */
 interface BackupDestination
 {
+    /** The largest backup sent in one request: S3's single-PUT limit. */
+    public const MAX_BYTES = 5 * 1024 * 1024 * 1024;
+
     /** The name of the marker object `test()` writes and removes. */
     public const MARKER = '.renovo-connection-test';
 

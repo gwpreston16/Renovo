@@ -32,6 +32,7 @@ final class SecretCipher
     public const PURPOSE_TOTP = 'totp-secret';
     public const PURPOSE_CHANNEL_CONFIG = 'channel-config';
     public const PURPOSE_RATE_PROVIDER_KEY = 'rate-provider-key';
+    public const PURPOSE_BACKUP_DESTINATION = 'backup-destination';
 
     private const V1 = 'v1:';
     private const V2 = 'v2:';
