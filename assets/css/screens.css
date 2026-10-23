@@ -4859,7 +4859,8 @@ a.segmented-option {
  * query never applies to the container itself — and a card's form is not a
  * `.form-layout`.
  */
-#backup-retention {
+#backup-retention,
+.destination-retention {
     container: form / inline-size;
 }
 
@@ -5082,4 +5083,14 @@ a.segmented-option {
 
 .input-short {
     max-width: 7rem;
+}
+
+/*
+ * Backup destinations (Phase 39) reuse the channel rows. A destination's
+ * location is a long path or URL with few break points, so it may break
+ * anywhere rather than run under the switch on a phone.
+ */
+.destination-rows .account-row-meta code,
+.instance-backup-copies {
+    overflow-wrap: anywhere;
 }
