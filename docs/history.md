@@ -419,6 +419,19 @@ Since v1, each phase has shipped as a minor release (see
   can now end a finished term; the OpenAPI document is version 1.5.0. Import,
   export and backup carry the three fields. Five migrations. See
   [Contracts, fixed terms and bills that vary](features/tracking.md#contracts-fixed-terms-and-bills-that-vary).
+- **Phase 36 — what you've saved — complete (1.7.0).** A **Savings** card on
+  Analytics, and optionally on the dashboard, adds up what introductory and
+  promotional prices took off the normal price, payment by payment, and what
+  cancelled subscriptions would have cost since, up to twelve months after
+  each, with **Where it came from** naming the subscriptions behind each
+  figure. A payment at an offer price shows what it would normally have cost,
+  a lower amount can be marked **This was a discount**, and a subscription's
+  cost page shows what its offers saved. `ledger:backfill` fills in the
+  normal price for offer payments made before the upgrade. K76 and K82 were
+  fixed along the way. The API gains `GET /api/v1/savings` and
+  `reference_minor`, `saving_minor` and `is_discount` on a charge; the
+  OpenAPI document is version 1.6.0. The payments export and the backup carry
+  each payment's reference. One migration. See [Savings](features/money.md#savings).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
