@@ -80,7 +80,11 @@ final class InstanceRestoreService
                 ));
             }
 
-            foreach ($this->dataTables() as $table) {
+            /** @var array<string, int> $carried */
+            $carried = $manifest['tables'];
+            $tables = $this->dataTables(array_keys($carried));
+
+            foreach ($tables as $table) {
                 $rows = $this->dumper->count($table);
                 if ($rows > 0) {
                     throw new BackupException('not_empty', sprintf(
@@ -101,9 +105,9 @@ final class InstanceRestoreService
             $files = $this->archive->copyFiles($plain, $this->destinationFor(...));
             $this->setModes();
 
-            $inserted = $this->dumper->transactional(function () use ($plain): int {
+            $inserted = $this->dumper->transactional(function () use ($plain, $tables): int {
                 $count = 0;
-                foreach ($this->dataTables() as $table) {
+                foreach ($tables as $table) {
                     foreach ($this->archive->rows($plain, $table) as $row) {
                         try {
                             $this->dumper->insert($table, $row);
@@ -121,9 +125,8 @@ final class InstanceRestoreService
                 return $count;
             });
 
-
             return [
-                'tables' => count($this->dataTables()),
+                'tables' => count($tables),
                 'rows' => $inserted,
                 'files' => $files,
                 'migration_version' => $version,
@@ -134,13 +137,20 @@ final class InstanceRestoreService
     }
 
     /**
+     * The tables the backup carries, in the order a restore inserts them —
+     * parents first — and without `phinxlog`. Those are the ones that exist
+     * at the backup's migration version; a table a later migration added is
+     * not in it, and is not asked about.
+     *
+     * @param list<string> $carried
      * @return list<string>
      */
-    private function dataTables(): array
+    private function dataTables(array $carried): array
     {
         return array_values(array_filter(
             BackupDumper::TABLES,
-            static fn (string $table): bool => $table !== BackupDumper::MIGRATIONS_TABLE,
+            static fn (string $table): bool => $table !== BackupDumper::MIGRATIONS_TABLE
+                && in_array($table, $carried, true),
         ));
     }
 

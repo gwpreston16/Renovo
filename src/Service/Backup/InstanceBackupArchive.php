@@ -75,71 +75,107 @@ final class InstanceBackupArchive
             }
         });
 
-        $zip = new ZipArchive();
-        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            throw new BackupException('write_failed', 'The backup archive could not be created.');
-        }
-
-        $entries = [];
         $rows = [];
         $migration = null;
         foreach ($tables as $table => $dump) {
-            $entry = 'tables/' . $table . '.jsonl';
-            $zip->addFile($dump['path'], $entry);
-            $entries[$entry] = ['sha256' => $dump['sha256'], 'size' => $dump['size']];
             $rows[$table] = $dump['rows'];
             $migration = $dump['max_version'] ?? $migration;
         }
 
         ksort($references);
+        $files = [];
         foreach (array_keys($references) as $entry) {
             $path = $this->files->pathFor($entry);
-            if ($path === null || !is_file($path) || !is_readable($path)) {
-                $warnings[] = ['code' => 'missing_file', 'detail' => $entry];
-
-                continue;
-            }
-
-            $hash = hash_file('sha256', $path);
-            $size = filesize($path);
+            $hash = $path !== null && is_file($path) && is_readable($path) ? hash_file('sha256', $path) : false;
+            $size = $hash !== false ? filesize((string) $path) : false;
             if ($hash === false || $size === false) {
                 $warnings[] = ['code' => 'missing_file', 'detail' => $entry];
 
                 continue;
             }
 
-            $zip->addFile($path, $entry);
-            // Invoices, pictures and logos are already compressed; deflating
-            // them again costs CPU and saves nothing. The rows are text, and
-            // stay deflated.
-            $zip->setCompressionName($entry, ZipArchive::CM_STORE);
-            $entries[$entry] = ['sha256' => $hash, 'size' => $size];
+            $files[$entry] = ['path' => (string) $path, 'sha256' => $hash, 'size' => $size];
         }
 
-        $manifest = [
-            'format' => self::FORMAT,
-            'format_version' => self::FORMAT_VERSION,
-            'renovo_version' => $this->version->current(),
-            'migration_version' => $migration,
-            'engine' => $this->dumper->engine(),
-            'created_at' => $this->clock->now()->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
-            'tables' => $rows,
-            'entries' => $entries,
-            'warnings' => $warnings,
-        ];
+        // ZipArchive reads every added file only when the archive closes. A
+        // file a member deleted in between — an attachment removed, an
+        // avatar replaced — fails the close; it is then a missing file like
+        // any other, and the archive is built once more without it.
+        $manifest = [];
+        foreach ([1, 2] as $attempt) {
+            $manifest = [
+                'format' => self::FORMAT,
+                'format_version' => self::FORMAT_VERSION,
+                'renovo_version' => $this->version->current(),
+                'migration_version' => $migration,
+                'engine' => $this->dumper->engine(),
+                'created_at' => $this->clock->now()->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
+                'tables' => $rows,
+                'entries' => [],
+                'warnings' => $warnings,
+            ];
 
-        $zip->addFromString(self::MANIFEST, json_encode($manifest, self::JSON | JSON_PRETTY_PRINT));
+            if ($this->build($zipPath, $tables, $files, $manifest)) {
+                break;
+            }
 
-        if (!$zip->close()) {
-            throw new BackupException(
-                'write_failed',
-                'The backup archive could not be written: ' . $zip->getStatusString(),
-            );
+            $gone = array_filter($files, static fn (array $file): bool => !is_file($file['path']));
+            if ($attempt === 2 || $gone === []) {
+                throw new BackupException('write_failed', 'The backup archive could not be written.');
+            }
+
+            foreach (array_keys($gone) as $entry) {
+                $warnings[] = ['code' => 'missing_file', 'detail' => $entry];
+                unset($files[$entry]);
+            }
         }
 
         @chmod($zipPath, 0o600);
 
         return $manifest;
+    }
+
+    /**
+     * Write the ZIP: every table's rows, every file, and the manifest naming
+     * them all. False when the archive could not be closed.
+     *
+     * @param array<string, array{path: string, rows: int, sha256: string, size: int}> $tables
+     * @param array<string, array{path: string, sha256: string, size: int}> $files
+     * @param array<string, mixed> $manifest Its entries are filled in here.
+     */
+    private function build(string $zipPath, array $tables, array $files, array &$manifest): bool
+    {
+        @unlink($zipPath);
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            throw new BackupException('write_failed', 'The backup archive could not be created.');
+        }
+
+        $entries = [];
+        foreach ($tables as $table => $dump) {
+            $entry = 'tables/' . $table . '.jsonl';
+            $zip->addFile($dump['path'], $entry);
+            $entries[$entry] = ['sha256' => $dump['sha256'], 'size' => $dump['size']];
+        }
+
+        foreach ($files as $entry => $file) {
+            $zip->addFile($file['path'], $entry);
+            // Invoices, pictures and logos are already compressed; deflating
+            // them again costs CPU and saves nothing. The rows are text, and
+            // stay deflated.
+            $zip->setCompressionName($entry, ZipArchive::CM_STORE);
+            $entries[$entry] = ['sha256' => $file['sha256'], 'size' => $file['size']];
+        }
+
+        $manifest['entries'] = $entries;
+        $zip->addFromString(self::MANIFEST, json_encode($manifest, self::JSON | JSON_PRETTY_PRINT));
+
+        $closed = @$zip->close();
+        if (!$closed) {
+            @unlink($zipPath);
+        }
+
+        return $closed;
     }
 
     /**
@@ -434,14 +470,28 @@ final class InstanceBackupArchive
             }
         }
 
-        foreach (BackupDumper::TABLES as $table) {
-            if (!is_int($tables[$table] ?? null) || !isset($entries['tables/' . $table . '.jsonl'])) {
-                throw new BackupException('manifest_invalid', sprintf('The manifest has no rows for %s.', $table));
+        // Checked against the tables the archive says it carries, not the
+        // ones this version of Renovo would write: a backup taken before a
+        // later migration added a table restores, at its own migration, into
+        // a schema that does not have that table yet.
+        foreach ($tables as $table => $count) {
+            if (
+                !is_string($table)
+                || !in_array($table, BackupDumper::TABLES, true)
+                || !is_int($count)
+                || !isset($entries['tables/' . $table . '.jsonl'])
+            ) {
+                throw new BackupException('manifest_invalid', sprintf(
+                    'The manifest names rows for "%s", which this version of Renovo cannot restore.',
+                    $this->printable((string) $table),
+                ));
             }
         }
 
-        if (array_diff(array_keys($tables), BackupDumper::TABLES) !== []) {
-            throw new BackupException('manifest_invalid', 'The manifest names tables no instance backup carries.');
+        foreach (['users', BackupDumper::MIGRATIONS_TABLE] as $required) {
+            if (!isset($tables[$required])) {
+                throw new BackupException('manifest_invalid', sprintf('The manifest has no rows for %s.', $required));
+            }
         }
 
         return $manifest;

@@ -763,6 +763,47 @@ final class InstanceBackupTest extends DatabaseTestCase
         }
     }
 
+    public function testABackupFromBeforeATableExistedStillVerifiesAndRestores(): void
+    {
+        $this->seed();
+        $before = $this->everyRow($this->db);
+        $path = $this->root . '/backups/' . $this->service()->runScheduled(force: true)->run?->file;
+        // As if taken before a migration added saved_views: no rows for it,
+        // and no mention of it.
+        $older = $this->rewritten($path, static function (ZipArchive $zip): void {
+            $manifest = json_decode((string) $zip->getFromName('manifest.json'), true);
+            unset($manifest['tables']['saved_views'], $manifest['entries']['tables/saved_views.jsonl']);
+            $zip->deleteName('tables/saved_views.jsonl');
+            $zip->addFromString('manifest.json', (string) json_encode($manifest));
+        });
+        $this->truncateAll();
+
+        $this->service()->verifyFile($older);
+        $summary = $this->container()->get(InstanceRestoreService::class)->restore($older);
+
+        self::assertSame(count(BackupDumper::TABLES) - 2, $summary['tables']);
+        unset($before['saved_views']);
+        $after = $this->everyRow($this->db);
+        unset($after['saved_views']);
+        self::assertSame($before, $after);
+    }
+
+    public function testATakenOverRunKeepsItsFileNamed(): void
+    {
+        $this->seed();
+        $held = (int) $this->runs()->claim($this->clock->now(), BackupRun::TRIGGER_SCHEDULE);
+        $file = 'renovo-instance-20260601-090000-abc123.renovo-backup';
+        file_put_contents($this->root . '/backups/' . $file, 'written, never verified');
+        $this->runs()->recordFile($held, $file);
+
+        $this->clock->advanceTo($this->clock->now()->modify('+7 hours'));
+        $this->service()->runScheduled(force: true);
+
+        $abandoned = $this->runs()->find($held);
+        self::assertSame('abandoned', $abandoned?->error);
+        self::assertSame($file, $abandoned->file, 'Named, so a week on it is pruned.');
+    }
+
     public function testARunSweepsWhatAKilledRunLeftBehind(): void
     {
         $this->seed();

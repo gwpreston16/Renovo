@@ -63,6 +63,18 @@ class BackupRunRepository extends AbstractRepository
         }
     }
 
+    /**
+     * Name the file on a running row as soon as it exists.
+     */
+    public function recordFile(int $id, string $file): void
+    {
+        $this->db->execute(
+            'UPDATE ' . $this->quote($this->table()) . ' SET ' . $this->quote('file') . ' = :file'
+            . ' WHERE ' . $this->quote('id') . ' = :id AND ' . $this->quote('lock_key') . ' = :lock',
+            ['file' => $file, 'id' => $id, 'lock' => self::LOCK],
+        );
+    }
+
     public function running(): ?BackupRun
     {
         $row = $this->db->fetchOne(

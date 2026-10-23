@@ -364,12 +364,15 @@ final class InstanceBackupService
                 throw new BackupException('write_failed', 'The backup could not be moved into place.');
             }
             @chmod($this->path($file), 0o600);
+            // On the row at once: a run killed from here on still names its
+            // file, so the takeover marks it and pruning can remove it.
+            $this->runs->recordFile($id, $file);
 
             $this->verify($this->path($file), $key, $work);
 
             /** @var list<array{code: string, detail: string}> $warnings */
             $warnings = $manifest['warnings'];
-            $this->runs->finish($id, BackupRun::VERIFIED, $this->clock->now(), [
+            $finished = $this->runs->finish($id, BackupRun::VERIFIED, $this->clock->now(), [
                 'file' => $file,
                 'size_bytes' => (int) filesize($this->path($file)),
                 'sha256' => (string) hash_file('sha256', $this->path($file)),
@@ -379,6 +382,12 @@ final class InstanceBackupService
             ]);
 
             $warningCount = count($warnings);
+
+            if (!$finished) {
+                // Taken over as abandoned while it worked: its row already
+                // says failed, and the outcome must say the same.
+                return BackupOutcome::failed($this->runs->find($id), 'This run was taken over as abandoned.');
+            }
         } catch (Throwable $exception) {
             $reason = $exception instanceof BackupException ? $exception->reason : 'unexpected';
             $message = $exception instanceof BackupException
@@ -496,7 +505,12 @@ final class InstanceBackupService
             return;
         }
 
-        $this->runs->finish($running->id, BackupRun::FAILED, $this->clock->now(), ['error' => 'abandoned']);
+        // Its file, if it got that far, stays named, so it is kept for a
+        // week for inspection and then pruned like any failed run's.
+        $this->runs->finish($running->id, BackupRun::FAILED, $this->clock->now(), [
+            'file' => $running->file,
+            'error' => 'abandoned',
+        ]);
         $this->logger->warning('An instance backup that started at {started} never finished; marked as failed.', [
             'started' => $running->startedAt->format(DateTimeImmutable::ATOM),
         ]);
