@@ -206,7 +206,7 @@ Found while starting it:
 - [ ] `SecretCipher` key ring: `v2:<kid>:`, previous keys, `v1:` fallback;
       `SECRETS_KEY`, `SECRETS_PREVIOUS_KEYS` wired in the container
 - [x] Channel config and rate key encrypted on write, decrypted on read
-- [ ] Backfill migrations on both engines
+- [x] Backfill migrations on both engines
 - [ ] `secrets:rotate` with `--dry-run`; audit entry; README section
 - [ ] API and feed tokens revoked on password change and reset; email copy
 - [ ] Channel create / edit / delete audit entries
