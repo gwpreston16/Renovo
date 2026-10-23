@@ -147,6 +147,13 @@ the reset may well have been prompted by somebody else having one.
   reserved addresses, pins the address it checked against DNS rebinding, and
   will not follow a redirect to another host. See
   [Where notifications may be sent](features/notifications.md#where-notifications-may-be-sent).
+- The **update check** asks GitHub for the latest release only when an
+  instance administrator has turned it on, keeps only the version, the release
+  page and its date (never the release notes, which are a third party's
+  markup), and links to that page only when it is on `https://github.com/`.
+  The version itself is shown to signed-in readers and tokens, never to an
+  anonymous visitor or on `/healthz`. See
+  [Version and updates](operations.md#version-and-updates).
 - Outbound notifications are **rate-limited per user and per subscription**, so
   a mistake in an alert rule cannot turn the instance into a traffic source.
 - Channel credentials are **never rendered back into a form** and never written

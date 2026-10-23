@@ -4,6 +4,10 @@ How to upgrade an instance, and the one migration that is deliberately one-way. 
 
 ## Upgrading
 
+To see which release you are on, look at the foot of the sidebar or at
+**Settings → Instance → Instance status**; to be told when a newer one is out,
+turn on [update checks](operations.md#version-and-updates).
+
 **Back up your database first.** Then, from the project directory:
 
 ```bash

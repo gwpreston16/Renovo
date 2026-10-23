@@ -186,7 +186,7 @@ Found while starting it:
       back-off; scheduler step, lazy check, `updates:check`, Check now
 - [x] Dashboard banner for instance admins; per-admin dismissal by version
 - [x] Updates fieldset on Settings → Instance; audit entries
-- [ ] `UPDATE_CHECK_REPOSITORY` and `UPDATE_CHECK` env vars, documented in
+- [x] `UPDATE_CHECK_REPOSITORY` and `UPDATE_CHECK` env vars, documented in
       `docs/configuration.md` and `.env.example`
 - [x] Migration on both engines
 - [ ] New strings in `translations/en.php`
