@@ -267,7 +267,7 @@
             <fieldset class="stack" id="backup-retention">
                 <legend>{{ t('backup.instance_retention') }}</legend>
                 <p class="hint">{{ t('backup.instance_retention_hint') }}</p>
-                <div class="field-grid field-grid-3 backup-retention">
+                <div class="field-grid field-grid-3">
                     {% for field in ['daily', 'weekly', 'monthly'] %}
                         <div class="field">
                             <label for="keep-{{ field }}">{{ t('backup.instance_keep_' ~ field) }}</label>

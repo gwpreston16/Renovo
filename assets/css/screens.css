@@ -4855,9 +4855,11 @@ a.segmented-option {
 /*
  * Instance backups (Phase 38). The retention counts are three short numbers,
  * seated three to a row by the form grid once the card is wide enough: the
- * grid measures its container, and a card's form is not a `.form-layout`.
+ * grid measures its container — the fieldset around it, since a container
+ * query never applies to the container itself — and a card's form is not a
+ * `.form-layout`.
  */
-.backup-retention {
+#backup-retention {
     container: form / inline-size;
 }
 
@@ -4883,6 +4885,11 @@ a.segmented-option {
 
 .instance-backup-error {
     color: var(--bad);
+}
+
+/* A figure and its unit stay together when the row wraps on a phone. */
+.instance-backup-rows .account-row-meta .num {
+    white-space: nowrap;
 }
 
 .instance-backup-warnings ul {
