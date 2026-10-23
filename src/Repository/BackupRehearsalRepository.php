@@ -88,6 +88,21 @@ final class BackupRehearsalRepository extends AbstractRepository
         return array_map($this->hydrate(...), $rows);
     }
 
+    /**
+     * @return list<BackupRehearsal> Failed rehearsals started since a moment.
+     */
+    public function failedSince(DateTimeImmutable $since): array
+    {
+        $rows = $this->db->fetchAll(
+            'SELECT * FROM ' . $this->quote($this->table())
+            . ' WHERE ' . $this->quote('status') . ' = :failed AND ' . $this->quote('started_at') . ' >= :since'
+            . ' ORDER BY ' . $this->quote('started_at') . ' DESC, ' . $this->quote('id') . ' DESC',
+            ['failed' => BackupRehearsal::FAILED, 'since' => $since],
+        );
+
+        return array_map($this->hydrate(...), $rows);
+    }
+
     public function last(): ?BackupRehearsal
     {
         return $this->recent(1)[0] ?? null;

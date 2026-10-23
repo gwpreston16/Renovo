@@ -10,7 +10,10 @@ use App\Security\SessionInterface;
 use App\Service\Backup\BackupException;
 use App\Service\Backup\BackupOutcome;
 use App\Service\Backup\BackupRetention;
+use App\Service\Backup\BackupAlertService;
 use App\Service\Backup\InstanceBackupService;
+use App\Service\Backup\OffsiteBackupService;
+use App\Support\AfterResponse;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamFactoryInterface;
@@ -35,6 +38,9 @@ final class InstanceBackupController extends Controller
         Translator $translator,
         private readonly InstanceBackupService $backups,
         private readonly StreamFactoryInterface $streams,
+        private readonly OffsiteBackupService $offsite,
+        private readonly BackupAlertService $alerts,
+        private readonly AfterResponse $afterResponse,
     ) {
         parent::__construct($view, $session, $translator);
     }
@@ -68,7 +74,8 @@ final class InstanceBackupController extends Controller
 
     /**
      * Back up now. The page waits while the backup is taken and checked; the
-     * service allows one a minute and one at a time.
+     * service allows one a minute and one at a time. Sending it to the
+     * destinations happens after the page has gone back.
      */
     public function run(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
@@ -80,8 +87,23 @@ final class InstanceBackupController extends Controller
             return $this->redirectAfterWrite($request, $response, self::SECTION);
         }
 
+        // Sent off the server once the page has gone back (Phase 39): an
+        // upload can take far longer than the web server waits. A failure is
+        // retried by the scheduler.
+        $queued = $outcome->result === BackupOutcome::VERIFIED && $outcome->run !== null
+            ? $this->offsite->queue($outcome->run)
+            : 0;
+        if ($queued > 0) {
+            $this->afterResponse->defer(function (): void {
+                $this->offsite->sendPending();
+                $this->alerts->notify();
+            });
+        }
+
         match ($outcome->result) {
-            BackupOutcome::VERIFIED => $this->flash('success', 'flash.instance_backup_taken'),
+            BackupOutcome::VERIFIED => $queued > 0
+                ? $this->flash('success', 'flash.instance_backup_taken_sending', ['count' => $queued])
+                : $this->flash('success', 'flash.instance_backup_taken'),
             BackupOutcome::TOO_SOON => $this->flash('error', 'flash.instance_backup_too_soon'),
             BackupOutcome::BUSY => $this->flash('error', 'flash.instance_backup_busy'),
             default => $this->flash('error', 'flash.instance_backup_failed', [

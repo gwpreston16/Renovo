@@ -238,10 +238,10 @@ Found while starting it:
 
 ## Status
 
-- [ ] `BackupDestination` interface; S3-compatible (with `S3Signer`), WebDAV,
+- [x] `BackupDestination` interface; S3-compatible (with `S3Signer`), WebDAV,
       Directory; Test connection
-- [ ] Destination credentials encrypted; SSRF guard and trusted hosts applied
-- [ ] Upload after verify, retries, per-destination retention with guards
+- [x] Destination credentials encrypted; SSRF guard and trusted hosts applied
+- [x] Upload after verify, retries, per-destination retention with guards
 - [ ] `backup:rehearse`, `backup:fetch`; scratch-database restore and checks
 - [ ] `BackupFailed`, `BackupStale`, `BackupRehearsalFailed` alerts, preference
       columns and route copy for instance admins

@@ -24,10 +24,12 @@ use App\Repository\AuditLogRepository;
 use App\Repository\AuthAttemptRepository;
 use App\Repository\NotificationLogRepository;
 use App\Repository\TokenRepository;
+use App\Service\Backup\BackupAlertService;
 use App\Service\Backup\BackupException;
 use App\Service\Backup\BackupOutcome;
 use App\Service\Backup\InstanceBackupService;
 use App\Service\Backup\InstanceRestoreService;
+use App\Service\Backup\OffsiteBackupService;
 use App\Service\DemoSeedService;
 use App\Service\ExchangeRate\RateProviderException;
 use App\Service\ExchangeRateService;
@@ -254,6 +256,10 @@ switch ($command) {
         // The scheduler's instance backup: taken if one is due by the schedule
         // set in Settings → Instance, or now with --force. Quiet and successful
         // when backups are off, since the scheduler asks every day.
+        //
+        // Then, every pass whether or not a backup was due (Phase 39): one
+        // attempt at every copy still to be sent off the server, and the
+        // backup alerts for instance administrators.
         $force = false;
         foreach (array_slice($argv, 2) as $argument) {
             if ($argument === '--force') {
@@ -264,38 +270,63 @@ switch ($command) {
             }
         }
 
+        $offsite = $container->get(OffsiteBackupService::class);
+        $error = null;
+        $outcome = null;
         try {
             $outcome = $container->get(InstanceBackupService::class)->runScheduled($force);
         } catch (BackupException $exception) {
-            fwrite(STDERR, $exception->getMessage() . PHP_EOL);
-            exit(1);
+            $error = $exception->getMessage();
         }
 
-        switch ($outcome->result) {
-            case BackupOutcome::OFF:
-                $out('Scheduled instance backups are off. Turn them on in Settings → Instance, or use --force.');
-                exit(0);
-            case BackupOutcome::NOT_DUE:
-                $out('No instance backup is due yet.');
-                exit(0);
-            case BackupOutcome::BUSY:
-                $out('Another instance backup is running. Nothing was started.');
-                exit(0);
-            case BackupOutcome::FAILED:
-                fwrite(STDERR, 'The instance backup failed: ' . $outcome->message . PHP_EOL);
-                exit(1);
+        if ($outcome?->result === BackupOutcome::VERIFIED && $outcome->run !== null) {
+            $offsite->queue($outcome->run);
+        }
+        $sent = $offsite->sendPending();
+        $container->get(BackupAlertService::class)->notify();
+
+        $code = 0;
+        if ($error !== null) {
+            fwrite(STDERR, $error . PHP_EOL);
+            $code = 1;
+        } else {
+            switch ($outcome?->result) {
+                case BackupOutcome::OFF:
+                    $out('Scheduled instance backups are off. Turn them on in Settings → Instance, or use --force.');
+                    break;
+                case BackupOutcome::NOT_DUE:
+                    $out('No instance backup is due yet.');
+                    break;
+                case BackupOutcome::BUSY:
+                    $out('Another instance backup is running. Nothing was started.');
+                    break;
+                case BackupOutcome::FAILED:
+                    fwrite(STDERR, 'The instance backup failed: ' . $outcome->message . PHP_EOL);
+                    $code = 1;
+                    break;
+                default:
+                    $run = $outcome?->run;
+                    $out(sprintf(
+                        'Backed up and verified: %s (%s bytes, key %s); %d warning(s); %d old backup(s) pruned.',
+                        $run?->file,
+                        number_format((int) $run?->sizeBytes),
+                        $run?->keyFingerprint,
+                        $run?->warningCount() ?? 0,
+                        $outcome?->pruned ?? 0,
+                    ));
+            }
         }
 
-        $run = $outcome->run;
-        $out(sprintf(
-            'Backed up and verified: %s (%s bytes, key %s); %d warning(s); %d old backup(s) pruned.',
-            $run?->file,
-            number_format((int) $run?->sizeBytes),
-            $run?->keyFingerprint,
-            $run?->warningCount() ?? 0,
-            $outcome->pruned,
-        ));
-        exit(0);
+        if (array_sum($sent) > 0) {
+            $out(sprintf(
+                'Off the server: %d copy(ies) confirmed, %d to retry, %d given up on; %d old copy(ies) pruned.',
+                $sent['confirmed'],
+                $sent['retrying'],
+                $sent['failed'],
+                $sent['pruned'],
+            ));
+        }
+        exit($code);
 
     case 'backup:verify':
         // Any instance backup, from this server or not: decrypt it and check

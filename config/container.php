@@ -10,25 +10,46 @@
 
 declare(strict_types=1);
 
-
-use App\Application\Api\OpenApiDocument;
 use App\Application\AppVersion;
 use App\Application\Twig\AppExtension;
-use App\Controller\Ops\MetricsController;
+use App\Service\Update\UpdateCheckConfig;
+use App\Service\Update\UpdateCheckService;
 use App\Controller\SetupController;
 use App\Http\DnsResolver;
 use App\Http\GuardedClient;
 use App\Http\GuardedHttpClient;
-use App\Http\GuardedTransferClient;
 use App\Http\HttpClient;
 use App\Http\HttpClientOptions;
 use App\Http\SystemDnsResolver;
 use App\Http\TrustedTargets;
-use App\Http\UrlGuard;
 use App\I18n\CatalogLoader;
 use App\I18n\LocaleContext;
 use App\I18n\Locales;
 use App\I18n\Translator;
+use App\Persistence\Database;
+use App\Persistence\PdoSessionHandler;
+use App\Persistence\Platform;
+use App\Persistence\PlatformFactory;
+use App\Repository\AuthAttemptRepository;
+use App\Repository\ExchangeRateRepository;
+use App\Controller\Ops\MetricsController;
+use App\Repository\LogoCacheRepository;
+use App\Repository\UserRepository;
+use App\Service\MetricsService;
+use App\Repository\NotificationLogRepository;
+use App\Security\CsrfTokenManager;
+use App\Security\KeyRing;
+use App\Support\Settings;
+use App\Security\SecretCipher;
+use App\Security\Session;
+use App\Security\SessionInterface;
+use App\Service\Auth\WebAuthnService;
+use App\Service\AuthService;
+use App\Service\LogoFetcher;
+use App\Service\ExchangeRate\ExchangeRateHostProvider;
+use App\Service\ExchangeRate\ExchangeRateProviderRegistry;
+use App\Service\ExchangeRate\FixerProvider;
+use App\Service\ExchangeRate\FrankfurterProvider;
 use App\Notification\Channel\DiscordNotifier;
 use App\Notification\Channel\EmailNotifier;
 use App\Notification\Channel\GotifyNotifier;
@@ -41,70 +62,38 @@ use App\Notification\Channel\SlackNotifier;
 use App\Notification\Channel\TelegramNotifier;
 use App\Notification\Channel\WebhookNotifier;
 use App\Notification\NotifierRegistry;
-use App\Persistence\Database;
-use App\Persistence\PdoSessionHandler;
-use App\Persistence\Platform;
-use App\Persistence\PlatformFactory;
-use App\Repository\AuthAttemptRepository;
-use App\Repository\BackupDestinationRepository;
-use App\Repository\ExchangeRateRepository;
-use App\Repository\LogoCacheRepository;
-use App\Repository\NotificationLogRepository;
-use App\Repository\UserRepository;
-use App\Security\CsrfTokenManager;
-use App\Security\KeyRing;
-use App\Security\SecretCipher;
-use App\Security\Session;
-use App\Security\SessionInterface;
-use App\Service\AccountService;
-use App\Service\AttachmentStorage;
-use App\Service\AuditLogService;
-use App\Service\Auth\WebAuthnService;
-use App\Service\AuthService;
-use App\Service\AvatarStorage;
-use App\Service\Backup\BackupDestinationService;
-use App\Service\Backup\BackupFiles;
-use App\Service\Backup\Destination\BackupDestination;
-use App\Service\Backup\Destination\BackupDestinationFactory;
-use App\Service\Backup\InstanceBackupService;
-use App\Service\BackupService;
-use App\Service\ExchangeRate\ExchangeRateHostProvider;
-use App\Service\ExchangeRate\ExchangeRateProviderRegistry;
-use App\Service\ExchangeRate\FixerProvider;
-use App\Service\ExchangeRate\FrankfurterProvider;
 use App\Service\ExchangeRateService;
-use App\Service\HouseholdMemberService;
-use App\Service\ImportService;
 use App\Service\InstanceSettingsService;
-use App\Service\LogoFetcher;
-use App\Service\LogoStorage;
-use App\Service\MailerService;
-use App\Service\MetricsService;
 use App\Service\Notification\AlertScanner;
+use App\Service\Notification\PriceChangeScanner;
 use App\Service\Notification\NotificationDispatcher;
 use App\Service\Notification\NotificationRateLimiter;
-use App\Service\Notification\PriceChangeScanner;
 use App\Service\Notification\ReminderRunner;
-use App\Service\PasswordResetService;
-use App\Service\RateLimiter;
+use App\Service\TrustedHostService;
+use App\Application\Api\OpenApiDocument;
+use App\Service\AccountService;
+use App\Service\AttachmentStorage;
+use App\Service\AvatarStorage;
+use App\Service\HouseholdMemberService;
+use App\Service\BackupService;
+use App\Service\Backup\BackupFiles;
+use App\Service\Backup\InstanceBackupService;
+use App\Service\ImportService;
+use App\Service\LogoStorage;
 use App\Service\SettingsScreenService;
 use App\Service\SetupService;
-use App\Service\TrustedHostService;
-use App\Service\Update\UpdateCheckConfig;
-use App\Service\Update\UpdateCheckService;
+use App\Service\MailerService;
+use App\Service\PasswordResetService;
+use App\Service\RateLimiter;
 use App\Support\AssetVersion;
 use App\Support\BuildManifest;
-use App\Support\Clock;
-use App\Support\ExternalAssetScanner;
 use App\Support\IconSprite;
+use App\Support\ExternalAssetScanner;
+use App\Support\Clock;
 use App\Support\MoneyFormatter;
 use App\Support\NumberFormat;
-use App\Support\Settings;
 use App\Support\SystemClock;
 use DI\ContainerBuilder;
-use function DI\autowire;
-use function DI\factory;
-use function DI\get;
 use Monolog\Handler\StreamHandler;
 use Monolog\Level;
 use Monolog\Logger;
@@ -123,6 +112,21 @@ use Slim\Views\Twig;
 use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mailer\Transport;
+use App\Http\GuardedTransferClient;
+use App\Http\UrlGuard;
+use App\Repository\BackupDestinationRepository;
+use App\Service\AuditLogService;
+use App\Service\Backup\BackupAlertService;
+use App\Service\Backup\BackupDestinationService;
+use App\Service\Backup\Destination\BackupDestination;
+use App\Service\Backup\Destination\BackupDestinationFactory;
+use App\Service\Backup\OffsiteBackupService;
+use App\Support\AfterResponse;
+use App\Support\ShutdownAfterResponse;
+
+use function DI\autowire;
+use function DI\factory;
+use function DI\get;
 
 /**
  * @param array<string, mixed>|null $settings Fixed settings, for a test that builds
@@ -307,6 +311,11 @@ return static function (ContainerBuilder $builder, ?array $settings = null): voi
         // built from APP_URL rather than from whatever host this request came
         // in on — behind a TLS-terminating proxy that would be the inside one.
         \App\Controller\CalendarController::class => autowire()->constructorParameter(
+            'appUrl',
+            factory(static fn (ContainerInterface $c): string => $c->get('settings')['app']['url']),
+        ),
+
+        BackupAlertService::class => autowire()->constructorParameter(
             'appUrl',
             factory(static fn (ContainerInterface $c): string => $c->get('settings')['app']['url']),
         ),
@@ -560,6 +569,22 @@ return static function (ContainerBuilder $builder, ?array $settings = null): voi
                 ])),
             );
         },
+
+        AfterResponse::class => autowire(ShutdownAfterResponse::class),
+
+        OffsiteBackupService::class => autowire(OffsiteBackupService::class)
+            ->constructorParameter(
+                'directory',
+                factory(static fn (ContainerInterface $c): string => $c->get('settings')['backup']['directory']),
+            )
+            // Longer than any transfer can run, so a copy being sent is never
+            // taken by a second process; a crashed one is retried after it.
+            ->constructorParameter(
+                'leaseSeconds',
+                factory(
+                    static fn (ContainerInterface $c): int => $c->get('settings')['backup']['transfer_timeout'] + 600,
+                ),
+            ),
 
         InstanceBackupService::class => autowire(InstanceBackupService::class)
             ->constructorParameter(

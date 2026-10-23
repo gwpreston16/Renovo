@@ -37,6 +37,15 @@ enum AlertType: string
     case ContractEnding = 'contract_ending';
 
     /**
+     * Phase 39, for instance administrators only: a backup failed to verify,
+     * or no destination would take it; nothing has been stored off the
+     * server for two schedule periods; a restore rehearsal failed.
+     */
+    case BackupFailed = 'backup_failed';
+    case BackupStale = 'backup_stale';
+    case BackupRehearsalFailed = 'backup_rehearsal_failed';
+
+    /**
      * Whether the alert is anchored to a future date, and therefore fires on
      * the user's lead times.
      *
@@ -46,7 +55,30 @@ enum AlertType: string
      */
     public function usesLeadTimes(): bool
     {
-        return $this !== self::BudgetExceeded && $this !== self::PriceChange;
+        return $this !== self::BudgetExceeded && $this !== self::PriceChange && !$this->isInstanceAdminOnly();
+    }
+
+    /**
+     * Whether only instance administrators can receive it: the backup alerts
+     * describe the instance, not anybody's household.
+     */
+    public function isInstanceAdminOnly(): bool
+    {
+        return in_array($this, [self::BackupFailed, self::BackupStale, self::BackupRehearsalFailed], true);
+    }
+
+    /**
+     * The types a user can be sent, for their routing grid and their new
+     * channels' routes.
+     *
+     * @return list<self>
+     */
+    public static function forUser(bool $isInstanceAdmin): array
+    {
+        return array_values(array_filter(
+            self::cases(),
+            static fn (self $type): bool => $isInstanceAdmin || !$type->isInstanceAdminOnly(),
+        ));
     }
 
     public function labelKey(): string

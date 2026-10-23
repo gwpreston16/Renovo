@@ -157,6 +157,21 @@ final class BackupDestinationRepository extends AbstractRepository
         );
     }
 
+    /**
+     * When the first enabled destination was added: until two periods after
+     * it, nothing can be stale.
+     */
+    public function firstEnabledAt(): ?DateTimeImmutable
+    {
+        $value = $this->db->fetchValue(
+            'SELECT MIN(' . $this->quote('created_at') . ') FROM ' . $this->quote($this->table())
+            . ' WHERE ' . $this->quote('enabled') . ' = :on',
+            ['on' => true],
+        );
+
+        return is_string($value) && $value !== '' ? new DateTimeImmutable($value) : null;
+    }
+
     public function count(bool $enabledOnly = false): int
     {
         return (int) $this->db->fetchValue(

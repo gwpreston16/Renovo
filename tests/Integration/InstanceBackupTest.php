@@ -1018,7 +1018,8 @@ final class InstanceBackupTest extends DatabaseTestCase
         $settings['uploads']['attachment_directory'] = $this->root . '/attachments';
         $settings['uploads']['avatar_directory'] = $this->root . '/avatars';
         $settings['uploads']['logo_directory'] = $this->root . '/logos';
-        $settings['backup'] = ['key' => $key, 'directory' => $directory ?? $this->root . '/backups'];
+        $settings['backup'] = ['key' => $key, 'directory' => $directory ?? $this->root . '/backups']
+            + $settings['backup'];
 
         $builder = new ContainerBuilder();
         (require dirname(__DIR__, 2) . '/config/container.php')($builder, $settings);
