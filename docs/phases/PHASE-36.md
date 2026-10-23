@@ -164,6 +164,18 @@ Found while starting it:
   not only the last twelve months, as the realised figure counts every
   cancelled row.
 
+- **A row paused when it was cancelled avoided nothing** (assumption, found
+  while building). Pausing keeps no start date, so the sign of it is a payment
+  date left behind the cancellation date — a running row's is caught up when
+  it is cancelled. Such a row adds nothing, as paused rows are out of scope.
+- **"A member's view" is ISOLATED mode** (assumption, found while building).
+  The figures are the household's in SHARED mode; in ISOLATED mode
+  (`Scope::restrictsReadsToOwner()`) they are the reader's own, counting their
+  share of a split bill as a member budget does (`SplitService::chargeShare()`),
+  and the run-rate removed likewise. The same split as who-pays draws.
+- **A trial cancelled while still a trial is on the trials line**
+  (assumption): it never converted, so it never charged.
+
 Known issues added to this phase (*Confirmed 2026-10-23*): **K75**, **K76**,
 **K82**, **K93** — all in ledger code this phase changes.
 
@@ -172,7 +184,7 @@ Known issues added to this phase (*Confirmed 2026-10-23*): **K75**, **K76**,
 - [x] Migration on both engines; references written and frozen; backfill
       extended
 - [x] "This was a discount" on recording an actual
-- [ ] `SavingsService`: offers, cancellations (realised, capped; run-rate),
+- [x] `SavingsService`: offers, cancellations (realised, capped; run-rate),
       exclusions, currencies, scoping
 - [ ] Analytics Savings card; optional dashboard card; money page line
 - [ ] API endpoint and charge field, OpenAPI, `docs/api.md`; export

@@ -453,6 +453,16 @@ final class Subscription
     }
 
     /**
+     * A cancelled row as though it had been kept: running, not cancelled, at
+     * `$price` — the price in force when it was cancelled. What the savings
+     * figures walk to find the charges a cancellation avoided.
+     */
+    public function asKept(Money $price): self
+    {
+        return $this->with(['isActive' => true, 'cancelledAt' => null, 'price' => $price]);
+    }
+
+    /**
      * A copy with some properties replaced. The constructor's parameters are
      * its properties, so the copy is built through it and stays readonly.
      *

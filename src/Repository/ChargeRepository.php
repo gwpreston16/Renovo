@@ -65,6 +65,7 @@ final class ChargeRepository extends AbstractScopedRepository
             'due_date',
             'status',
             'source',
+            'reference_minor',
             'created_at',
         ];
     }
@@ -150,6 +151,27 @@ final class ChargeRepository extends AbstractScopedRepository
             ->orderBy('subscription_id', 'asc')
             ->orderBy('due_date', 'asc')
             ->orderBy('id', 'asc');
+
+        $params = [];
+        $sql = $this->selectWithRecorder()
+            . $this->scopedWhere($scope, $criteria, $params)
+            . $this->compileOrderBy($criteria);
+
+        return array_map($this->hydrate(...), $this->db->fetchAll($sql, $params));
+    }
+
+    /**
+     * Every charge in scope that carries a reference — the charges an offer
+     * or a discount stands behind, which are all the offers figure reads.
+     *
+     * @return list<Charge>
+     */
+    public function findWithReference(Scope $scope): array
+    {
+        $criteria = Criteria::new()
+            ->where('reference_minor', 'IS NOT NULL')
+            ->orderBy('subscription_id', 'asc')
+            ->orderBy('due_date', 'asc');
 
         $params = [];
         $sql = $this->selectWithRecorder()
