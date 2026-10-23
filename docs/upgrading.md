@@ -58,6 +58,25 @@ your own, copy three changes from `docker-compose.yml` first:
 
 Then follow [Turning them on](operations.md#turning-them-on).
 
+## After upgrading to off-site backups (Phase 39)
+
+Back up first, then run `phinx migrate`: five migrations add the
+`backup_destinations`, `backup_copies` and `backup_rehearsals` tables and three
+alert switches, and copy each instance administrator's renewal routes to the
+new backup alerts. Nothing is sent anywhere until you add a destination. If you
+run a compose file of your own, copy these changes from `docker-compose.yml`:
+
+- `BACKUP_TRANSFER_TIMEOUT_SECONDS` and the `BACKUP_REHEARSAL_DB_*` variables
+  in the `app` **and** `scheduler` environments;
+- `php bin/console backup:rehearse || true` in the scheduler's loop, after
+  `backup:run`, or rehearsals never run;
+- optionally, the commented-out `rehearsal-db` service and its volume.
+
+An administrator who has set up routing but sends renewals to no channel gets
+no route for the backup alerts (one with no routing at all already gets every
+alert everywhere): tick them in the routing grid on the Notifications page. Then follow
+[Sending backups off the server](operations.md#sending-backups-off-the-server).
+
 ## After upgrading to secrets at rest (Phase 40)
 
 **Back up your database first**, as for every upgrade. Then:

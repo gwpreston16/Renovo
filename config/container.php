@@ -112,6 +112,19 @@ use Slim\Views\Twig;
 use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mailer\Transport;
+use App\Http\GuardedTransferClient;
+use App\Http\UrlGuard;
+use App\Repository\BackupDestinationRepository;
+use App\Service\AuditLogService;
+use App\Service\Backup\BackupAlertService;
+use App\Service\Backup\BackupDestinationService;
+use App\Service\Backup\Destination\BackupDestination;
+use App\Service\Backup\Destination\BackupDestinationFactory;
+use App\Service\Backup\OffsiteBackupService;
+use App\Support\AfterResponse;
+use App\Support\ShutdownAfterResponse;
+use App\Repository\ScratchDatabase;
+use App\Service\Backup\Destination\HttpExchange;
 
 use function DI\autowire;
 use function DI\factory;
@@ -188,6 +201,19 @@ return static function (ContainerBuilder $builder, ?array $settings = null): voi
 
         // The allowlist the SSRF guard consults is the administrator's table.
         TrustedTargets::class => get(TrustedHostService::class),
+
+        // Backup destinations (Phase 39): the same guard and client, with
+        // bodies streamed from and to files and the transfer limits in place
+        // of HTTP_*: a backup is far larger, and slower, than anything else.
+        GuardedTransferClient::class => static fn (ContainerInterface $c): GuardedTransferClient
+            => new GuardedTransferClient(
+                $c->get(HttpClient::class),
+                $c->get(UrlGuard::class),
+                $c->get(HttpClientOptions::class)->forTransfers(
+                    $c->get('settings')['backup']['transfer_timeout'],
+                    BackupDestination::MAX_BYTES,
+                ),
+            ),
 
         // ------------------------------------------------------------------
         // Exchange rates
@@ -287,6 +313,11 @@ return static function (ContainerBuilder $builder, ?array $settings = null): voi
         // built from APP_URL rather than from whatever host this request came
         // in on — behind a TLS-terminating proxy that would be the inside one.
         \App\Controller\CalendarController::class => autowire()->constructorParameter(
+            'appUrl',
+            factory(static fn (ContainerInterface $c): string => $c->get('settings')['app']['url']),
+        ),
+
+        BackupAlertService::class => autowire()->constructorParameter(
             'appUrl',
             factory(static fn (ContainerInterface $c): string => $c->get('settings')['app']['url']),
         ),
@@ -520,6 +551,70 @@ return static function (ContainerBuilder $builder, ?array $settings = null): voi
                 'logos' => $uploads['logo_directory'],
             ]);
         },
+
+        BackupDestinationService::class => static function (ContainerInterface $c): BackupDestinationService {
+            $settings = $c->get('settings');
+
+            // A Directory destination may not be anywhere Renovo keeps its own
+            // files: its pruning, or the web server, would reach the copies.
+            return new BackupDestinationService(
+                $c->get(BackupDestinationRepository::class),
+                $c->get(BackupDestinationFactory::class),
+                $c->get(InstanceSettingsService::class),
+                $c->get(AuditLogService::class),
+                array_values(array_unique([
+                    $settings['paths']['root'],
+                    $settings['backup']['directory'],
+                    $settings['uploads']['attachment_directory'],
+                    $settings['uploads']['avatar_directory'],
+                    $settings['uploads']['logo_directory'],
+                ])),
+            );
+        },
+
+        AfterResponse::class => autowire(ShutdownAfterResponse::class),
+
+        // Test connection's exchange: the same guard, with the ordinary
+        // HTTP_* limits, since a page waits on it. Real transfers use the
+        // transfer limits above.
+        BackupDestinationFactory::class => static fn (ContainerInterface $c): BackupDestinationFactory
+            => new BackupDestinationFactory(
+                $c->get(HttpExchange::class),
+                $c->get(RequestFactoryInterface::class),
+                $c->get(StreamFactoryInterface::class),
+                $c->get(Clock::class),
+                new HttpExchange(new GuardedTransferClient(
+                    $c->get(HttpClient::class),
+                    $c->get(UrlGuard::class),
+                    $c->get(HttpClientOptions::class)->narrowedTo(PHP_INT_MAX, PHP_INT_MAX, 1024 * 1024),
+                )),
+            ),
+
+        // The empty database a restore rehearsal restores into (Phase 39).
+        // Unset, rehearsals download and verify only.
+        ScratchDatabase::class => static function (ContainerInterface $c): ScratchDatabase {
+            $settings = $c->get('settings');
+
+            return new ScratchDatabase(
+                $settings['backup']['rehearsal_db'],
+                $settings['database'],
+                $settings['paths']['root'] . '/migrations',
+            );
+        },
+
+        OffsiteBackupService::class => autowire(OffsiteBackupService::class)
+            ->constructorParameter(
+                'directory',
+                factory(static fn (ContainerInterface $c): string => $c->get('settings')['backup']['directory']),
+            )
+            // Longer than any transfer can run, so a copy being sent is never
+            // taken by a second process; a crashed one is retried after it.
+            ->constructorParameter(
+                'leaseSeconds',
+                factory(
+                    static fn (ContainerInterface $c): int => $c->get('settings')['backup']['transfer_timeout'] + 600,
+                ),
+            ),
 
         InstanceBackupService::class => autowire(InstanceBackupService::class)
             ->constructorParameter(

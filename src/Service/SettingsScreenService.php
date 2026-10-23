@@ -26,7 +26,14 @@ use App\Security\PermissionService;
 use App\Security\Scope;
 use App\Service\ExchangeRate\ExchangeRateProvider;
 use App\Service\Backup\BackupRetention;
+use App\Service\Backup\BackupAlertService;
+use App\Service\Backup\BackupDestinationService;
+use App\Service\Backup\BackupRehearsalService;
 use App\Service\Backup\InstanceBackupService;
+use App\Service\Backup\OffsiteBackupService;
+use App\Domain\BackupDestinationType;
+use App\Domain\BackupRehearsalSchedule;
+use App\Domain\Entity\BackupCopy;
 use App\Service\ExchangeRate\ExchangeRateProviderRegistry;
 use DateTimeImmutable;
 
@@ -69,6 +76,10 @@ final class SettingsScreenService
         private readonly AppVersion $version,
         private readonly KeyRing $keys,
         private readonly InstanceBackupService $instanceBackups,
+        private readonly BackupDestinationService $backupDestinations,
+        private readonly OffsiteBackupService $offsite,
+        private readonly BackupRehearsalService $rehearsals,
+        private readonly BackupAlertService $backupAlerts,
         private readonly string $smtpHost = '',
         private readonly int $smtpPort = 0,
         private readonly string $smtpEncryption = 'none',
@@ -242,15 +253,44 @@ final class SettingsScreenService
      *     max_retention: int,
      *     last_verified: BackupRun|null,
      *     local_only: bool,
-     *     history: list<array{run: BackupRun, size: array{key: string, value: float, digits: int}|null}>
+     *     offsite: bool,
+     *     stale: bool,
+     *     history: list<array{
+     *         run: BackupRun,
+     *         size: array{key: string, value: float, digits: int}|null,
+     *         copies: list<array{name: string|null, status: string}>,
+     *         offsite: string|null
+     *     }>,
+     *     destinations: list<array{
+     *         record: \App\Domain\Entity\BackupDestinationRecord,
+     *         last_upload: DateTimeImmutable|null
+     *     }>,
+     *     destination_types: list<BackupDestinationType>,
+     *     rehearsal: array<string, mixed>
      * }
      */
     private function instanceBackups(): array
     {
+        // Phase 39: where each run was sent, by destination name.
+        $destinations = $this->backupDestinations->all();
+        $names = [];
+        foreach ($destinations as $destination) {
+            $names[$destination->id] = $destination->name;
+        }
+        $runs = $this->instanceBackups->history();
+        $copies = $this->offsite->copiesFor($runs);
+        $uploads = $this->offsite->lastUploads();
+
         $history = array_map(static fn (BackupRun $run): array => [
             'run' => $run,
             'size' => $run->sizeBytes === null ? null : self::size($run->sizeBytes),
-        ], $this->instanceBackups->history());
+            'copies' => array_map(static fn (BackupCopy $copy): array => [
+                'name' => $copy->destinationId === null ? null : ($names[$copy->destinationId] ?? null),
+                'status' => $copy->status,
+            ], $copies[$run->id] ?? []),
+            'offsite' => self::offsiteState($copies[$run->id] ?? []),
+        ], $runs);
+        $offsite = $this->offsite->hasOffsiteCopy();
 
         return [
             'key_state' => $this->instanceBackups->keyState(),
@@ -261,9 +301,48 @@ final class SettingsScreenService
             'retention' => $this->settings->backupRetention(),
             'max_retention' => BackupRetention::MAX,
             'last_verified' => $this->instanceBackups->lastVerified(),
-            'local_only' => $this->instanceBackups->hasLocalBackups(),
+            // The "only on this server" warning clears once a destination
+            // holds a confirmed copy.
+            'local_only' => $this->instanceBackups->hasLocalBackups() && !$offsite,
+            'offsite' => $offsite,
+            'stale' => $this->backupAlerts->isStale(),
             'history' => $history,
+            'destinations' => array_map(static fn ($record): array => [
+                'record' => $record,
+                'last_upload' => $uploads[$record->id] ?? null,
+            ], $destinations),
+            'destination_types' => BackupDestinationType::cases(),
+            'rehearsal' => [
+                'schedule' => $this->rehearsals->schedule()->value,
+                'schedules' => BackupRehearsalSchedule::cases(),
+                'scratch' => $this->rehearsals->hasScratchDatabase(),
+                'last' => $this->rehearsals->last(),
+                'history' => $this->rehearsals->history(5),
+                'has_destination' => $destinations !== [],
+            ],
         ];
+    }
+
+    /**
+     * Where a run stands off the server: stored once any destination has
+     * confirmed it, sending while a copy waits, only here when every copy
+     * failed, and null when it was never sent anywhere.
+     *
+     * @param list<BackupCopy> $copies
+     * @return 'stored'|'sending'|'local'|null
+     */
+    private static function offsiteState(array $copies): ?string
+    {
+        if ($copies === []) {
+            return null;
+        }
+
+        $statuses = array_map(static fn (BackupCopy $copy): string => $copy->status, $copies);
+        if (in_array(BackupCopy::CONFIRMED, $statuses, true) || in_array(BackupCopy::PRUNED, $statuses, true)) {
+            return 'stored';
+        }
+
+        return in_array(BackupCopy::PENDING, $statuses, true) ? 'sending' : 'local';
     }
 
     /**

@@ -224,6 +224,10 @@
             <p class="alert callout instance-backup-warning" role="note">
                 {{ icon('warn') }}{{ t('backup.instance_same_server', {'variable': 'BACKUP_DIRECTORY'}) }}
             </p>
+        {% elseif backups.stale %}
+            <p class="alert callout instance-backup-warning" role="note">
+                {{ icon('warn') }}{{ t('backup.instance_offsite_stale') }}
+            </p>
         {% endif %}
 
         <dl class="settings-facts">
@@ -291,7 +295,7 @@
             <button type="submit" class="button button-primary" {{ backup_ready ? '' : 'disabled' }}>
                 {{- icon('lock') }}{{ t('backup.instance_back_up_now') -}}
             </button>
-            <span class="hint">{{ t('backup.instance_back_up_now_hint') }}</span>
+            <span class="hint">{{ t(backups.destinations is empty ? 'backup.instance_back_up_now_hint' : 'backup.instance_back_up_now_hint_offsite') }}</span>
         </form>
 
         <h3 class="instance-backup-history-heading">{{ t('backup.instance_history') }}</h3>
@@ -308,6 +312,13 @@
                                 <span class="num">{{ run.startedAt|local_date('d MMM y, HH:mm') }}</span>
                                 {% if run.status == 'verified' %}
                                     <span class="badge badge-ok">{{ t('backup.status.verified') }}</span>
+                                    {% if item.offsite == 'stored' %}
+                                        <span class="badge badge-ok">{{ t('backup.instance_stored_offsite') }}</span>
+                                    {% elseif item.offsite == 'sending' %}
+                                        <span class="badge badge-info">{{ t('backup.instance_sending') }}</span>
+                                    {% elseif item.offsite == 'local' %}
+                                        <span class="badge badge-warn">{{ t('backup.instance_verified_locally') }}</span>
+                                    {% endif %}
                                 {% elseif run.status == 'failed' %}
                                     <span class="badge badge-bad">{{ t('backup.status.failed') }}</span>
                                 {% else %}
@@ -323,6 +334,14 @@
                             </span>
                             {% if run.status == 'failed' %}
                                 <span class="account-row-meta instance-backup-error">{{ t('backup.reason.' ~ (run.error ?? 'unexpected')) }}</span>
+                            {% endif %}
+                            {% if item.copies is not empty %}
+                                <span class="account-row-meta instance-backup-copies">
+                                    {{ t('backup.history_offsite') }}:
+                                    {% for copy in item.copies %}
+                                        {{- copy.name ?? t('backup.copy.removed_destination') }} — {{ t('backup.copy.' ~ copy.status) }}{{ loop.last ? '' : ' · ' -}}
+                                    {% endfor %}
+                                </span>
                             {% endif %}
                             {% if run.warnings is not empty %}
                                 <details class="instance-backup-warnings">
@@ -343,6 +362,282 @@
                                 </a>
                             </div>
                         {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </section>
+
+    {#
+        Destinations (Phase 39): every verified backup is sent to each one
+        that is switched on, encrypted before it leaves. Credentials are
+        written once and never drawn again — the form says only that one is
+        set. Removing one forgets it; what it holds stays there.
+    #}
+    <section class="card" id="backup-destinations" aria-labelledby="backup-destinations-heading">
+        <h2 id="backup-destinations-heading">{{ t('backup.destination.heading') }}</h2>
+        <p class="muted">{{ t('backup.destination.intro') }}</p>
+
+        {% if backups.destinations is empty %}
+            <p class="muted empty">{{ t('backup.destination.none') }}</p>
+        {% else %}
+            <ul class="account-rows channel-rows destination-rows">
+                {% for item in backups.destinations %}
+                    {% set destination = item.record %}
+                    {% set edit = destination_edit is defined and destination_edit and destination_edit.id == destination.id ? destination_edit : null %}
+                    <li class="account-row channel-row{{ destination.enabled ? '' : ' is-off' }}">
+                        <span class="account-row-icon" aria-hidden="true">{{ icon(destination.type.icon()) }}</span>
+                        <div class="account-row-text">
+                            <span class="account-row-name">{{ destination.name }}</span>
+                            <span class="account-row-meta">{{ t(destination.type.labelKey()) }} · {{ t('backup.destination.id', {'id': destination.id}) }} · <code>{{ destination.location() }}</code></span>
+                            <span class="account-row-meta">
+                                {%- if item.last_upload -%}
+                                    {{ t('backup.destination.last_upload', {'date': item.last_upload|local_date('d MMM y, HH:mm')}) }}
+                                {%- else -%}
+                                    {{ t('backup.destination.never_uploaded') }}
+                                {%- endif %} · {{ t('backup.destination.retention', {
+                                    'daily': destination.retention.daily,
+                                    'weekly': destination.retention.weekly,
+                                    'monthly': destination.retention.monthly,
+                                }) }}
+                            </span>
+                            {% if destination.secretsUnreadable %}
+                                <span class="field-error">{{ t('backup.destination.credentials_unreadable') }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="account-row-actions">
+                            <form method="post" action="/settings/backups/destinations/{{ destination.id }}/enabled"
+                                  class="inline channel-switch"
+                                  hx-post="/settings/backups/destinations/{{ destination.id }}/enabled" hx-trigger="change">
+                                {{ csrf_field() }}
+                                <input type="hidden" name="enabled" value="0">
+                                <input type="checkbox" class="toggle" role="switch" name="enabled" value="1"
+                                       aria-label="{{ t('backup.destination.enabled_named', {'name': destination.name}) }}"
+                                       {{ destination.enabled ? 'checked' : '' }}>
+                                <noscript>
+                                    <button type="submit" class="button button-quiet">{{ t('action.save') }}</button>
+                                </noscript>
+                            </form>
+                        </div>
+
+                        <details class="account-row-more" {{ edit ? 'open' : '' }}>
+                            <summary class="button button-quiet">{{ icon('edit') }}{{ t('backup.destination.edit_named', {'name': destination.name}) }}</summary>
+
+                            <form method="post" action="/settings/backups/destinations/{{ destination.id }}" class="stack">
+                                {{ csrf_field() }}
+
+                                <label for="destination_{{ destination.id }}_name">{{ t('backup.destination.field.name') }}</label>
+                                <input type="text" id="destination_{{ destination.id }}_name" name="name" value="{{ edit ? edit.values.name|default('') : destination.name }}" required maxlength="100">
+                                {% if edit and edit.errors.name is defined %}<p class="field-error">{{ error_message(edit.errors.name) }}</p>{% endif %}
+
+                                {% for field in destination.type.fields() %}
+                                    {% set id = 'destination_' ~ destination.id ~ '_' ~ field.name %}
+                                    {% if field.input == 'checkbox' %}
+                                        <input type="hidden" name="{{ field.name }}" value="0">
+                                        <label class="choice toggle-row" for="{{ id }}">
+                                            <span>
+                                                <span class="choice-title">{{ t('backup.destination.field.' ~ field.name) }}</span>
+                                                {% if field.hint %}<span class="choice-note">{{ t('backup.destination.field.' ~ field.name ~ '_hint') }}</span>{% endif %}
+                                            </span>
+                                            <input type="checkbox" class="toggle" role="switch" id="{{ id }}" name="{{ field.name }}" value="1"
+                                                   {{ (edit ? edit.values[field.name]|default('') == '1' : destination.configBool(field.name)) ? 'checked' : '' }}>
+                                        </label>
+                                    {% else %}
+                                        <label for="{{ id }}">{{ t('backup.destination.field.' ~ field.name) }}</label>
+                                        {% if field.secret %}
+                                            <p class="hint">
+                                                {% if destination.hasSecret(field.name) %}<span class="badge badge-ok">{{ t('backup.destination.credential_set') }}</span>{% endif %}
+                                                {{ t('backup.destination.credential_replace_hint') }}
+                                            </p>
+                                            <input type="password" id="{{ id }}" name="{{ field.name }}" autocomplete="off"
+                                                   placeholder="{{ t('backup.destination.credential_replace') }}">
+                                        {% else %}
+                                            <input type="{{ field.input }}" id="{{ id }}" name="{{ field.name }}" autocomplete="off"
+                                                   {{ field.required ? 'required' : '' }}
+                                                   value="{{ edit ? edit.values[field.name]|default('') : destination.configString(field.name) }}">
+                                            {% if field.hint %}<p class="hint">{{ t('backup.destination.field.' ~ field.name ~ '_hint') }}</p>{% endif %}
+                                        {% endif %}
+                                    {% endif %}
+                                    {% if edit and edit.errors[field.name] is defined %}
+                                        <p class="field-error">{{ error_message(edit.errors[field.name]) }}</p>
+                                    {% endif %}
+                                {% endfor %}
+
+                                <fieldset class="stack destination-retention">
+                                    <legend>{{ t('backup.instance_retention') }}</legend>
+                                    <p class="hint">{{ t('backup.destination.retention_hint') }}</p>
+                                    <div class="field-grid field-grid-3">
+                                        {% for period in ['daily', 'weekly', 'monthly'] %}
+                                            <div class="field">
+                                                <label for="destination_{{ destination.id }}_keep_{{ period }}">{{ t('backup.instance_keep_' ~ period) }}</label>
+                                                <input type="number" id="destination_{{ destination.id }}_keep_{{ period }}" name="keep_{{ period }}" class="num"
+                                                       min="0" max="{{ backups.max_retention }}" required
+                                                       value="{{ edit ? edit.values['keep_' ~ period]|default(attribute(destination.retention, period)) : attribute(destination.retention, period) }}">
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </fieldset>
+
+                                <div class="form-actions">
+                                    <button type="submit" class="button">{{ t('backup.destination.save') }}</button>
+                                </div>
+                            </form>
+
+                            <div class="form-actions">
+                                <form method="post" action="/settings/backups/destinations/{{ destination.id }}/test" class="inline">
+                                    {{ csrf_field() }}
+                                    <button type="submit" class="button button-quiet"
+                                            aria-label="{{ t('backup.destination.test_named', {'name': destination.name}) }}">
+                                        {{- icon('refresh') }}{{ t('backup.destination.test') -}}
+                                    </button>
+                                </form>
+                                <form method="post" action="/settings/backups/destinations/{{ destination.id }}/delete" class="inline"
+                                      onsubmit="return confirm('{{ t('backup.destination.remove_confirm', {'name': destination.name})|e('js') }}')">
+                                    {{ csrf_field() }}
+                                    <button type="submit" class="button button-danger"
+                                            aria-label="{{ t('backup.destination.remove_named', {'name': destination.name}) }}">{{ t('backup.destination.remove') }}</button>
+                                </form>
+                            </div>
+                        </details>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        {% set failed = destination_form ?? null %}
+        <details class="settings-disclosure" id="add-destination" {{ failed ? 'open' : '' }}>
+            <summary class="button button-outline">{{ icon('add') }}{{ t('backup.destination.add') }}</summary>
+            {% if failed and failed.errors.type is defined %}<p class="field-error">{{ error_message(failed.errors.type) }}</p>{% endif %}
+
+            {% for type in backups.destination_types %}
+                {% set is_this = failed and failed.type == type.value %}
+                <details class="channel-form" {{ is_this ? 'open' : '' }}>
+                    <summary>{{ icon(type.icon()) }}{{ t(type.labelKey()) }}</summary>
+
+                    <form method="post" action="/settings/backups/destinations" class="stack">
+                        {{ csrf_field() }}
+                        <input type="hidden" name="type" value="{{ type.value }}">
+
+                        <label for="new_{{ type.value }}_name">{{ t('backup.destination.field.name') }}</label>
+                        <input type="text" id="new_{{ type.value }}_name" name="name" required maxlength="100"
+                               placeholder="{{ t(type.labelKey()) }}"
+                               value="{{ is_this ? failed.values.name|default('') : '' }}">
+                        {% if is_this and failed.errors.name is defined %}<p class="field-error">{{ error_message(failed.errors.name) }}</p>{% endif %}
+
+                        {% for field in type.fields() %}
+                            {% set id = 'new_' ~ type.value ~ '_' ~ field.name %}
+                            {% if field.input == 'checkbox' %}
+                                <input type="hidden" name="{{ field.name }}" value="0">
+                                <label class="choice toggle-row" for="{{ id }}">
+                                    <span>
+                                        <span class="choice-title">{{ t('backup.destination.field.' ~ field.name) }}</span>
+                                        {% if field.hint %}<span class="choice-note">{{ t('backup.destination.field.' ~ field.name ~ '_hint') }}</span>{% endif %}
+                                    </span>
+                                    <input type="checkbox" class="toggle" role="switch" id="{{ id }}" name="{{ field.name }}" value="1"
+                                           {{ is_this and failed.values[field.name]|default('') == '1' ? 'checked' : '' }}>
+                                </label>
+                            {% else %}
+                                <label for="{{ id }}">{{ t('backup.destination.field.' ~ field.name) }}</label>
+                                <input type="{{ field.input }}" id="{{ id }}" name="{{ field.name }}" autocomplete="off"
+                                       {{ field.required ? 'required' : '' }}
+                                       {% if is_this and not field.secret %}value="{{ failed.values[field.name]|default('') }}"{% endif %}>
+                                {% if field.hint %}<p class="hint">{{ t('backup.destination.field.' ~ field.name ~ '_hint') }}</p>{% endif %}
+                            {% endif %}
+                            {% if is_this and failed.errors[field.name] is defined %}
+                                <p class="field-error">{{ error_message(failed.errors[field.name]) }}</p>
+                            {% endif %}
+                        {% endfor %}
+
+                        <p class="hint">{{ t('backup.destination.retention_hint') }}
+                            {{ t('backup.destination.retention', {
+                                'daily': backups.retention.daily,
+                                'weekly': backups.retention.weekly,
+                                'monthly': backups.retention.monthly,
+                            }) }}</p>
+
+                        <div class="form-actions">
+                            <button type="submit" class="button">{{ t('backup.destination.add') }}</button>
+                        </div>
+                    </form>
+                </details>
+            {% endfor %}
+        </details>
+    </section>
+
+    {#
+        The restore rehearsal (Phase 39): how often, whether a scratch
+        database is configured, and how the last ones went. It runs from the
+        scheduler (`backup:rehearse`); there is no button, because a restore
+        into the scratch database outlasts any page.
+    #}
+    <section class="card" id="backup-rehearsal" aria-labelledby="backup-rehearsal-heading">
+        <h2 id="backup-rehearsal-heading">{{ t('backup.rehearsal.heading') }}</h2>
+        <p class="muted">{{ t('backup.rehearsal.intro') }}</p>
+
+        {% set rehearsal = backups.rehearsal %}
+        <dl class="settings-facts">
+            <dt>{{ t('backup.rehearsal.database') }}</dt>
+            <dd>
+                {% if rehearsal.scratch %}
+                    <span class="badge badge-ok">{{ t('backup.rehearsal.database_configured') }}</span>
+                    <span class="muted block">{{ t('backup.rehearsal.database_set') }}</span>
+                {% else %}
+                    <span class="muted">{{ t('backup.rehearsal.database_missing', {'variable': 'BACKUP_REHEARSAL_DB_NAME'}) }}</span>
+                {% endif %}
+            </dd>
+
+            <dt>{{ t('backup.rehearsal.last') }}</dt>
+            <dd>
+                {% if rehearsal.last %}
+                    <span class="num">{{ rehearsal.last.startedAt|local_date('d MMM y, HH:mm') }}</span>
+                    <span class="badge {{ rehearsal.last.passed() ? 'badge-ok' : (rehearsal.last.status == 'failed' ? 'badge-bad' : 'badge-info') }}">
+                        {{- t('backup.rehearsal.status.' ~ rehearsal.last.status) -}}
+                    </span>
+                {% elseif not rehearsal.has_destination %}
+                    <span class="muted">{{ t('backup.rehearsal.no_destination') }}</span>
+                {% else %}
+                    <span class="muted">{{ t('backup.rehearsal.never') }}</span>
+                {% endif %}
+            </dd>
+        </dl>
+
+        <form method="post" action="/settings/backups/rehearsal" class="stack">
+            {{ csrf_field() }}
+            <fieldset class="role-options" id="rehearsal-schedule">
+                <legend>{{ t('backup.rehearsal.schedule') }}</legend>
+                {% for schedule in rehearsal.schedules %}
+                    <label class="role-option">
+                        <input type="radio" name="rehearsal_schedule" value="{{ schedule.value }}"
+                               {{ rehearsal.schedule == schedule.value ? 'checked' : '' }}>
+                        <span class="role-option-text">{{ t(schedule.labelKey()) }}</span>
+                    </label>
+                {% endfor %}
+            </fieldset>
+            <div class="form-actions">
+                <button type="submit" class="button button-outline">{{ t('backup.rehearsal.save') }}</button>
+            </div>
+        </form>
+
+        {% if rehearsal.history is not empty %}
+            <h3 class="instance-backup-history-heading">{{ t('backup.rehearsal.history') }}</h3>
+            <ul class="account-rows instance-backup-rows">
+                {% for item in rehearsal.history %}
+                    <li class="account-row">
+                        <span class="account-row-icon" aria-hidden="true">{{ icon(item.status == 'failed' ? 'warn' : 'rehearsal') }}</span>
+                        <div class="account-row-text">
+                            <span class="account-row-name">
+                                {% if item.startedAt %}<span class="num">{{ item.startedAt|local_date('d MMM y, HH:mm') }}</span>{% endif %}
+                                <span class="badge {{ item.passed() ? 'badge-ok' : (item.status == 'failed' ? 'badge-bad' : 'badge-info') }}">
+                                    {{- t('backup.rehearsal.status.' ~ item.status) -}}
+                                </span>
+                            </span>
+                            <span class="account-row-meta">{{ item.destinationName ?? t('backup.copy.removed_destination') }} · {{ t('backup.rehearsal.kind.' ~ item.kind) }}</span>
+                            {% if item.status == 'failed' %}
+                                <span class="account-row-meta instance-backup-error">
+                                    {{- t('backup.rehearsal.step.' ~ (item.step ?? 'unknown')) }}: {{ t(item.errorKey()) -}}
+                                </span>
+                            {% endif %}
+                        </div>
                     </li>
                 {% endfor %}
             </ul>

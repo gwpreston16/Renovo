@@ -55,6 +55,9 @@ final class NotificationPreferenceRepository extends AbstractRepository
             $this->db->platform()->toBoolean($row['price_change_alerts'] ?? true),
             $this->db->platform()->toBoolean($row['budget_alerts'] ?? true),
             $this->db->platform()->toBoolean($row['contract_alerts'] ?? true),
+            $this->db->platform()->toBoolean($row['backup_failed_alerts'] ?? true),
+            $this->db->platform()->toBoolean($row['backup_stale_alerts'] ?? true),
+            $this->db->platform()->toBoolean($row['backup_rehearsal_alerts'] ?? true),
         );
     }
 
@@ -70,6 +73,9 @@ final class NotificationPreferenceRepository extends AbstractRepository
             . ' ' . $this->quote('price_change_alerts') . ' = :price_change,'
             . ' ' . $this->quote('budget_alerts') . ' = :budget,'
             . ' ' . $this->quote('contract_alerts') . ' = :contract,'
+            . ' ' . $this->quote('backup_failed_alerts') . ' = :backup_failed,'
+            . ' ' . $this->quote('backup_stale_alerts') . ' = :backup_stale,'
+            . ' ' . $this->quote('backup_rehearsal_alerts') . ' = :backup_rehearsal,'
             . ' ' . $this->quote('updated_at') . ' = :now'
             . ' WHERE ' . $this->quote('user_id') . ' = :user',
             [
@@ -79,6 +85,9 @@ final class NotificationPreferenceRepository extends AbstractRepository
                 'price_change' => $this->db->platform()->booleanParameter($preferences->priceChangeAlerts),
                 'budget' => $this->db->platform()->booleanParameter($preferences->budgetAlerts),
                 'contract' => $this->db->platform()->booleanParameter($preferences->contractAlerts),
+                'backup_failed' => $this->db->platform()->booleanParameter($preferences->backupFailedAlerts),
+                'backup_stale' => $this->db->platform()->booleanParameter($preferences->backupStaleAlerts),
+                'backup_rehearsal' => $this->db->platform()->booleanParameter($preferences->backupRehearsalAlerts),
                 'now' => $now,
                 'user' => $preferences->userId,
             ],
@@ -110,6 +119,9 @@ final class NotificationPreferenceRepository extends AbstractRepository
             'price_change_alerts' => $this->db->platform()->booleanParameter($preferences->priceChangeAlerts),
             'budget_alerts' => $this->db->platform()->booleanParameter($preferences->budgetAlerts),
             'contract_alerts' => $this->db->platform()->booleanParameter($preferences->contractAlerts),
+            'backup_failed_alerts' => $this->db->platform()->booleanParameter($preferences->backupFailedAlerts),
+            'backup_stale_alerts' => $this->db->platform()->booleanParameter($preferences->backupStaleAlerts),
+            'backup_rehearsal_alerts' => $this->db->platform()->booleanParameter($preferences->backupRehearsalAlerts),
             'created_at' => $now,
             'updated_at' => $now,
         ], 'user_id');

@@ -88,9 +88,15 @@ return [
         'max_response_bytes' => (int) $env('HTTP_MAX_RESPONSE_BYTES', '2097152'),
         'max_redirects' => (int) $env('HTTP_MAX_REDIRECTS', '3'),
         'user_agent' => $env('HTTP_USER_AGENT', 'Renovo'),
-        'proxy' => $env('HTTP_PROXY', ''),
-        'https_proxy' => $env('HTTPS_PROXY', ''),
-        'no_proxy' => array_values(array_filter(array_map('trim', explode(',', $env('NO_PROXY', ''))))),
+        // The lowercase spellings too, which libcurl and most tools honour:
+        // the client tells curl exactly which proxy to use, so one it does
+        // not know about can never bypass the pinned address (K25).
+        'proxy' => $env('HTTP_PROXY', $env('http_proxy', '')),
+        'https_proxy' => $env('HTTPS_PROXY', $env('https_proxy', '')),
+        'no_proxy' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', $env('NO_PROXY', $env('no_proxy', ''))),
+        ))),
     ],
 
     'rates' => [
@@ -170,6 +176,23 @@ return [
         // On the appvar volume by default, which the app and the scheduler
         // share: the scheduler writes what the settings page lists.
         'directory' => $env('BACKUP_DIRECTORY', dirname(__DIR__) . '/var/backups'),
+        // Phase 39. Sending a backup to a destination, or fetching one back,
+        // takes far longer than any other request, so it has its own limit
+        // rather than HTTP_TIMEOUT_SECONDS.
+        'transfer_timeout' => (int) $env('BACKUP_TRANSFER_TIMEOUT_SECONDS', '1800'),
+        // An empty database a restore rehearsal may restore into and drop
+        // again. Unset (no name), rehearsals download and verify only.
+        'rehearsal_db' => [
+            'driver' => $env('BACKUP_REHEARSAL_DB_DRIVER', $env('DB_DRIVER', 'pgsql')),
+            'host' => $env('BACKUP_REHEARSAL_DB_HOST', $env('DB_HOST', 'database')),
+            'port' => (int) $env(
+                'BACKUP_REHEARSAL_DB_PORT',
+                $env('BACKUP_REHEARSAL_DB_DRIVER', $env('DB_DRIVER', 'pgsql')) === 'mysql' ? '3306' : '5432',
+            ),
+            'name' => $env('BACKUP_REHEARSAL_DB_NAME', ''),
+            'user' => $env('BACKUP_REHEARSAL_DB_USER', ''),
+            'password' => $env('BACKUP_REHEARSAL_DB_PASSWORD', ''),
+        ],
     ],
 
     'uploads' => [

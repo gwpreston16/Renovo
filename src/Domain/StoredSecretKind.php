@@ -15,6 +15,7 @@ enum StoredSecretKind: string
     case TotpSecret = 'totp_secrets';
     case ChannelConfig = 'channel_configs';
     case RateProviderKey = 'rate_provider_key';
+    case BackupDestinationSecret = 'backup_destination_secrets';
 
     /**
      * Whether an unprefixed value is a legacy plaintext one (written before
@@ -22,7 +23,9 @@ enum StoredSecretKind: string
      */
     public function mayBePlaintext(): bool
     {
-        return $this !== self::TotpSecret;
+        // A backup destination's credentials were encrypted from the first
+        // row, as a two-factor seed was.
+        return $this !== self::TotpSecret && $this !== self::BackupDestinationSecret;
     }
 
     public function purpose(): string
@@ -31,6 +34,7 @@ enum StoredSecretKind: string
             self::TotpSecret => SecretCipher::PURPOSE_TOTP,
             self::ChannelConfig => SecretCipher::PURPOSE_CHANNEL_CONFIG,
             self::RateProviderKey => SecretCipher::PURPOSE_RATE_PROVIDER_KEY,
+            self::BackupDestinationSecret => SecretCipher::PURPOSE_BACKUP_DESTINATION,
         };
     }
 }

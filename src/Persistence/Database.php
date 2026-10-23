@@ -126,6 +126,32 @@ final class Database
     }
 
     /**
+     * One statement, prepared once and run as many times as it is called —
+     * for a loop that runs the same SQL for every row (K112: a restore's
+     * INSERTs). Each call binds its own values exactly as `execute()` does.
+     *
+     * @return \Closure(array<string, mixed>): int Runs it; returns the rows affected.
+     */
+    public function prepared(string $sql): \Closure
+    {
+        $statement = $this->connection()->prepare($sql);
+
+        return function (array $params) use ($statement): int {
+            $this->statements++;
+            foreach ($params as $name => $value) {
+                $statement->bindValue(
+                    ':' . ltrim((string) $name, ':'),
+                    $this->normaliseParameter($value),
+                    $this->parameterType($value),
+                );
+            }
+            $statement->execute();
+
+            return $statement->rowCount();
+        };
+    }
+
+    /**
      * Insert a row and return its generated identifier.
      *
      * @param array<string, mixed> $data Column name => value.

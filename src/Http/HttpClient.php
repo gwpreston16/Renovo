@@ -62,12 +62,16 @@ final class HttpClient implements ClientInterface
      *        False hands redirect handling to the caller, which is what a
      *        guarded request needs: each hop has to be vetted before it is
      *        followed, and curl would follow it first and tell us after.
+     * @param Transfer|null $transfer A body streamed from a file, a response
+     *        streamed to one, and the limits that go with them.
      */
     public function send(
         RequestInterface $request,
         ?ResolvedTarget $pin = null,
         ?bool $followRedirects = null,
+        ?Transfer $transfer = null,
     ): ResponseInterface {
+        $options = $transfer !== null ? $transfer->options : $this->options;
         $uri = $request->getUri();
         $scheme = strtolower($uri->getScheme());
 
@@ -83,10 +87,26 @@ final class HttpClient implements ClientInterface
         $responseHeaders = [];
         $body = '';
         $received = 0;
-        $limit = $this->options->maxResponseBytes;
+        $limit = $options->maxResponseBytes;
+        // What is kept in memory — every body not streamed to a file, an
+        // error document above all — is held to the operator's ordinary cap,
+        // however large a transfer may be. A hostile destination answering
+        // with gigabytes must not take the process down with it.
+        $bufferLimit = min($limit, $this->options->maxResponseBytes);
+        $buffered = 0;
         $exceeded = false;
+        $sink = null;
+        $source = null;
 
-        $requestBody = (string) $request->getBody();
+        if ($transfer?->downloadTo !== null) {
+            $sink = @fopen($transfer->downloadTo, 'wb');
+            if ($sink === false) {
+                throw HttpClientException::transport($request, 'could not open the file to download into');
+            }
+            @chmod($transfer->downloadTo, 0o600);
+        }
+
+        $requestBody = $transfer?->uploadFrom !== null ? '' : (string) $request->getBody();
         $follow = $followRedirects ?? true;
 
         curl_setopt_array($handle, [
@@ -94,14 +114,14 @@ final class HttpClient implements ClientInterface
             CURLOPT_CUSTOMREQUEST => $request->getMethod(),
             CURLOPT_HTTPHEADER => $this->flattenHeaders($request),
             CURLOPT_RETURNTRANSFER => false,
-            CURLOPT_CONNECTTIMEOUT => $this->options->connectTimeoutSeconds,
-            CURLOPT_TIMEOUT => $this->options->timeoutSeconds,
-            CURLOPT_FOLLOWLOCATION => $follow && $this->options->maxRedirects > 0,
-            CURLOPT_MAXREDIRS => $this->options->maxRedirects,
+            CURLOPT_CONNECTTIMEOUT => $options->connectTimeoutSeconds,
+            CURLOPT_TIMEOUT => $options->timeoutSeconds,
+            CURLOPT_FOLLOWLOCATION => $follow && $options->maxRedirects > 0,
+            CURLOPT_MAXREDIRS => $options->maxRedirects,
             // A redirect may not escape into another protocol.
             CURLOPT_REDIR_PROTOCOLS_STR => 'http,https',
             CURLOPT_PROTOCOLS_STR => 'http,https',
-            CURLOPT_USERAGENT => $this->options->userAgent,
+            CURLOPT_USERAGENT => $options->userAgent,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_ACCEPT_ENCODING => '',
@@ -130,7 +150,10 @@ final class HttpClient implements ClientInterface
                 &$body,
                 &$received,
                 &$exceeded,
-                $limit
+                &$buffered,
+                $limit,
+                $bufferLimit,
+                $sink,
             ): int {
                 $received += strlen($chunk);
                 if ($received > $limit) {
@@ -140,11 +163,30 @@ final class HttpClient implements ClientInterface
                     // oversized body is never fully downloaded.
                     return -1;
                 }
+
+                // Only a successful body goes to the file: an error document
+                // is what the caller needs to read, and is small.
+                $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+                if ($sink !== null && $status >= 200 && $status < 300) {
+                    return fwrite($sink, $chunk) === strlen($chunk) ? strlen($chunk) : -1;
+                }
+                $buffered += strlen($chunk);
+                if ($buffered > $bufferLimit) {
+                    $exceeded = true;
+
+                    return -1;
+                }
                 $body .= $chunk;
 
                 return strlen($chunk);
             },
         ]);
+
+        // A HEAD has no body to wait for; without this curl waits for the
+        // Content-Length it was promised.
+        if (strtoupper($request->getMethod()) === 'HEAD') {
+            curl_setopt($handle, CURLOPT_NOBODY, true);
+        }
 
         // The host name stays in the URL: it is what TLS verifies the
         // certificate against and what the server needs in the Host header.
@@ -154,24 +196,60 @@ final class HttpClient implements ClientInterface
             curl_setopt($handle, CURLOPT_RESOLVE, [$resolve]);
         }
 
-        if ($requestBody !== '') {
+        if ($transfer?->uploadFrom !== null) {
+            $source = @fopen($transfer->uploadFrom, 'rb');
+            $size = @filesize($transfer->uploadFrom);
+            if ($source === false || $size === false) {
+                if ($sink !== null) {
+                    fclose($sink);
+                }
+
+                throw HttpClientException::transport($request, 'could not open the file to upload');
+            }
+
+            // Read from the file as curl sends it, never into memory whole.
+            curl_setopt_array($handle, [
+                CURLOPT_UPLOAD => true,
+                CURLOPT_INFILE => $source,
+                CURLOPT_INFILESIZE => $size,
+            ]);
+        } elseif ($requestBody !== '') {
             curl_setopt($handle, CURLOPT_POSTFIELDS, $requestBody);
         }
 
-        $proxy = $this->options->proxyFor($scheme, $uri->getHost());
-        if ($proxy !== null) {
-            curl_setopt($handle, CURLOPT_PROXY, $proxy);
+        // Always set, even to nothing: libcurl reads `http_proxy`,
+        // `https_proxy` and `all_proxy` from the environment by itself when
+        // it is not told, and a proxy the guard does not know about bypasses
+        // the address it checked and pinned (K25). An empty string turns that
+        // off; the settings read the lowercase variables too, so an operator
+        // who set only those still gets their proxy, through the guard.
+        $proxy = $options->proxyFor($scheme, $uri->getHost());
+        curl_setopt($handle, CURLOPT_PROXY, $proxy ?? '');
+
+        try {
+            $succeeded = curl_exec($handle);
+            $errorNumber = curl_errno($handle);
+            $errorMessage = curl_error($handle);
+            $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
+            // No curl_close(): it has done nothing since PHP 8.0 and is
+            // deprecated in 8.5. The handle is freed when it goes out of scope.
+        } finally {
+            if ($source !== null) {
+                fclose($source);
+            }
+            if ($sink !== null) {
+                fclose($sink);
+            }
         }
 
-        $succeeded = curl_exec($handle);
-        $errorNumber = curl_errno($handle);
-        $errorMessage = curl_error($handle);
-        $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
-        // No curl_close(): it has done nothing since PHP 8.0 and is deprecated
-        // in 8.5. The handle is freed when it goes out of scope.
+        $failed = $exceeded || ($succeeded === false && $errorNumber !== 0) || $status < 200 || $status >= 300;
+        if ($transfer?->downloadTo !== null && $failed) {
+            // Nothing half-written is left under the name the caller asked for.
+            @unlink($transfer->downloadTo);
+        }
 
         if ($exceeded) {
-            throw HttpClientException::responseTooLarge($request, $limit);
+            throw HttpClientException::responseTooLarge($request, $buffered > $bufferLimit ? $bufferLimit : $limit);
         }
 
         if ($succeeded === false && $errorNumber !== 0) {

@@ -91,7 +91,7 @@ final class NotificationSettingsService
             foreach ($routes as $channelId => $types) {
                 $typed[$channelId] = array_values(array_filter(array_map(AlertType::tryFromString(...), $types)));
             }
-            $typed[$id] = AlertType::all();
+            $typed[$id] = AlertType::forUser($user->isInstanceAdmin);
 
             $this->routes->replaceForUser($userId, $typed);
         }
@@ -235,6 +235,15 @@ final class NotificationSettingsService
             array_key_exists('contract_alerts', $input)
                 ? $this->str($input, 'contract_alerts') === '1'
                 : $stored->contractAlerts,
+            array_key_exists('backup_failed_alerts', $input)
+                ? $this->str($input, 'backup_failed_alerts') === '1'
+                : $stored->backupFailedAlerts,
+            array_key_exists('backup_stale_alerts', $input)
+                ? $this->str($input, 'backup_stale_alerts') === '1'
+                : $stored->backupStaleAlerts,
+            array_key_exists('backup_rehearsal_alerts', $input)
+                ? $this->str($input, 'backup_rehearsal_alerts') === '1'
+                : $stored->backupRehearsalAlerts,
         ));
     }
 

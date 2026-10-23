@@ -15,11 +15,13 @@ interruption and nothing else is:
 | **Budget projected to be exceeded** | A budget's projection crosses its limit. |
 | **Contract ending** | A contract end date you have recorded is coming up, at each of your lead times, for a running subscription. |
 | **Price change** | A price is edited or a future one is scheduled — once, when it is recorded, naming the old and new price, the date and the effect over a year. Not for a first price, a trial converting or a currency conversion. |
+| **Backup failed**, **No backup off the server**, **Restore rehearsal failed** | Instance administrators only: an instance backup failed or reached no destination, nothing has been stored off the server for two schedule periods, or a restore rehearsal failed. Once per incident. See [Backup alerts](../operations.md#backup-alerts). |
 
 Everything is configured per user on the **Notifications** page; each member of
 a household sets their own. One set of lead times (any of 1, 3, 7, 14 and 30
 days) applies to renewals, trial conversions and cancel-by deadlines alike;
-budget alerts, price changes and contract endings each have a switch; and the routing grid has a
+budget alerts, price changes and contract endings each have a switch, as do,
+for instance administrators, the three backup alerts; and the routing grid has a
 column for every channel, with a channel that is switched off greyed out but
 keeping its choices. You are notified about the subscriptions you own and
 the ones you pay for, not about everything in the household — a household of

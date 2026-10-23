@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Repository\BackupCopyRepository;
+use App\Repository\BackupDestinationRepository;
+use App\Repository\BackupRehearsalRepository;
 use App\Repository\BackupRunRepository;
 use App\Repository\HouseholdRepository;
 use App\Repository\HttpMetricsRepository;
@@ -37,6 +40,9 @@ final class MetricsService
         private readonly ExchangeRateService $rates,
         private readonly InstanceSettingsService $settings,
         private readonly BackupRunRepository $backups,
+        private readonly BackupDestinationRepository $destinations,
+        private readonly BackupCopyRepository $copies,
+        private readonly BackupRehearsalRepository $rehearsals,
     ) {
     }
 
@@ -173,6 +179,42 @@ final class MetricsService
         foreach ($this->backups->countsByStatus() as $status => $count) {
             $lines[] = sprintf('renovo_backup_runs_total{status="%s"} %d', $status, $count);
         }
+
+        // Phase 39: when each destination last confirmed a copy (zero for
+        // one that never has), and when a rehearsal last passed. The
+        // destination is named, as an administrator named it; nothing about
+        // its credentials or address is emitted.
+        $uploads = $this->copies->lastConfirmedByDestination();
+        $name = 'renovo_backup_offsite_last_success_timestamp_seconds';
+        $lines[] = '# HELP ' . $name . ' When each backup destination last confirmed a copy. Zero when none has.';
+        $lines[] = '# TYPE ' . $name . ' gauge';
+        foreach ($this->destinations->all() as $destination) {
+            // The id as well as the name: two destinations may share a name,
+            // and Prometheus refuses two samples of one series.
+            $lines[] = sprintf(
+                '%s{destination="%s",id="%d"} %d',
+                $name,
+                self::label($destination->name),
+                $destination->id,
+                isset($uploads[$destination->id]) ? $uploads[$destination->id]->getTimestamp() : 0,
+            );
+        }
+
+        $this->gauge(
+            $lines,
+            'renovo_backup_rehearsal_last_success_timestamp_seconds',
+            'When a restore rehearsal last passed. Zero when none has.',
+            $this->rehearsals->lastPassedAt()?->getTimestamp() ?? 0,
+        );
+    }
+
+    /**
+     * A label value as the exposition format writes one: backslash, double
+     * quote and newline escaped.
+     */
+    private static function label(string $value): string
+    {
+        return str_replace(['\\', '"', "\n"], ['\\\\', '\\"', '\\n'], $value);
     }
 
     /**

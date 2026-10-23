@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
+use App\Domain\BackupDestinationType;
 use App\Domain\StoredSecretKind;
+use App\Repository\BackupDestinationRepository;
+use App\Service\Backup\BackupRetention;
 use App\Service\Auth\TotpService;
 use App\Service\Auth\RecoveryCodeService;
 use App\Security\Totp;
@@ -219,6 +222,44 @@ final class SecretsRotationTest extends DatabaseTestCase
                 "SELECT setting_value FROM instance_settings WHERE setting_key = 'rate_provider_key'",
             ),
         ]);
+    }
+
+    public function testBackupDestinationCredentialsRotateAndADirectoryWithNoneIsSkipped(): void
+    {
+        $old = new KeyRing('key-one');
+        $s3 = $this->destinations($old)->create(
+            BackupDestinationType::S3,
+            'Bucket',
+            ['endpoint' => 'https://s3.example.com', 'bucket' => 'b'],
+            ['access_key_id' => 'AKIA-canary', 'secret_key' => 'canary-secret'],
+            true,
+            new BackupRetention(7, 4, 6),
+        );
+        $this->destinations($old)->create(
+            BackupDestinationType::Directory,
+            'NAS',
+            ['path' => '/mnt/nas'],
+            [],
+            true,
+            new BackupRetention(7, 4, 6),
+        );
+
+        $report = $this->service(new KeyRing('key-two', ['key-one']))->rotate();
+
+        self::assertSame(['rotated' => 1, 'current' => 0, 'unreadable' => []], $report['backup_destination_secrets']);
+        $after = $this->destinations(new KeyRing('key-two'))->find($s3);
+        self::assertNotNull($after);
+        self::assertFalse($after->secretsUnreadable);
+        self::assertSame('canary-secret', $after->secrets['secret_key']);
+        self::assertStringNotContainsString(
+            'canary-secret',
+            (string) $this->db->fetchValue('SELECT secret FROM backup_destinations WHERE id = :id', ['id' => $s3]),
+        );
+    }
+
+    private function destinations(KeyRing $ring): BackupDestinationRepository
+    {
+        return new BackupDestinationRepository($this->db, $this->clock, $ring);
     }
 
     private function service(KeyRing $ring): SecretsRotationService

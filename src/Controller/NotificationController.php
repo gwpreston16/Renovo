@@ -243,7 +243,9 @@ final class NotificationController extends Controller
                 static fn (AlertType $type): bool => $type->usesLeadTimes(),
             )),
             'routes' => $routes ?? $this->settings->routes($user->id),
-            'alert_types' => AlertType::all(),
+            // The backup alerts reach instance administrators only, so only
+            // they are given a column for them.
+            'alert_types' => AlertType::forUser($user->isInstanceAdmin),
             'digest_modes' => DigestMode::cases(),
             'recent' => $this->log->findRecentForUser($user->id, 10),
             'errors' => $errors,

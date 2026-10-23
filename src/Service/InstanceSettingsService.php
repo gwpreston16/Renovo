@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Domain\BackupRehearsalSchedule;
 use App\Domain\BackupSchedule;
 use App\Domain\Currency;
 use App\Domain\IsolationMode;
@@ -46,6 +47,7 @@ final class InstanceSettingsService
     public const KEY_BACKUP_KEEP_DAILY = 'backup_keep_daily';
     public const KEY_BACKUP_KEEP_WEEKLY = 'backup_keep_weekly';
     public const KEY_BACKUP_KEEP_MONTHLY = 'backup_keep_monthly';
+    public const KEY_BACKUP_REHEARSAL_SCHEDULE = 'backup_rehearsal_schedule';
 
     /** @var array<string, string>|null */
     private ?array $cache = null;
@@ -350,6 +352,22 @@ final class InstanceSettingsService
     public function setBackupSchedule(BackupSchedule $schedule): void
     {
         $this->set(self::KEY_BACKUP_SCHEDULE, $schedule->value);
+    }
+
+    /**
+     * How often a restore is rehearsed from a destination (Phase 39):
+     * monthly until an instance administrator says otherwise.
+     */
+    public function backupRehearsalSchedule(): BackupRehearsalSchedule
+    {
+        return BackupRehearsalSchedule::tryFrom(
+            $this->get(self::KEY_BACKUP_REHEARSAL_SCHEDULE, BackupRehearsalSchedule::Monthly->value),
+        ) ?? BackupRehearsalSchedule::Monthly;
+    }
+
+    public function setBackupRehearsalSchedule(BackupRehearsalSchedule $schedule): void
+    {
+        $this->set(self::KEY_BACKUP_REHEARSAL_SCHEDULE, $schedule->value);
     }
 
     /**

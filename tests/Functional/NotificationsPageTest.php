@@ -117,7 +117,9 @@ final class NotificationsPageTest extends DatabaseTestCase
         $grid = substr($page, (int) strpos($page, 'id="routing"'));
 
         foreach ($ids as $type => $id) {
-            foreach (AlertType::all() as $alert) {
+            // Not an instance administrator: the backup alerts have no box.
+            self::assertStringNotContainsString('value="' . AlertType::BackupFailed->value . '"', $grid);
+            foreach (AlertType::forUser(false) as $alert) {
                 self::assertStringContainsString(
                     'name="routes[' . $id . '][]" value="' . $alert->value . '"',
                     $grid,

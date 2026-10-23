@@ -480,7 +480,7 @@ final class InstanceBackupArchive
         foreach ($tables as $table => $count) {
             if (
                 !is_string($table)
-                || !in_array($table, BackupDumper::TABLES, true)
+                || !in_array($table, $this->dumper->restorableTables(), true)
                 || !is_int($count)
                 || !isset($entries['tables/' . $table . '.jsonl'])
             ) {

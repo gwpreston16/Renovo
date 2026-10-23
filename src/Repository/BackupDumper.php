@@ -44,6 +44,7 @@ class BackupDumper
         'household_memberships',
         'instance_settings',
         'trusted_hosts',
+        'backup_destinations',
         'categories',
         'tags',
         'payment_methods',
@@ -79,7 +80,10 @@ class BackupDumper
      *  - `logo_cache` — rows describing files in `var/logo-cache`, a download
      *    cache that is not backed up and refills itself;
      *  - `backup_runs` — the history of backups on *this* server. Restored,
-     *    it would list files the new server does not have.
+     *    it would list files the new server does not have;
+     *  - `backup_copies`, `backup_rehearsals` — what was sent where and
+     *    rehearsed, for those same runs (Phase 39). The destinations
+     *    themselves are configuration, and are carried.
      *
      * A migration that adds a table must put it in one list or the other;
      * `BackupDumperTest::testEveryTableIsEitherBackedUpOrExcluded` fails until
@@ -91,7 +95,23 @@ class BackupDumper
         'http_metrics',
         'logo_cache',
         'backup_runs',
+        'backup_copies',
+        'backup_rehearsals',
     ];
+
+    /**
+     * Tables a later migration dropped or renamed, which a backup taken
+     * before it still carries (K111): each name => the entry of `TABLES`
+     * it is restored after. A backup from before the migration restores at
+     * its own migration version, where the table still exists, so verify and
+     * restore must still know it, in dependency order. Nothing is written
+     * for them: a new backup carries only `TABLES`.
+     *
+     * A migration that drops a table moves it here from `TABLES`.
+     *
+     * @var array<string, string>
+     */
+    public const RETIRED = [];
 
     public const MIGRATIONS_TABLE = 'phinxlog';
 
@@ -106,6 +126,9 @@ class BackupDumper
 
     /** @var array<string, array<string, true>> */
     private array $booleans = [];
+
+    /** @var array<string, \Closure(array<string, mixed>): int> One prepared INSERT per table and column list. */
+    private array $inserts = [];
 
     public function __construct(private readonly Database $db)
     {
@@ -294,12 +317,16 @@ class BackupDumper
             $placeholders[] = ':v' . $i;
         }
 
-        $this->db->execute(sprintf(
+        // Prepared once per table and column list, not once per row (K112):
+        // every row of a dumped table names the same columns, so a restore
+        // of a large audit log is one prepare and many executes.
+        $sql = sprintf(
             'INSERT INTO %s (%s) VALUES (%s)',
             $this->quote($table),
             implode(', ', array_map($this->quote(...), $columns)),
             implode(', ', $placeholders),
-        ), $params);
+        );
+        ($this->inserts[$sql] ??= $this->db->prepared($sql))($params);
     }
 
     /**
@@ -364,12 +391,45 @@ class BackupDumper
     }
 
     /**
+     * Every table an archive may carry, current and retired, in the order a
+     * restore inserts them.
+     *
+     * @return list<string>
+     */
+    public function restorableTables(): array
+    {
+        return self::withRetired(self::TABLES, self::RETIRED);
+    }
+
+    /**
+     * The tables with each retired one placed straight after its anchor — or
+     * before `phinxlog`, at the end, when its anchor is gone too.
+     *
+     * @param list<string> $tables
+     * @param array<string, string> $retired
+     * @return list<string>
+     */
+    public static function withRetired(array $tables, array $retired): array
+    {
+        foreach ($retired as $table => $after) {
+            if (in_array($table, $tables, true)) {
+                continue;
+            }
+            $at = array_search($after, $tables, true);
+            $at = $at === false ? (int) array_search(self::MIGRATIONS_TABLE, $tables, true) : $at + 1;
+            array_splice($tables, $at, 0, [$table]);
+        }
+
+        return array_values($tables);
+    }
+
+    /**
      * Table names are interpolated into SQL, so only the ones this class
      * names are accepted.
      */
     private function known(string $table): string
     {
-        if (!in_array($table, self::TABLES, true)) {
+        if (!in_array($table, $this->restorableTables(), true)) {
             throw new InvalidArgumentException(sprintf('"%s" is not a table an instance backup carries.', $table));
         }
 

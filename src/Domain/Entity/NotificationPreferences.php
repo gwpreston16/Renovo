@@ -41,11 +41,33 @@ final class NotificationPreferences
         public readonly bool $budgetAlerts = true,
         /** Whether to be told before a contract ends. On unless turned off. */
         public readonly bool $contractAlerts = true,
+        /** Phase 39, instance administrators: a backup failed or went nowhere. */
+        public readonly bool $backupFailedAlerts = true,
+        /** Phase 39, instance administrators: nothing stored off the server lately. */
+        public readonly bool $backupStaleAlerts = true,
+        /** Phase 39, instance administrators: a restore rehearsal failed. */
+        public readonly bool $backupRehearsalAlerts = true,
     ) {
         $days = array_values(array_unique(array_filter($leadDays, static fn (int $d): bool => $d >= 0)));
         rsort($days);
 
         $this->leadDays = $days;
+    }
+
+    /**
+     * Whether this alert type is switched on. Types with no switch always are.
+     */
+    public function allows(\App\Domain\AlertType $type): bool
+    {
+        return match ($type) {
+            \App\Domain\AlertType::PriceChange => $this->priceChangeAlerts,
+            \App\Domain\AlertType::BudgetExceeded => $this->budgetAlerts,
+            \App\Domain\AlertType::ContractEnding => $this->contractAlerts,
+            \App\Domain\AlertType::BackupFailed => $this->backupFailedAlerts,
+            \App\Domain\AlertType::BackupStale => $this->backupStaleAlerts,
+            \App\Domain\AlertType::BackupRehearsalFailed => $this->backupRehearsalAlerts,
+            default => true,
+        };
     }
 
     public static function defaults(int $userId): self

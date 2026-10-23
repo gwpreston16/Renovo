@@ -68,6 +68,7 @@ final class InstanceBackupService
         private readonly LoggerInterface $logger,
         private readonly string $directory,
         #[SensitiveParameter] private readonly string $keyHex,
+        private readonly ?\Closure $move = null,
     ) {
     }
 
@@ -320,7 +321,9 @@ final class InstanceBackupService
     }
 
     /**
-     * @throws BackupException When no usable key is set. Nothing is written.
+     * @throws BackupException When no usable key is set, or BACKUP_DIRECTORY
+     *         cannot be created or written (`write_failed`). Nothing is
+     *         written, and no run is recorded.
      */
     private function run(string $trigger, ?User $actor): BackupOutcome
     {
@@ -357,7 +360,10 @@ final class InstanceBackupService
             $partial = $this->path($file) . '.partial';
             $this->cipher->encryptFile($work . '/archive.zip', $partial, $key);
             @unlink($work . '/archive.zip');
-            if (!@rename($partial, $this->path($file))) {
+            // `$move` stands in for rename() only in a test, which is the one
+            // way to reach this failure: every check before it has passed.
+            $move = $this->move ?? static fn (string $from, string $to): bool => @rename($from, $to);
+            if (!$move($partial, $this->path($file))) {
                 @unlink($partial);
                 $file = null;
 

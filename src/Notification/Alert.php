@@ -43,6 +43,7 @@ final class Alert
     public const SUBJECT_BUDGET = 'budget';
     public const SUBJECT_DIGEST = 'digest';
     public const SUBJECT_TEST = 'test';
+    public const SUBJECT_BACKUP = 'backup';
 
     public function body(): string
     {

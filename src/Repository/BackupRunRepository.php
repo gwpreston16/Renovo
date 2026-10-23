@@ -176,6 +176,24 @@ class BackupRunRepository extends AbstractRepository
     }
 
     /**
+     * Finished runs started since a moment, newest first: the incidents the
+     * backup alerts look at.
+     *
+     * @return list<BackupRun>
+     */
+    public function startedSince(DateTimeImmutable $since): array
+    {
+        $rows = $this->db->fetchAll(
+            'SELECT * FROM ' . $this->quote($this->table())
+            . ' WHERE ' . $this->quote('started_at') . ' >= :since AND ' . $this->quote('status') . ' <> :running'
+            . ' ORDER BY ' . $this->quote('started_at') . ' DESC, ' . $this->quote('id') . ' DESC',
+            ['since' => $since->format('Y-m-d H:i:s'), 'running' => BackupRun::RUNNING],
+        );
+
+        return array_map($this->hydrate(...), $rows);
+    }
+
+    /**
      * Runs in a status whose files have not been pruned, newest first.
      *
      * @return list<BackupRun>
