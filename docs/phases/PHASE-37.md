@@ -178,7 +178,7 @@ Found while starting it:
 
 ## Status
 
-- [ ] `VERSION` file, `AppVersion`, `RENOVO_BUILD` build argument; the
+- [x] `VERSION` file, `AppVersion`, `RENOVO_BUILD` build argument; the
       VERSION / package.json / CHANGELOG agreement test in CI
 - [ ] Version on the Instance status card, in the sidebar, and on
       `GET /api/v1/instance` (OpenAPI, `docs/api.md`)
@@ -186,7 +186,7 @@ Found while starting it:
       back-off; scheduler step, lazy check, `updates:check`, Check now
 - [ ] Dashboard banner for instance admins; per-admin dismissal by version
 - [ ] Updates fieldset on Settings → Instance; audit entries
-- [ ] `UPDATE_CHECK_REPOSITORY` and `UPDATE_CHECK` env vars, documented in the
+- [ ] `UPDATE_CHECK_REPOSITORY` and `UPDATE_CHECK` env vars, documented in
       `docs/configuration.md` and `.env.example`
 - [ ] Migration on both engines
 - [ ] New strings in `translations/en.php`

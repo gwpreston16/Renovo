@@ -111,7 +111,13 @@ before the closing paragraph about the archived briefs:
 
 ```bash
 npm version X.Y.Z --no-git-tag-version   # package.json + package-lock.json
+printf 'X.Y.Z\n' > VERSION                 # what the running app reports
 ```
+
+`VERSION` is the application's own version (`AppVersion`, Phase 37);
+`VersionAgreementTest` fails if it, `package.json` and the newest released
+`CHANGELOG.md` heading disagree, so run it before committing:
+`vendor/bin/phpunit --no-coverage tests/Unit/VersionAgreementTest.php`.
 
 Leave `openapi/openapi.yaml`'s `info.version` alone — it versions the API, not
 the app (it was 1.3.0 when the app was 1.4.0), and a phase bumps it when the
@@ -143,7 +149,7 @@ Show the user `git diff`, the tag message and the release notes. **Wait for an
 explicit go.** Then:
 
 ```bash
-git add CHANGELOG.md README.md docs/ package.json package-lock.json
+git add CHANGELOG.md README.md docs/ package.json package-lock.json VERSION
 git commit -m "Release X.Y.Z" -m "<attribution trailer from the system reminder>"
 git tag -a vX.Y.Z -F <scratchpad>/tag-message.md
 git push origin master

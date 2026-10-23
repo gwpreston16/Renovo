@@ -104,6 +104,13 @@ RUN composer dump-autoload --no-dev --optimize --no-interaction \
     && chmod 750 var/attachments var/avatars var/imports \
     && chown -R www-data:www-data var public/assets/logos
 
+# The short commit id an edge or development image was built from, shown
+# beside the version as "1.7.0 (a1b2c3d)". A release image is built without it
+# and shows the version alone. Declared last so a new commit id costs this one
+# layer and not the vendor or assets stages.
+ARG RENOVO_BUILD=""
+ENV RENOVO_BUILD=${RENOVO_BUILD}
+
 USER www-data
 
 EXPOSE 9000

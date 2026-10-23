@@ -10,6 +10,7 @@
 
 declare(strict_types=1);
 
+use App\Application\AppVersion;
 use App\Application\Twig\AppExtension;
 use App\Controller\SetupController;
 use App\Http\DnsResolver;
@@ -315,6 +316,11 @@ return static function (ContainerBuilder $builder, array $settings): void {
         // Everything in the application reads "now" through this one clock,
         // in UTC, so stored timestamps do not depend on the server's locale.
         Clock::class => static fn (): Clock => new SystemClock(new DateTimeZone('UTC')),
+
+        // Read from the VERSION file and the environment when first asked,
+        // never through the settings array, so a compiled container cannot
+        // keep naming the release it was built under. See AppVersion.
+        AppVersion::class => static fn (): AppVersion => AppVersion::fromEnvironment(dirname(__DIR__)),
 
         // ------------------------------------------------------------------
         // Services needing configuration values
