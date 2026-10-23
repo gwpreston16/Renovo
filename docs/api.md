@@ -200,6 +200,7 @@ the same values `GET /me` returns in its `permissions` array.
 | `GET` | `/subscriptions/{id}/charges` | `subscription.view` |
 | `POST` | `/subscriptions/{id}/charges` | `charge.manage` |
 | `PATCH` | `/charges/{id}` | `charge.manage` |
+| `GET` | `/savings` | `subscription.view` |
 | `GET` | `/categories` | `subscription.view` |
 | `POST` | `/categories` | `category.manage` |
 | `PUT` | `/categories/{id}` | `category.manage` |
@@ -658,6 +659,7 @@ Record what a charge really was, skip it, or annotate it. Needs
 | `actual_minor` | Integer minor units, or `null` to clear a recorded amount. Sent without a `status`, it also sets `charged` — recording an amount says the charge happened, as it does on the web. On a `manual` charge the amount entered is its `expected_minor`, so clearing the actual keeps it; once the charge is adopted that amount is the actual (unless it was skipped, when it is gone), and clearing it leaves the price due. |
 | `status` | `charged` or `skipped`. Skipping clears the actual; sending both `skipped` and an `actual_minor` is a `422`. |
 | `note` | Up to 255 characters, or `null`. |
+| `is_discount` | `true` says an actual below the expected amount was a discount: the expected amount becomes the charge's `reference_minor`, and what it saved counts in `GET /savings`. `false` takes a discount off. Not sent, a discount stays while the actual is still lower and goes when the actual is cleared. A `422` on an actual that is not lower, and on a charge an offer already stands behind — its reference already counts a lower actual. |
 
 ```bash
 curl -X PATCH \
@@ -668,6 +670,36 @@ curl -X PATCH \
 ```
 
 Responses: `200` with the `Charge`, `401`, `403`, `404`, `422`.
+
+---
+
+### Savings
+
+#### `GET /api/v1/savings`
+
+What offers and cancellations have saved — the Analytics screen's Savings card.
+History, never a projection, and nothing counted twice.
+
+- **`offers`**: each charge's `reference_minor` less what it cost, never below
+  nothing; a skipped charge saves nothing. `total`, `by_year` (newest first)
+  and `by_subscription`, with how many charges saved something.
+- **`cancellations`**: for each cancelled subscription, the charges it would
+  have made after it was cancelled, priced as the price history says, up to
+  today and at most `cap_months` (12) months on. A charge its notice period had
+  already committed when it was cancelled is not counted (`committed` says how
+  many). `realised` is that sum; `run_rate` is the yearly cost the last twelve
+  months' cancellations took off, at the price on each cancellation date.
+  `trials` counts trials cancelled before they ever charged, which are given no
+  amount.
+- Not counted: a fixed term that ran its course, a subscription cancelled and
+  later restored, and one that was paused when it was cancelled.
+
+Every figure is `{totals, combined}`: each currency's `amount_minor`, and their
+sum in the base currency — `amount_minor` `null`, with the currencies that have
+no rate in `unconvertible`, when one does not convert. In ISOLATED mode the
+figures are the token holder's own, counting their share of a split bill as a
+member budget does. With a token that may write, the request first runs the
+catch-up. Responses: `200` with `Savings`, `401`, `403`.
 
 ---
 
@@ -870,7 +902,7 @@ Returned by `GET /me`. Fields: `user` (`id`, `email`, `display_name`,
 `editor`, `viewer`, or null), `isolation_mode` (`shared`, `isolated`),
 `permissions` (array of strings).
 
-### Category · PaymentMethod · Tag · Attachment · Charge
+### Category · PaymentMethod · Tag · Attachment · Charge · Savings
 
 | Schema | Fields |
 | --- | --- |
@@ -878,7 +910,8 @@ Returned by `GET /me`. Fields: `user` (`id`, `email`, `display_name`,
 | `PaymentMethod` | `id`, `name`, `colour` (nullable), `icon` (nullable; a generic icon key, never a brand mark), `logo_path` (nullable, read-only) |
 | `Tag` | `id`, `name` |
 | `Attachment` | `id`, `subscription_id`, `filename`, `mime_type`, `size_bytes`, `period_date` (nullable date), `charge_id` (nullable; the payment it is the invoice for), `created_at` |
-| `Charge` | `id`, `subscription_id`, `due_date`, `currency`, `expected_minor` (the price due, frozen when written — except on adoption, below), `actual_minor` (nullable), `amount_minor`, `status` (`charged`, `skipped`), `source` (`catch_up`, `manual`, `reconstructed`, `one_off` — a one-off or lifetime entry's own charge; `paused` — a billing date a pause stepped over, written `skipped` when the row was resumed — or, when a payment added by hand stood on it, that payment with its own status; a `manual` charge on a billing date becomes that date's `catch_up`, `reconstructed`, `one_off` or `paused` charge, same id, when the catch-up, the backfill or a resume reaches it — so a later read may differ from the `201` body — its amount moving to `actual_minor` (a skipped one stays skipped, with no actual) and `expected_minor` taking the price due; one in another currency than the price due stays `manual` at the catch-up and the backfill — a resume still makes it the month's `paused` charge, keeping its own `currency` and `expected_minor`), `note` (nullable), `created_at`, `updated_at` |
+| `Charge` | `id`, `subscription_id`, `due_date`, `currency`, `expected_minor` (the price due, frozen when written — except on adoption, below), `actual_minor` (nullable), `amount_minor`, `status` (`charged`, `skipped`), `source` (`catch_up`, `manual`, `reconstructed`, `one_off` — a one-off or lifetime entry's own charge; `paused` — a billing date a pause stepped over, written `skipped` when the row was resumed — or, when a payment added by hand stood on it, that payment with its own status; a `manual` charge on a billing date becomes that date's `catch_up`, `reconstructed`, `one_off` or `paused` charge, same id, when the catch-up, the backfill or a resume reaches it — so a later read may differ from the `201` body — its amount moving to `actual_minor` (a skipped one stays skipped, with no actual) and `expected_minor` taking the price due; one in another currency than the price due stays `manual` at the catch-up and the backfill — a resume still makes it the month's `paused` charge, keeping its own `currency` and `expected_minor`), `note` (nullable), `reference_minor` (nullable, read-only: what it would have cost without its offer — the ordinary price after the promotional one in force on its date, written with the charge and frozen — or the expected amount when a member marked a lower actual as a discount), `saving_minor` (`reference_minor` less `amount_minor`, never below 0; 0 when skipped or with no reference), `is_discount` (whether the reference is a member's discount), `created_at`, `updated_at` |
+| `Savings` | `offers` (`total`, `by_year` — each with `year` —, `by_subscription` — `subscription_id`, `name`, `totals`, `charges`), `cancellations` (`realised`, `run_rate`, `by_subscription` — `subscription_id`, `name`, `cancelled_on`, `totals`, `charges`, `committed`, `run_rate` (nullable `{currency, amount_minor}`) —, `trials`, `cap_months`). Each figure is `totals` (`[{currency, amount_minor}]`) and `combined` (`currency`, `amount_minor` nullable, `unconvertible`). |
 
 ---
 

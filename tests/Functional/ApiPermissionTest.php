@@ -86,6 +86,7 @@ final class ApiPermissionTest extends ApiTestCase
             '/api/v1/categories',
             '/api/v1/payment-methods',
             '/api/v1/tags',
+            '/api/v1/savings',
             ] as $path
         ) {
             self::assertSame(

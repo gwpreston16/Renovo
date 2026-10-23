@@ -187,7 +187,7 @@ Known issues added to this phase (*Confirmed 2026-10-23*): **K75**, **K76**,
 - [x] `SavingsService`: offers, cancellations (realised, capped; run-rate),
       exclusions, currencies, scoping
 - [x] Analytics Savings card; optional dashboard card; money page line
-- [ ] API endpoint and charge field, OpenAPI, `docs/api.md`; export
+- [x] API endpoint and charge field, OpenAPI, `docs/api.md`; export
 - [ ] Known issues K75, K76, K82, K93
 - [ ] New strings in `translations/en.php`
 - [ ] `composer check`, `i18n:check`, offline guard green on both engines

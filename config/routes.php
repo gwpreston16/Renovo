@@ -24,6 +24,7 @@ use App\Controller\Api\ChargeApiController;
 use App\Controller\Api\CalendarApiController;
 use App\Controller\Api\MeApiController;
 use App\Controller\Api\OpenApiController;
+use App\Controller\Api\SavingsApiController;
 use App\Controller\Api\SubscriptionApiController;
 use App\Controller\Api\TaxonomyApiController;
 use App\Controller\AccountController;
@@ -780,6 +781,9 @@ return static function (App $app): void {
 
         $group->patch('/charges/{id:[0-9]+}', [ChargeApiController::class, 'update'])
             ->add($requires(Permission::ManageCharges));
+
+        $group->get('/savings', [SavingsApiController::class, 'show'])
+            ->add($requires(Permission::ViewSubscriptions));
 
         $group->get('/categories', [TaxonomyApiController::class, 'categories'])
             ->add($requires(Permission::ViewSubscriptions));

@@ -223,6 +223,81 @@ final class ApiChargesTest extends ApiTestCase
         self::assertSame(422, $long->getStatusCode());
     }
 
+    public function testAPatchMarksADiscountAndTheChargeSaysWhatItSaved(): void
+    {
+        $path = '/api/v1/charges/' . $this->chargeId;
+
+        $data = $this->decode($this->api('PATCH', $path, $this->ownerToken, [
+            'actual_minor' => 5000,
+            'is_discount' => true,
+        ]))['data'];
+        self::assertSame([5800, 800, true], [$data['reference_minor'], $data['saving_minor'], $data['is_discount']]);
+
+        $data = $this->decode($this->api('PATCH', $path, $this->ownerToken, ['is_discount' => false]))['data'];
+        self::assertSame([null, 0, false], [$data['reference_minor'], $data['saving_minor'], $data['is_discount']]);
+
+        foreach ([['is_discount' => 'yes'], ['actual_minor' => 6000, 'is_discount' => true]] as $bad) {
+            $response = $this->api('PATCH', $path, $this->ownerToken, $bad);
+            self::assertSame(422, $response->getStatusCode(), (string) json_encode($bad));
+            self::assertArrayHasKey('is_discount', $this->decode($response)['error']['errors'] ?? []);
+        }
+    }
+
+    public function testAMalformedAmountIsToldToSendMinorUnits(): void
+    {
+        $patch = $this->api('PATCH', '/api/v1/charges/' . $this->chargeId, $this->ownerToken, ['actual_minor' => 9.99]);
+        $post = $this->api('POST', $this->chargesPath(), $this->ownerToken, [
+            'date' => (new DateTimeImmutable('-1 day'))->format('Y-m-d'),
+            'amount_minor' => 'abc',
+        ]);
+
+        foreach ([[$patch, 'actual_minor'], [$post, 'amount_minor']] as [$response, $field]) {
+            self::assertSame(422, $response->getStatusCode());
+            $message = (string) json_encode($this->decode($response)['error']['errors'][$field] ?? '');
+            self::assertStringContainsString('minor units', $message, $field);
+            self::assertStringNotContainsString('Enter a price', $message, $field);
+        }
+    }
+
+    public function testSavingsReportsWhatACancellationRemoved(): void
+    {
+        $id = $this->createSubscription([
+            'name' => 'Gym',
+            'price_minor' => 1000,
+            'next_payment_date' => (new DateTimeImmutable('-55 days'))->format('Y-m-d'),
+        ]);
+        // Cancelled sixty days ago, five days before its next payment.
+        $this->db->execute(
+            'UPDATE subscriptions SET cancelled_at = :at, is_active = :off WHERE id = :id',
+            [
+                'at' => (new DateTimeImmutable('-60 days'))->format('Y-m-d'),
+                'off' => $this->db->platform()->booleanParameter(false),
+                'id' => $id,
+            ],
+        );
+
+        foreach ([$this->ownerToken, $this->viewerToken, $this->readOnlyToken] as $token) {
+            $response = $this->api('GET', '/api/v1/savings', $token);
+            self::assertSame(200, $response->getStatusCode());
+
+            $cancellations = $this->decode($response)['data']['cancellations'];
+            self::assertSame([['currency' => 'GBP', 'amount_minor' => 2000]], $cancellations['realised']['totals']);
+            self::assertSame(
+                [$id, 'Gym', 2, 0, ['currency' => 'GBP', 'amount_minor' => 12000]],
+                [
+                    $cancellations['by_subscription'][0]['subscription_id'],
+                    $cancellations['by_subscription'][0]['name'],
+                    $cancellations['by_subscription'][0]['charges'],
+                    $cancellations['by_subscription'][0]['committed'],
+                    $cancellations['by_subscription'][0]['run_rate'],
+                ],
+            );
+            self::assertSame(12, $cancellations['cap_months']);
+        }
+
+        self::assertSame(401, $this->api('GET', '/api/v1/savings')->getStatusCode());
+    }
+
     public function testAPostReadsMinorUnitsOnly(): void
     {
         $date = (new DateTimeImmutable('-1 day'))->format('Y-m-d');
