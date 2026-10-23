@@ -226,6 +226,33 @@ Found while starting it:
   `templates/settings/instance.twig` but in the update-check card, which this
   phase does not touch.
 
+Found while building it:
+
+- **`trigger_source`, not `trigger`.** MySQL reserves `trigger`; the column is
+  named so nothing has to quote it.
+- **The one-run lock lives in `backup_runs`**, as a unique `lock_key` that only
+  a running row holds, not in `instance_settings`: the settings are in the
+  snapshot, and a restored instance would otherwise come back "already backing
+  up". A run still holding it after six hours is taken over as abandoned.
+- **`logo_cache` and `backup_runs` are excluded too.** The logo cache's rows
+  describe files in `var/logo-cache`, which is not backed up; the run history
+  describes files on the old server. Rows are pruned by setting `pruned_at`,
+  never deleted, so `renovo_backup_runs_total` only goes up.
+- **`phinxlog` is carried and compared, never inserted.** `phinx migrate -t`
+  has already written it on the database being restored into.
+- **Files come from the rows, through the storage classes' own shapes.** A
+  stored path that is not one Renovo writes (K1 lets a `logo_path` hold
+  anything) is a warning and is left out, so a row cannot pull another file
+  off the server into a backup.
+- **The same-server warning does not name Phase 39.** It says "Copy
+  `BACKUP_DIRECTORY` off this machine as well."; a phase number means nothing
+  to an operator.
+- **The scheduler container mounts the logos volume, read-only**, and the app
+  and scheduler both get `BACKUP_ENCRYPTION_KEY` and `BACKUP_DIRECTORY`.
+- **The cross-engine test runs when `CROSS_ENGINE_DB_*` names the other
+  engine's test database**, and skips otherwise. Both directions passed on
+  2026-10-23.
+
 ## Status
 
 - [x] `BackupDumper` (repository layer), consistent snapshot, table coverage test
@@ -235,11 +262,11 @@ Found while starting it:
       scheduler loop
 - [x] Settings → Instance → Backups card; Instance status line
 - [x] Metrics and audit entries
-- [ ] `BACKUP_ENCRYPTION_KEY`, `BACKUP_DIRECTORY` in `.env.example`; README
-      restore procedure
-- [ ] Migration on both engines
-- [ ] New strings in `translations/en.php`
-- [ ] `composer check`, `i18n:check`, offline guard green on both engines
+- [x] `BACKUP_ENCRYPTION_KEY`, `BACKUP_DIRECTORY` in `.env.example`; restore
+      procedure (in `docs/operations.md`, as Phase 44 settled)
+- [x] Migration on both engines
+- [x] New strings in `translations/en.php`
+- [x] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done
 

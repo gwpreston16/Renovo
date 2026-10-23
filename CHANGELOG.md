@@ -28,6 +28,26 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 - Adding, changing and deleting a notification channel, and rotating the key,
   are recorded in the audit log, a channel by its type and label only.
   *Phase 40.*
+- **Instance backups: scheduled, encrypted, verified.** The whole database and
+  every stored file, taken daily or weekly (off until an instance administrator
+  turns them on in **Settings → Instance → Instance backups**), always encrypted
+  under the new `BACKUP_ENCRYPTION_KEY`, decrypted and checked against their
+  manifest before they count, and pruned by a daily / weekly / monthly policy
+  (7 / 4 / 6 by default) that never removes the newest good one. Written as
+  portable rows, so a PostgreSQL backup restores into MySQL and the other way
+  round. The card shows the key's fingerprint, the last 30 runs with their
+  outcome, and a Download for each verified one; **Back up now** takes one on
+  the spot. Instance administrators only. *Phase 38.*
+- **`backup:run [--force]`, `backup:verify`, `backup:decrypt` and
+  `backup:restore`.** The scheduler runs `backup:run` daily. Restoring is a
+  command only, into an empty database at the backup's migration version, and
+  refuses — changing nothing — otherwise. See *Instance backups* in
+  `docs/operations.md`. *Phase 38.*
+- **Instance status shows the last instance backup**, and `/metrics` gains
+  `renovo_backup_last_success_timestamp_seconds`,
+  `renovo_backup_last_size_bytes` and `renovo_backup_runs_total{status}`.
+  Backups taken, failed, downloaded and pruned are recorded in the audit log.
+  *Phase 38.*
 
 ### Changed
 
@@ -43,6 +63,10 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   *Phase 40.*
 - `TOTP_ENCRYPTION_KEY` is superseded by `SECRETS_KEY`; it still works, and is
   always tried when reading. *Phase 40.*
+- **`docker-compose.yml` passes `BACKUP_ENCRYPTION_KEY` and `BACKUP_DIRECTORY`
+  to the app and scheduler, mounts the logos volume read-only into the
+  scheduler, and adds `backup:run` to its daily loop.** Copy the change into a
+  compose file of your own. *Phase 38.*
 
 ### Fixed
 
