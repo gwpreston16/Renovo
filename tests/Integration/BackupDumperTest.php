@@ -187,6 +187,27 @@ final class BackupDumperTest extends DatabaseTestCase
         self::assertSame(1, $this->dumper->count('tags'), 'Once the snapshot ends the row is there.');
     }
 
+    public function testASnapshotThatThrowsRollsBack(): void
+    {
+        try {
+            $this->dumper->snapshot(static function (): void {
+                throw new \RuntimeException('mid-dump');
+            });
+        } catch (\RuntimeException $exception) {
+            self::assertSame('mid-dump', $exception->getMessage(), 'The exception reaches the caller.');
+        }
+
+        self::assertFalse($this->db->connection()->inTransaction());
+        // And the connection writes again, which a READ ONLY transaction
+        // left open would refuse.
+        $this->db->execute(
+            'INSERT INTO users (email, display_name, password_hash, is_instance_admin, created_at, updated_at)'
+            . " VALUES ('after@example.test', 'After', 'x', :f, '2026-01-01 00:00:00', '2026-01-01 00:00:00')",
+            ['f' => false],
+        );
+        self::assertSame(1, $this->dumper->count('users'));
+    }
+
     public function testASnapshotCannotJoinAnotherTransaction(): void
     {
         $this->expectException(\LogicException::class);

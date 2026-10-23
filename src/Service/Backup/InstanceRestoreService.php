@@ -24,9 +24,10 @@ use App\Repository\MigrationRepository;
  *  3. the database holds no application rows. Merging into a live instance is
  *     the household archive's job, through the services, not this one's.
  *
- * Then every table goes in, parents first, in one transaction — a failure
- * part-way leaves the database as empty as it was — the id sequences are moved
- * past the highest id, and the files are written. `phinxlog` is not inserted:
+ * Then the files are written, and every table goes in, parents first, in one
+ * transaction — a failure part-way leaves the database as empty as it was, so
+ * the restore can be run again — and the id sequences are moved past the
+ * highest id. `phinxlog` is not inserted:
  * the migration that brought the database to this version already wrote it.
  */
 final class InstanceRestoreService
@@ -93,11 +94,25 @@ final class InstanceRestoreService
                 }
             }
 
+            // The files first: if one cannot be written, the database is still
+            // empty and the restore can simply be run again once it can.
+            // Files left by a restore that then failed are overwritten by the
+            // next.
+            $files = $this->archive->copyFiles($plain, $this->destinationFor(...));
+            $this->setModes();
+
             $inserted = $this->dumper->transactional(function () use ($plain): int {
                 $count = 0;
                 foreach ($this->dataTables() as $table) {
                     foreach ($this->archive->rows($plain, $table) as $row) {
-                        $this->dumper->insert($table, $row);
+                        try {
+                            $this->dumper->insert($table, $row);
+                        } catch (\InvalidArgumentException) {
+                            throw new BackupException('row_unreadable', sprintf(
+                                'A row for %s names columns this database does not have, so nothing was restored.',
+                                $table,
+                            ));
+                        }
                         $count++;
                     }
                     $this->dumper->resetIdentity($table);
@@ -106,8 +121,6 @@ final class InstanceRestoreService
                 return $count;
             });
 
-            $files = $this->archive->copyFiles($plain, $this->destinationFor(...));
-            $this->setModes();
 
             return [
                 'tables' => count($this->dataTables()),

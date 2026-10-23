@@ -173,6 +173,9 @@ final class InstanceBackupTest extends DatabaseTestCase
             self::assertSame($this->secondPrecision($before), $this->secondPrecision($this->everyRow($target)));
             $restored = (new UserRepository($target))->findByEmail(DemoSeedService::EMAIL);
             self::assertNotNull($restored);
+            $next = (new UserRepository($target))
+                ->create('after@example.test', 'After', 'x', false, $this->clock->now());
+            self::assertGreaterThan((int) max(array_column($before['users'], 'id')), $next);
             self::assertTrue((new PasswordHasher())->verify($password, $restored->passwordHash));
         } finally {
             $this->emptyDatabase($target);
@@ -274,6 +277,24 @@ final class InstanceBackupTest extends DatabaseTestCase
             $zip->addFromString('manifest.json', (string) json_encode($manifest));
             $zip->addFromString('tables/evil.jsonl', '');
         }));
+
+        // From a newer format, and not this format at all.
+        $newer = $this->rewritten($path, static function (ZipArchive $zip): void {
+            $manifest = json_decode((string) $zip->getFromName('manifest.json'), true);
+            $manifest['format_version'] = 999;
+            $zip->addFromString('manifest.json', (string) json_encode($manifest));
+        });
+        $this->expectVerifyFails('unsupported_version', $newer);
+        $this->expectVerifyFails('manifest_invalid', $this->rewritten($path, static function (ZipArchive $zip): void {
+            $manifest = json_decode((string) $zip->getFromName('manifest.json'), true);
+            $manifest['format'] = 'renovo-household-backup';
+            $zip->addFromString('manifest.json', (string) json_encode($manifest));
+        }));
+
+        // A row that is not a JSON object, with the checksums made to agree.
+        $this->expectVerifyFails('row_unreadable', $this->rewritten($path, static function (ZipArchive $zip): void {
+            $zip->addFromString('tables/tags.jsonl', (string) $zip->getFromName('tables/tags.jsonl') . "[1,2]\n");
+        }, reseal: true));
 
         // No manifest worth the name.
         $this->expectVerifyFails('manifest_invalid', $this->rewritten($path, static function (ZipArchive $zip): void {
@@ -518,6 +539,97 @@ final class InstanceBackupTest extends DatabaseTestCase
         ));
     }
 
+    public function testARestoreThatFailsPartWayLeavesTheDatabaseEmpty(): void
+    {
+        $this->seed();
+        $path = $this->root . '/backups/' . $this->service()->runScheduled(force: true)->run?->file;
+        // A tag in a household that does not exist: every table before tags
+        // goes in, and then the foreign key refuses this row.
+        $bad = $this->rewritten($path, static function (ZipArchive $zip): void {
+            $zip->addFromString(
+                'tables/tags.jsonl',
+                (string) $zip->getFromName('tables/tags.jsonl')
+                . '{"id":999999,"household_id":999999,"name":"orphan","created_at":"2026-01-01 00:00:00",'
+                . '"updated_at":"2026-01-01 00:00:00"}' . "\n",
+            );
+        }, reseal: true);
+        $this->truncateAll();
+
+        try {
+            $this->container()->get(InstanceRestoreService::class)->restore($bad);
+            self::fail('A restore with a row the database refuses went ahead.');
+        } catch (\PDOException) {
+            // The engine's own refusal, which the transaction turns into nothing.
+        }
+
+        foreach (BackupDumper::TABLES as $table) {
+            if ($table !== BackupDumper::MIGRATIONS_TABLE) {
+                self::assertSame(0, (new BackupDumper($this->db))->count($table), $table);
+            }
+        }
+    }
+
+    public function testAnUnexpectedFailureIsRecordedAndReleasesTheLock(): void
+    {
+        $this->seed();
+
+        $outcome = $this->service(cipher: new class () extends BackupCipher {
+            public function encryptFile(string $plainPath, string $encryptedPath, BackupKey $key): void
+            {
+                file_put_contents($encryptedPath, 'half written');
+                throw new \RuntimeException('disk on fire ' . $key->fingerprint);
+            }
+        })->runScheduled(force: true);
+
+        self::assertSame(BackupOutcome::FAILED, $outcome->result);
+        self::assertSame('unexpected', $outcome->run?->error);
+        self::assertStringContainsString('see the application log', (string) $outcome->message);
+        self::assertSame([], $this->listDirectory($this->root . '/backups'), 'The half-written file is gone.');
+        self::assertNull($this->runs()->running(), 'The lock is released.');
+        $this->assertNoKeyAnywhere();
+
+        $this->clock->advanceTo($this->clock->now()->modify('+1 minute'));
+        self::assertSame(BackupOutcome::VERIFIED, $this->service()->runScheduled(force: true)->result);
+    }
+
+    public function testThePlaintextIsNeverInTheBackupDirectoryWhileARunWorks(): void
+    {
+        $this->seed();
+        $backups = $this->root . '/backups';
+
+        $outcome = $this->service(cipher: new class ($backups) extends BackupCipher {
+            public function __construct(private readonly string $backups)
+            {
+            }
+
+            public function encryptFile(string $plainPath, string $encryptedPath, BackupKey $key): void
+            {
+                // Mid-run, with the plaintext archive written: a copy of the
+                // backup directory taken now must hold nothing readable.
+                InstanceBackupTest::assertStringStartsNotWith($this->backups . '/', $plainPath);
+                InstanceBackupTest::assertSame([], preg_grep(
+                    '#\.(zip|jsonl)$#',
+                    (array) scandir($this->backups),
+                ));
+                parent::encryptFile($plainPath, $encryptedPath, $key);
+            }
+        })->runScheduled(force: true);
+
+        self::assertSame(BackupOutcome::VERIFIED, $outcome->result);
+    }
+
+    public function testADownloadWhoseFileHasGoneIsNotFoundAndNotAudited(): void
+    {
+        $this->seed();
+        $run = $this->service()->runScheduled(force: true)->run;
+        unlink($this->root . '/backups/' . $run?->file);
+
+        self::assertNull($this->service()->download((int) $run?->id, $this->admin()));
+        self::assertSame(0, (int) $this->db->fetchValue(
+            "SELECT COUNT(*) FROM audit_log WHERE action = 'instance_backup.downloaded'",
+        ));
+    }
+
     public function testARunSweepsWhatAKilledRunLeftBehind(): void
     {
         $this->seed();
@@ -559,6 +671,7 @@ final class InstanceBackupTest extends DatabaseTestCase
         // 60 missing attachments, and the seed's own missing logo and
         // unrecognised logo path: 62, of which 50 are listed.
         self::assertSame('12', $last['detail']);
+        self::assertSame(62, $run->warningCount());
     }
 
     public function testDecryptNeverWritesOverAFile(): void
@@ -823,7 +936,7 @@ final class InstanceBackupTest extends DatabaseTestCase
      * A copy of a backup, decrypted, changed, and encrypted again under the
      * same key — so only the archive's own checks can catch it.
      */
-    private function rewritten(string $encrypted, callable $change): string
+    private function rewritten(string $encrypted, callable $change, bool $reseal = false): string
     {
         $plain = $this->root . '/rewrite-' . bin2hex(random_bytes(4)) . '.zip';
         $this->service()->decryptFile($encrypted, $plain);
@@ -831,6 +944,24 @@ final class InstanceBackupTest extends DatabaseTestCase
         $zip->open($plain);
         $change($zip);
         $zip->close();
+
+        if ($reseal) {
+            // The manifest brought back into agreement with the changed
+            // entries, so the archive's own checks pass and only what comes
+            // after them can object.
+            $zip->open($plain);
+            $manifest = json_decode((string) $zip->getFromName('manifest.json'), true);
+            foreach (array_keys($manifest['entries']) as $name) {
+                $bytes = (string) $zip->getFromName($name);
+                $manifest['entries'][$name] = ['sha256' => hash('sha256', $bytes), 'size' => strlen($bytes)];
+                if (preg_match('#^tables/(.+)\.jsonl$#', $name, $m) === 1) {
+                    $lines = array_filter(explode("\n", $bytes), static fn (string $line): bool => $line !== '');
+                    $manifest['tables'][$m[1]] = count($lines);
+                }
+            }
+            $zip->addFromString('manifest.json', (string) json_encode($manifest));
+            $zip->close();
+        }
 
         $out = $this->root . '/rewritten-' . bin2hex(random_bytes(4)) . '.renovo-backup';
         (new BackupCipher())->encryptFile($plain, $out, BackupKey::fromHex(self::KEY));

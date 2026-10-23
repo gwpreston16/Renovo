@@ -326,7 +326,7 @@
                             {% endif %}
                             {% if run.warnings is not empty %}
                                 <details class="instance-backup-warnings">
-                                    <summary class="account-row-meta">{{ t('backup.warnings', {'count': run.warnings|length}) }}</summary>
+                                    <summary class="account-row-meta">{{ t('backup.warnings', {'count': run.warningCount()}) }}</summary>
                                     <ul class="hint">
                                         {% for warning in run.warnings %}
                                             <li>{{ t('backup.warning.' ~ warning.code) }} <code>{{ warning.detail }}</code></li>

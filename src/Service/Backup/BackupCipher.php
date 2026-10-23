@@ -101,7 +101,12 @@ class BackupCipher
         // The plaintext is every row and file: created new (never through a
         // link someone planted, never over an existing file) and private
         // before the first byte is written.
-        $out = $this->open($plainPath, 'xb');
+        $umask = umask(0o077);
+        try {
+            $out = $this->open($plainPath, 'xb');
+        } finally {
+            umask($umask);
+        }
         @chmod($plainPath, 0o600);
 
         try {

@@ -333,15 +333,19 @@ final class InstanceBackupService
             return BackupOutcome::skipped(BackupOutcome::BUSY);
         }
 
-        // Holding the lock, nothing else can be writing: whatever a killed
-        // run left behind — its plaintext, a half-written file — goes now.
-        $this->sweepLeftovers();
-
-        $work = $this->workDirectory();
+        $work = null;
         $file = null;
         $partial = null;
 
+        // Everything after the claim is inside the try, so whatever fails
+        // finishes the row with its reason and releases the lock.
         try {
+            // Holding the lock, nothing else can be writing: whatever a
+            // killed run left behind — its plaintext, a half-written file —
+            // goes now.
+            $this->sweepLeftovers();
+            $work = $this->workDirectory();
+
             $manifest = $this->archive->write($work . '/archive.zip', $work);
 
             $file = sprintf(
@@ -374,17 +378,7 @@ final class InstanceBackupService
                 'warnings' => self::listed($warnings),
             ]);
 
-            $run = $this->runs->find($id);
-            $this->audit->record(AuditAction::InstanceBackupTaken, $actor, [
-                'run' => $id,
-                'trigger' => $trigger,
-                'size_bytes' => $run?->sizeBytes,
-                'warnings' => count($warnings),
-            ]);
-
-            $pruned = $this->prune($actor);
-
-            return BackupOutcome::verified($run ?? throw new \LogicException('The run vanished.'), $pruned);
+            $warningCount = count($warnings);
         } catch (Throwable $exception) {
             $reason = $exception instanceof BackupException ? $exception->reason : 'unexpected';
             $message = $exception instanceof BackupException
@@ -414,8 +408,32 @@ final class InstanceBackupService
             if ($partial !== null && is_file($partial)) {
                 @unlink($partial);
             }
-            Workspace::remove($work);
+            if ($work !== null) {
+                Workspace::remove($work);
+            }
         }
+
+        // The backup has verified, and nothing after this changes that: a
+        // failure to record it or to prune is logged, and the run still
+        // counts.
+        $run = $this->runs->find($id) ?? throw new \LogicException('The run vanished.');
+        $pruned = 0;
+        try {
+            $this->audit->record(AuditAction::InstanceBackupTaken, $actor, [
+                'run' => $id,
+                'trigger' => $trigger,
+                'size_bytes' => $run->sizeBytes,
+                'warnings' => $warningCount,
+            ]);
+            $pruned = $this->prune($actor);
+        } catch (Throwable $exception) {
+            $this->logger->error('An instance backup verified, but pruning after it failed: {message}', [
+                'message' => $exception->getMessage(),
+                'exception_class' => $exception::class,
+            ]);
+        }
+
+        return BackupOutcome::verified($run, $pruned);
     }
 
     /**
@@ -513,7 +531,10 @@ final class InstanceBackupService
     {
         $parent = $this->workParent();
         if (!is_dir($parent) && !@mkdir($parent, 0o700, true) && !is_dir($parent)) {
-            throw new BackupException('write_failed', 'A working directory for the backup could not be created.');
+            // BACKUP_DIRECTORY is a mount at the root, say, whose parent this
+            // process cannot write: the system temporary directory instead,
+            // still never inside the directory that is copied off.
+            return Workspace::create(sys_get_temp_dir(), 'renovo-backup-run-');
         }
 
         return Workspace::create($parent, 'run-');
@@ -554,8 +575,12 @@ final class InstanceBackupService
      */
     private function sweepLeftovers(): void
     {
-        foreach ((array) glob($this->workParent() . '/run-*', GLOB_ONLYDIR) as $stale) {
-            Workspace::remove((string) $stale);
+        $stale = [
+            ...(array) glob($this->workParent() . '/run-*', GLOB_ONLYDIR),
+            ...(array) glob(sys_get_temp_dir() . '/renovo-backup-run-*', GLOB_ONLYDIR),
+        ];
+        foreach ($stale as $directory) {
+            Workspace::remove((string) $directory);
         }
 
         foreach ((array) glob(rtrim($this->directory, '/') . '/*' . BackupCipher::EXTENSION . '.partial') as $partial) {

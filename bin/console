@@ -292,7 +292,7 @@ switch ($command) {
             $run?->file,
             number_format((int) $run?->sizeBytes),
             $run?->keyFingerprint,
-            count($run?->warnings ?? []),
+            $run?->warningCount() ?? 0,
             $outcome->pruned,
         ));
         exit(0);

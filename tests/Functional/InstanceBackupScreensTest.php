@@ -249,6 +249,20 @@ final class InstanceBackupScreensTest extends DatabaseTestCase
         self::assertMatchesRegularExpression('~value="weekly"\s+checked~', $page);
     }
 
+    public function testBackUpNowWhileAnotherRunsSaysSo(): void
+    {
+        (new \App\Repository\BackupRunRepository($this->db))->claim(
+            new DateTimeImmutable('-2 minutes'),
+            'schedule',
+        );
+        $this->signIn($this->adminId);
+
+        $this->request('POST', '/settings/backups/run');
+
+        self::assertStringContainsString('An instance backup is already running.', $this->page());
+        self::assertSame(1, (int) $this->db->fetchValue('SELECT COUNT(*) FROM backup_runs'));
+    }
+
     public function testAPostWithoutAFieldKeepsWhatIsStored(): void
     {
         $settings = $this->container()->get(InstanceSettingsService::class);

@@ -236,8 +236,10 @@ verify, and says which.
    ```
 
 Everyone signs in as before, with the same passwords, two-factor and passkeys.
-A restore into the other engine works the same way: set `DB_DRIVER` for the new
-database before step 3.
+A restore into the other engine works the same way. Before step 3, set
+`DB_DRIVER` and `DB_PORT` in `.env` for the new engine and add (or, going to
+PostgreSQL, drop) `-f docker-compose.yml -f docker-compose.mysql.yml` on every
+command, as in [Installing](install.md).
 
 ## Backup and restore
 

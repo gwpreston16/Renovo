@@ -52,6 +52,20 @@ final class BackupRun
         return $this->isVerified() && $this->prunedAt === null && $this->file !== null;
     }
 
+    /**
+     * How many warnings the run had: the history keeps the first few and a
+     * `more` entry counting the rest.
+     */
+    public function warningCount(): int
+    {
+        $count = 0;
+        foreach ($this->warnings as $warning) {
+            $count += $warning['code'] === 'more' ? (int) $warning['detail'] : 1;
+        }
+
+        return $count;
+    }
+
     public function durationSeconds(): ?int
     {
         return $this->finishedAt === null
