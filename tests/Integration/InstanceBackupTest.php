@@ -821,6 +821,7 @@ final class InstanceBackupTest extends DatabaseTestCase
                     return self::withRetired(self::TABLES, ['retired_notes' => 'tags']);
                 }
             };
+            self::assertInstanceOf(\DI\Container::class, $container);
             $container->set(BackupDumper::class, $retiring);
 
             $container->get(InstanceBackupService::class)->verifyFile($older);
@@ -910,8 +911,9 @@ final class InstanceBackupTest extends DatabaseTestCase
         $outcome = $service->runScheduled(force: true);
 
         self::assertSame(BackupOutcome::FAILED, $outcome->result);
-        self::assertSame('write_failed', $outcome->run?->error);
-        self::assertNull($outcome->run?->file);
+        self::assertNotNull($outcome->run);
+        self::assertSame('write_failed', $outcome->run->error);
+        self::assertNull($outcome->run->file);
         self::assertSame([], glob($this->root . '/backups/*'));
     }
 

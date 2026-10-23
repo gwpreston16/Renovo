@@ -189,8 +189,9 @@ final class BackupDestinationScreensTest extends DatabaseTestCase
             'secret_key' => 'a-new-secret',
         ]);
         $record = $this->destinations()->find($id);
-        self::assertSame('a-new-secret', $record?->secrets['secret_key']);
-        self::assertSame(self::ACCESS, $record?->secrets['access_key_id']);
+        self::assertNotNull($record);
+        self::assertSame('a-new-secret', $record->secrets['secret_key']);
+        self::assertSame(self::ACCESS, $record->secrets['access_key_id']);
     }
 
     public function testABadDestinationIsRefusedWithItsReason(): void

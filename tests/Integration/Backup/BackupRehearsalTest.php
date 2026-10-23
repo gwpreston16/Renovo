@@ -163,13 +163,14 @@ final class BackupRehearsalTest extends DatabaseTestCase
 
         self::assertSame(BackupRehearsalSchedule::Monthly, $service->schedule());
         self::assertTrue($service->isDue());
-        self::assertSame('nas', $service->run()?->destinationName);
-        self::assertNull($service->run(), 'not due again straight away');
+        $from = static fn (): ?string => $service->run()?->destinationName;
+        self::assertSame('nas', $from());
+        self::assertNull($from(), 'not due again straight away');
 
         $this->clock->advanceTo($this->clock->now()->modify('+30 days'));
-        self::assertSame('second', $service->run()?->destinationName);
+        self::assertSame('second', $from());
         $this->clock->advanceTo($this->clock->now()->modify('+30 days'));
-        self::assertSame('nas', $service->run()?->destinationName);
+        self::assertSame('nas', $from());
 
         $service->setSchedule(BackupRehearsalSchedule::Off);
         $this->clock->advanceTo($this->clock->now()->modify('+90 days'));
