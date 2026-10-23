@@ -50,6 +50,30 @@ final class HttpClientOptions
     }
 
     /**
+     * The options for a backup transfer (Phase 39): the one exception to
+     * "narrow, never widen". An instance backup is far larger than anything
+     * else this client carries and takes far longer, so its total time and
+     * size come from their own settings — `BACKUP_TRANSFER_TIMEOUT_SECONDS`
+     * and a fixed cap — rather than from `HTTP_*`, which stay as they are for
+     * every other request. The connect timeout, the proxy and the user agent
+     * are kept, and redirects are never followed: a destination that answers
+     * with one is refused by its caller, not chased with credentials on.
+     */
+    public function forTransfers(int $timeoutSeconds, int $maxBytes): self
+    {
+        return new self(
+            timeoutSeconds: max(1, $timeoutSeconds),
+            connectTimeoutSeconds: $this->connectTimeoutSeconds,
+            maxResponseBytes: max(1, $maxBytes),
+            maxRedirects: 0,
+            userAgent: $this->userAgent,
+            httpProxy: $this->httpProxy,
+            httpsProxy: $this->httpsProxy,
+            noProxy: $this->noProxy,
+        );
+    }
+
+    /**
      * Decide whether a host should bypass the configured proxy, following the
      * usual NO_PROXY conventions ("*", exact host, ".suffix").
      */

@@ -88,9 +88,15 @@ return [
         'max_response_bytes' => (int) $env('HTTP_MAX_RESPONSE_BYTES', '2097152'),
         'max_redirects' => (int) $env('HTTP_MAX_REDIRECTS', '3'),
         'user_agent' => $env('HTTP_USER_AGENT', 'Renovo'),
-        'proxy' => $env('HTTP_PROXY', ''),
-        'https_proxy' => $env('HTTPS_PROXY', ''),
-        'no_proxy' => array_values(array_filter(array_map('trim', explode(',', $env('NO_PROXY', ''))))),
+        // The lowercase spellings too, which libcurl and most tools honour:
+        // the client tells curl exactly which proxy to use, so one it does
+        // not know about can never bypass the pinned address (K25).
+        'proxy' => $env('HTTP_PROXY', $env('http_proxy', '')),
+        'https_proxy' => $env('HTTPS_PROXY', $env('https_proxy', '')),
+        'no_proxy' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', $env('NO_PROXY', $env('no_proxy', ''))),
+        ))),
     ],
 
     'rates' => [
