@@ -259,6 +259,49 @@ final class ApiChargesTest extends ApiTestCase
         }
     }
 
+    public function testSavingsReportsOffersAndOnlyAWriteTokenCatchesUpFirst(): void
+    {
+        $start = new DateTimeImmutable('-70 days');
+        $owner = Scope::forMember($this->ownerId, false, $this->householdId, Role::OwnerAdmin, IsolationMode::Shared);
+        $id = $this->container()->get(\App\Service\SubscriptionService::class)->create($owner, [
+            'name' => 'Spotify',
+            'price' => '5.99',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'custom_days',
+            'cycle_days' => '30',
+            'next_payment_date' => $start->format('Y-m-d'),
+            'start_date' => $start->format('Y-m-d'),
+            'is_promotional' => '1',
+            'offer_ends_on' => (new DateTimeImmutable('+10 days'))->format('Y-m-d'),
+            'offer_then_price' => '11.99',
+        ]);
+        $count = fn (): int => (int) $this->db->fetchValue(
+            'SELECT COUNT(*) FROM subscription_charges WHERE subscription_id = :id',
+            ['id' => $id],
+        );
+
+        // A read-only token reads what is there, and writes nothing.
+        $read = $this->decode($this->api('GET', '/api/v1/savings', $this->readOnlyToken))['data'];
+        self::assertSame(0, $count());
+        self::assertSame([], $read['offers']['total']['totals']);
+
+        // A token that may write catches up first: three charges at £5.99
+        // against £11.99.
+        $offers = $this->decode($this->api('GET', '/api/v1/savings', $this->ownerToken))['data']['offers'];
+        self::assertSame(3, $count());
+        self::assertSame([['currency' => 'GBP', 'amount_minor' => 1800]], $offers['total']['totals']);
+        self::assertSame(1800, $offers['total']['combined']['amount_minor']);
+        self::assertSame(
+            ['subscription_id' => $id, 'name' => 'Spotify', 'charges' => 3],
+            array_intersect_key($offers['by_subscription'][0], array_flip(['subscription_id', 'name', 'charges'])),
+        );
+        self::assertSame(1800, array_sum(array_map(
+            static fn (array $year): int => $year['totals'][0]['amount_minor'],
+            $offers['by_year'],
+        )));
+    }
+
     public function testSavingsReportsWhatACancellationRemoved(): void
     {
         $id = $this->createSubscription([

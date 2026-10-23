@@ -28,8 +28,10 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   it. *Phase 36.*
 - **`GET /api/v1/savings`**, and `reference_minor`, `saving_minor` and
   `is_discount` on a charge, with `is_discount` on `PATCH /api/v1/charges/{id}`
-  (the OpenAPI contract is now version 1.6.0). The payments export and
-  household backups carry each payment's reference. *Phase 36.*
+  (the OpenAPI contract is now version 1.6.0). The payments export gains
+  `reference` and `saving` columns, at the end so a reader of the earlier
+  columns by position is unaffected, and household backups carry each
+  payment's reference. *Phase 36.*
 
 ### Changed
 
@@ -122,8 +124,7 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 - **The calendar pages backwards** through the months the ledger holds,
   showing the charges taken at their recorded amounts. *Phase 34.*
 - **`php bin/console ledger:backfill [--household=ID]`** rebuilds the
-  payments from before the upgrade, marked *reconstructed* (a one-off or
-  lifetime entry's, *one_off*). Run it once after
+  payments from before the upgrade, marked *reconstructed*. Run it once after
   upgrading; it is safe to run again and never overwrites a payment the ledger
   wrote or an amount a member entered. See [upgrading](docs/upgrading.md). *Phase 34.*
 - **Payments in the API**: `GET` (paged) and `POST

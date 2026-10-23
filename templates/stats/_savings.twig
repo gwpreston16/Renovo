@@ -11,10 +11,7 @@
 {% import 'partials/savings.twig' as saved %}
 
 <section class="card analytics-savings" id="analytics-savings" aria-labelledby="analytics-savings-heading">
-    <header class="card-header">
-        <h2 id="analytics-savings-heading">{{ t('savings.title') }}</h2>
-        <span class="card-icon">{{ icon('savings') }}</span>
-    </header>
+    <h2 id="analytics-savings-heading">{{ t('savings.title') }}</h2>
 
     {% if not savings.has_any %}
         <p class="muted empty">{{ t('savings.empty') }}</p>

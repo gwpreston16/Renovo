@@ -86,6 +86,60 @@ final class SavingsTest extends DatabaseTestCase
         self::assertSame([['currency' => 'GBP', 'amount_minor' => 1800]], $this->savings->offersFor($this->alice, $id));
     }
 
+    public function testAChargeThatSavedNothingIsNotCounted(): void
+    {
+        $id = $this->create($this->alice, 'Spotify', '5.99', [
+            'next_payment_date' => '2026-02-15',
+            'start_date' => '2026-02-15',
+            'is_promotional' => '1',
+            'offer_ends_on' => '2026-05-01',
+            'offer_then_price' => '11.99',
+        ]);
+        $this->at('2026-05-10');
+        $skipped = $this->container->get(\App\Service\ChargeService::class)->forSubscription($this->alice, $id)[0];
+        $this->container->get(\App\Service\ChargeService::class)->skip($this->alice, $skipped->id);
+
+        $offers = $this->savings->summary($this->alice)['offers'];
+
+        self::assertSame([['currency' => 'GBP', 'amount_minor' => 1200]], $offers['total']['totals']);
+        self::assertSame(2, $offers['by_subscription'][0]['charges']);
+    }
+
+    public function testOffersAreSplitByYearNewestFirst(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-11-01 09:00:00'));
+        $this->create($this->alice, 'Spotify', '5.99', [
+            'next_payment_date' => '2026-11-15',
+            'start_date' => '2026-11-15',
+            'is_promotional' => '1',
+            'offer_ends_on' => '2027-03-01',
+            'offer_then_price' => '11.99',
+        ]);
+        $this->at('2027-02-20');
+
+        $years = array_map(
+            static fn (array $row): array => [$row['year'], $row['totals'][0]['amount_minor']],
+            $this->savings->summary($this->alice)['offers']['by_year'],
+        );
+
+        // Nov and Dec 2026, then Jan and Feb 2027.
+        self::assertSame([[2027, 1200], [2026, 1200]], $years);
+    }
+
+    public function testACancellationsBoundariesAreTheDayAfterItAndTheCapDay(): void
+    {
+        // Cancelled on its own billing day: that charge was paid.
+        $this->clock->advanceTo(new DateTimeImmutable('2026-02-15 09:00:00'));
+        $id = $this->create($this->alice, 'Streaming', '10.00');
+        $this->subscriptions->cancel($this->alice, $id);
+
+        // Twelve months on is itself a billing day, and is counted.
+        $this->at('2027-03-01');
+        $row = $this->savings->summary($this->alice)['cancellations']['by_subscription'][0];
+
+        self::assertSame([12, 12000], [$row['charges'], $row['totals'][0]['amount_minor']]);
+    }
+
     public function testAMonthlyRowCancelledFourMonthsAgoWithNoNoticeRemovedFourCharges(): void
     {
         $id = $this->create($this->alice, 'Streaming', '10.99');
@@ -278,6 +332,75 @@ final class SavingsTest extends DatabaseTestCase
         $bob = $this->savings->forScope($this->scope($this->bobId, Role::Editor, IsolationMode::Isolated));
         self::assertSame(3000, $bob['cancellations']['realised']['totals'][0]['amount_minor'] ?? null);
         self::assertSame(18000, $bob['cancellations']['run_rate']['totals'][0]['amount_minor'] ?? null);
+    }
+
+    public function testAMembersViewCountsTheirShareOfASplitOffer(): void
+    {
+        $id = $this->create($this->alice, 'Broadband', '20.00', [
+            'next_payment_date' => '2026-02-15',
+            'start_date' => '2026-02-15',
+            'is_promotional' => '1',
+            'offer_ends_on' => '2026-05-01',
+            'offer_then_price' => '30.00',
+        ]);
+        $this->container->get(SplitService::class)->update($this->alice, $id, [
+            'split_mode' => 'equal',
+            'shares' => [(string) $this->aliceId => '1', (string) $this->bobId => '1'],
+        ]);
+        $this->at('2026-05-10');
+
+        // Three months at £20 against £30: £30 for the household, £15 of it Bob's.
+        $household = $this->savings->summary($this->alice)['offers']['total'];
+        $bob = $this->savings->forScope($this->scope($this->bobId, Role::Editor, IsolationMode::Isolated))['offers'];
+
+        self::assertSame(3000, $household['totals'][0]['amount_minor'] ?? null);
+        self::assertSame(1500, $bob['total']['totals'][0]['amount_minor'] ?? null);
+        self::assertSame($id, $bob['by_subscription'][0]['subscription']->id);
+    }
+
+    public function testAMemberWhoBearsNoneOfABillGetsNoneOfItsSavings(): void
+    {
+        $offer = $this->create($this->alice, 'Broadband', '20.00', [
+            'next_payment_date' => '2026-02-15',
+            'start_date' => '2026-02-15',
+            'is_promotional' => '1',
+            'offer_ends_on' => '2026-05-01',
+            'offer_then_price' => '30.00',
+        ]);
+        $cancelled = $this->create($this->alice, 'Gym', '10.00');
+        $trial = $this->create($this->alice, 'Trial', '0.00', [
+            'is_trial' => '1',
+            'trial_end_date' => '2026-02-20',
+            'converts_to_price' => '8.99',
+            'next_payment_date' => '',
+        ]);
+        // Each paid wholly by Bob, though Alice owns it.
+        foreach ([$offer, $cancelled, $trial] as $id) {
+            $this->container->get(SplitService::class)->update($this->alice, $id, [
+                'split_mode' => 'custom',
+                'shares' => [(string) $this->bobId => '100'],
+            ]);
+        }
+        $this->subscriptions->cancel($this->alice, $cancelled);
+        $this->subscriptions->cancel($this->alice, $trial);
+        $this->at('2026-05-10');
+
+        $alice = $this->savings->forScope($this->scope($this->aliceId, Role::OwnerAdmin, IsolationMode::Isolated));
+        $bob = $this->savings->forScope($this->scope($this->bobId, Role::Editor, IsolationMode::Isolated));
+
+        self::assertSame([[], [], [], 0, false], [
+            $alice['offers']['total']['totals'],
+            $alice['cancellations']['realised']['totals'],
+            $alice['cancellations']['run_rate']['totals'],
+            $alice['cancellations']['trials'],
+            $alice['has_any'],
+        ]);
+        self::assertSame([3000, 3000, 12000, 1], [
+            $bob['offers']['total']['totals'][0]['amount_minor'] ?? null,
+            $bob['cancellations']['realised']['totals'][0]['amount_minor'] ?? null,
+            $bob['cancellations']['run_rate']['totals'][0]['amount_minor'] ?? null,
+            $bob['cancellations']['trials'],
+        ]);
     }
 
     public function testAViewerReadsTheHouseholdsSavings(): void

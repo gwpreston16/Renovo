@@ -598,10 +598,12 @@ paths:
         skipped charge too; sending `skipped` with an actual is a 422. A charge the token can see but may not
         change is a 404. `is_discount: true` says an actual below the
         expected amount was a discount, making the expected amount the
-        charge's `reference_minor`; `false` takes a discount off. Sent
-        without it, a discount stays while the actual is still lower, and
-        goes when it is cleared. A discount on an actual that is not lower,
-        or on a charge an offer already stands behind, is a 422.
+        charge's `reference_minor`; `false` takes a discount off, and does
+        nothing on a charge an offer stands behind. Sent without it, a
+        discount stays while the actual is still lower, and goes when it is
+        cleared or raised to the expected amount. A discount on an actual
+        that is not lower, or on a charge an offer already stands behind, is
+        a 422.
       requestBody:
         required: true
         content:
@@ -1324,7 +1326,10 @@ components:
             ordinary price after the promotional one in force on its due date,
             written with the charge and frozen — or, when a member marked a
             lower actual as a discount, the expected amount. Read-only; set a
-            discount with `is_discount` on `PATCH`.
+            discount with `is_discount` on `PATCH`. When a `manual` charge is
+            adopted as a billing date's charge it takes that date's offer
+            reference, or keeps a discount — now against the price due —
+            while its actual is still below it.
         saving_minor:
           type: integer
           description: >-
@@ -1419,10 +1424,13 @@ components:
                     type: integer
                     description: Charges its notice period had already committed, not counted.
                   run_rate:
-                    allOf:
-                      - $ref: "#/components/schemas/SavingsTotal"
+                    type: object
                     nullable: true
+                    required: [currency, amount_minor]
                     description: Its yearly cost, when it was cancelled in the last twelve months.
+                    properties:
+                      currency: { type: string }
+                      amount_minor: { type: integer }
             trials: { type: integer, description: Trials cancelled before they charged. }
             cap_months: { type: integer }
 

@@ -168,8 +168,10 @@ final class ChargeSchedule
      * What a charge on `$date` would have cost without the offer it was on:
      * when the price in force that day is promotional, the first price after
      * it that is not — the offer's "then costs". Null when the price was not
-     * on an offer, when no ordinary price is recorded after it, or when that
-     * price is in another currency, which no saving can be measured in.
+     * on an offer, when no ordinary price is recorded after it, when that
+     * price is in another currency, which no saving can be measured in, or
+     * when it is the offer's own price: there is nothing it saved, and a
+     * reference equal to the price due is how a discount reads.
      *
      * Read when the charge is written, and frozen there.
      *
@@ -191,7 +193,12 @@ final class ChargeSchedule
 
         foreach (array_slice($history, $current + 1) as $change) {
             if (!$change->isPromotional) {
-                return $change->price->currency === $history[$current]->price->currency ? $change->price : null;
+                $offer = $history[$current]->price;
+
+                return $change->price->currency === $offer->currency
+                    && $change->price->amountMinor !== $offer->amountMinor
+                    ? $change->price
+                    : null;
             }
         }
 

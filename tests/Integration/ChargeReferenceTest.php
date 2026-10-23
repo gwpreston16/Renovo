@@ -209,6 +209,113 @@ final class ChargeReferenceTest extends DatabaseTestCase
         }
     }
 
+    public function testRaisingADiscountsActualToThePriceDueTakesTheDiscountOff(): void
+    {
+        $charge = $this->plainCharge();
+        $this->charges->patch($this->alice, $charge->id, ['actual_minor' => 4000, 'is_discount' => true]);
+
+        self::assertNull($this->charges->patch($this->alice, $charge->id, ['actual_minor' => 5000])->referenceMinor);
+    }
+
+    public function testAnOfferIsDiscountFalseIsLeftAsAnOffer(): void
+    {
+        $id = $this->intro();
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-20 09:00:00'));
+        $this->catchUp->run($this->alice);
+        $charge = $this->charges->forSubscription($this->alice, $id)[0];
+
+        $patched = $this->charges->patch($this->alice, $charge->id, ['actual_minor' => 499, 'is_discount' => false]);
+
+        self::assertSame(
+            [1199, false, 700],
+            [$patched->referenceMinor, $patched->isDiscount(), $patched->saving()->amountMinor],
+        );
+    }
+
+    public function testAPaymentAddedByHandOnAnOfferDateTakesTheOffersReferenceWhenAdopted(): void
+    {
+        $id = $this->intro();
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-15 18:00:00'));
+        $this->charges->addManual($this->alice, $id, ['date' => '2026-03-15', 'amount' => '5.99']);
+
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-20 09:00:00'));
+        $this->catchUp->run($this->alice);
+
+        $adopted = $this->charges->forSubscription($this->alice, $id)[0];
+        self::assertSame(['2026-03-15', 1199, 600], [
+            $adopted->dueDate->format('Y-m-d'),
+            $adopted->referenceMinor,
+            $adopted->saving()->amountMinor,
+        ]);
+    }
+
+    public function testADiscountMarkedOnAPaymentAddedByHandSurvivesItsAdoption(): void
+    {
+        $id = $this->subscriptions->create($this->alice, [
+            'name' => 'Energy',
+            'price' => '50.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-03-10',
+            'start_date' => '2026-02-10',
+        ]);
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-10 18:00:00'));
+        // Added by hand at £48, then recorded at £40 as a discount.
+        $manual = $this->charges->addManual($this->alice, $id, ['date' => '2026-03-10', 'amount' => '48.00']);
+        $marked = $this->charges->recordActual($this->alice, $manual->id, ['actual' => '40.00', 'discount' => '1']);
+        self::assertSame(4800, $marked->referenceMinor);
+
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-20 09:00:00'));
+        $this->catchUp->run($this->alice);
+
+        // The billing date's charge now: £50 due, £40 paid, a £10 discount.
+        $adopted = $this->charges->find($this->alice, $manual->id);
+        self::assertSame([5000, 4000, 5000, true, 1000], [
+            $adopted?->expected->amountMinor,
+            $adopted?->actualMinor,
+            $adopted?->referenceMinor,
+            $adopted?->isDiscount(),
+            $adopted?->saving()->amountMinor,
+        ]);
+    }
+
+    public function testADiscountIsDroppedOnAdoptionWhenWhatWasPaidIsNotBelowThePriceDue(): void
+    {
+        $id = $this->subscriptions->create($this->alice, [
+            'name' => 'Energy',
+            'price' => '30.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-03-10',
+            'start_date' => '2026-02-10',
+        ]);
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-10 18:00:00'));
+        $manual = $this->charges->addManual($this->alice, $id, ['date' => '2026-03-10', 'amount' => '48.00']);
+        $this->charges->recordActual($this->alice, $manual->id, ['actual' => '40.00', 'discount' => '1']);
+
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-20 09:00:00'));
+        $this->catchUp->run($this->alice);
+
+        self::assertNull($this->charges->find($this->alice, $manual->id)?->referenceMinor);
+    }
+
+    public function testAPausedMonthOnAnOfferCarriesItsReference(): void
+    {
+        $id = $this->intro();
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 10:00:00'));
+        $this->subscriptions->setActive($this->alice, $id, false);
+        $this->clock->advanceTo(new DateTimeImmutable('2026-05-01 09:00:00'));
+        $this->subscriptions->setActive($this->alice, $id, true);
+
+        $references = array_map(
+            static fn (Charge $c): array => [$c->dueDate->format('Y-m-d'), $c->isPaused(), $c->referenceMinor],
+            $this->charges->forSubscription($this->alice, $id),
+        );
+        self::assertSame([['2026-04-15', true, 1199], ['2026-03-15', true, 1199]], $references);
+    }
+
     public function testTheBackfillGivesOldChargesOnAnOfferTheirReferenceAndOverwritesNone(): void
     {
         $id = $this->intro();

@@ -138,7 +138,7 @@ final class SavingsService
     public function offersFor(Scope $scope, int $subscriptionId): array
     {
         $byCurrency = [];
-        foreach ($this->charges->findForSubscription($scope, $subscriptionId) as $charge) {
+        foreach ($this->charges->findWithReference($scope, $subscriptionId) as $charge) {
             $saving = $charge->saving();
             if ($saving->amountMinor > 0) {
                 $byCurrency[$saving->currency] = ($byCurrency[$saving->currency] ?? 0) + $saving->amountMinor;

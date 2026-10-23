@@ -85,6 +85,17 @@ final class ChargeSavingTest extends TestCase
         self::assertNull(ChargeSchedule::referenceAsAt($history, new DateTimeImmutable('2026-03-01')));
     }
 
+    public function testAnOfferThatGoesBackToItsOwnPriceHasNoReference(): void
+    {
+        $history = [
+            $this->price(999, '2026-01-01', promotional: true),
+            $this->price(999, '2026-07-01'),
+        ];
+
+        // A reference equal to the price due would read as a discount.
+        self::assertNull(ChargeSchedule::referenceAsAt($history, new DateTimeImmutable('2026-03-01')));
+    }
+
     public function testAnOrdinaryPriceInAnotherCurrencyIsNoReference(): void
     {
         $history = [

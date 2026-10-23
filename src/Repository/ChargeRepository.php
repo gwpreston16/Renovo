@@ -162,14 +162,19 @@ final class ChargeRepository extends AbstractScopedRepository
 
     /**
      * Every charge in scope that carries a reference — the charges an offer
-     * or a discount stands behind, which are all the offers figure reads.
+     * or a discount stands behind, which are all the offers figure reads —
+     * or, given a subscription, every one of its own.
      *
      * @return list<Charge>
      */
-    public function findWithReference(Scope $scope): array
+    public function findWithReference(Scope $scope, ?int $subscriptionId = null): array
     {
         $criteria = Criteria::new()
-            ->where('reference_minor', 'IS NOT NULL')
+            ->where('reference_minor', 'IS NOT NULL');
+        if ($subscriptionId !== null) {
+            $criteria = $criteria->equals('subscription_id', $subscriptionId);
+        }
+        $criteria = $criteria
             ->orderBy('subscription_id', 'asc')
             ->orderBy('due_date', 'asc');
 
@@ -373,11 +378,15 @@ final class ChargeRepository extends AbstractScopedRepository
      * one currency for both amounts, and relabelling what a member entered
      * would change its value. One in another currency stays manual. A skipped
      * payment stays skipped, with no actual. It takes the date's reference,
-     * as a charge written there would.
+     * as a charge written there would — an offer's when the date is on one.
+     * Otherwise a discount a member marked on the payment is kept, moved to
+     * the price due, while what they paid is still below it; a reference
+     * that was not a discount is dropped.
      *
-     * `actual_minor` is assigned before `expected_minor`: MySQL evaluates a
-     * single-table UPDATE's assignments left to right, so the order is what
-     * makes both engines copy the entered amount rather than the new one.
+     * `reference_minor` is assigned first and `actual_minor` before
+     * `expected_minor`: MySQL evaluates a single-table UPDATE's assignments
+     * left to right, so the order is what makes both engines read the row as
+     * the member left it rather than as half-adopted.
      *
      * @return bool Whether a payment was adopted — false when there was none
      *              on the date (removed in the meantime) or its currency
@@ -395,13 +404,33 @@ final class ChargeRepository extends AbstractScopedRepository
             return false;
         }
 
+        // An offer's reference when the date is on one; otherwise a discount
+        // the member marked, kept against the price due while it is lower.
+        $referenceSql = $reference !== null
+            ? ':reference'
+            : 'CASE WHEN ' . $this->quote('reference_minor') . ' = ' . $this->quote('expected_minor')
+                . ' AND ' . $this->quote('status') . ' <> :skipped_discount'
+                // COALESCE with the column gives the bound value the column's
+                // type: PostgreSQL would otherwise type a CASE of untyped
+                // parameters as text, which a bigint column refuses.
+                . ' AND ' . $this->quote('actual_minor') . ' < :due_discount'
+                . ' THEN COALESCE(:due_reference, ' . $this->quote('reference_minor') . ')'
+                . ' ELSE NULL END';
+        $referenceParams = $reference !== null
+            ? ['reference' => $reference->amountMinor]
+            : [
+                'skipped_discount' => ChargeStatus::Skipped->value,
+                'due_discount' => $due->amountMinor,
+                'due_reference' => $due->amountMinor,
+            ];
+
         return $this->db->execute(
             'UPDATE ' . $this->quote($this->table())
-            . ' SET ' . $this->quote('actual_minor') . ' = CASE WHEN ' . $this->quote('status') . ' = :skipped'
+            . ' SET ' . $this->quote('reference_minor') . ' = ' . $referenceSql . ','
+            . ' ' . $this->quote('actual_minor') . ' = CASE WHEN ' . $this->quote('status') . ' = :skipped'
             . ' THEN NULL ELSE COALESCE(' . $this->quote('actual_minor') . ', '
             . $this->quote('expected_minor') . ') END,'
             . ' ' . $this->quote('expected_minor') . ' = :due,'
-            . ' ' . $this->quote('reference_minor') . ' = :reference,'
             . ' ' . $this->quote('source') . ' = :source,'
             . ' ' . $this->quote('updated_at') . ' = :updated'
             . ' WHERE ' . $this->quote('subscription_id') . ' = :subscription'
@@ -412,7 +441,6 @@ final class ChargeRepository extends AbstractScopedRepository
             [
                 'skipped' => ChargeStatus::Skipped->value,
                 'due' => $due->amountMinor,
-                'reference' => $reference?->amountMinor,
                 'currency' => $due->currency,
                 'source' => $source->value,
                 'updated' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
@@ -420,7 +448,7 @@ final class ChargeRepository extends AbstractScopedRepository
                 'household' => $scope->householdId,
                 'date' => $date->format('Y-m-d'),
                 'manual' => ChargeSource::Manual->value,
-            ],
+            ] + $referenceParams,
         ) > 0;
     }
 
