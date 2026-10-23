@@ -36,6 +36,8 @@ figure is one another screen already shows.
   linking to them, with **Out of contract** and **An estimate looks low/high**
   among them ([contracts, fixed terms and bills that vary](tracking.md#contracts-fixed-terms-and-bills-that-vary)).
   When no rule fires there is no list.
+- **Savings.** What the household has saved — history, never a projection
+  ([below](#savings)).
 
 Beneath those: the category and payment-method donuts, the same cost by period,
 and the cost-per-use ranking with its "Used it" button. The Forecast page is one
@@ -96,7 +98,10 @@ rewrite what was due last month.
 A member who may change the subscription can, per row:
 
 - **Record amount** — what was really charged, with a note ("£63.20 this
-  winter"). The amount due stays beside it, struck through.
+  winter"). The amount due stays beside it, struck through. Tick **This was a
+  discount** when a lower amount was a discount rather than a mistake: what it
+  took off counts in [Savings](#savings). It is not offered on a payment made
+  at an introductory or promotional price, whose saving is already counted.
 - **Mark as skipped** — the charge did not happen: waived, missed or refunded in
   full. A skipped charge counts as nothing in every total.
 - **Undo** — put the row back as Renovo wrote it. On a payment added by hand,
@@ -139,6 +144,42 @@ can see exports as CSV or JSON from **Settings → Data**, with the subscription
 belongs to. Changing a subscription's owner moves its payments with it. Viewers see the
 card without its controls; a Contributor changes payments only on rows they
 own.
+
+### Savings
+
+The **Savings** card on Analytics adds up two figures, each traceable to what
+is behind it under **Where it came from**:
+
+- **Saved through offers.** A payment made at an introductory or promotional
+  price remembers what it would otherwise have cost — the price the offer goes
+  back to — and shows it on the Payments card: "£5.99 (normally £11.99)". The
+  saving is the difference, never less than nothing, and a payment marked
+  **This was a discount** counts what it took off the price that was due. A
+  skipped payment saves nothing. The price it would otherwise have cost is
+  written with the payment and does not change if the price history is edited
+  later. An offer with no price recorded after it has nothing to measure
+  against, and counts nothing. A subscription's cost page says what its
+  offers have saved: "Saved £18.00 through offers".
+- **Spend removed by cancellations.** What each cancelled subscription would
+  have cost since it was cancelled, at the prices its history gives, counted up
+  to today and for no more than twelve months after the cancellation. A
+  payment that was already due under its notice period when it was cancelled
+  happened anyway, and is not counted. Beneath it, the yearly cost taken off by
+  the last twelve months' cancellations.
+
+Not counted as savings: a fixed term that ran to its last payment (finishing a
+finance plan is not a saving), a subscription cancelled and later restored,
+and one that was paused when it was cancelled. A trial cancelled before it ever
+charged is counted on a line of its own — "2 trials cancelled before paying" —
+and given no amount.
+
+Each currency is shown on its own, with the total in your base currency when
+every one of them has a rate. Under ISOLATED you see your own savings, and your
+share of a bill you split. A private subscription's savings reach its payer
+only. The figures are also on the dashboard, as an optional **Savings** card,
+and in the API at `GET /api/v1/savings`. Payments made at an offer before the
+upgrade get their "normally" price from `ledger:backfill`
+([upgrading](../upgrading.md#after-upgrading-to-savings-phase-36)).
 
 ### Trials
 

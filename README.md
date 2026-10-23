@@ -88,6 +88,8 @@ for both accounts (an Owner/Admin and a Contributor) when it is ready.
 - Budgets checked against projected spend, a twelve-month forecast, and a
   scenario planner for "what if I cancelled these?".
 - Analytics, year over year, and shared costs split between members.
+- What introductory offers, discounts and cancellations have saved you,
+  counted from what was actually charged.
 
 **Notifications** ([docs](docs/features/notifications.md))
 
