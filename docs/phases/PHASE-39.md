@@ -164,6 +164,78 @@ Migrations, sequenced after the last existing one, each with an explicit
 - **Credentials are minimal**: the README gives a least-privilege policy
   (put, get, list, delete on one prefix) for S3 and B2 application keys.
 
+*Confirmed 2026-10-23*: Backblaze B2 through its S3 API; rehearsal downloads
+from a destination; the scratch database is optional; removing a destination
+leaves its objects; a least-privilege key policy in the docs. The own SigV4
+signer is settled by non-negotiable 5 (all outbound HTTP through the shared
+client), and "https, or http to a trusted host" is already `UrlGuard`'s policy.
+
+Found while starting it:
+
+- **Backup transfers have their own limits.** *Changed 2026-10-23:* the shared
+  client's `HTTP_*` limits (2 MB, 10 s, narrow-only) cannot carry a backup and
+  stay as they are for everything else. The shared client learns to stream a
+  request body from a file and a response body to a file; destination
+  transfers go through it, and through the SSRF guard, with their own limits:
+  `BACKUP_TRANSFER_TIMEOUT_SECONDS` (default 1800) and a 5 GB size cap.
+- **Destination requests never follow a redirect.** `GuardedHttpClient`
+  re-sends every header on a redirect, so a signed `Authorization` or WebDAV
+  Basic credentials would follow a 3xx to another host. A 3xx from a
+  destination is an error that names the `Location`.
+- **Back up now sends after the response.** *Changed 2026-10-23:* nginx gives
+  up after 60 s, so the page shows the verified backup at once and php-fpm
+  uploads after the response is sent (`fastcgi_finish_request`); a failure is
+  retried by the scheduler, as for a scheduled run.
+- **The scratch database is `BACKUP_REHEARSAL_DB_*`.** *Changed 2026-10-23:*
+  not a `BACKUP_REHEARSAL_DATABASE_URL`, but the six variables `DB_*` uses
+  (driver, host, port, name, user, password), as the `CROSS_ENGINE_DB_*` test
+  variables do. Refused when driver, host, port and name match the
+  application's database. The rehearsal migrates it to the archive's version
+  first and drops `phinxlog` with everything else at the end.
+- **An object is named after the local file.** *Changed 2026-10-23:*
+  `{prefix}` plus the Phase 38 file name
+  (`renovo-instance-YYYYMMDD-HHMMSS-xxxxxx.renovo-backup`), not the instance
+  name, which is free text and would show in clear; `backup:fetch` output then
+  goes straight into `backup:restore`.
+- **The restore check covers every encrypted value.** *Changed 2026-10-23:* a
+  password hash cannot be decrypted. The rehearsal checks that every
+  `SecretCipher` value in the restored rows (TOTP secrets, channel config, the
+  rate key, destination secrets) opens with this instance's keys, and that
+  every password hash is a well-formed argon2id or bcrypt hash.
+- **Making a user instance admin copies their routes.** *Confirmed
+  2026-10-23:* promotion copies the user's renewal routes to the three backup
+  alerts, as the migration does for existing admins. The three types appear in
+  the routing grid only for instance admins, and have no lead times.
+- **A Directory destination may not point inside Renovo.** *Confirmed
+  2026-10-23:* the path must be absolute, exist and be writable, and must not
+  be inside the application root, `var/` or `BACKUP_DIRECTORY` (where local
+  retention would prune it).
+- **The new tables are not in the instance backup, except destinations.**
+  `backup_copies` and `backup_rehearsals` describe files and runs on this
+  server and reference `backup_runs`, which Phase 38 already leaves out;
+  `backup_destinations` is configuration and is carried. A Phase 38 archive,
+  which lacks it, still verifies: the manifest is checked against the tables
+  the archive names.
+- **Destination secrets rotate with the rest.** The `backup-destination`
+  purpose is a `StoredSecretKind`, so `secrets:rotate` re-encrypts it.
+- **No new `timestamp NOT NULL` without a default** (K110): the new tables'
+  timestamps are nullable or carry an explicit default, so MariaDB 10.6–10.9
+  cannot turn one into `ON UPDATE CURRENT_TIMESTAMP` and rewrite
+  `uploaded_at` when a copy's status changes.
+- **The procedure goes in `docs/operations.md`, not the README.** Settled by
+  Phase 44: the README *Status* item means `docs/operations.md`
+  (destinations, least-privilege keys, object lock, the rehearsal database)
+  and `docs/configuration.md` (the new variables).
+- **Strings go in every catalogue in `translations/`.** Settled by
+  `CLAUDE.md`; today that is `en.php` alone.
+- **Tests against MinIO and WebDAV run when their variables are set**, and
+  skip otherwise, as the cross-engine test does; CI starts both as service
+  containers.
+- **Known issues taken on.** *Confirmed 2026-10-23:* K19 and K25 (the shared
+  client, which this phase changes), K65 (the trusted-host list LAN
+  destinations rely on), K113 (the backup run, which this phase changes), and
+  K111 and K112 (restore, which the rehearsal runs).
+
 ## Status
 
 - [ ] `BackupDestination` interface; S3-compatible (with `S3Signer`), WebDAV,
@@ -175,10 +247,11 @@ Migrations, sequenced after the last existing one, each with an explicit
       columns and route copy for instance admins
 - [ ] Destinations, rehearsal and history on Settings → Instance → Backups;
       metrics
-- [ ] README: destinations, least-privilege keys, object lock, rehearsal
-      database
+- [ ] `docs/operations.md` and `docs/configuration.md`: destinations,
+      least-privilege keys, object lock, rehearsal database
+- [ ] Known issues K19, K25, K65, K111, K112, K113
 - [ ] Migrations on both engines
-- [ ] New strings in `translations/en.php`
+- [ ] New strings in every catalogue in `translations/`
 - [ ] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done
