@@ -65,7 +65,10 @@ final class DashboardCardTest extends TestCase
     public function testEachViewHasTheCardsThePhaseNames(): void
     {
         self::assertSame(
-            ['totals', 'spend_chart', 'where_it_goes', 'coming_up', 'budgets', 'free_trials', 'price_change', 'recent'],
+            [
+                'totals', 'spend_chart', 'where_it_goes', 'coming_up', 'budgets', 'free_trials', 'price_change',
+                'recent', 'savings',
+            ],
             $this->keys(DashboardCard::defaultOrder(DashboardView::Overview)),
         );
         self::assertSame(
@@ -75,13 +78,18 @@ final class DashboardCardTest extends TestCase
     }
 
     /**
-     * The subscriptions table is the Subscriptions page's own subject, so on
-     * the dashboard it is offered and off; everything else is on.
+     * The subscriptions table is the Subscriptions page's own subject, and
+     * the savings Analytics', so on the dashboard both are offered and off;
+     * everything else is on.
      */
-    public function testOnlyTheSubscriptionsTableIsHiddenByDefault(): void
+    public function testOnlyTheSubscriptionsTableAndSavingsAreHiddenByDefault(): void
     {
         foreach (DashboardCard::cases() as $card) {
-            self::assertSame($card !== DashboardCard::Recent, $card->visibleByDefault(), $card->value);
+            self::assertSame(
+                !in_array($card, [DashboardCard::Recent, DashboardCard::Savings], true),
+                $card->visibleByDefault(),
+                $card->value,
+            );
         }
     }
 
@@ -119,7 +127,7 @@ final class DashboardCardTest extends TestCase
         self::assertSame(
             [
                 'totals', 'spend_chart', 'where_it_goes', 'coming_up', 'budgets', 'free_trials', 'price_change',
-                'recent', 'month_so_far', 'next_30_days', 'who_pays', 'spend_trend', 'by_category',
+                'recent', 'savings', 'month_so_far', 'next_30_days', 'who_pays', 'spend_trend', 'by_category',
                 'budget_pace',
             ],
             $this->keys(DashboardCard::cases()),

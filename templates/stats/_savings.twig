@@ -1,0 +1,81 @@
+{#
+    What the household has saved: what offers took off the normal price, and
+    what the rows it cancelled would have cost since. History, not a
+    projection — `SavingsService` computes both from the ledger and the price
+    history, within the reader's scope.
+
+    Every figure can be traced: the breakdown behind the disclosure names the
+    subscriptions, and each links to its cost page, where the offer's charges
+    are listed with what they would otherwise have cost.
+#}
+{% import 'partials/savings.twig' as saved %}
+
+<section class="card analytics-savings" id="analytics-savings" aria-labelledby="analytics-savings-heading">
+    <header class="card-header">
+        <h2 id="analytics-savings-heading">{{ t('savings.title') }}</h2>
+        <span class="card-icon">{{ icon('savings') }}</span>
+    </header>
+
+    {% if not savings.has_any %}
+        <p class="muted empty">{{ t('savings.empty') }}</p>
+    {% else %}
+        <div class="savings-figures">
+            <div class="stat">
+                <h3 class="stat-label">{{ t('savings.offers') }}</h3>
+                {{ saved.headline(savings.offers.total) }}
+            </div>
+            <div class="stat">
+                <h3 class="stat-label">{{ t('savings.cancellations') }}</h3>
+                {{ saved.headline(savings.cancellations.realised) }}
+                {% if savings.cancellations.run_rate.totals is not empty %}
+                    <p class="hint">{{ t('savings.run_rate', {'amount': saved.inline(savings.cancellations.run_rate)}) }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if savings.cancellations.trials > 0 %}
+            <p class="savings-trials">{{ t('savings.trials', {'count': savings.cancellations.trials}) }}</p>
+        {% endif %}
+
+        {% set offer_rows = savings.offers.by_subscription %}
+        {% set cancel_rows = savings.cancellations.by_subscription %}
+        {% if offer_rows is not empty or cancel_rows is not empty %}
+            <details class="insight-more savings-breakdown">
+                <summary>{{ t('savings.breakdown') }}</summary>
+
+                {% if offer_rows is not empty %}
+                    <h3 class="stat-label">{{ t('savings.offers') }}</h3>
+                    <ul class="plain savings-rows">
+                        {% for row in offer_rows %}
+                            <li class="savings-row">
+                                <a href="/subscriptions/{{ row.subscription.id }}/money#payments">{{ row.subscription.name }}</a>
+                                <span class="num">{{ saved.totals(row.totals) }}</span>
+                                <span class="hint">{{ t('savings.offer_charges', {'count': row.charges}) }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+
+                {% if cancel_rows is not empty %}
+                    <h3 class="stat-label">{{ t('savings.cancellations') }}</h3>
+                    <ul class="plain savings-rows">
+                        {% for row in cancel_rows %}
+                            <li class="savings-row">
+                                <a href="/subscriptions/{{ row.subscription.id }}/money">{{ row.subscription.name }}</a>
+                                <span class="num">{{ row.totals is empty ? t('common.none_symbol') : saved.totals(row.totals) }}</span>
+                                <span class="hint">
+                                    {{- t('savings.cancelled_on', {'date': row.cancelled_on|local_date('d MMM y')}) }}
+                                    · {{ t('savings.avoided_charges', {'count': row.charges}) -}}
+                                    {% if row.committed > 0 %} · {{ t('savings.committed_charges', {'count': row.committed}) }}{% endif %}
+                                    {%- if row.run_rate %} · {{ t('savings.row_run_rate', {'amount': row.run_rate.amountMinor|money(row.run_rate.currency)}) }}{% endif -%}
+                                </span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </details>
+        {% endif %}
+    {% endif %}
+
+    <p class="hint">{{ t('savings.note', {'months': savings.cap_months}) }}</p>
+</section>

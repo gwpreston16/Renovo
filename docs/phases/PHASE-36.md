@@ -186,7 +186,7 @@ Known issues added to this phase (*Confirmed 2026-10-23*): **K75**, **K76**,
 - [x] "This was a discount" on recording an actual
 - [x] `SavingsService`: offers, cancellations (realised, capped; run-rate),
       exclusions, currencies, scoping
-- [ ] Analytics Savings card; optional dashboard card; money page line
+- [x] Analytics Savings card; optional dashboard card; money page line
 - [ ] API endpoint and charge field, OpenAPI, `docs/api.md`; export
 - [ ] Known issues K75, K76, K82, K93
 - [ ] New strings in `translations/en.php`

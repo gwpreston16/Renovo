@@ -29,6 +29,17 @@
         </p>
     {% endif %}
 
+    {#
+        What this row's offers took off the normal price, charge by charge in
+        the Payments card below; drawn only when it is something.
+    #}
+    {% if offer_savings is not empty %}
+        <p class="savings-line">
+            {{ icon('savings') }}
+            {{ t('savings.saved_on_row', {'amount': offer_savings|map(total => total.amount_minor|money(total.currency))|join(' · ')}) }}
+        </p>
+    {% endif %}
+
     {% if promotion %}
         <section class="card callout" id="promotion">
             <h2>{{ t('promo.heading') }} {{ promo.chip(promotion) }}</h2>

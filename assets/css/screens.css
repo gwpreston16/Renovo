@@ -2911,6 +2911,70 @@ a.segmented-option {
 }
 
 /*
+ * Savings (Phase 36): the two figures side by side where there is room, the
+ * trials line, and the subscriptions behind them folded away — a name, its
+ * amount and a line saying how it was counted, wrapping at phone width.
+ */
+.savings-figures {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.savings-trials {
+    margin: 0.75rem 0 0;
+}
+
+.savings-breakdown .stat-label {
+    margin: 0.75rem 0 0.25rem;
+}
+
+.savings-rows {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.savings-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.625rem;
+}
+
+.savings-row > a {
+    flex: 1;
+    min-width: 0;
+    font-weight: var(--weight-semibold);
+}
+
+.savings-row > .num {
+    font-weight: var(--weight-semibold);
+    white-space: nowrap;
+}
+
+.savings-row > .hint {
+    flex-basis: 100%;
+    margin: 0;
+}
+
+.analytics-savings > .hint {
+    margin-top: 0.75rem;
+}
+
+.savings-card .stat + .stat {
+    margin-top: 0.75rem;
+}
+
+.savings-line {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--muted);
+}
+
+/*
  * The insights: a card each, an icon tile in the kind's tone, a heading and
  * the sentence with its arithmetic.
  */

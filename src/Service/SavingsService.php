@@ -73,7 +73,7 @@ use DateTimeImmutable;
  *     by_subscription: list<CancellationRow>,
  *     trials: int
  * }
- * @phpstan-type Savings array{offers: Offers, cancellations: Cancellations, has_any: bool}
+ * @phpstan-type Savings array{offers: Offers, cancellations: Cancellations, has_any: bool, cap_months: int}
  */
 final class SavingsService
 {
@@ -125,6 +125,7 @@ final class SavingsService
                 || $cancellations['realised']['totals'] !== []
                 || $cancellations['run_rate']['totals'] !== []
                 || $cancellations['trials'] > 0,
+            'cap_months' => self::CANCELLATION_MONTHS,
         ];
     }
 
