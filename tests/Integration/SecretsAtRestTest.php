@@ -72,6 +72,20 @@ final class SecretsAtRestTest extends DatabaseTestCase
 
         self::assertNotNull($channel);
         self::assertSame([], $channel->config);
+        self::assertTrue($channel->configUnreadable);
+    }
+
+    public function testACorruptPlaintextRowIsEmptyButNotMarkedUnreadable(): void
+    {
+        $channels = $this->channels(new KeyRing('key-one'));
+        $id = $channels->create($this->userId, 'gotify', 'Phone', []);
+        $this->setRawConfig($id, '{not json');
+
+        $channel = $channels->find($this->userId, $id);
+
+        self::assertNotNull($channel);
+        self::assertSame([], $channel->config);
+        self::assertFalse($channel->configUnreadable);
     }
 
     public function testAChannelUnderAPreviousKeyStillReads(): void

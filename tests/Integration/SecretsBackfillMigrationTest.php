@@ -68,6 +68,56 @@ final class SecretsBackfillMigrationTest extends DatabaseTestCase
         self::assertStringContainsString('could not be decrypted', $output);
     }
 
+    public function testEveryBatchIsEncrypted(): void
+    {
+        $ids = [];
+        foreach (range(1, 201) as $n) {
+            $ids[] = $id = $this->channels()->create($this->userId, 'ntfy', 'Topic ' . $n, []);
+            $this->setRawConfig($id, '{"topic":"t' . $n . '"}');
+        }
+
+        $this->migrate('20270401000001_encrypt_notification_channel_config.php', 'up');
+
+        foreach ($ids as $id) {
+            self::assertStringStartsWith('v2:', $this->rawConfig($id));
+        }
+    }
+
+    public function testAnEmptyDatabaseNeedsNoKey(): void
+    {
+        $saved = $_ENV['SESSION_KEY'] ?? null;
+        unset($_ENV['SESSION_KEY']);
+
+        try {
+            $this->migrate('20270401000001_encrypt_notification_channel_config.php', 'up');
+            $this->migrate('20270401000001_encrypt_notification_channel_config.php', 'down');
+            $this->migrate('20270401000002_encrypt_rate_provider_key.php', 'up');
+        } finally {
+            $_ENV['SESSION_KEY'] = $saved;
+        }
+
+        self::assertSame(0, (int) $this->db->fetchValue('SELECT COUNT(*) FROM notification_channels'));
+    }
+
+    public function testAPlaceholderSessionKeyIsRefusedBeforeAnythingIsWritten(): void
+    {
+        $id = $this->channels()->create($this->userId, 'ntfy', 'Topic', []);
+        $this->setRawConfig($id, '{"topic":"t"}');
+        $saved = $_ENV['SESSION_KEY'] ?? null;
+        $_ENV['SESSION_KEY'] = 'unused-by-migrations';
+
+        try {
+            $this->migrate('20270401000001_encrypt_notification_channel_config.php', 'up');
+            self::fail('A placeholder key must stop the backfill.');
+        } catch (\RuntimeException $exception) {
+            self::assertStringContainsString('placeholder SESSION_KEY', $exception->getMessage());
+        } finally {
+            $_ENV['SESSION_KEY'] = $saved;
+        }
+
+        self::assertSame('{"topic":"t"}', $this->rawConfig($id));
+    }
+
     public function testRateKeyBackfillEncryptsReRunsCleanlyAndRollsBack(): void
     {
         $repository = new InstanceSettingsRepository($this->db);

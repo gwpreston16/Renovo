@@ -60,10 +60,18 @@ final class EncryptRateProviderKey extends AbstractMigration
 
     private function cipher(): SecretCipher
     {
-        return new SecretCipher(
-            KeyRing::fromSettings(require dirname(__DIR__) . '/config/settings.php'),
-            SecretCipher::PURPOSE_RATE_PROVIDER_KEY,
-        );
+        $ring = KeyRing::fromSettings(require dirname(__DIR__) . '/config/settings.php');
+
+        // An older docker-compose.yml gave this container a placeholder session
+        // key. Encrypting under it would leave the rate key unreadable.
+        if (in_array($ring->current(), ['unused-by-migrations', 'unused-by-scheduler'], true)) {
+            throw new RuntimeException(
+                'The migrate container has a placeholder SESSION_KEY. Pass it the real SESSION_KEY '
+                . '(or SECRETS_KEY) as docker-compose.yml now does; see docs/upgrading.md.',
+            );
+        }
+
+        return new SecretCipher($ring, SecretCipher::PURPOSE_RATE_PROVIDER_KEY);
     }
 
     private function stored(): ?string

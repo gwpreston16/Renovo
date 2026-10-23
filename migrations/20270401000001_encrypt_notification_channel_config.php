@@ -27,7 +27,8 @@ use Phinx\Migration\AbstractMigration;
  * the application reads, and running it again finishes the job.
  *
  * Rolling back decrypts every row to plain JSON again. A row no configured key
- * opens is left as it is and reported.
+ * opens is left as it is and reported. With no key configured at all, a
+ * rollback stops at the first encrypted row; run it again once a key is set.
  *
  * It depends on the application's key resolution and cipher (KeyRing,
  * SecretCipher's `v2:` format and its purpose strings), which later phases must
@@ -87,6 +88,15 @@ final class EncryptNotificationChannelConfig extends AbstractMigration
         }
 
         $ring = KeyRing::fromSettings(require dirname(__DIR__) . '/config/settings.php');
+
+        // An older docker-compose.yml gave this container a placeholder session
+        // key. Encrypting under it would leave every channel unreadable.
+        if (in_array($ring->current(), ['unused-by-migrations', 'unused-by-scheduler'], true)) {
+            throw new RuntimeException(
+                'The migrate container has a placeholder SESSION_KEY. Pass it the real SESSION_KEY '
+                . '(or SECRETS_KEY) as docker-compose.yml now does; see docs/upgrading.md.',
+            );
+        }
 
         if (!$ring->usesSecretsKey()) {
             $this->getOutput()->writeln(

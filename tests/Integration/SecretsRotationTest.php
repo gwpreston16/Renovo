@@ -139,6 +139,16 @@ final class SecretsRotationTest extends DatabaseTestCase
         self::assertSame($current, $this->rawConfig($id));
     }
 
+    public function testAPlaintextTwoFactorSeedIsReportedNotEncrypted(): void
+    {
+        (new TotpRepository($this->db))->startEnrolment($this->alice, self::SEED, $this->clock->now());
+
+        $report = $this->service(new KeyRing('key-one'))->rotate();
+
+        self::assertSame([$this->alice], $report['totp_secrets']['unreadable']);
+        self::assertSame(self::SEED, (string) $this->db->fetchValue('SELECT secret FROM user_totp'));
+    }
+
     public function testASecondRunChangesNothing(): void
     {
         $this->seed(new KeyRing('key-one'));

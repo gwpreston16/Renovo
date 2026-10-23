@@ -248,6 +248,15 @@ final class NotificationRoutesTest extends DatabaseTestCase
         self::assertStringContainsString("settings can&#039;t be read", (string) $response->getBody());
         self::assertSame($before, $raw($this), 'An edit must not save the form over unreadable ciphertext.');
         self::assertSame('AsecretToken1', $lost->find($this->viewerId, $id)?->config('token'));
+
+        // Deleting it is the way out without the key, and is audited.
+        $this->request('POST', '/settings/notifications/channels/' . $id . '/delete');
+
+        self::assertNull($lost->find($this->viewerId, $id));
+        self::assertSame(1, (int) $this->db->fetchValue(
+            "SELECT COUNT(*) FROM audit_log WHERE action = 'notification_channel.deleted' AND actor_user_id = :user",
+            ['user' => $this->viewerId],
+        ));
     }
 
     public function testAddingEditingAndDeletingAChannelIsAuditedWithoutItsConfig(): void

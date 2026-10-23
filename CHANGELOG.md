@@ -37,7 +37,9 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 - **`docker-compose.yml` passes `SESSION_KEY`, `SECRETS_KEY`,
   `SECRETS_PREVIOUS_KEYS` and `TOTP_ENCRYPTION_KEY` to the app, migration and
   scheduler containers**, and the migration and scheduler no longer start on a
-  placeholder session key. Copy the change into a compose file of your own.
+  placeholder session key. Copy the change into a compose file of your own
+  **before** starting the new images; see *After upgrading to secrets at rest*
+  in `docs/upgrading.md`.
   *Phase 40.*
 - `TOTP_ENCRYPTION_KEY` is superseded by `SECRETS_KEY`; it still works, and is
   always tried when reading. *Phase 40.*

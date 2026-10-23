@@ -195,6 +195,35 @@ final class NotificationDispatchTest extends NotificationTestCase
         self::assertSame(['target' => 'Phone'], $this->notifier->sent[0]['channel']->config);
     }
 
+    public function testAChannelNoKeyOpensSendsNothingAndTheAlertWaitsForTheKey(): void
+    {
+        $this->addChannel($this->alice, 'Phone');
+        $this->useChannelKeys(new KeyRing('a-key-the-channel-was-not-written-under'));
+
+        self::assertSame(0, $this->dispatcher->dispatch($this->user($this->alice), [$this->alert()]));
+        self::assertSame([], $this->notifier->sent);
+        self::assertStringContainsString(
+            'cannot be read',
+            (string) $this->channels->findAllForUser($this->alice)[0]->lastError,
+        );
+
+        $this->useChannelKeys(TestKeys::ring());
+
+        self::assertSame(1, $this->dispatcher->dispatch($this->user($this->alice), [$this->alert()]));
+    }
+
+    public function testATestMessageToAChannelNoKeyOpensIsRefused(): void
+    {
+        $id = $this->addChannel($this->alice, 'Phone');
+        $this->useChannelKeys(new KeyRing('a-key-the-channel-was-not-written-under'));
+        $channel = $this->channels->find($this->alice, $id);
+        self::assertNotNull($channel);
+
+        $this->expectException(NotifierException::class);
+        $this->expectExceptionMessageMatches('/cannot be read/');
+        $this->dispatcher->sendTest($this->user($this->alice), $channel);
+    }
+
     public function testAnInactiveChannelReceivesNothing(): void
     {
         $id = $this->addChannel($this->alice);

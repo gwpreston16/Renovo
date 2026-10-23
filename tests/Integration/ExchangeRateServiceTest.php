@@ -344,6 +344,35 @@ final class ExchangeRateServiceTest extends DatabaseTestCase
         self::assertTrue($service->isMisconfigured());
     }
 
+    public function testAStoredKeyIsSentDecrypted(): void
+    {
+        $this->settings->setRateProviderKey('key-from-the-database');
+
+        $http = FakeHttpClient::returningJson([
+            'success' => true,
+            'source' => 'GBP',
+            'quotes' => ['GBPEUR' => 1.1723],
+        ]);
+
+        $service = new ExchangeRateService(
+            $this->rates,
+            new ExchangeRateProviderRegistry([
+                new \App\Service\ExchangeRate\ExchangeRateHostProvider($http, new RequestFactory()),
+            ]),
+            $this->settings,
+            $this->clock,
+            new NullLogger(),
+            self::TTL_SECONDS,
+            self::RETRY_SECONDS,
+            '',
+        );
+
+        $service->refresh();
+
+        // Stored encrypted, sent as entered.
+        self::assertStringContainsString('access_key=key-from-the-database', $http->requestedUrls[0]);
+    }
+
     public function testAnEnvironmentKeyIsUsedInPreferenceToAStoredOne(): void
     {
         $this->settings->setRateProviderKey('key-from-the-database');

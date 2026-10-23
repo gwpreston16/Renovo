@@ -43,6 +43,8 @@ use Throwable;
  */
 final class NotificationDispatcher
 {
+    private const UNREADABLE = 'its settings cannot be read with the configured encryption keys';
+
     public function __construct(
         private readonly NotificationSettingsService $settings,
         private readonly NotifierRegistry $notifiers,
@@ -121,6 +123,10 @@ final class NotificationDispatcher
     {
         $notifier = $this->notifiers->get($channel->type);
 
+        if ($channel->configUnreadable) {
+            throw NotifierException::misconfigured($notifier->label(), self::UNREADABLE);
+        }
+
         if (!$this->limiter->allows($user->id, 0)) {
             throw NotifierException::rejected(
                 $notifier->label(),
@@ -173,6 +179,15 @@ final class NotificationDispatcher
         if ($notifier === null) {
             // A channel whose type is no longer registered — a plugin removed,
             // a downgrade. Skipped rather than fatal.
+            return false;
+        }
+
+        // Settings no key opens: sending with the empty config would fall back
+        // to defaults (an email channel to the account's own address). Nothing
+        // is claimed, so the alert still goes once the key is restored.
+        if ($channel->configUnreadable) {
+            $this->channels->recordResult($channel->id, self::UNREADABLE);
+
             return false;
         }
 

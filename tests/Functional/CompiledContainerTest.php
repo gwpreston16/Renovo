@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Security\KeyRing;
+use App\Support\BuildFingerprint;
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
 use Psr\Container\ContainerInterface;
@@ -23,14 +24,14 @@ final class CompiledContainerTest extends TestCase
         $_ENV['APP_DEBUG'] = 'false';
         $_ENV['SECRETS_KEY'] = 'first-key-' . bin2hex(random_bytes(8));
 
-        $first = $this->container();
-        $settings = $first->get('settings');
-        self::assertIsArray($settings);
-        $build = $settings['paths']['cache'];
+        // Decided before compiling: this test's own build directory is removed
+        // again, whole, and one a developer already had is left in place.
+        $root = dirname(__DIR__, 2);
+        $build = $root . '/var/cache/' . BuildFingerprint::of($root);
+        $existed = is_dir($build);
         $compiled = $build . '/container/CompiledContainer.php';
-        // This test's own compile is removed again, whole; a build directory a
-        // developer already had is left in place.
-        $existed = is_file($compiled);
+
+        $first = $this->container();
 
         try {
             self::assertFileExists($compiled, 'With debug off the container is compiled.');

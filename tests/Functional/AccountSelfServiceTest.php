@@ -402,7 +402,8 @@ final class AccountSelfServiceTest extends DatabaseTestCase
         $tokens = $container->get(ApiTokenService::class);
         $member = $this->reload($this->memberId);
         $apiToken = $tokens->issue($member, $this->householdId, 'Script', TokenAbility::Read);
-        $tokens->replaceFeedToken($member, $this->householdId);
+        $feedToken = $tokens->replaceFeedToken($member, $this->householdId);
+        self::assertSame(200, $this->feed($feedToken)->getStatusCode());
         $housemate = $this->reload($this->housemateId);
         $housemates = $tokens->issue($housemate, $this->householdId, 'Theirs', TokenAbility::Read);
 
@@ -416,6 +417,7 @@ final class AccountSelfServiceTest extends DatabaseTestCase
         ]);
 
         self::assertSame(401, $this->api($apiToken)->getStatusCode());
+        self::assertSame(401, $this->feed($feedToken)->getStatusCode());
         self::assertSame(200, $this->api($housemates)->getStatusCode(), 'Another member\'s token is not ended.');
         self::assertSame(0, (int) $this->db->fetchValue(
             'SELECT COUNT(*) FROM api_tokens WHERE user_id = :user AND revoked_at IS NULL',
@@ -668,6 +670,17 @@ final class AccountSelfServiceTest extends DatabaseTestCase
             ->withHeader(CsrfTokenManager::HEADER_NAME, $container->get(CsrfTokenManager::class)->token());
 
         return $this->app->handle($request);
+    }
+
+    private function feed(string $token): ResponseInterface
+    {
+        return $this->app->handle(
+            (new ServerRequestFactory())->createServerRequest(
+                'GET',
+                'http://localhost/api/v1/calendar.ics?token=' . rawurlencode($token),
+                ['REMOTE_ADDR' => '127.0.0.1'],
+            ),
+        );
     }
 
     private function api(string $token): ResponseInterface
