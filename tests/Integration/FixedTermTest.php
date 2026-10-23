@@ -133,8 +133,8 @@ final class FixedTermTest extends DatabaseTestCase
         self::assertCount(14, $rows);
 
         // One month was paid at a different amount, and one was skipped.
-        $this->chargeRows->adjust($this->scope(), $rows[0]->id, 8000, ChargeStatus::Charged, null);
-        $this->chargeRows->adjust($this->scope(), $rows[1]->id, null, ChargeStatus::Skipped, null);
+        $this->chargeRows->adjust($this->scope(), $rows[0]->id, 8000, ChargeStatus::Charged, null, null);
+        $this->chargeRows->adjust($this->scope(), $rows[1]->id, null, ChargeStatus::Skipped, null, null);
 
         $progress = $this->terms->progress($this->scope(), $this->find($id));
 

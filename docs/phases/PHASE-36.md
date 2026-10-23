@@ -169,9 +169,9 @@ Known issues added to this phase (*Confirmed 2026-10-23*): **K75**, **K76**,
 
 ## Status
 
-- [ ] Migration on both engines; references written and frozen; backfill
+- [x] Migration on both engines; references written and frozen; backfill
       extended
-- [ ] "This was a discount" on recording an actual
+- [x] "This was a discount" on recording an actual
 - [ ] `SavingsService`: offers, cancellations (realised, capped; run-rate),
       exclusions, currencies, scoping
 - [ ] Analytics Savings card; optional dashboard card; money page line

@@ -1990,7 +1990,7 @@ final class PaymentLedgerTest extends DatabaseTestCase
         $this->create('Monthly', '10.00', '2026-06-15', '2026-01-15');
         $viewer = Scope::forMember($this->bobId, false, $this->household, Role::Viewer, IsolationMode::Shared);
 
-        self::assertSame(['subscriptions' => 0, 'charges' => 0], $this->charges->backfill($viewer));
+        self::assertSame(['subscriptions' => 0, 'charges' => 0, 'references' => 0], $this->charges->backfill($viewer));
     }
 
     public function testAPageIsNewestFirstAndBounded(): void

@@ -35,6 +35,11 @@ final class Charge
         public readonly ?string $recordedByName,
         public readonly DateTimeImmutable $createdAt,
         public readonly DateTimeImmutable $updatedAt,
+        // What it would have cost without the offer it was on, in the
+        // expected amount's currency: written with the charge from the price
+        // history, or by a member marking a lower actual as a discount.
+        // Frozen, as the expected amount is.
+        public readonly ?int $referenceMinor = null,
     ) {
     }
 
@@ -67,6 +72,50 @@ final class Charge
     public function differsFromExpected(): bool
     {
         return $this->actualMinor !== null && $this->actualMinor !== $this->expected->amountMinor;
+    }
+
+    /**
+     * What it would have cost without the offer, when that is known.
+     */
+    public function reference(): ?Money
+    {
+        return $this->referenceMinor === null ? null : Money::of($this->referenceMinor, $this->expected->currency);
+    }
+
+    /**
+     * What the offer took off this charge: the reference less the amount,
+     * and never less than nothing. A skipped charge saves nothing — nothing
+     * was paid, and the offer did not cause that — and a charge above its
+     * reference is a price rise, which the price history shows, not a
+     * negative saving.
+     */
+    public function saving(): Money
+    {
+        if ($this->referenceMinor === null || $this->isSkipped()) {
+            return Money::zero($this->expected->currency);
+        }
+
+        return Money::of(max(0, $this->referenceMinor - $this->amount()->amountMinor), $this->expected->currency);
+    }
+
+    /**
+     * True when the reference is a member's "This was a discount": it is the
+     * expected amount, which an offer's reference — the price after the
+     * offer — never is. What Undo clears, and an offer's reference it keeps.
+     */
+    public function isDiscount(): bool
+    {
+        return $this->referenceMinor !== null && $this->referenceMinor === $this->expected->amountMinor;
+    }
+
+    /**
+     * Whether a member may mark a lower actual as a discount: only a charge
+     * with no offer behind it, whose reference would otherwise be replaced by
+     * a smaller one.
+     */
+    public function mayMarkDiscount(): bool
+    {
+        return $this->referenceMinor === null || $this->isDiscount();
     }
 
     public function isSkipped(): bool

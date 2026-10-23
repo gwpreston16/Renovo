@@ -160,7 +160,10 @@ final class SubscriptionChargeController extends Controller
                     'subscription' => $id,
                     'form' => $form['form'],
                     'charge' => $form['charge'] ?? null,
-                    'values' => array_intersect_key($body, array_flip(['date', 'amount', 'note', 'actual'])),
+                    'values' => array_intersect_key(
+                        $body,
+                        array_flip(['date', 'amount', 'note', 'actual', 'discount']),
+                    ),
                 ]);
             }
         }

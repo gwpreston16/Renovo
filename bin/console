@@ -152,7 +152,8 @@ switch ($command) {
         // Once, after upgrading to the payment ledger: rebuild the charges
         // from before it existed. Idempotent, and never overwrites a charge
         // the catch-up wrote or an amount a member entered; a payment added by
-        // hand on a rebuilt date becomes that date's charge.
+        // hand on a rebuilt date becomes that date's charge. A charge on an
+        // offer that has no reference yet is given one (Phase 36).
         $householdId = null;
         foreach (array_slice($argv, 2) as $argument) {
             if (preg_match('/^--household=(\d+)$/', $argument, $match) === 1) {
@@ -165,11 +166,13 @@ switch ($command) {
 
         $totals = $container->get(LedgerBackfillRunner::class)->run($householdId);
         $out(sprintf(
-            'Backfilled %d charge(s) on %d subscription(s) across %d household(s); filed %d invoice(s) against them.',
+            'Backfilled %d charge(s) on %d subscription(s) across %d household(s); filed %d invoice(s) against them;'
+            . ' gave %d charge(s) on an offer the price they would otherwise have cost.',
             $totals['charges'],
             $totals['subscriptions'],
             $totals['households'],
             $totals['invoices'],
+            $totals['references'],
         ));
         exit(0);
 

@@ -165,6 +165,31 @@ final class PaymentsCardTest extends DatabaseTestCase
         self::assertStringContainsString('payments-expected', $html);
     }
 
+    public function testMarkingALowerAmountAsADiscountThroughTheCard(): void
+    {
+        $charge = $this->firstCharge();
+        $expected = $this->charges()->find($this->owner, $charge)?->expected;
+        self::assertNotNull($expected);
+
+        $html = (string) $this->get($this->ownerId)->getBody();
+        self::assertStringContainsString('id="discount-' . $charge . '"', $html);
+
+        $this->post($this->ownerId, $this->chargePath($charge, 'actual'), ['actual' => '10.00', 'discount' => '1']);
+        $recorded = $this->charges()->find($this->owner, $charge);
+        self::assertSame([$expected->amountMinor, true], [$recorded?->referenceMinor, $recorded?->isDiscount()]);
+
+        $html = (string) $this->get($this->ownerId)->getBody();
+        self::assertStringContainsString('(discount)', $html);
+        self::assertMatchesRegularExpression('#id="discount-' . $charge . '"[^>]*checked#s', $html);
+
+        // Refused at the full price, and the form reopens with the tick kept.
+        $this->post($this->ownerId, $this->chargePath($charge, 'actual'), [
+            'actual' => $expected->toDecimalString(),
+            'discount' => '1',
+        ]);
+        self::assertSame(1000, $this->charges()->find($this->owner, $charge)?->actualMinor);
+    }
+
     public function testSkippingUndoingAndAddingThroughTheCard(): void
     {
         $charge = $this->firstCharge();
@@ -288,7 +313,10 @@ final class PaymentsCardTest extends DatabaseTestCase
         self::assertSame(200, $csv->getStatusCode());
         self::assertStringContainsString('payments-', $csv->getHeaderLine('Content-Disposition'));
         $lines = array_values(array_filter(explode("\n", (string) $csv->getBody())));
-        self::assertSame('subscription,"due date",currency,expected,actual,amount,status,source,note', $lines[0]);
+        self::assertSame(
+            'subscription,"due date",currency,expected,actual,amount,status,source,note,reference,saving',
+            $lines[0],
+        );
         self::assertCount(5, $lines);
         self::assertStringContainsString('Energy', (string) $csv->getBody());
 

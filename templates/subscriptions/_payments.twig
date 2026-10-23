@@ -109,6 +109,23 @@
                                             <input type="text" id="actual-note-{{ charge.id }}" name="note" maxlength="255"
                                                    value="{{ failed_here ? failed.values.note|default('') : charge.note }}">
                                         </div>
+                                        {#
+                                            Only on a charge no offer stands behind: an
+                                            offer already counts a lower amount as saved.
+                                        #}
+                                        {% if charge.mayMarkDiscount %}
+                                            <div class="field">
+                                                <label class="choice" for="discount-{{ charge.id }}">
+                                                    <input type="checkbox" id="discount-{{ charge.id }}" name="discount" value="1"
+                                                           aria-describedby="discount-{{ charge.id }}-hint"
+                                                           {{ (failed_here ? failed.values.discount|default('') == '1' : charge.isDiscount) ? 'checked' : '' }}>
+                                                    <span>{{ t('payments.was_discount') }}</span>
+                                                </label>
+                                                <p class="hint" id="discount-{{ charge.id }}-hint">
+                                                    {{- t('payments.was_discount_hint', {'expected': charge.expected.amountMinor|money(charge.expected.currency)}) -}}
+                                                </p>
+                                            </div>
+                                        {% endif %}
                                         <button type="submit" class="button">{{ t('payments.record_amount') }}</button>
                                     </form>
 
@@ -172,6 +189,18 @@
                                 <span class="visually-hidden">{{ t('payments.charged_as') }} </span>{{ charge.amount.amountMinor|money(charge.amount.currency) }}
                             {% else %}
                                 {{ charge.amount.amountMinor|money(charge.amount.currency) }}
+                            {% endif %}
+                            {#
+                                What the charge would have cost without its
+                                offer, or that a member called it a discount —
+                                the saving behind the Savings figures.
+                            #}
+                            {% if charge.saving.amountMinor > 0 %}
+                                <span class="hint">
+                                    {{- charge.isDiscount
+                                        ? t('payments.discounted')
+                                        : t('payments.normally', {'amount': charge.reference.amountMinor|money(charge.reference.currency)}) -}}
+                                </span>
                             {% endif %}
                         </td>
                         <td>

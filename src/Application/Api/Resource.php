@@ -161,6 +161,9 @@ final class Resource
     /**
      * One charge in the payment ledger. `amount_minor` is what it counts as:
      * the actual when recorded, the expected otherwise, zero when skipped.
+     * `reference_minor` is what it would have cost without its offer, when
+     * known; `saving_minor` what the offer took off; `is_discount` whether
+     * the reference is a member's discount rather than an offer's.
      *
      * @return array<string, mixed>
      */
@@ -174,6 +177,9 @@ final class Resource
             'expected_minor' => $charge->expected->amountMinor,
             'actual_minor' => $charge->actualMinor,
             'amount_minor' => $charge->amount()->amountMinor,
+            'reference_minor' => $charge->referenceMinor,
+            'saving_minor' => $charge->saving()->amountMinor,
+            'is_discount' => $charge->isDiscount(),
             'status' => $charge->status->value,
             'source' => $charge->source->value,
             'note' => $charge->note,
