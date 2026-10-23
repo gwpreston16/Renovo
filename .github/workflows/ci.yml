@@ -144,6 +144,9 @@ jobs:
       TEST_S3_KEY: renovotest
       TEST_S3_SECRET: renovotestsecret
       TEST_S3_BUCKET: renovo-test
+      # An empty database on this leg's engine for the restore rehearsal
+      # tests (Phase 39), made by the step below.
+      TEST_REHEARSAL_DB_NAME: renovo_rehearsal_test
 
     steps:
       # Full history, so the coverage step can diff this branch against the
@@ -192,6 +195,16 @@ jobs:
           DB_DRIVER: ${{ matrix.other_driver }}
           DB_PORT: ${{ matrix.other_port }}
         run: vendor/bin/phinx migrate --configuration phinx.php
+
+      # The scratch database a restore rehearsal restores into and empties.
+      # Through PDO, so the runner needs no database client.
+      - name: Create the rehearsal scratch databases
+        run: |
+          php -r '$pg = new PDO("pgsql:host=127.0.0.1;port=5432;dbname=renovo_test", "renovo", "renovo");
+            $pg->exec("CREATE DATABASE renovo_rehearsal_test");
+            $my = new PDO("mysql:host=127.0.0.1;port=3306", "root", "renovo-root");
+            $my->exec("CREATE DATABASE renovo_rehearsal_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            $my->exec("GRANT ALL ON renovo_rehearsal_test.* TO \"renovo\"@\"%\"");'
 
       - name: PHPUnit
         if: matrix.driver != 'pgsql'

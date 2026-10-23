@@ -16,6 +16,7 @@ final class Workspace
 {
     public const VERIFY_PREFIX = 'renovo-verify-';
     public const RESTORE_PREFIX = 'renovo-restore-';
+    public const REHEARSAL_PREFIX = 'renovo-rehearsal-';
 
     public static function create(string $parent, string $prefix): string
     {

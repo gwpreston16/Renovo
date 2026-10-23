@@ -123,6 +123,7 @@ use App\Service\Backup\Destination\BackupDestinationFactory;
 use App\Service\Backup\OffsiteBackupService;
 use App\Support\AfterResponse;
 use App\Support\ShutdownAfterResponse;
+use App\Repository\ScratchDatabase;
 
 use function DI\autowire;
 use function DI\factory;
@@ -571,6 +572,18 @@ return static function (ContainerBuilder $builder, ?array $settings = null): voi
         },
 
         AfterResponse::class => autowire(ShutdownAfterResponse::class),
+
+        // The empty database a restore rehearsal restores into (Phase 39).
+        // Unset, rehearsals download and verify only.
+        ScratchDatabase::class => static function (ContainerInterface $c): ScratchDatabase {
+            $settings = $c->get('settings');
+
+            return new ScratchDatabase(
+                $settings['backup']['rehearsal_db'],
+                $settings['database'],
+                $settings['paths']['root'] . '/migrations',
+            );
+        },
 
         OffsiteBackupService::class => autowire(OffsiteBackupService::class)
             ->constructorParameter(

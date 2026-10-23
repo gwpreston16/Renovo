@@ -26,6 +26,8 @@ use App\Repository\NotificationLogRepository;
 use App\Repository\TokenRepository;
 use App\Service\Backup\BackupAlertService;
 use App\Service\Backup\BackupException;
+use App\Service\Backup\BackupRehearsalService;
+use App\Service\Backup\Destination\DestinationException;
 use App\Service\Backup\BackupOutcome;
 use App\Service\Backup\InstanceBackupService;
 use App\Service\Backup\InstanceRestoreService;
@@ -328,6 +330,79 @@ switch ($command) {
         }
         exit($code);
 
+    case 'backup:rehearse':
+        // Phase 39: download the newest copy from a destination, verify it,
+        // and — given BACKUP_REHEARSAL_DB_* — restore it into that empty
+        // database, check it and empty it again. When one is due by the
+        // schedule in Settings → Instance, or now with --force.
+        $force = false;
+        foreach (array_slice($argv, 2) as $argument) {
+            if ($argument === '--force') {
+                $force = true;
+            } else {
+                fwrite(STDERR, sprintf("Unknown option \"%s\". Usage: backup:rehearse [--force]\n", $argument));
+                exit(1);
+            }
+        }
+
+        $rehearsal = $container->get(BackupRehearsalService::class)->run($force);
+        $container->get(BackupAlertService::class)->notify();
+
+        if ($rehearsal === null) {
+            $out($force
+                ? 'Nothing to rehearse: no enabled destination holds a confirmed copy yet.'
+                : 'No restore rehearsal is due.');
+            exit(0);
+        }
+
+        if (!$rehearsal->passed()) {
+            fwrite(STDERR, sprintf(
+                "The restore rehearsal from %s failed while %s: %s\n",
+                $rehearsal->destinationName,
+                $rehearsal->step,
+                $rehearsal->error,
+            ));
+            exit(1);
+        }
+
+        $out(sprintf(
+            $rehearsal->kind === 'restore'
+                ? 'Rehearsed from %s: downloaded, verified, restored into the scratch database, checked and emptied.'
+                : 'Rehearsed from %s: downloaded and verified. Set BACKUP_REHEARSAL_DB_* to restore it as well.',
+            $rehearsal->destinationName,
+        ));
+        exit(0);
+
+    case 'backup:fetch':
+        // Phase 39: one stored copy back from a destination, for
+        // backup:restore. Its id is in Settings → Instance → Backups.
+        $destinationId = $argv[2] ?? '';
+        $object = $argv[3] ?? '';
+        $target = $argv[4] ?? basename($object);
+        if (!ctype_digit($destinationId) || $object === '' || $target === '') {
+            fwrite(STDERR, "Usage: backup:fetch <destination-id> <object> [<file>]\n");
+            exit(1);
+        }
+        if (file_exists($target)) {
+            fwrite(STDERR, sprintf("%s already exists. Nothing was downloaded.\n", $target));
+            exit(1);
+        }
+
+        try {
+            $container->get(BackupRehearsalService::class)->fetch((int) $destinationId, $object, $target);
+        } catch (DestinationException $exception) {
+            fwrite(STDERR, sprintf("Could not fetch it (%s): %s\n", $exception->step, $exception->getMessage()));
+            exit(1);
+        }
+
+        $out(sprintf(
+            'Fetched %s (%s bytes). Restore it with: bin/console backup:restore %s',
+            $target,
+            number_format((int) filesize($target)),
+            $target,
+        ));
+        exit(0);
+
     case 'backup:verify':
         // Any instance backup, from this server or not: decrypt it and check
         // every entry against its manifest.
@@ -576,6 +651,8 @@ switch ($command) {
         $out('  backup:verify        Decrypt an instance backup and check every entry <file>');
         $out('  backup:decrypt       Decrypt an instance backup into a plain ZIP <file> <out.zip>');
         $out('  backup:restore       Restore an instance backup into an empty database <file>');
+    $out('  backup:rehearse      Rehearse a restore from a destination if one is due [--force]');
+    $out('  backup:fetch         Download a stored copy from a destination <id> <object> [<file>]');
         $out('  demo:seed            Create the demonstration household and its subscriptions');
         exit(0);
 

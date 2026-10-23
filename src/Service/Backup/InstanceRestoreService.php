@@ -138,7 +138,8 @@ final class InstanceRestoreService
 
     /**
      * The tables the backup carries, in the order a restore inserts them —
-     * parents first — and without `phinxlog`. Those are the ones that exist
+     * parents first, a table a later migration retired among them (K111) —
+     * and without `phinxlog`. Those are the ones that exist
      * at the backup's migration version; a table a later migration added is
      * not in it, and is not asked about.
      *
@@ -148,7 +149,7 @@ final class InstanceRestoreService
     private function dataTables(array $carried): array
     {
         return array_values(array_filter(
-            BackupDumper::TABLES,
+            $this->dumper->restorableTables(),
             static fn (string $table): bool => $table !== BackupDumper::MIGRATIONS_TABLE
                 && in_array($table, $carried, true),
         ));

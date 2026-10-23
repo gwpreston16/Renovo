@@ -67,6 +67,16 @@ services:
       # scheduled ones. Both need the same key and directory.
       BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:-}
       BACKUP_DIRECTORY: ${BACKUP_DIRECTORY:-}
+      # Backups off the server (Phase 39): how long one transfer may take,
+      # and the empty database a restore rehearsal restores into. Without
+      # BACKUP_REHEARSAL_DB_NAME a rehearsal downloads and verifies only.
+      BACKUP_TRANSFER_TIMEOUT_SECONDS: ${BACKUP_TRANSFER_TIMEOUT_SECONDS:-1800}
+      BACKUP_REHEARSAL_DB_DRIVER: ${BACKUP_REHEARSAL_DB_DRIVER:-}
+      BACKUP_REHEARSAL_DB_HOST: ${BACKUP_REHEARSAL_DB_HOST:-}
+      BACKUP_REHEARSAL_DB_PORT: ${BACKUP_REHEARSAL_DB_PORT:-}
+      BACKUP_REHEARSAL_DB_NAME: ${BACKUP_REHEARSAL_DB_NAME:-}
+      BACKUP_REHEARSAL_DB_USER: ${BACKUP_REHEARSAL_DB_USER:-}
+      BACKUP_REHEARSAL_DB_PASSWORD: ${BACKUP_REHEARSAL_DB_PASSWORD:-}
     # The web root comes from the image, and the `web` container is built from
     # the same one, so the two agree about every asset's name and age without
     # either of them reading the host. Development replaces both with the
@@ -198,6 +208,16 @@ services:
       # scheduled ones. Both need the same key and directory.
       BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:-}
       BACKUP_DIRECTORY: ${BACKUP_DIRECTORY:-}
+      # Backups off the server (Phase 39): how long one transfer may take,
+      # and the empty database a restore rehearsal restores into. Without
+      # BACKUP_REHEARSAL_DB_NAME a rehearsal downloads and verifies only.
+      BACKUP_TRANSFER_TIMEOUT_SECONDS: ${BACKUP_TRANSFER_TIMEOUT_SECONDS:-1800}
+      BACKUP_REHEARSAL_DB_DRIVER: ${BACKUP_REHEARSAL_DB_DRIVER:-}
+      BACKUP_REHEARSAL_DB_HOST: ${BACKUP_REHEARSAL_DB_HOST:-}
+      BACKUP_REHEARSAL_DB_PORT: ${BACKUP_REHEARSAL_DB_PORT:-}
+      BACKUP_REHEARSAL_DB_NAME: ${BACKUP_REHEARSAL_DB_NAME:-}
+      BACKUP_REHEARSAL_DB_USER: ${BACKUP_REHEARSAL_DB_USER:-}
+      BACKUP_REHEARSAL_DB_PASSWORD: ${BACKUP_REHEARSAL_DB_PASSWORD:-}
     # The same var/ volume as the app. `maintenance:prune` clears staged
     # imports that were uploaded and never finished, and those files are written
     # by the app container — without this the scheduler would be tidying its own
@@ -215,8 +235,26 @@ services:
           php bin/console reminders:run || true
           php bin/console maintenance:prune || true
           php bin/console backup:run || true
+          php bin/console backup:rehearse || true
           sleep 86400
         done
+
+  # An empty database for restore rehearsals (Phase 39), never the one above.
+  # Uncomment it, then set BACKUP_REHEARSAL_DB_HOST=rehearsal-db,
+  # BACKUP_REHEARSAL_DB_NAME=rehearsal, BACKUP_REHEARSAL_DB_USER=rehearsal and
+  # BACKUP_REHEARSAL_DB_PASSWORD in .env. A rehearsal restores into it, checks
+  # what it restored and drops every table again. It holds a copy of the data
+  # only while a rehearsal runs; no port is published.
+  #
+  # rehearsal-db:
+  #   image: postgres:16-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: rehearsal
+  #     POSTGRES_USER: rehearsal
+  #     POSTGRES_PASSWORD: ${BACKUP_REHEARSAL_DB_PASSWORD:?Set BACKUP_REHEARSAL_DB_PASSWORD in .env}
+  #   volumes:
+  #     - rehearsal-db:/var/lib/postgresql/data
 
   # Catches outbound mail in development. Web UI on http://localhost:8025.
   mailpit:
@@ -226,6 +264,7 @@ services:
       - "${MAILPIT_PORT:-8025}:8025"
 
 volumes:
+  # rehearsal-db:
   database:
   logos:
   appvar:

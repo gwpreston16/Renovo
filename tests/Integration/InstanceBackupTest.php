@@ -788,6 +788,133 @@ final class InstanceBackupTest extends DatabaseTestCase
         self::assertSame($before, $after);
     }
 
+    public function testABackupCarryingATableALaterMigrationRetiredStillVerifiesAndRestores(): void
+    {
+        // K111. As if a later migration dropped `retired_notes` and moved it
+        // to BackupDumper::RETIRED: a backup from before it carries its rows,
+        // and the documented restore — at the backup's own version, where the
+        // table exists — must still put them back, after the tags they follow.
+        $this->seed();
+        $path = $this->root . '/backups/' . $this->service()->runScheduled(force: true)->run?->file;
+        $older = $this->rewritten($path, static function (ZipArchive $zip): void {
+            $manifest = json_decode((string) $zip->getFromName('manifest.json'), true);
+            $manifest['entries']['tables/retired_notes.jsonl'] = ['sha256' => '', 'size' => 0];
+            $zip->addFromString('tables/retired_notes.jsonl', '{"id":1,"note":"kept"}' . "\n");
+            $zip->addFromString('manifest.json', (string) json_encode($manifest));
+        }, reseal: true);
+
+        // Not known: refused as Phase 38 refused it.
+        try {
+            $this->service()->verifyFile($older);
+            self::fail('A table this version does not know was accepted.');
+        } catch (BackupException $exception) {
+            self::assertSame('manifest_invalid', $exception->reason);
+        }
+
+        $this->truncateAll();
+        $this->db->execute('CREATE TABLE retired_notes (id INTEGER PRIMARY KEY, note VARCHAR(20) NOT NULL)');
+        try {
+            $container = $this->container();
+            $retiring = new class ($this->db) extends BackupDumper {
+                public function restorableTables(): array
+                {
+                    return self::withRetired(self::TABLES, ['retired_notes' => 'tags']);
+                }
+            };
+            $container->set(BackupDumper::class, $retiring);
+
+            $container->get(InstanceBackupService::class)->verifyFile($older);
+            $summary = $container->get(InstanceRestoreService::class)->restore($older);
+
+            self::assertSame(count(BackupDumper::TABLES), $summary['tables']);
+            self::assertSame('kept', $this->db->fetchValue('SELECT note FROM retired_notes WHERE id = 1'));
+            $order = $retiring->restorableTables();
+            self::assertSame(array_search('tags', $order, true) + 1, array_search('retired_notes', $order, true));
+        } finally {
+            $this->db->execute('DROP TABLE retired_notes');
+        }
+    }
+
+    public function testARetiredTableIsPlacedAfterItsAnchorOrLastWhenTheAnchorIsGone(): void
+    {
+        self::assertSame(
+            ['a', 'old', 'b', 'gone_too', 'phinxlog'],
+            BackupDumper::withRetired(['a', 'b', 'phinxlog'], ['old' => 'a', 'gone_too' => 'missing', 'b' => 'a']),
+        );
+        self::assertSame(BackupDumper::TABLES, (new BackupDumper($this->db))->restorableTables());
+    }
+
+    public function testARestorePreparesEachTablesInsertOnce(): void
+    {
+        // K112: one prepare per table and column list, however many rows.
+        $dumper = new BackupDumper($this->db);
+        $user = (new UserRepository($this->db))->create('k112@example.test', 'K', 'hash');
+        $household = (new \App\Repository\HouseholdRepository($this->db))->create('H', $user);
+        foreach (['a', 'b', 'c'] as $name) {
+            $dumper->insert('tags', [
+                'household_id' => $household,
+                'name' => $name,
+                'created_at' => '2026-06-01 09:00:00',
+                'updated_at' => '2026-06-01 09:00:00',
+            ]);
+        }
+
+        $cache = new \ReflectionProperty(BackupDumper::class, 'inserts');
+        self::assertCount(1, (array) $cache->getValue($dumper));
+        self::assertSame(3, (int) $this->db->fetchValue('SELECT COUNT(*) FROM tags'));
+    }
+
+    public function testABackupDirectoryThatCannotBeWrittenStopsBeforeAnyRunIsRecorded(): void
+    {
+        // K113.
+        $this->seed();
+        $blocked = $this->root . '/read-only';
+        mkdir($blocked, 0o500);
+
+        foreach ([$blocked, $blocked . '/nested'] as $directory) {
+            try {
+                $this->service(directory: $directory)->runScheduled(force: true);
+                self::fail('An unwritable BACKUP_DIRECTORY was accepted.');
+            } catch (BackupException $exception) {
+                self::assertSame('write_failed', $exception->reason);
+                self::assertStringContainsString($directory, $exception->getMessage());
+            } finally {
+                chmod($blocked, 0o700);
+                chmod($blocked, 0o500);
+            }
+        }
+        chmod($blocked, 0o700);
+
+        self::assertSame([], $this->runs()->recent(5));
+    }
+
+    public function testABackupThatCannotBeMovedIntoPlaceFailsAndLeavesNoPartial(): void
+    {
+        // K113: past every earlier check, the rename itself fails.
+        $this->seed();
+        $container = $this->container();
+        $settings = $container->get('settings');
+        $service = new InstanceBackupService(
+            $container->get(BackupRunRepository::class),
+            $container->get(\App\Service\Backup\InstanceBackupArchive::class),
+            new BackupCipher(),
+            $container->get(InstanceSettingsService::class),
+            $container->get(\App\Service\AuditLogService::class),
+            $this->clock,
+            $container->get(LoggerInterface::class),
+            $settings['backup']['directory'],
+            $settings['backup']['key'],
+            static fn (string $from, string $to): bool => false,
+        );
+
+        $outcome = $service->runScheduled(force: true);
+
+        self::assertSame(BackupOutcome::FAILED, $outcome->result);
+        self::assertSame('write_failed', $outcome->run?->error);
+        self::assertNull($outcome->run?->file);
+        self::assertSame([], glob($this->root . '/backups/*'));
+    }
+
     public function testAKilledVerifyOrRestoreIsSweptOnceItIsOld(): void
     {
         $this->seed();
