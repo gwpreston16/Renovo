@@ -444,6 +444,32 @@ Since v1, each phase has shipped as a minor release (see
   was fixed along the way. `GET /api/v1/instance` returns `version` and
   `build` to any valid token; the OpenAPI document is version 1.7.0. One
   migration. See [Version and updates](operations.md#version-and-updates).
+- **Phase 38 — instance backups: scheduled, encrypted, verified — complete
+  (1.9.0).** An instance administrator can turn on daily or weekly backups of
+  the whole database and every stored file in **Settings → Instance →
+  Instance backups**. Each is encrypted under `BACKUP_ENCRYPTION_KEY`,
+  decrypted and checked against its manifest before it counts, and pruned by
+  a daily / weekly / monthly policy that never removes the newest good one.
+  Rows are written portably, so a PostgreSQL backup restores into MySQL and
+  the other way round. The card lists the last 30 runs with a Download for
+  each verified one and offers **Back up now**; `backup:run`,
+  `backup:verify`, `backup:decrypt` and `backup:restore` do the same from the
+  command line, and restoring is a command only, into an empty database.
+  Instance status and `/metrics` report the last backup. No API changes. One
+  migration. See [Instance backups](operations.md#instance-backups).
+- **Phase 40 — secrets at rest, and rotating the key that guards them —
+  complete (1.9.0).** Notification channel settings and the exchange-rate API
+  key are now stored encrypted, as two-factor seeds already were, so a
+  database dump carries none of them. They are encrypted under a key ring:
+  `SECRETS_KEY` (falling back to `TOTP_ENCRYPTION_KEY`, then `SESSION_KEY`),
+  with `SECRETS_PREVIOUS_KEYS` for old keys, and `secrets:rotate`
+  re-encrypts everything under the current key. Changing or resetting a
+  password now revokes that account's API and calendar feed tokens. Settings
+  are read when the app starts, so a changed key takes effect on restart, and
+  a request header can no longer set one (K4, K5). The OpenAPI document notes
+  the token revocation; its version is unchanged. Two migrations encrypt the
+  existing rows. See
+  [Rotating the encryption key](operations.md#rotating-the-encryption-key).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
