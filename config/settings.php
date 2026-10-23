@@ -161,6 +161,17 @@ return [
         'previous_keys' => $env('SECRETS_PREVIOUS_KEYS', ''),
     ],
 
+    // Instance backups (Phase 38): the whole database and every stored file,
+    // always encrypted. Without a key they are unavailable, and the settings
+    // page says why. The key is never stored by Renovo; keep a copy somewhere
+    // that is not this server, or the backups are unreadable when it matters.
+    'backup' => [
+        'key' => $env('BACKUP_ENCRYPTION_KEY', ''),
+        // On the appvar volume by default, which the app and the scheduler
+        // share: the scheduler writes what the settings page lists.
+        'directory' => $env('BACKUP_DIRECTORY', dirname(__DIR__) . '/var/backups'),
+    ],
+
     'uploads' => [
         'logo_directory' => dirname(__DIR__) . '/public/assets/logos',
         // Icons as fetched, one file per domain, shared by every household on

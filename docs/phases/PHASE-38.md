@@ -229,8 +229,8 @@ Found while starting it:
 ## Status
 
 - [x] `BackupDumper` (repository layer), consistent snapshot, table coverage test
-- [ ] Archive writer with manifest and checksums; secretstream encryption
-- [ ] Verification; retention with the newest-verified guard
+- [x] Archive writer with manifest and checksums; secretstream encryption
+- [x] Verification; retention with the newest-verified guard
 - [ ] `backup:run`, `backup:verify`, `backup:decrypt`, `backup:restore`;
       scheduler loop
 - [ ] Settings → Instance → Backups card; Instance status line

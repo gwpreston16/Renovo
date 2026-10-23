@@ -51,6 +51,13 @@ enum AuditAction: string
     case TrustedHostAdded = 'trusted_host.added';
     case TrustedHostRemoved = 'trusted_host.removed';
     case SecretsRotated = 'secrets.rotated';
+
+    // Phase 38: instance backups. A scheduled one is taken, fails or prunes
+    // with no actor; a download always has one.
+    case InstanceBackupTaken = 'instance_backup.taken';
+    case InstanceBackupFailed = 'instance_backup.failed';
+    case InstanceBackupDownloaded = 'instance_backup.downloaded';
+    case InstanceBackupPruned = 'instance_backup.pruned';
     case NotificationChannelCreated = 'notification_channel.created';
     case NotificationChannelUpdated = 'notification_channel.updated';
     case NotificationChannelDeleted = 'notification_channel.deleted';
@@ -113,6 +120,10 @@ enum AuditAction: string
      */
     public function isFailure(): bool
     {
-        return in_array($this, [self::LoginFailed, self::LoginBlocked, self::TwoFactorFailed], true);
+        return in_array(
+            $this,
+            [self::LoginFailed, self::LoginBlocked, self::TwoFactorFailed, self::InstanceBackupFailed],
+            true,
+        );
     }
 }
