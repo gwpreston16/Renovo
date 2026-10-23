@@ -1,6 +1,6 @@
 # Operations
 
-Running an instance day to day: console commands, the scheduler, health and metrics, backup and restore, and demonstration mode. Back to the [documentation index](README.md).
+Running an instance day to day: console commands, the scheduler, health and metrics, backup and restore, the version and update checks, and demonstration mode. Back to the [documentation index](README.md).
 
 ## Commands
 
@@ -14,6 +14,7 @@ vendor/bin/phinx seed:run    # a few starter categories (run after setup)
 php bin/console list
 php bin/console reminders:run       # send due reminders and budget alerts
 php bin/console rates:refresh       # fetch and cache exchange rates
+php bin/console updates:check       # ask GitHub for the latest release now (only with update checks on)
 php bin/console maintenance:prune   # expired sessions, tokens, throttle, notification and audit
                                     # records, plus abandoned import uploads
 php bin/console i18n:check          # every locale against the base catalogue; non-zero on drift
@@ -23,7 +24,9 @@ php bin/console demo:seed           # the demonstration household and its two ac
 ```
 
 The `scheduler` container runs `reminders:run` and `maintenance:prune` once a
-day. It does **not** run `rates:refresh` — rates are refreshed lazily on page
+day. `reminders:run` also checks for a newer release, as its own step, when
+update checks are on (see [Version and updates](#version-and-updates)); a
+failed check is logged and never fails the run. It does **not** run `rates:refresh` — rates are refreshed lazily on page
 views and cached for 12 hours, so an instance nobody visits will serve stale
 rates. Add it to the schedule if that matters to you.
 
@@ -127,6 +130,50 @@ there is nothing to be gained by confirming that the endpoint exists.
 Setting a token also starts counting requests by status class, which costs one
 small `UPDATE` per request. Leave it unset if nothing scrapes this instance and
 nothing is written at all.
+
+## Version and updates
+
+Every signed-in page names the release at the foot of the sidebar (and of the
+**More** sheet on a phone), and **Settings → Instance → Instance status** leads
+with a **Version** row. An image built from a commit rather than a release adds
+its short commit id: `1.7.0 (a1b2c3d)`, from the `RENOVO_BUILD` build argument.
+A token can read the same through `GET /api/v1/instance`. Nothing without a
+sign-in or a token is told the version — not the sign-in page, not an error
+page, not `/healthz` — since an exact release is a map to its known issues.
+
+The version is the `VERSION` file at the root of the code. It is read by the
+running process rather than kept in the compiled configuration, so an upgraded
+image names its new release at once.
+
+### Checking for a newer release
+
+Off until an instance administrator turns it on, under **Updates** in the
+Instance settings card. Once on, Renovo asks GitHub for the repository's latest
+release (`/releases/latest`, which leaves out drafts and pre-releases):
+
+- once a day, from `reminders:run`, after the reminders;
+- and, at most once a day, when an instance administrator opens the dashboard,
+  so an instance whose scheduler is not running still finds out;
+- and when an administrator presses **Check now** on the Instance status card
+  (at most once a minute), or runs `php bin/console updates:check`.
+
+GitHub sees the server's IP address and a `User-Agent` naming the release; nothing
+else is sent, and nothing but the release's version, its page and its date is
+kept — never its notes. A failed check keeps the last answer, says so on the
+status card, and waits an hour before trying again by itself.
+
+When a newer release is out, instance administrators — no one else — see a
+banner on the dashboard with a link to its release notes on GitHub. **Dismiss**
+hides it for that administrator until a newer release than the one dismissed
+appears. The second switch under **Updates** turns the banner off for everyone
+while keeping the status card's answer.
+
+Renovo only tells you. It never pulls an image, runs a migration or replaces a
+file: upgrading is still [the usual steps](upgrading.md).
+
+With checks off — the switch, `UPDATE_CHECK=false`, or an
+`UPDATE_CHECK_REPOSITORY` that is not an `owner/name` — no request is made to
+GitHub at all. `UPDATE_CHECK=false` greys the switch out and says why.
 
 ## Demonstration mode
 

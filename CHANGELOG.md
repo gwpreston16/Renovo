@@ -8,6 +8,37 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Added
+
+- **The version, inside Renovo.** Every signed-in page names the release at the
+  foot of the sidebar, and **Settings → Instance → Instance status** leads with
+  a **Version** row; an image built from a commit adds its short id, e.g.
+  `1.8.0 (a1b2c3d)`, from the new `RENOVO_BUILD` build argument. Nothing is
+  shown to anyone signed out, on an error page or on `/healthz`. The version
+  comes from a new `VERSION` file at the root. *Phase 37.*
+- **Update checks**, off until an instance administrator turns them on under
+  **Updates** on Settings → Instance. Renovo then asks GitHub once a day for
+  its latest release — from the scheduler, or when an administrator opens the
+  dashboard — and keeps only its version, page and date. The status card says
+  whether you are up to date, offers **Check now** (once a minute) and says
+  when a check failed. `php bin/console updates:check` checks on demand.
+  *Phase 37.*
+- A **banner on the dashboard** for instance administrators when a newer
+  release is out, linking to its release notes on GitHub. **Dismiss** hides it
+  for that administrator until the next release; a second switch turns it off
+  for everyone. *Phase 37.*
+- `GET /api/v1/instance` returns `version` and `build` to any valid token. The
+  OpenAPI document is now 1.7.0. *Phase 37.*
+- `UPDATE_CHECK=false` turns update checks off for the server whatever the
+  setting says, and `UPDATE_CHECK_REPOSITORY` points them at a fork's
+  releases. One migration adds `users.dismissed_update_version`. *Phase 37.*
+
+### Fixed
+
+- A request whose first touch of the instance settings was a write read every
+  other instance setting as its default for the rest of that request.
+  *Phase 37.*
+
 ## [1.7.0] - 2026-10-23
 
 ### Added

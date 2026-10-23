@@ -4,6 +4,10 @@
 {% block page_subtitle %}{{ t('subtitle.dashboard') }}{% endblock %}
 
 {% block content %}
+    {% if update_banner|default(null) %}
+        {% include 'dashboard/_update_banner.twig' with {'banner': update_banner} only %}
+    {% endif %}
+
     {% if not scope.hasHousehold %}
         <section class="card">
             <h2>{{ t('dashboard.no_household') }}</h2>

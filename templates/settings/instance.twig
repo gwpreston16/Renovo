@@ -8,11 +8,12 @@
     Instance administrators only; the route answers 403 to everybody else,
     and the tab is not offered to them.
 
-    Registration, isolation (the one place it is changed — decision 3) and
-    demo mode are one form; the trusted hosts are a list of their own. The
-    rest is the server as its environment describes it — the mail relay, the
-    metrics endpoint, the scheduler's last run — read-only, since none of it
-    is set here. The relay is described, never revealed: no password.
+    Registration, isolation (the one place it is changed — decision 3), demo
+    mode and the update check are one form; the trusted hosts are a list of
+    their own. The rest is the server as its environment describes it — the
+    release and what the update check found, the mail relay, the metrics
+    endpoint, the scheduler's last run — read-only, apart from Check now.
+    The relay is described, never revealed: no password.
 
     `SettingsController::instance()` renders it.
 #}
@@ -58,6 +59,46 @@
                            {{ demo_mode ? 'checked' : '' }}>
                 </label>
 
+                {#
+                    Updates. A switch that cannot be changed posts nothing —
+                    not even its hidden "0" — so saving this form while checks
+                    are off, or while the environment rules them out, leaves
+                    the stored choice as it was.
+                #}
+                {% set updates_locked = updates_unavailable is not null %}
+                <fieldset class="stack" id="updates">
+                    <legend>{{ t('settings.updates') }}</legend>
+
+                    {% if updates_locked %}
+                        <p class="muted note">{{ t(updates_unavailable.labelKey) }}</p>
+                    {% else %}
+                        <input type="hidden" name="update_check_enabled" value="0">
+                    {% endif %}
+                    <label class="choice toggle-row">
+                        <span>
+                            <span class="choice-title">{{ t('settings.update_check') }}</span>
+                            <span class="choice-note">{{ t('settings.update_check_hint') }}</span>
+                        </span>
+                        <input type="checkbox" class="toggle" role="switch" name="update_check_enabled" value="1"
+                               {{ update_check_enabled and not updates_locked ? 'checked' : '' }}
+                               {{ updates_locked ? 'disabled' : '' }}>
+                    </label>
+
+                    {% set banner_locked = updates_locked or not update_check_enabled %}
+                    {% if not banner_locked %}
+                        <input type="hidden" name="update_banner_enabled" value="0">
+                    {% endif %}
+                    <label class="choice toggle-row">
+                        <span>
+                            <span class="choice-title">{{ t('settings.update_banner') }}</span>
+                            <span class="choice-note">{{ t('settings.update_banner_hint') }}</span>
+                        </span>
+                        <input type="checkbox" class="toggle" role="switch" name="update_banner_enabled" value="1"
+                               {{ update_banner_enabled ? 'checked' : '' }}
+                               {{ banner_locked ? 'disabled' : '' }}>
+                    </label>
+                </fieldset>
+
                 <div class="form-actions">
                     <button type="submit" class="button button-outline">{{ t('settings.save_instance_settings') }}</button>
                 </div>
@@ -69,6 +110,47 @@
             <p class="muted">{{ t('settings.instance_status_intro') }}</p>
 
             <dl class="settings-facts">
+                {#
+                    The release, first; and, while update checks are on, what
+                    the last check found. The release-notes link is GitHub's
+                    page in a new tab, drawn only when it is on github.com.
+                #}
+                <dt>{{ t('settings.status_version') }}</dt>
+                <dd>
+                    <span class="num">{{ version }}</span>
+                    {%- if version_build %} <span class="muted num">({{ version_build }})</span>{% endif %}
+
+                    {% if update.state.value == 'up_to_date' %}
+                        <span class="badge badge-ok">{{ t('updates.up_to_date') }}</span>
+                    {% elseif update.state.value == 'available' %}
+                        <span class="badge badge-warn">{{ t('updates.available', {'version': update.latestVersion}) }}</span>
+                    {% endif %}
+
+                    {% if update.state.value != 'off' %}
+                        <span class="muted block">
+                            {% if update.state.value == 'failed' %}
+                                {{ t('updates.last_check_failed', {'date': update.lastAttemptAt|local_date('d MMM y, HH:mm')}) }}
+                            {% elseif update.state.value == 'never_checked' %}
+                                {{ t('updates.never_checked') }}
+                            {% elseif update.state.value == 'no_releases' %}
+                                {{ t('updates.no_releases') }}
+                            {% else %}
+                                {{ t('updates.checked_at', {'date': update.checkedAt|local_date('d MMM y, HH:mm')}) }}
+                            {% endif %}
+                            {% if update.state.value == 'available' and update.releaseUrl %}
+                                · <a href="{{ update.releaseUrl }}" target="_blank" rel="noopener">
+                                    {{- t('updates.release_notes') -}}
+                                    <span class="visually-hidden"> {{ t('updates.new_tab') }}</span></a>
+                            {% endif %}
+                        </span>
+
+                        <form method="post" action="/settings/updates/check" class="inline">
+                            {{ csrf_field() }}
+                            <button type="submit" class="button button-quiet">{{ t('updates.check_now') }}</button>
+                        </form>
+                    {% endif %}
+                </dd>
+
                 <dt>{{ t('settings.status_mail') }}</dt>
                 <dd>
                     <span class="num">{{ smtp.host }}:{{ smtp.port }}</span>

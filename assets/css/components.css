@@ -617,6 +617,25 @@ a.rates-chip:hover {
     background-color: var(--surface-2);
 }
 
+/*
+ * The release, at the foot of the rail and of the narrow screen's sheet:
+ * quiet, small, and a link only for the instance administrator who can act
+ * on it.
+ */
+.sidebar-version {
+    display: block;
+    margin: 0.5rem 0 0;
+    padding: 0 0.375rem;
+    color: var(--muted);
+    font-size: var(--size-caption);
+    text-decoration: none;
+}
+
+a.sidebar-version:hover {
+    color: var(--text);
+    text-decoration: underline;
+}
+
 .user-card-link.is-active {
     background-color: var(--accent-soft);
     border-left-color: var(--accent);
@@ -854,6 +873,14 @@ a.rates-chip:hover {
 
     .sidebar .user-card-email {
         color: var(--rail-muted);
+    }
+
+    .sidebar .sidebar-version {
+        color: var(--rail-muted);
+    }
+
+    .sidebar a.sidebar-version:hover {
+        color: var(--rail-ink);
     }
 
     .sidebar .icon-button {
@@ -1680,6 +1707,24 @@ input[type='checkbox'].toggle:checked::before {
     transform: translate(1rem, -50%);
 }
 
+/*
+ * A switch that cannot be changed — locked by the environment, or waiting on
+ * another switch — reads as off-limits rather than live: dimmed, with the
+ * not-allowed cursor, as a disabled filter chip is. Its label dims with it.
+ */
+input[type='checkbox'].toggle:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.choice.toggle-row:has(.toggle:disabled) {
+    cursor: not-allowed;
+}
+
+.choice.toggle-row:has(.toggle:disabled) .choice-title {
+    color: var(--muted);
+}
+
 @media (forced-colors: active) {
     input[type='checkbox'].toggle::before {
         background: CanvasText;
@@ -2087,6 +2132,40 @@ legend {
 /* A heads-up rather than a problem: the warm hue, as a leading rule. */
 .callout {
     border-left: 4px solid var(--warn);
+}
+
+/*
+ * A newer release is out: the dashboard's banner for instance
+ * administrators. A callout on the page's surface, the message and its link
+ * on one side and Dismiss on the other, wrapping onto two lines on a phone.
+ */
+.update-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    margin-bottom: 1rem;
+    background: var(--surface);
+    border-color: var(--border);
+    border-left-color: var(--warn);
+    color: var(--text);
+}
+
+.update-banner-text {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1 1 16rem;
+    margin: 0;
+}
+
+.update-banner-text .icon {
+    flex: none;
+    color: var(--warn);
+}
+
+.update-banner form {
+    margin: 0;
 }
 
 .trace {

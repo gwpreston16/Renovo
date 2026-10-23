@@ -31,6 +31,8 @@ use App\Service\ImportService;
 use App\Service\InstanceSettingsService;
 use App\Service\LedgerBackfillRunner;
 use App\Service\Notification\ReminderRunner;
+use App\Service\Update\CheckNowResult;
+use App\Service\Update\UpdateCheckService;
 use App\Support\Clock;
 use App\Support\CoverageFloor;
 use App\Support\ExternalAssetScanner;
@@ -71,6 +73,11 @@ switch ($command) {
         $container->get(InstanceSettingsService::class)
             ->markSchedulerRun($container->get(Clock::class)->now());
 
+        // Its own step, after the reminders: whether a newer release is out,
+        // when checks are on and a day has passed. It logs and swallows its
+        // own failures, so GitHub being down never fails the reminder run.
+        $container->get(UpdateCheckService::class)->refreshIfDue();
+
         $out(sprintf(
             'Checked %d user(s); %d alert(s) found, %d message(s) sent.',
             $totals['users'],
@@ -104,6 +111,28 @@ switch ($command) {
         }
 
         $out(sprintf('Cached %d rate(s) from %s.', $count, $rates->provider()->label()));
+        exit(0);
+
+    case 'updates:check':
+        // The scheduler's update check, run now whenever the last one was.
+        // With checks off it says so and asks nothing of GitHub.
+        $updates = $container->get(UpdateCheckService::class);
+        $result = $updates->check();
+
+        if ($result === CheckNowResult::Off) {
+            $out('Update checks are disabled. Turn them on in Settings → Instance, or unset UPDATE_CHECK=false.');
+            exit(0);
+        }
+
+        if ($result === CheckNowResult::Failed) {
+            fwrite(STDERR, "The update check failed; see the log.\n");
+            exit(1);
+        }
+
+        $status = $updates->status();
+        $out($status->latestVersion === null
+            ? 'No release has been published yet.'
+            : sprintf('Latest release: %s. This is %s.', $status->latestVersion, $status->currentVersion));
         exit(0);
 
     case 'maintenance:prune':
@@ -331,6 +360,7 @@ switch ($command) {
         $out('');
         $out('  reminders:run        Send due reminders, trial, cancel-by and budget alerts');
         $out('  rates:refresh        Fetch and cache exchange rates from the configured provider');
+        $out('  updates:check        Ask GitHub for the latest release now (only when update checks are on)');
         $out('  maintenance:prune    Delete expired sessions, tokens, throttle, notification and audit records');
         $out('  i18n:check           Compare every locale with the base catalogue and report any drift');
         $out('  assets:offline-check Fail if any template or built asset references a third-party host');

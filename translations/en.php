@@ -2702,4 +2702,38 @@ return [
     'settings.token_never_used' => 'never used',
     'state.off' => 'Off',
     'state.on' => 'On',
+
+    // -----------------------------------------------------------------------
+    // Phase 37: the version, and knowing when there is a newer one
+    // -----------------------------------------------------------------------
+    'flash.updates_available' => 'Renovo {version} is available.',
+    'flash.updates_check_failed' => 'The update check failed. The log says why.',
+    'flash.updates_no_releases' => 'Checked. No release has been published yet.',
+    'flash.updates_off' => 'Update checks are off.',
+    'flash.updates_too_soon' => 'An update check ran less than a minute ago. Try again shortly.',
+    'flash.updates_up_to_date' => 'Checked. This is the latest release.',
+    'settings.status_version' => 'Version',
+    'settings.update_banner' => 'Show a banner on the dashboard when an update is available',
+    'settings.update_banner_hint' =>
+        'Instance administrators only, once update checks are on. Each can dismiss it until the next release.',
+    'settings.update_check' => 'Check for new versions',
+    'settings.update_check_hint' =>
+        'Once a day, Renovo asks GitHub for its latest release. GitHub sees your server\'s IP address. '
+        . 'Nothing else is sent.',
+    'settings.updates' => 'Updates',
+    'shell.version' => 'Renovo {version}',
+    'updates.available' => '{version} available',
+    'updates.banner' => 'Renovo {latest} is available. You\'re running {current}.',
+    'updates.check_now' => 'Check now',
+    'updates.checked_at' => 'Checked {date}',
+    'updates.dismiss' => 'Dismiss',
+    'updates.last_check_failed' => 'Last check failed {date}',
+    'updates.never_checked' => 'Not checked yet',
+    'updates.new_tab' => '(opens in a new tab)',
+    'updates.no_releases' => 'No release published yet',
+    'updates.release_notes' => 'Release notes',
+    'updates.unavailable_environment' => 'Turned off for this server by UPDATE_CHECK=false.',
+    'updates.unavailable_repository' =>
+        'Off: UPDATE_CHECK_REPOSITORY is not an owner/name, so there is nothing to check.',
+    'updates.up_to_date' => 'Up to date',
 ];

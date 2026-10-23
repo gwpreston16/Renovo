@@ -218,6 +218,15 @@ final class UserRepository extends AbstractRepository
         $this->write($userId, ['avatar_path' => $path]);
     }
 
+    /**
+     * The release whose update banner this administrator has dismissed. The
+     * banner stays hidden from them until a newer one appears.
+     */
+    public function setDismissedUpdateVersion(int $userId, string $version): void
+    {
+        $this->write($userId, ['dismissed_update_version' => $version]);
+    }
+
     public function webauthnHandle(int $userId): ?string
     {
         $value = $this->db->fetchValue(
@@ -349,6 +358,9 @@ final class UserRepository extends AbstractRepository
                 : null,
             dashboardView: isset($row['dashboard_view']) && $row['dashboard_view'] !== ''
                 ? (string) $row['dashboard_view']
+                : null,
+            dismissedUpdateVersion: isset($row['dismissed_update_version']) && $row['dismissed_update_version'] !== ''
+                ? (string) $row['dismissed_update_version']
                 : null,
         );
     }

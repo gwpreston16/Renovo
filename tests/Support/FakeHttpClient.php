@@ -27,6 +27,9 @@ final class FakeHttpClient implements ClientInterface
     /** @var list<string> */
     public array $requestedUrls = [];
 
+    /** @var list<RequestInterface> */
+    public array $requests = [];
+
     private function __construct(
         private readonly int $status,
         private readonly string $body,
@@ -52,9 +55,19 @@ final class FakeHttpClient implements ClientInterface
         return new self(0, '', new FakeTransportException($reason));
     }
 
+    /**
+     * A client that fails the way the shared one does: with the exception it
+     * throws for a body over the size cap, or a transfer over the timeout.
+     */
+    public static function throwing(ClientExceptionInterface $failure): self
+    {
+        return new self(0, '', $failure);
+    }
+
     public function sendRequest(RequestInterface $request): ResponseInterface
     {
         $this->requestedUrls[] = (string) $request->getUri();
+        $this->requests[] = $request;
 
         if ($this->failure !== null) {
             throw $this->failure;

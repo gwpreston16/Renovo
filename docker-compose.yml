@@ -51,6 +51,10 @@ services:
       SMTP_ENCRYPTION: ${SMTP_ENCRYPTION:-none}
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-renovo@localhost}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Renovo}
+      # The update check: the app asks lazily, from an administrator's
+      # dashboard, and the scheduler daily, so both need the operator's say.
+      UPDATE_CHECK: ${UPDATE_CHECK:-true}
+      UPDATE_CHECK_REPOSITORY: ${UPDATE_CHECK_REPOSITORY:-gwpreston16/Renovo}
     # The web root comes from the image, and the `web` container is built from
     # the same one, so the two agree about every asset's name and age without
     # either of them reading the host. Development replaces both with the
@@ -163,6 +167,10 @@ services:
       SMTP_ENCRYPTION: ${SMTP_ENCRYPTION:-none}
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-renovo@localhost}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Renovo}
+      # The update check: the app asks lazily, from an administrator's
+      # dashboard, and the scheduler daily, so both need the operator's say.
+      UPDATE_CHECK: ${UPDATE_CHECK:-true}
+      UPDATE_CHECK_REPOSITORY: ${UPDATE_CHECK_REPOSITORY:-gwpreston16/Renovo}
     # The same var/ volume as the app. `maintenance:prune` clears staged
     # imports that were uploaded and never finished, and those files are written
     # by the app container — without this the scheduler would be tidying its own

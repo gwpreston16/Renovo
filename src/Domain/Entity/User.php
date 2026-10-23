@@ -54,6 +54,8 @@ final class User
         public readonly ?string $palette = null,
         /** Null means Overview; see `dashboardViewPreference()`. */
         public readonly ?string $dashboardView = null,
+        /** The release whose update banner this administrator dismissed; see UpdateCheckService. */
+        public readonly ?string $dismissedUpdateVersion = null,
     ) {
     }
 

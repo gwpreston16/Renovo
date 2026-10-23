@@ -21,6 +21,9 @@ list. `.env` is never committed. The ones that matter most:
 | `EXCHANGE_RATE_API_KEY`     | Only for providers that need one. Takes precedence over a key entered in the UI. |
 | `EXCHANGE_RATE_TTL_SECONDS` | How long a cached rate table stays current. 12 hours by default. |
 | `APP_LOCALE`                | The language and formatting an account gets before choosing its own. Any ICU locale with a catalogue in `translations/`. |
+| `UPDATE_CHECK`              | Set to `false` to turn the daily check for a newer release off for this server, whatever an administrator chooses. On by default — though the check itself is off until an instance administrator turns it on. See [Version and updates](operations.md#version-and-updates). |
+| `UPDATE_CHECK_REPOSITORY`   | The GitHub `owner/name` whose releases are checked. `gwpreston16/Renovo` by default; a fork can point at its own. Anything that is not an `owner/name` turns the check off, with a warning in the log. |
+| `RENOVO_BUILD`              | A Docker build argument, not a run-time setting: the short commit id an edge or development image was built from, shown beside the version. Leave it unset for a release image. |
 | `METRICS_TOKEN`             | Unset means `/metrics` does not exist. Set it to expose Prometheus metrics to a scrape job carrying the same bearer token. |
 | `LOGO_CACHE_DIRECTORY`      | Where fetched site icons are cached, one file per domain. Under `var/` by default. |
 | `AVATAR_DIRECTORY`          | Where members' pictures are stored. Outside the web root, under `var/` by default — back it up with the attachments. |

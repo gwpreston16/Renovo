@@ -14,6 +14,7 @@ use App\Service\HouseholdDashboardService;
 use App\Service\InstanceSettingsService;
 use App\Service\SavingsService;
 use App\Service\SpendTrendService;
+use App\Service\Update\UpdateCheckService;
 use App\Service\UserPreferencesService;
 use App\Support\Clock;
 use Psr\Http\Message\ResponseInterface;
@@ -35,6 +36,7 @@ final class DashboardController extends Controller
         private readonly Clock $clock,
         private readonly InstanceSettingsService $settings,
         private readonly SavingsService $savings,
+        private readonly UpdateCheckService $updates,
     ) {
         parent::__construct($view, $session, $translator);
     }
@@ -111,7 +113,24 @@ final class DashboardController extends Controller
             'editing' => $editing,
             'first_name' => $user->firstName(),
             'today' => $this->clock->today(),
+            'update_banner' => $this->updates->forDashboard($user),
         ]);
+    }
+
+    /**
+     * Dismiss the update banner, for this instance administrator, until a
+     * newer release appears. htmx posts it and swaps the banner for nothing;
+     * without script it reloads the dashboard.
+     */
+    public function dismissUpdate(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $this->updates->dismiss($this->user($request));
+
+        if ($this->isHtmx($request)) {
+            return $response->withStatus(200);
+        }
+
+        return $this->redirect($response, '/');
     }
 
     /**

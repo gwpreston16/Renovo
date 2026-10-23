@@ -17,8 +17,10 @@ use App\Security\Scope;
 use App\Security\SessionInterface;
 use App\Service\BudgetService;
 use App\Service\InstanceSettingsService;
+use App\Service\Update\UpdateCheckService;
 use App\Tests\Integration\DatabaseTestCase;
 use App\Tests\Support\ArraySession;
+use App\Tests\Support\ForbiddenHttpClient;
 use App\Tests\Support\RecordingMailer;
 use DateTimeImmutable;
 use Psr\Container\ContainerInterface;
@@ -59,6 +61,7 @@ final class AccessibilityTest extends DatabaseTestCase
         $this->app = $bootstrap(true, [
             SessionInterface::class => $this->session,
             MailerInterface::class => new RecordingMailer(),
+            UpdateCheckService::HTTP_CLIENT => new ForbiddenHttpClient(),
         ]);
 
         $container = $this->app->getContainer();
@@ -135,6 +138,18 @@ final class AccessibilityTest extends DatabaseTestCase
         $container->get(\App\Service\ApiTokenService::class)
             ->issue($user, $this->householdId, 'Calendar', \App\Domain\TokenAbility::Read);
         $container->get(\App\Service\TrustedHostService::class)->add('gotify.lan', 'The LAN one', $user);
+
+        // Phase 37: update checks on and a newer release found, so the
+        // dashboard is checked with its banner and the Instance tab with its
+        // Version row and Check now. Checked a moment ago, so loading the
+        // dashboard asks GitHub nothing — and the client would fail if it did.
+        $settings->setUpdateCheckEnabled(true);
+        $settings->recordLatestRelease(
+            '99.0.0',
+            'https://github.com/gwpreston16/Renovo/releases/tag/v99.0.0',
+            null,
+            new DateTimeImmutable(),
+        );
 
         $this->session->set(AuthenticationMiddleware::SESSION_USER_ID, $this->userId);
         $this->session->set(AuthenticationMiddleware::SESSION_HOUSEHOLD_ID, $this->householdId);
@@ -285,6 +300,22 @@ final class AccessibilityTest extends DatabaseTestCase
             [],
             $this->unnamedControls($html),
             sprintf('%s has controls a screen reader cannot name.', $path),
+        );
+    }
+
+    public function testTheUpdateBannerIsAStatusWithANamedDismiss(): void
+    {
+        $html = $this->get('/');
+
+        self::assertMatchesRegularExpression('~<div class="[^"]*update-banner[^"]*" role="status"~', $html);
+        self::assertMatchesRegularExpression(
+            '~<form method="post" action="/updates/dismiss".*?<button type="submit"[^>]*>\s*Dismiss\s*</button>~s',
+            $html,
+        );
+        self::assertMatchesRegularExpression(
+            '~<a href="https://github\.com/[^"]+" target="_blank" rel="noopener">Release notes'
+            . '<span class="visually-hidden"> \(opens in a new tab\)</span></a>~',
+            $html,
         );
     }
 

@@ -10,7 +10,10 @@
 
 declare(strict_types=1);
 
+use App\Application\AppVersion;
 use App\Application\Twig\AppExtension;
+use App\Service\Update\UpdateCheckConfig;
+use App\Service\Update\UpdateCheckService;
 use App\Controller\SetupController;
 use App\Http\DnsResolver;
 use App\Http\GuardedClient;
@@ -206,6 +209,23 @@ return static function (ContainerBuilder $builder, array $settings): void {
         },
 
         // ------------------------------------------------------------------
+        // Update check
+        // ------------------------------------------------------------------
+        // The shared client with the instance's proxy and narrower limits: a
+        // release is a few kilobytes of JSON, and the lazy check runs while an
+        // administrator waits for their dashboard. Its own key, so a test can
+        // put a client there that fails if it is ever called.
+        UpdateCheckService::HTTP_CLIENT => static fn (ContainerInterface $c): ClientInterface => new HttpClient(
+            $c->get(ResponseFactoryInterface::class),
+            $c->get(StreamFactoryInterface::class),
+            $c->get(HttpClientOptions::class)->narrowedTo(5, 3, 65536),
+        ),
+
+        UpdateCheckConfig::class => static fn (): UpdateCheckConfig => UpdateCheckConfig::fromEnvironment(),
+
+        UpdateCheckService::class => autowire()->constructorParameter('http', get(UpdateCheckService::HTTP_CLIENT)),
+
+        // ------------------------------------------------------------------
         // Notifications
         // ------------------------------------------------------------------
         // The registry is the only list of channel types in the application.
@@ -315,6 +335,11 @@ return static function (ContainerBuilder $builder, array $settings): void {
         // Everything in the application reads "now" through this one clock,
         // in UTC, so stored timestamps do not depend on the server's locale.
         Clock::class => static fn (): Clock => new SystemClock(new DateTimeZone('UTC')),
+
+        // Read from the VERSION file and the environment when first asked,
+        // never through the settings array, so a compiled container cannot
+        // keep naming the release it was built under. See AppVersion.
+        AppVersion::class => static fn (): AppVersion => AppVersion::fromEnvironment(dirname(__DIR__)),
 
         // ------------------------------------------------------------------
         // Services needing configuration values

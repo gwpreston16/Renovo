@@ -22,6 +22,7 @@ use App\Application\Ops\OpsPath;
 use App\Controller\Api\AttachmentApiController;
 use App\Controller\Api\ChargeApiController;
 use App\Controller\Api\CalendarApiController;
+use App\Controller\Api\InstanceApiController;
 use App\Controller\Api\MeApiController;
 use App\Controller\Api\OpenApiController;
 use App\Controller\Api\SavingsApiController;
@@ -465,6 +466,15 @@ return static function (App $app): void {
         $group->post('/settings/instance', [SettingsController::class, 'updateInstance'])
             ->add($requires(Permission::ManageInstance));
 
+        // Phase 37: Check now on the Instance status card, and Dismiss on the
+        // dashboard's update banner. Both are instance administration: the
+        // banner is drawn for nobody else, and a post from anybody else is 403.
+        $group->post('/settings/updates/check', [SettingsController::class, 'checkForUpdates'])
+            ->add($requires(Permission::ManageInstance));
+
+        $group->post('/updates/dismiss', [DashboardController::class, 'dismissUpdate'])
+            ->add($requires(Permission::ManageInstance));
+
         // ------------------------------------------------------------------
         // Phase 15: household members; Phase 26: Members & roles
         //
@@ -725,6 +735,9 @@ return static function (App $app): void {
 
     $app->group(ApiPath::PREFIX, function (RouteCollectorProxy $group) use ($requires): void {
         $group->get('/me', [MeApiController::class, 'show']);
+
+        // Phase 37: the release, to any valid token and to nobody else.
+        $group->get('/instance', [InstanceApiController::class, 'show']);
 
         $group->get('/subscriptions', [SubscriptionApiController::class, 'index'])
             ->add($requires(Permission::ViewSubscriptions));
