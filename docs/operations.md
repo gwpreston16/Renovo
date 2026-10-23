@@ -25,12 +25,16 @@ php bin/console backup:run          # an instance backup, if one is due [--force
 php bin/console backup:verify FILE  # decrypt an instance backup and check every entry
 php bin/console backup:decrypt FILE OUT.zip  # decrypt it into a plain ZIP
 php bin/console backup:restore FILE # restore one into an empty database (see Instance backups)
+php bin/console backup:rehearse     # rehearse a restore from a destination, if one is due [--force]
+php bin/console backup:fetch ID OBJECT [FILE]  # download one stored copy from a destination
 php bin/console demo:seed           # the demonstration household and its two accounts
 ```
 
-The `scheduler` container runs `reminders:run`, `maintenance:prune` and
-`backup:run` once a day. `backup:run` does nothing until an instance
-administrator turns scheduled backups on (see [Instance backups](#instance-backups)). `reminders:run` also checks for a newer release, as its own step, when
+The `scheduler` container runs `reminders:run`, `maintenance:prune`,
+`backup:run` and `backup:rehearse` once a day. `backup:run` takes no backup
+until an instance administrator turns scheduled backups on (see [Instance backups](#instance-backups)), but every pass it still sends what is waiting to go to a
+destination and tells instance administrators about backup failures;
+`backup:rehearse` does nothing until a destination holds a copy. `reminders:run` also checks for a newer release, as its own step, when
 update checks are on (see [Version and updates](#version-and-updates)); a
 failed check is logged and never fails the run. It does **not** run `rates:refresh` — rates are refreshed lazily on page
 views and cached for 12 hours, so an instance nobody visits will serve stale
@@ -53,6 +57,7 @@ the intended cadence:
   15 7  *   *   *    docker compose -f /srv/renovo/docker-compose.yml run --rm app php bin/console reminders:run
   45 7  *   *   *    docker compose -f /srv/renovo/docker-compose.yml run --rm app php bin/console maintenance:prune
   15 8  *   *   *    docker compose -f /srv/renovo/docker-compose.yml run --rm app php bin/console backup:run
+  45 8  *   *   *    docker compose -f /srv/renovo/docker-compose.yml run --rm app php bin/console backup:rehearse
 ```
 
 Or, on a bare-metal install:
@@ -61,6 +66,7 @@ Or, on a bare-metal install:
   15 7  *   *   *    cd /srv/renovo && php bin/console reminders:run
   45 7  *   *   *    cd /srv/renovo && php bin/console maintenance:prune
   15 8  *   *   *    cd /srv/renovo && php bin/console backup:run
+  45 8  *   *   *    cd /srv/renovo && php bin/console backup:rehearse
 ```
 
 Whatever runs it needs the same environment the application has — in
@@ -178,9 +184,10 @@ the reason, and never counts as the last good one. Left out on purpose:
 sessions, sign-in throttling, request counters, the logo download cache and the
 backup history itself — a restored instance starts with nobody signed in.
 
-**The backups are on the same server as your data.** Copy `BACKUP_DIRECTORY`
-(`var/backups` on the `appvar` volume by default) somewhere else as well; the
-card says so while that is the only copy. Download a verified backup from the
+**On their own, the backups are on the same server as your data.** A dead
+disk or a lost server takes both. Add a [destination](#sending-backups-off-the-server)
+so each one is sent somewhere else; until one holds a confirmed copy, the card
+says the backups are only on this server. Download a verified backup from the
 card's history (instance administrators only, recorded in the audit log); the
 file is the encrypted one.
 
@@ -192,6 +199,149 @@ php bin/console backup:decrypt that.renovo-backup /tmp/plain.zip   # plaintext: 
 `backup:verify` names the migration version the backup was taken at, which a
 restore needs.
 
+### Sending backups off the server
+
+In **Settings → Instance → Destinations**, add one or more places each verified
+backup is sent to:
+
+| Kind | Covers | Settings |
+| --- | --- | --- |
+| **S3-compatible** | AWS S3, Backblaze B2 (through its S3 API), Cloudflare R2, Wasabi, MinIO | Endpoint, region, bucket, prefix, access key ID and secret, path-style addresses (MinIO and most self-hosted stores) |
+| **WebDAV** | Nextcloud, ownCloud, most NAS boxes | The folder's URL, username and password |
+| **Directory** | A mounted NAS share or a second disk | An absolute path inside the container |
+
+- **Encrypted before it leaves.** What is sent is the same encrypted file that
+  is in `BACKUP_DIRECTORY`; a destination never holds anything it can read. No
+  manifest goes in clear. Each copy is named after the local file, with the
+  destination's prefix in front: `home/renovo-instance-20261023-030000-a1b2c3.renovo-backup`.
+- **Confirmed by the destination.** An S3 upload is signed with the backup's
+  own SHA-256, so the service refuses a body that arrives different; WebDAV is
+  checked by the size the server reports after the upload; a directory copy is
+  written under a temporary name, flushed, checked and only then renamed. A run
+  is **Verified locally** until a destination confirms it, then **Stored off the
+  server**; the history shows each destination's status.
+- **When.** A scheduled backup is sent straight after it verifies; **Back up
+  now** sends it once the page has come back, so a slow upload never times the
+  page out. A failed upload is tried again on the next scheduler pass, three
+  attempts in all, and never fails the local backup.
+- **Credentials** are stored encrypted (`SECRETS_KEY`, rotated by
+  `secrets:rotate` with everything else), never shown again — the form says
+  one is set and offers to replace it — and never logged.
+- **Addresses.** Every request goes through the same guard as a webhook: https
+  and public addresses only. A MinIO or NAS on your own network must be added
+  to the **trusted-host list** (same page) first, and only a trusted host may be
+  plain `http`. Renovo never follows a redirect from a destination; if one
+  answers with a redirect, the test says where it points, so you can enter that
+  address instead. A Directory destination may not be inside Renovo's own
+  directories or `BACKUP_DIRECTORY`.
+- **Retention per destination.** Each keeps its own daily / weekly / monthly
+  counts, starting from the local policy; a cheap bucket can keep twelve
+  months while the server keeps a week. As locally, a destination is pruned
+  only after a new copy there is confirmed, and its newest copy is always kept.
+  Renovo deletes only objects it recorded uploading: anything else in the
+  bucket or folder is never touched.
+- **Test connection** writes a small marker, reads it back and deletes it, and
+  says which step failed.
+- **Removing** a destination stops sending there. Nothing stored there is
+  deleted.
+
+`BACKUP_TRANSFER_TIMEOUT_SECONDS` (default 1800) is how long one upload or
+download may take; the general `HTTP_TIMEOUT_SECONDS` and
+`HTTP_MAX_RESPONSE_BYTES` do not apply to backup transfers. One upload is a
+single request, so a backup can be up to 5 GB.
+
+#### A key that can do only this
+
+Give Renovo credentials that reach one bucket and one prefix and nothing
+else. On AWS (and anything that takes an IAM policy), with your bucket and
+prefix:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::my-bucket/renovo/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::my-bucket",
+      "Condition": { "StringLike": { "s3:prefix": "renovo/*" } }
+    }
+  ]
+}
+```
+
+On Backblaze B2, create an **application key** restricted to the one bucket,
+with read and write access and the same file-name prefix; use its key ID and
+application key as the access key ID and secret, and the bucket's S3 endpoint
+(`https://s3.<region>.backblazeb2.com`) and region.
+
+#### Protecting them from the server itself
+
+Credentials that can write can delete. If this server is compromised, whoever
+holds it can remove the copies with Renovo's own key. Turn on **object lock**
+(or versioning with a retention period) on the bucket, at the provider: deletes
+then only hide a copy until its lock expires. Renovo's pruning keeps working
+against a locked bucket — it removes what it can see — and the locked copies
+stay recoverable from the provider. This is set at the provider; Renovo does
+not configure it.
+
+### Restore rehearsal
+
+A backup nobody has restored is a hope. `backup:rehearse` (from the scheduler,
+monthly by default once a destination holds a copy; **Weekly**, **Monthly** or
+**Off** in **Settings → Instance → Restore rehearsal**):
+
+1. downloads the newest confirmed copy **from a destination** — not the local
+   file — rotating between destinations from one rehearsal to the next;
+2. verifies it exactly as a new backup is verified;
+3. given a **scratch database**, brings it to the backup's migration version,
+   restores into it, checks every table's row count against the manifest,
+   checks every encrypted value (two-factor seeds, channel settings, the rate
+   key, destination credentials) opens with this instance's keys and every
+   password hash is well formed, and then drops every table it made — whether
+   or not the checks passed;
+4. records the result, with the step that failed.
+
+Without a scratch database a rehearsal is **download-verified**, and the card
+says that is what it was. To give it one, use an **empty** database of its
+own: `docker-compose.yml` has a commented-out `rehearsal-db` service. Uncomment
+it (and its volume), then set in `.env`:
+
+```dotenv
+BACKUP_REHEARSAL_DB_HOST=rehearsal-db
+BACKUP_REHEARSAL_DB_NAME=rehearsal
+BACKUP_REHEARSAL_DB_USER=rehearsal
+BACKUP_REHEARSAL_DB_PASSWORD=<a password>
+```
+
+`BACKUP_REHEARSAL_DB_DRIVER` and `_PORT` default to the application's. The
+application's own database is refused (the same engine, host, port and name),
+as is a scratch database that is not empty. It holds a copy of the data only
+while a rehearsal runs; nothing in it is ever served.
+
+Run one now with `php bin/console backup:rehearse --force`.
+
+### Backup alerts
+
+Instance administrators are told, through their own notification channels and
+routes, when:
+
+- **a backup failed** — it did not verify, or no destination would take it
+  after three attempts;
+- **nothing reached a destination for two schedule periods** (two days on a
+  daily schedule, two weeks on a weekly one);
+- **a restore rehearsal failed**, with the step.
+
+Each is sent once per incident; a recovery is not announced. They reach
+instance administrators only — a household Owner who is not one never gets
+them — and each has its own switch on the **Notifications** page. An
+administrator's existing renewal routes were copied to them on upgrade.
+
 ### Restoring an instance backup
 
 Restoring is a command, never a button, and only into an **empty** database at
@@ -202,6 +352,16 @@ verify, and says which.
 1. Put the keys back in `.env`: `BACKUP_ENCRYPTION_KEY`, and the same
    `SESSION_KEY`, `SECRETS_KEY`, `SECRETS_PREVIOUS_KEYS` and
    `TOTP_ENCRYPTION_KEY` the instance had.
+   If the server is gone, fetch a copy from a destination first. Its id and
+   the copy's name are on the old card's history, or in the bucket:
+
+   ```bash
+   docker compose run --rm -v /path/to/backups:/restore app \
+     php bin/console backup:fetch 1 renovo/renovo-instance-….renovo-backup /restore/renovo-instance-….renovo-backup
+   ```
+
+   With no database left to read destinations from, download it with your
+   provider's own tools instead — it is the same encrypted file.
 2. Find the backup's migration version:
 
    ```bash

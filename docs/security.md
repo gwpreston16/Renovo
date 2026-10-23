@@ -178,4 +178,9 @@ the reset may well have been prompted by somebody else having one.
   a mistake in an alert rule cannot turn the instance into a traffic source.
 - Channel credentials are **never rendered back into a form** and never written
   to a log: a stored token shows as configured and can be replaced.
+- **Backup destinations** (Phase 39) go through the same SSRF guard, and never
+  follow a redirect at all, since their requests carry credentials. A
+  destination only ever receives the encrypted backup; its credentials are
+  stored encrypted, never shown again and never logged. See
+  [Sending backups off the server](operations.md#sending-backups-off-the-server).
 - Templates escape all output.
