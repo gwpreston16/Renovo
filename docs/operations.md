@@ -1,6 +1,6 @@
 # Operations
 
-Running an instance day to day: console commands, the scheduler, health and metrics, backup and restore, the version and update checks, and demonstration mode. Back to the [documentation index](README.md).
+Running an instance day to day: console commands, the scheduler, instance backups, household backup and restore, health and metrics, the version and update checks, and demonstration mode. Back to the [documentation index](README.md).
 
 ## Commands
 
@@ -21,11 +21,16 @@ php bin/console i18n:check          # every locale against the base catalogue; n
 php bin/console assets:offline-check # non-zero if anything the browser loads names a third-party host
 php bin/console ledger:backfill     # after upgrading to the ledger (Phase 34) and again to savings (Phase 36): see upgrading.md [--household=ID]
 php bin/console secrets:rotate      # re-encrypt every stored secret under the current key [--dry-run]
+php bin/console backup:run          # an instance backup, if one is due [--force to take one now]
+php bin/console backup:verify FILE  # decrypt an instance backup and check every entry
+php bin/console backup:decrypt FILE OUT.zip  # decrypt it into a plain ZIP
+php bin/console backup:restore FILE # restore one into an empty database (see Instance backups)
 php bin/console demo:seed           # the demonstration household and its two accounts
 ```
 
-The `scheduler` container runs `reminders:run` and `maintenance:prune` once a
-day. `reminders:run` also checks for a newer release, as its own step, when
+The `scheduler` container runs `reminders:run`, `maintenance:prune` and
+`backup:run` once a day. `backup:run` does nothing until an instance
+administrator turns scheduled backups on (see [Instance backups](#instance-backups)). `reminders:run` also checks for a newer release, as its own step, when
 update checks are on (see [Version and updates](#version-and-updates)); a
 failed check is logged and never fails the run. It does **not** run `rates:refresh` — rates are refreshed lazily on page
 views and cached for 12 hours, so an instance nobody visits will serve stale
@@ -47,6 +52,7 @@ the intended cadence:
 # m  h  dom mon dow  command
   15 7  *   *   *    docker compose -f /srv/renovo/docker-compose.yml run --rm app php bin/console reminders:run
   45 7  *   *   *    docker compose -f /srv/renovo/docker-compose.yml run --rm app php bin/console maintenance:prune
+  15 8  *   *   *    docker compose -f /srv/renovo/docker-compose.yml run --rm app php bin/console backup:run
 ```
 
 Or, on a bare-metal install:
@@ -54,6 +60,7 @@ Or, on a bare-metal install:
 ```cron
   15 7  *   *   *    cd /srv/renovo && php bin/console reminders:run
   45 7  *   *   *    cd /srv/renovo && php bin/console maintenance:prune
+  15 8  *   *   *    cd /srv/renovo && php bin/console backup:run
 ```
 
 Whatever runs it needs the same environment the application has — in
@@ -98,11 +105,150 @@ with the key its secrets were encrypted under (`SECRETS_KEY`, or
 `TOTP_ENCRYPTION_KEY` or `SESSION_KEY` if that was the one in use). Restoring
 one onto a new host means giving it that key, as `SECRETS_KEY` or in
 `SECRETS_PREVIOUS_KEYS`, or every channel and authenticator app on it is
-unreadable. The household backup below holds none of these secrets.
+unreadable. An [instance backup](#instance-backups) needs them in the same
+way; the household backup holds none of these secrets.
+
+## Instance backups
+
+An instance backup is the whole instance — every table and every stored file
+(attachments, avatars, logos) — taken on a schedule, **always encrypted**,
+**checked after it is written**, and **pruned** by a retention policy. It is
+for disaster recovery. The [household backup](#backup-and-restore)
+below is for moving one household between instances; it is not this.
+
+### Turning them on
+
+1. Generate a key and set it on every container (the compose file passes it to
+   the app and the scheduler):
+
+   ```bash
+   openssl rand -hex 32
+   ```
+
+   ```dotenv
+   BACKUP_ENCRYPTION_KEY=<the 64 hex characters>
+   ```
+
+2. **Store the keys somewhere that is not this server**: `BACKUP_ENCRYPTION_KEY`
+   to open a backup, and `SESSION_KEY`, `SECRETS_KEY` (with any
+   `SECRETS_PREVIOUS_KEYS`) and `TOTP_ENCRYPTION_KEY` for the restored instance
+   to read its two-factor seeds and notification channel settings. Renovo never
+   stores `BACKUP_ENCRYPTION_KEY`; without it a backup is unreadable.
+3. In **Settings → Instance → Instance backups**, choose **Daily** or **Weekly**
+   (off by default) and how many to keep.
+
+The card shows the key's **fingerprint** — the first eight hex characters of its
+SHA-256 — never the key. Every backup records the fingerprint it was taken
+under, so you can tell which key an old one needs. Without the key set, the card
+says so and offers nothing.
+
+### What a run does
+
+`backup:run` (daily from the scheduler, or **Back up now** on the card) takes a
+backup when one is due: daily, when none has started in the last 23 hours;
+weekly, none in the last 6 days 23 hours. One runs at a time.
+
+1. Every table is read inside one consistent snapshot (`REPEATABLE READ` on
+   PostgreSQL, `START TRANSACTION WITH CONSISTENT SNAPSHOT` on MySQL), so the
+   rows agree with each other. Rows are written as JSON, not as a native dump,
+   so a PostgreSQL backup restores into MySQL and the other way round, and the
+   image needs no client binaries.
+2. The files the rows name are added. A file a row names that is missing is a
+   warning in the history, not a failure.
+3. The ZIP is encrypted with libsodium's secretstream (XChaCha20-Poly1305), 64
+   KiB at a time, into `BACKUP_DIRECTORY` as `renovo-instance-….renovo-backup`.
+4. It is decrypted again and checked: every entry's SHA-256 and size against the
+   manifest, every row parsed and counted, every name one a backup writes. Only
+   then is it **verified**.
+5. Older backups are pruned: the newest of each of the last *N* days, ISO weeks
+   and months are kept (7 / 4 / 6 by default), and the **newest verified backup
+   is never pruned**, whatever the counts. Failed runs' files go after seven
+   days. Pruning happens only after a backup verifies.
+
+While a run works, its plaintext sits in a private directory beside
+`BACKUP_DIRECTORY` (`var/.backups-work` by default), never inside it, so a copy
+of `BACKUP_DIRECTORY` taken mid-run holds only ciphertext. When that parent
+cannot be written (a `BACKUP_DIRECTORY` mounted at the root, say), the system
+temporary directory is used instead; it needs room for one unencrypted backup,
+as `backup:verify`, `backup:decrypt` and `backup:restore` always do. A run that
+was killed part-way leaves it behind; the next run removes it.
+
+A backup that fails verification is kept for inspection, marked **Failed** with
+the reason, and never counts as the last good one. Left out on purpose:
+sessions, sign-in throttling, request counters, the logo download cache and the
+backup history itself — a restored instance starts with nobody signed in.
+
+**The backups are on the same server as your data.** Copy `BACKUP_DIRECTORY`
+(`var/backups` on the `appvar` volume by default) somewhere else as well; the
+card says so while that is the only copy. Download a verified backup from the
+card's history (instance administrators only, recorded in the audit log); the
+file is the encrypted one.
+
+```bash
+php bin/console backup:verify var/backups/renovo-instance-20261023-030000-a1b2c3.renovo-backup
+php bin/console backup:decrypt that.renovo-backup /tmp/plain.zip   # plaintext: delete it after
+```
+
+`backup:verify` names the migration version the backup was taken at, which a
+restore needs.
+
+### Restoring an instance backup
+
+Restoring is a command, never a button, and only into an **empty** database at
+the **same migration version** as the backup. It refuses — changing nothing —
+if the database holds data, if the versions differ, or if the file does not
+verify, and says which.
+
+1. Put the keys back in `.env`: `BACKUP_ENCRYPTION_KEY`, and the same
+   `SESSION_KEY`, `SECRETS_KEY`, `SECRETS_PREVIOUS_KEYS` and
+   `TOTP_ENCRYPTION_KEY` the instance had.
+2. Find the backup's migration version:
+
+   ```bash
+   docker compose run --rm -v /path/to/backups:/restore:ro app \
+     php bin/console backup:verify /restore/renovo-instance-….renovo-backup
+   ```
+
+3. Start from an empty database, with the app and scheduler stopped. On the
+   compose stack that is a new database volume (`renovo_database`, or
+   `renovo_database_mysql` on MySQL) — this deletes whatever that volume holds:
+
+   ```bash
+   docker compose down
+   docker volume rm renovo_database
+   docker compose up -d database
+   ```
+
+4. Bring the schema to the backup's version (not the latest):
+
+   ```bash
+   docker compose run --rm migrate vendor/bin/phinx migrate -t <version>
+   ```
+
+5. Restore. Every table goes in, in one transaction; the id sequences move
+   past the highest id; the files are written back:
+
+   ```bash
+   docker compose run --rm -v /path/to/backups:/restore:ro app \
+     php bin/console backup:restore /restore/renovo-instance-….renovo-backup
+   ```
+
+6. Bring the schema up to the running version, and start everything:
+
+   ```bash
+   docker compose run --rm migrate
+   docker compose up -d
+   ```
+
+Everyone signs in as before, with the same passwords, two-factor and passkeys.
+A restore into the other engine works the same way. Before step 3, set
+`DB_DRIVER` and `DB_PORT` in `.env` for the new engine and add (or, going to
+PostgreSQL, drop) `-f docker-compose.yml -f docker-compose.mysql.yml` on every
+command, as in [Installing](install.md).
 
 ## Backup and restore
 
-**Settings → Data & integrations → Backup & restore** downloads a ZIP of everything the household
+The household backup. **Settings → Data & integrations → Backup & restore** downloads a ZIP of everything the household
 has: subscriptions, categories, tags, budgets, payments, logos and attached
 invoices (with the payment each is filed against), as JSON plus the original
 files. Nothing in it needs a database to read.
@@ -136,8 +282,10 @@ invoice inside it is re-validated by its magic bytes exactly as an upload is.
 Both routes need the household-management role. An export is every price and
 note in the household in one file, and a restore adds rows in bulk.
 
-> A backup archive is not a substitute for backing up the database and the
-> `var/` directory. It is what makes a household portable between instances.
+> A household archive is not disaster recovery: it holds no accounts, no
+> passwords and no other household. For that, use
+> [instance backups](#instance-backups). It is what makes a household portable
+> between instances.
 
 ## Health and metrics
 
@@ -161,7 +309,9 @@ nothing else a page would show.
 The compose file points nginx's healthcheck at `/readyz`.
 
 `/metrics` carries counts of accounts, households, subscriptions, notification
-outcomes, rate freshness and requests by status class. Those are not secrets,
+outcomes, rate freshness, instance backups (`renovo_backup_last_success_timestamp_seconds`,
+`renovo_backup_last_size_bytes`, `renovo_backup_runs_total{status}`) and
+requests by status class. Those are not secrets,
 but they describe an instance, so it is closed by default: set `METRICS_TOKEN`
 and give the same value to the scrape job as a bearer credential. An instance
 administrator signed in to a browser can also read it. Anybody else gets 404 —

@@ -4852,6 +4852,67 @@ a.segmented-option {
     padding-inline: 0.9rem;
 }
 
+/*
+ * Instance backups (Phase 38). The retention counts are three short numbers,
+ * seated three to a row by the form grid once the card is wide enough: the
+ * grid measures its container — the fieldset around it, since a container
+ * query never applies to the container itself — and a card's form is not a
+ * `.form-layout`.
+ */
+#backup-retention {
+    container: form / inline-size;
+}
+
+.instance-backup-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin: 0 0 0.75rem;
+    background: var(--warn-bg);
+    color: var(--text);
+}
+
+.instance-backup-warning .icon {
+    flex: none;
+    color: var(--warn);
+}
+
+.instance-backup-history-heading {
+    margin: 1.25rem 0 0.25rem;
+    font-size: var(--size-label);
+    color: var(--muted);
+}
+
+.instance-backup-error {
+    color: var(--bad);
+}
+
+/*
+ * Without a key every backup control is disabled; it should look it, as a
+ * disabled segmented option and toggle do.
+ */
+#backup-schedule:disabled .role-option,
+#backup-retention:disabled input {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+/* A figure and its unit stay together when the row wraps on a phone. */
+.instance-backup-rows .account-row-meta .num {
+    white-space: nowrap;
+}
+
+.instance-backup-warnings ul {
+    margin: 0.25rem 0 0;
+    padding-left: 1.1rem;
+    /* A stored path has nowhere to break; on a phone it must still wrap. */
+    overflow-wrap: anywhere;
+}
+
+.instance-backup-warnings summary {
+    cursor: pointer;
+}
+
 /* A disclosure whose summary is a button, and whose body is a form. */
 .settings-disclosure {
     margin-top: 0.75rem;

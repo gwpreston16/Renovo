@@ -12,8 +12,9 @@
     mode and the update check are one form; the trusted hosts are a list of
     their own. The rest is the server as its environment describes it — the
     release and what the update check found, the mail relay, the metrics
-    endpoint, the scheduler's last run — read-only, apart from Check now.
-    The relay is described, never revealed: no password.
+    endpoint, the scheduler's last run, the last instance backup — read-only,
+    apart from Check now. The relay is described, never revealed: no password.
+    Instance backups have a card of their own (Phase 38).
 
     `SettingsController::instance()` renders it.
 #}
@@ -190,9 +191,163 @@
                         <span class="muted">{{ t('settings.status_scheduler_never') }}</span>
                     {% endif %}
                 </dd>
+
+                <dt>{{ t('settings.status_instance_backup') }}</dt>
+                <dd>
+                    {% if backups.last_verified %}
+                        <a class="num" href="#instance-backups">{{ backups.last_verified.startedAt|local_date('d MMM y, HH:mm') }}</a>
+                    {% elseif backups.key_state == 'ok' %}
+                        <span class="muted">{{ t('settings.status_instance_backup_never') }}</span>
+                    {% elseif backups.key_state == 'invalid' %}
+                        <span class="muted">{{ t('settings.status_instance_backup_bad_key', {'variable': 'BACKUP_ENCRYPTION_KEY'}) }}</span>
+                    {% else %}
+                        <span class="muted">{{ t('settings.status_instance_backup_no_key', {'variable': 'BACKUP_ENCRYPTION_KEY'}) }}</span>
+                    {% endif %}
+                </dd>
             </dl>
         </section>
     </div>
+
+    {#
+        Instance backups (Phase 38): the whole database and every stored
+        file, encrypted under BACKUP_ENCRYPTION_KEY. The key is shown by its
+        fingerprint and never otherwise; without it the controls are drawn
+        disabled and the card says what to set. There is no restore here —
+        that is `bin/console backup:restore`, on purpose.
+    #}
+    {% set backup_ready = backups.key_state == 'ok' %}
+    <section class="card" id="instance-backups" aria-labelledby="instance-backups-heading">
+        <h2 id="instance-backups-heading">{{ t('backup.instance_heading') }}</h2>
+        <p class="muted">{{ t('backup.instance_intro') }}</p>
+
+        {% if backups.local_only %}
+            <p class="alert callout instance-backup-warning" role="note">
+                {{ icon('warn') }}{{ t('backup.instance_same_server', {'variable': 'BACKUP_DIRECTORY'}) }}
+            </p>
+        {% endif %}
+
+        <dl class="settings-facts">
+            <dt>{{ t('backup.instance_key') }}</dt>
+            <dd>
+                {% if backup_ready %}
+                    <span class="num">{{ backups.fingerprint }}</span>
+                    <span class="badge badge-ok">{{ t('backup.instance_key_set') }}</span>
+                    <span class="muted block">{{ t('backup.instance_keys_elsewhere', {
+                        'backup': 'BACKUP_ENCRYPTION_KEY',
+                        'session': 'SESSION_KEY',
+                        'secrets': 'SECRETS_KEY',
+                        'previous': 'SECRETS_PREVIOUS_KEYS',
+                        'totp': 'TOTP_ENCRYPTION_KEY',
+                    }) }}</span>
+                {% elseif backups.key_state == 'invalid' %}
+                    <span class="badge badge-bad">{{ t('backup.instance_key_invalid') }}</span>
+                    <span class="muted block">{{ t('backup.instance_key_invalid_hint', {'variable': 'BACKUP_ENCRYPTION_KEY'}) }}</span>
+                {% else %}
+                    <span class="badge badge-warn">{{ t('backup.instance_key_missing') }}</span>
+                    <span class="muted block">{{ t('backup.instance_key_missing_hint', {'variable': 'BACKUP_ENCRYPTION_KEY'}) }}</span>
+                {% endif %}
+            </dd>
+
+            <dt>{{ t('backup.instance_directory') }}</dt>
+            <dd><code>{{ backups.directory }}</code></dd>
+        </dl>
+
+        <form method="post" action="/settings/backups" class="stack">
+            {{ csrf_field() }}
+
+            <fieldset class="role-options" id="backup-schedule" {{ backup_ready ? '' : 'disabled' }}>
+                <legend>{{ t('backup.instance_schedule') }}</legend>
+                {% for schedule in backups.schedules %}
+                    <label class="role-option">
+                        <input type="radio" name="schedule" value="{{ schedule.value }}"
+                               {{ backups.schedule == schedule.value ? 'checked' : '' }}>
+                        <span class="role-option-text">{{ t(schedule.labelKey()) }}</span>
+                    </label>
+                {% endfor %}
+            </fieldset>
+
+            <fieldset class="stack" id="backup-retention" {{ backup_ready ? '' : 'disabled' }}>
+                <legend>{{ t('backup.instance_retention') }}</legend>
+                <p class="hint">{{ t('backup.instance_retention_hint') }}</p>
+                <div class="field-grid field-grid-3">
+                    {% for field in ['daily', 'weekly', 'monthly'] %}
+                        <div class="field">
+                            <label for="keep-{{ field }}">{{ t('backup.instance_keep_' ~ field) }}</label>
+                            <input type="number" id="keep-{{ field }}" name="keep_{{ field }}" class="num"
+                                   min="0" max="{{ backups.max_retention }}" required
+                                   value="{{ attribute(backups.retention, field) }}">
+                        </div>
+                    {% endfor %}
+                </div>
+            </fieldset>
+
+            <div class="form-actions">
+                <button type="submit" class="button button-outline" {{ backup_ready ? '' : 'disabled' }}>{{ t('backup.instance_save') }}</button>
+            </div>
+        </form>
+
+        <form method="post" action="/settings/backups/run" class="form-actions">
+            {{ csrf_field() }}
+            <button type="submit" class="button button-primary" {{ backup_ready ? '' : 'disabled' }}>
+                {{- icon('lock') }}{{ t('backup.instance_back_up_now') -}}
+            </button>
+            <span class="hint">{{ t('backup.instance_back_up_now_hint') }}</span>
+        </form>
+
+        <h3 class="instance-backup-history-heading">{{ t('backup.instance_history') }}</h3>
+        {% if backups.history is empty %}
+            <p class="muted empty">{{ t('backup.instance_history_empty') }}</p>
+        {% else %}
+            <ul class="account-rows instance-backup-rows">
+                {% for item in backups.history %}
+                    {% set run = item.run %}
+                    <li class="account-row">
+                        <span class="account-row-icon" aria-hidden="true">{{ icon(run.status == 'failed' ? 'warn' : 'lock') }}</span>
+                        <div class="account-row-text">
+                            <span class="account-row-name">
+                                <span class="num">{{ run.startedAt|local_date('d MMM y, HH:mm') }}</span>
+                                {% if run.status == 'verified' %}
+                                    <span class="badge badge-ok">{{ t('backup.status.verified') }}</span>
+                                {% elseif run.status == 'failed' %}
+                                    <span class="badge badge-bad">{{ t('backup.status.failed') }}</span>
+                                {% else %}
+                                    <span class="badge badge-info">{{ t('backup.status.running') }}</span>
+                                {% endif %}
+                                {% if run.prunedAt %}<span class="badge">{{ t('backup.status.pruned') }}</span>{% endif %}
+                            </span>
+                            <span class="account-row-meta">
+                                {{ t('backup.trigger.' ~ run.trigger) }}
+                                {%- if run.durationSeconds() is not null %} · <span class="num">{{ t('backup.duration', {'seconds': run.durationSeconds()}) }}</span>{% endif %}
+                                {%- if item.size %} · <span class="num">{{ t(item.size.key, {'size': item.size.value|decimal(item.size.digits)}) }}</span>{% endif %}
+                                {%- if run.keyFingerprint %} · {{ t('backup.key_short') }} <span class="num">{{ run.keyFingerprint }}</span>{% endif %}
+                            </span>
+                            {% if run.status == 'failed' %}
+                                <span class="account-row-meta instance-backup-error">{{ t('backup.reason.' ~ (run.error ?? 'unexpected')) }}</span>
+                            {% endif %}
+                            {% if run.warnings is not empty %}
+                                <details class="instance-backup-warnings">
+                                    <summary class="account-row-meta">{{ t('backup.warnings', {'count': run.warningCount()}) }}</summary>
+                                    <ul class="hint">
+                                        {% for warning in run.warnings %}
+                                            <li>{{ t('backup.warning.' ~ warning.code) }} <code>{{ warning.detail }}</code></li>
+                                        {% endfor %}
+                                    </ul>
+                                </details>
+                            {% endif %}
+                        </div>
+                        {% if run.isAvailable() %}
+                            <div class="account-row-actions">
+                                <a class="button button-quiet" href="/settings/backups/{{ run.id }}/download" download
+                                   aria-label="{{ t('backup.download_named', {'date': run.startedAt|local_date('d MMM y, HH:mm')}) }}">
+                                    {{- icon('download') }}{{ t('action.download') -}}
+                                </a>
+                            </div>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </section>
 
     <section class="card" id="trusted-hosts" aria-labelledby="trusted-hosts-heading">
         <h2 id="trusted-hosts-heading">{{ t('settings.trusted_hosts') }}</h2>

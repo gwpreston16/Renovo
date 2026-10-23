@@ -88,7 +88,8 @@ The household archive keeps its name and its screen. Every new string says
 - A restore also needs the instance's `SESSION_KEY` and `TOTP_ENCRYPTION_KEY`
   (and, after Phase 40, `SECRETS_KEY` and any `SECRETS_PREVIOUS_KEYS`) to make
   the restored secrets usable.
-  The settings card and the README say so, plainly, next to the key fingerprint:
+  The settings card (next to the key fingerprint) and `docs/operations.md` say
+  so, plainly:
   **store these keys somewhere that is not this server.**
 
 ### Verification
@@ -134,7 +135,8 @@ never counts towards retention or "last good backup".
   dependency order in one transaction where the engine allows, resets identity
   sequences, and writes the files.
 - After restore, `phinx migrate` brings it to the running version.
-- Documented in the README as a numbered procedure, including the keys.
+- Documented as a numbered procedure, including the keys — in
+  `docs/operations.md` (see *Found while starting it*).
 
 ### C. Settings → Instance → Backups (instance admin)
 
@@ -146,8 +148,8 @@ never counts towards retention or "last good backup".
   Failed with reason), warnings — and **Download** for a verified backup (the
   encrypted file, streamed; audit-logged).
 - A warning while backups exist **only on this server**: "These backups are on
-  the same server as your data. Phase 39 can send them elsewhere; until then,
-  copy `BACKUP_DIRECTORY` off this machine."
+  the same server as your data. Copy `BACKUP_DIRECTORY` off this machine as
+  well." (Phase 39 sends them elsewhere; see *Found while building it*.)
 - The **Instance status** card gains **Last instance backup**.
 
 ### D. Observability
@@ -197,20 +199,82 @@ Schedule and retention are instance-settings keys.
 - **Instance admin only**, everywhere in this phase. A household Owner cannot
   see or download an instance backup — it holds other households.
 
+*Confirmed 2026-10-23*: engine-portable JSON rows; encryption mandatory with the
+key from the environment only; restore only into an empty database at the
+archive's migration version; off by default; retention 7 / 4 / 6; instance
+admin only.
+
+Found while starting it:
+
+- **Back up now runs in the request.** *Confirmed 2026-10-23.* The page waits
+  while the backup is taken and verified, then shows the result; the button is
+  rate-limited. Instances are small, and the scheduler loop only wakes daily.
+- **`BACKUP_DIRECTORY` defaults to `var/backups`.** *Confirmed 2026-10-23.* It
+  sits on the `appvar` volume the app and scheduler containers already share,
+  so the scheduler writes what the settings page lists and downloads.
+- **A scheduled backup is due by time since the last one started.**
+  *Confirmed 2026-10-23.* Daily: none started in the last 23 hours. Weekly:
+  none in the last 6 days 23 hours. The hour of slack absorbs the scheduler
+  loop's drift.
+- **The restore procedure goes in `docs/operations.md`, not the README.**
+  Settled by Phase 44: operator procedures live in the docs pages, and the
+  README changes only for a headline item.
+- **Strings go in every catalogue in `translations/`.** Settled by `CLAUDE.md`;
+  today that is `en.php` alone.
+- **The logo cache (`var/logo-cache`) is not backed up.** It is a per-domain
+  download cache that refills itself; each subscription's own logo in
+  `public/assets/logos` is.
+- **No open known issue sits in code this phase rewrites.** K98 is in
+  `templates/settings/instance.twig` but in the update-check card, which this
+  phase does not touch.
+
+Found while building it:
+
+- **`trigger_source`, not `trigger`.** MySQL reserves `trigger`; the column is
+  named so nothing has to quote it.
+- **The one-run lock lives in `backup_runs`**, as a unique `lock_key` that only
+  a running row holds, not in `instance_settings`: the settings are in the
+  snapshot, and a restored instance would otherwise come back "already backing
+  up". A run still holding it after six hours is taken over as abandoned.
+- **`logo_cache` and `backup_runs` are excluded too.** The logo cache's rows
+  describe files in `var/logo-cache`, which is not backed up; the run history
+  describes files on the old server. Rows are pruned by setting `pruned_at`,
+  never deleted, so `renovo_backup_runs_total` only goes up.
+- **`phinxlog` is carried and compared, never inserted.** `phinx migrate -t`
+  has already written it on the database being restored into.
+- **Files come from the rows, through the storage classes' own shapes.** A
+  stored path that is not one Renovo writes (K1 lets a `logo_path` hold
+  anything) is a warning and is left out, so a row cannot pull another file
+  off the server into a backup.
+- **The same-server warning does not name Phase 39.** It says "Copy
+  `BACKUP_DIRECTORY` off this machine as well."; a phase number means nothing
+  to an operator.
+- **The scheduler container mounts the logos volume, read-only**, and the app
+  and scheduler both get `BACKUP_ENCRYPTION_KEY` and `BACKUP_DIRECTORY`.
+- **The cross-engine test runs when `CROSS_ENGINE_DB_*` names the other
+  engine's test database**, and skips otherwise. Both directions passed on
+  2026-10-23, and CI sets it on both legs.
+- **A run's plaintext never sits in `BACKUP_DIRECTORY`.** Its workspace is a
+  private directory beside it (`var/.backups-work`), or the system temporary
+  directory when that parent cannot be written; a run killed part-way leaves
+  it behind, and the next run sweeps it (merge review).
+- **Restore writes the files before the rows**, so a file it cannot write
+  leaves an empty database to run it again into (merge review).
+
 ## Status
 
-- [ ] `BackupDumper` (repository layer), consistent snapshot, table coverage test
-- [ ] Archive writer with manifest and checksums; secretstream encryption
-- [ ] Verification; retention with the newest-verified guard
-- [ ] `backup:run`, `backup:verify`, `backup:decrypt`, `backup:restore`;
+- [x] `BackupDumper` (repository layer), consistent snapshot, table coverage test
+- [x] Archive writer with manifest and checksums; secretstream encryption
+- [x] Verification; retention with the newest-verified guard
+- [x] `backup:run`, `backup:verify`, `backup:decrypt`, `backup:restore`;
       scheduler loop
-- [ ] Settings → Instance → Backups card; Instance status line
-- [ ] Metrics and audit entries
-- [ ] `BACKUP_ENCRYPTION_KEY`, `BACKUP_DIRECTORY` in `.env.example`; README
-      restore procedure
-- [ ] Migration on both engines
-- [ ] New strings in `translations/en.php`
-- [ ] `composer check`, `i18n:check`, offline guard green on both engines
+- [x] Settings → Instance → Backups card; Instance status line
+- [x] Metrics and audit entries
+- [x] `BACKUP_ENCRYPTION_KEY`, `BACKUP_DIRECTORY` in `.env.example`; restore
+      procedure (in `docs/operations.md`, as Phase 44 settled)
+- [x] Migration on both engines
+- [x] New strings in `translations/en.php`
+- [x] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done
 

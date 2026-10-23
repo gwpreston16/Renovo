@@ -76,6 +76,8 @@ use App\Service\AttachmentStorage;
 use App\Service\AvatarStorage;
 use App\Service\HouseholdMemberService;
 use App\Service\BackupService;
+use App\Service\Backup\BackupFiles;
+use App\Service\Backup\InstanceBackupService;
 use App\Service\ImportService;
 use App\Service\LogoStorage;
 use App\Service\SettingsScreenService;
@@ -500,6 +502,33 @@ return static function (ContainerBuilder $builder, ?array $settings = null): voi
                 factory(
                     static fn (ContainerInterface $c): string => $c->get('settings')['uploads']['logo_directory'],
                 ),
+            ),
+
+        // ------------------------------------------------------------------
+        // Phase 38: instance backups
+        //
+        // The three directories whose files a backup carries, and the
+        // directory and key from the environment. The key reaches the service
+        // and nothing else.
+        // ------------------------------------------------------------------
+        BackupFiles::class => static function (ContainerInterface $c): BackupFiles {
+            $uploads = $c->get('settings')['uploads'];
+
+            return new BackupFiles([
+                'attachments' => $uploads['attachment_directory'],
+                'avatars' => $uploads['avatar_directory'],
+                'logos' => $uploads['logo_directory'],
+            ]);
+        },
+
+        InstanceBackupService::class => autowire(InstanceBackupService::class)
+            ->constructorParameter(
+                'directory',
+                factory(static fn (ContainerInterface $c): string => $c->get('settings')['backup']['directory']),
+            )
+            ->constructorParameter(
+                'keyHex',
+                factory(static fn (ContainerInterface $c): string => $c->get('settings')['backup']['key']),
             ),
 
         OpenApiDocument::class => static fn (ContainerInterface $c): OpenApiDocument => new OpenApiDocument(

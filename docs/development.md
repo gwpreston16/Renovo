@@ -51,6 +51,17 @@ failing silently, when no database is reachable at all; in CI it fails instead.
 
 CI runs the whole suite against **both** PostgreSQL and MySQL.
 
+One test restores an instance backup taken on one engine into the other. It
+runs when `CROSS_ENGINE_DB_DRIVER` (with `_HOST`, `_PORT`, `_NAME`, `_USER`,
+`_PASSWORD`) names the other engine's test database, migrated to the same
+version, and skips otherwise. CI sets it on both legs. Locally, with the
+Postgres suite pointed at `renovo_test` and a MySQL test database on 3317:
+
+```bash
+DB_NAME=renovo_test CROSS_ENGINE_DB_DRIVER=mysql CROSS_ENGINE_DB_PORT=3317 \
+  CROSS_ENGINE_DB_NAME=renovo_test vendor/bin/phpunit --filter OtherEngine
+```
+
 ## How it fits together
 
 ```

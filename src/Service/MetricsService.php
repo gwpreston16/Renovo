@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Repository\BackupRunRepository;
 use App\Repository\HouseholdRepository;
 use App\Repository\HttpMetricsRepository;
 use App\Repository\MigrationRepository;
@@ -35,6 +36,7 @@ final class MetricsService
         private readonly HttpMetricsRepository $http,
         private readonly ExchangeRateService $rates,
         private readonly InstanceSettingsService $settings,
+        private readonly BackupRunRepository $backups,
     ) {
     }
 
@@ -105,6 +107,8 @@ final class MetricsService
             $this->migrations->appliedCount(),
         );
 
+        $this->backups($lines);
+
         $this->http($lines);
 
         return implode("\n", $lines) . "\n";
@@ -135,6 +139,39 @@ final class MetricsService
                 $bucket,
                 number_format($entry['duration_us'] / 1_000_000, 6, '.', ''),
             );
+        }
+    }
+
+    /**
+     * Instance backups (Phase 38): when the last good one finished, how big
+     * it was, and how many runs have ended each way. Both outcomes are
+     * emitted at zero, so an alert on failures can be written before the
+     * first one.
+     *
+     * @param list<string> $lines
+     */
+    private function backups(array &$lines): void
+    {
+        $last = $this->backups->lastVerified();
+
+        $this->gauge(
+            $lines,
+            'renovo_backup_last_success_timestamp_seconds',
+            'When the last verified instance backup finished. Zero when none has.',
+            ($last->finishedAt ?? $last?->startedAt)?->getTimestamp() ?? 0,
+        );
+
+        $this->gauge(
+            $lines,
+            'renovo_backup_last_size_bytes',
+            'The size of the last verified instance backup, encrypted.',
+            $last->sizeBytes ?? 0,
+        );
+
+        $lines[] = '# HELP renovo_backup_runs_total Instance backup runs, by outcome.';
+        $lines[] = '# TYPE renovo_backup_runs_total counter';
+        foreach ($this->backups->countsByStatus() as $status => $count) {
+            $lines[] = sprintf('renovo_backup_runs_total{status="%s"} %d', $status, $count);
         }
     }
 

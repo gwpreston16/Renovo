@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Domain\BackupSchedule;
 use App\Domain\Currency;
 use App\Domain\IsolationMode;
 use App\Repository\InstanceSettingsRepository;
 use App\Security\KeyRing;
 use App\Security\SecretCipher;
 use App\Security\UnreadableSecretException;
+use App\Service\Backup\BackupRetention;
 use DateTimeImmutable;
 use SensitiveParameter;
 
@@ -40,6 +42,10 @@ final class InstanceSettingsService
     public const KEY_UPDATE_LATEST_PUBLISHED_AT = 'update_latest_published_at';
     public const KEY_UPDATE_CHECKED_AT = 'update_checked_at';
     public const KEY_UPDATE_LAST_ATTEMPT_AT = 'update_last_attempt_at';
+    public const KEY_BACKUP_SCHEDULE = 'backup_schedule';
+    public const KEY_BACKUP_KEEP_DAILY = 'backup_keep_daily';
+    public const KEY_BACKUP_KEEP_WEEKLY = 'backup_keep_weekly';
+    public const KEY_BACKUP_KEEP_MONTHLY = 'backup_keep_monthly';
 
     /** @var array<string, string>|null */
     private ?array $cache = null;
@@ -330,6 +336,47 @@ final class InstanceSettingsService
     public function markUpdateCheckAttempted(DateTimeImmutable $at): void
     {
         $this->set(self::KEY_UPDATE_LAST_ATTEMPT_AT, $at->format('Y-m-d H:i:s'));
+    }
+
+    /**
+     * How often instance backups are taken (Phase 38). Off by default.
+     */
+    public function backupSchedule(): BackupSchedule
+    {
+        return BackupSchedule::tryFrom($this->get(self::KEY_BACKUP_SCHEDULE, BackupSchedule::Off->value))
+            ?? BackupSchedule::Off;
+    }
+
+    public function setBackupSchedule(BackupSchedule $schedule): void
+    {
+        $this->set(self::KEY_BACKUP_SCHEDULE, $schedule->value);
+    }
+
+    /**
+     * How many daily, weekly and monthly instance backups are kept. 7 / 4 / 6
+     * until an instance administrator says otherwise.
+     */
+    public function backupRetention(): BackupRetention
+    {
+        $count = fn (string $key, int $default): int => max(
+            0,
+            min(BackupRetention::MAX, (int) $this->get($key, (string) $default)),
+        );
+
+        return new BackupRetention(
+            $count(self::KEY_BACKUP_KEEP_DAILY, BackupRetention::DEFAULT_DAILY),
+            $count(self::KEY_BACKUP_KEEP_WEEKLY, BackupRetention::DEFAULT_WEEKLY),
+            $count(self::KEY_BACKUP_KEEP_MONTHLY, BackupRetention::DEFAULT_MONTHLY),
+        );
+    }
+
+    public function setBackupRetention(BackupRetention $retention): void
+    {
+        // An empty value reads as the default; "0" is not empty, so a count
+        // of none is kept as written.
+        $this->set(self::KEY_BACKUP_KEEP_DAILY, (string) $retention->daily);
+        $this->set(self::KEY_BACKUP_KEEP_WEEKLY, (string) $retention->weekly);
+        $this->set(self::KEY_BACKUP_KEEP_MONTHLY, (string) $retention->monthly);
     }
 
     private function get(string $key, string $default): string

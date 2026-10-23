@@ -8,7 +8,9 @@ To see which release you are on, look at the foot of the sidebar or at
 **Settings → Instance → Instance status**; to be told when a newer one is out,
 turn on [update checks](operations.md#version-and-updates).
 
-**Back up your database first.** Then, from the project directory:
+**Back up your database first.** With [instance backups](operations.md#instance-backups)
+set up, `docker compose exec app php bin/console backup:run --force` takes and
+checks one. Then, from the project directory:
 
 ```bash
 docker compose pull && docker compose up -d --build
@@ -41,6 +43,20 @@ from the new default arrangement and can rearrange it from their profile.
 Nothing else is touched. The migration's `down()` does nothing, because a
 deletion cannot be undone. The backup you took first is the only way back to
 the old arrangements.
+
+## After upgrading to instance backups (Phase 38)
+
+Nothing is needed beyond `phinx migrate` (one new table, `backup_runs`), and
+instance backups stay off until you turn them on. If you run a compose file of
+your own, copy three changes from `docker-compose.yml` first:
+
+- `BACKUP_ENCRYPTION_KEY` and `BACKUP_DIRECTORY` in the `app` **and**
+  `scheduler` environments;
+- the `logos` volume, read-only, on the `scheduler`, or scheduled backups
+  carry no logos (and warn about each one);
+- `php bin/console backup:run || true` in the scheduler's loop.
+
+Then follow [Turning them on](operations.md#turning-them-on).
 
 ## After upgrading to secrets at rest (Phase 40)
 

@@ -49,6 +49,9 @@ cp .env.example .env
 # and the key stored secrets are encrypted under.
 printf 'SESSION_KEY=%s\n' "$(openssl rand -hex 32)" >> .env
 printf 'SECRETS_KEY=%s\n' "$(openssl rand -hex 32)" >> .env
+# Optional: the key instance backups are encrypted under. Keep a copy of every
+# key off this server. See operations.md#instance-backups.
+printf 'BACKUP_ENCRYPTION_KEY=%s\n' "$(openssl rand -hex 32)" >> .env
 
 docker compose up
 ```

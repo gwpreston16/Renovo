@@ -99,9 +99,12 @@ COPY --from=assets /app/public/build ./public/build
 # application so their mode is set once, at build time. Both hold user files
 # that are never web-served — invoices and receipts in the first, in-progress
 # uploads in the second — so they are 0750 rather than the 0755 a cache wants.
+# var/backups holds the encrypted instance backups (Phase 38): 0700, since
+# nothing but the application ever reads them.
 RUN composer dump-autoload --no-dev --optimize --no-interaction \
-    && mkdir -p var/cache var/log var/attachments var/avatars var/imports public/assets/logos \
+    && mkdir -p var/cache var/log var/attachments var/avatars var/imports var/backups public/assets/logos \
     && chmod 750 var/attachments var/avatars var/imports \
+    && chmod 700 var/backups \
     && chown -R www-data:www-data var public/assets/logos
 
 # The short commit id an edge or development image was built from, shown

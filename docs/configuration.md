@@ -19,6 +19,8 @@ list. `.env` is never committed. The ones that matter most:
 | `SESSION_COOKIE_SECURE`     | Leave `true` unless you are serving plain HTTP on a trusted network. |
 | `AUTH_MAX_ATTEMPTS_PER_*`   | Login, reset and second-factor throttling, per account and per IP. |
 | `TOTP_ENCRYPTION_KEY`       | Superseded by `SECRETS_KEY`. Still the key when `SECRETS_KEY` is unset, and always tried when reading. |
+| `BACKUP_ENCRYPTION_KEY`     | Instance backups' key: `openssl rand -hex 32`. Unset, instance backups are unavailable. Never stored by Renovo; keep it, with the keys above, somewhere that is not this server. Settings shows its fingerprint. See [Instance backups](operations.md#instance-backups). |
+| `BACKUP_DIRECTORY`          | Where instance backups are written. `var/backups` (on the `appvar` volume) by default; the app and the scheduler must both see it. Copy it off the server too. |
 | `AUDIT_LOG_RETENTION_DAYS`  | How long audit entries are kept. 365 by default.              |
 | `EXCHANGE_RATE_API_KEY`     | Only for providers that need one. Takes precedence over a key entered in the UI. |
 | `EXCHANGE_RATE_TTL_SECONDS` | How long a cached rate table stays current. 12 hours by default. |

@@ -8,7 +8,9 @@ use App\Application\AppVersion;
 use App\Service\Update\UpdateCheckService;
 use App\Service\Update\UpdateStatus;
 use App\Service\Update\UpdateUnavailable;
+use App\Domain\BackupSchedule;
 use App\Domain\Currency;
+use App\Domain\Entity\BackupRun;
 use App\Domain\Entity\AuditEntry;
 use App\Domain\Entity\Category;
 use App\Domain\Entity\Household;
@@ -23,6 +25,8 @@ use App\Security\KeyRing;
 use App\Security\PermissionService;
 use App\Security\Scope;
 use App\Service\ExchangeRate\ExchangeRateProvider;
+use App\Service\Backup\BackupRetention;
+use App\Service\Backup\InstanceBackupService;
 use App\Service\ExchangeRate\ExchangeRateProviderRegistry;
 use DateTimeImmutable;
 
@@ -64,6 +68,7 @@ final class SettingsScreenService
         private readonly UpdateCheckService $updates,
         private readonly AppVersion $version,
         private readonly KeyRing $keys,
+        private readonly InstanceBackupService $instanceBackups,
         private readonly string $smtpHost = '',
         private readonly int $smtpPort = 0,
         private readonly string $smtpEncryption = 'none',
@@ -185,7 +190,8 @@ final class SettingsScreenService
      *     update: UpdateStatus,
      *     update_check_enabled: bool,
      *     update_banner_enabled: bool,
-     *     updates_unavailable: UpdateUnavailable|null
+     *     updates_unavailable: UpdateUnavailable|null,
+     *     backups: array<string, mixed>
      * }
      */
     public function instance(): array
@@ -217,7 +223,62 @@ final class SettingsScreenService
             'update_check_enabled' => $this->settings->updateCheckEnabled(),
             'update_banner_enabled' => $this->settings->updateBannerEnabled(),
             'updates_unavailable' => $this->updates->unavailableReason(),
+            'backups' => $this->instanceBackups(),
         ];
+    }
+
+    /**
+     * The Instance backups card (Phase 38): the key's fingerprint, never the
+     * key; the schedule and retention; and the last runs, each with its size
+     * ready to print.
+     *
+     * @return array{
+     *     key_state: string,
+     *     fingerprint: string|null,
+     *     directory: string,
+     *     schedule: string,
+     *     schedules: list<BackupSchedule>,
+     *     retention: BackupRetention,
+     *     max_retention: int,
+     *     last_verified: BackupRun|null,
+     *     local_only: bool,
+     *     history: list<array{run: BackupRun, size: array{key: string, value: float, digits: int}|null}>
+     * }
+     */
+    private function instanceBackups(): array
+    {
+        $history = array_map(static fn (BackupRun $run): array => [
+            'run' => $run,
+            'size' => $run->sizeBytes === null ? null : self::size($run->sizeBytes),
+        ], $this->instanceBackups->history());
+
+        return [
+            'key_state' => $this->instanceBackups->keyState(),
+            'fingerprint' => $this->instanceBackups->keyFingerprint(),
+            'directory' => $this->instanceBackups->directory(),
+            'schedule' => $this->settings->backupSchedule()->value,
+            'schedules' => BackupSchedule::cases(),
+            'retention' => $this->settings->backupRetention(),
+            'max_retention' => BackupRetention::MAX,
+            'last_verified' => $this->instanceBackups->lastVerified(),
+            'local_only' => $this->instanceBackups->hasLocalBackups(),
+            'history' => $history,
+        ];
+    }
+
+    /**
+     * A file size as the card prints it: kilobytes, or megabytes to one
+     * place once there are enough of them.
+     *
+     * @return array{key: string, value: float, digits: int}
+     */
+    private static function size(int $bytes): array
+    {
+        $kilobytes = $bytes / 1024;
+
+        return $kilobytes < 1024
+            ? ['key' => 'backup.size_kb', 'value' => max(1.0, ceil($kilobytes)), 'digits' => 0]
+            : ['key' => 'backup.size_mb', 'value' => round($kilobytes / 1024, 1), 'digits' => 1];
     }
 
     private function mayBackUp(Scope $scope): bool
