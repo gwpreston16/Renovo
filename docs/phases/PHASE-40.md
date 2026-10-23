@@ -236,7 +236,7 @@ Found while starting it:
       `$_SERVER` settings (K4, K5); compose passes the keys
 - [x] `.env.example` and the environment table in `docs/configuration.md` updated
 - [x] New strings in every catalogue in `translations/`
-- [ ] `composer check`, `i18n:check`, offline guard green on both engines
+- [x] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done
 
