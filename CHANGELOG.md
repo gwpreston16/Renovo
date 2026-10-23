@@ -84,7 +84,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 - **The calendar pages backwards** through the months the ledger holds,
   showing the charges taken at their recorded amounts. *Phase 34.*
 - **`php bin/console ledger:backfill [--household=ID]`** rebuilds the
-  payments from before the upgrade, marked *reconstructed*. Run it once after
+  payments from before the upgrade, marked *reconstructed* (a one-off or
+  lifetime entry's, *one_off*). Run it once after
   upgrading; it is safe to run again and never overwrites a payment the ledger
   wrote or an amount a member entered. See [upgrading](docs/upgrading.md). *Phase 34.*
 - **Payments in the API**: `GET` (paged) and `POST

@@ -54,7 +54,8 @@ docker compose run --rm app php bin/console ledger:backfill --household=3
 
 It rebuilds each subscription's charges from its start date up to its next
 payment date, at the price in force on each date, and marks them
-*reconstructed*. It is safe to run again: a date that already has a charge is
+*reconstructed* — except a one-off or lifetime entry's single payment, which is
+marked *one_off*, as the catch-up marks it. It is safe to run again: a date that already has a charge is
 left alone, so it never overwrites a charge the catch-up wrote or one a member
 recorded — except that a payment a member added by hand on one of those dates
 becomes that date's reconstructed charge, with what they entered kept as the
@@ -72,6 +73,11 @@ DELETE FROM subscription_charges
    AND note IS NULL;
 ```
 
+That leaves the one-off and lifetime entries' payments, which the backfill
+marks *one_off* and the catch-up writes the same way, so the two cannot be told
+apart afterwards. They are one payment per entry, on its date, and the catch-up
+would write each again on its next run; leave them.
+
 A reconstructed payment a member has recorded an amount on, skipped or written
 a note on is left; delete those too only if you mean to lose the correction. Invoices filed
 against a deleted payment stay, attached to their subscription.
@@ -81,3 +87,24 @@ drops the ledger whole. The catch-up and `ledger:backfill` can write Renovo's ow
 rows again, but every amount a member recorded, every charge they skipped, their
 notes and the payments they added by hand are gone. Only a backup — the one you
 took before upgrading, or a household backup from **Settings → Data** — has them.
+
+## After upgrading to savings (Phase 36)
+
+From Phase 36 a payment on an introductory or promotional price remembers what
+it would have cost without the offer, which is what **Saved through offers**
+adds up. Payments written before the upgrade have no such price yet. Run the
+backfill again, after the migration, **with a backup taken first**:
+
+```bash
+docker compose run --rm app php bin/console ledger:backfill
+```
+
+As well as anything it did before, it gives each payment on an offer that has
+none the price the offer went back to — the first ordinary price after it in
+the subscription's price history — and never changes one that has a price
+already. Its last line says how many it filled. Running it again fills nothing.
+
+Rolling back the migration (`20270201000001_add_reference_minor_to_subscription_charges`)
+drops that price from every payment, and with it the payments members marked
+**This was a discount**; the backfill can fill the offers' again, but not the
+discounts.

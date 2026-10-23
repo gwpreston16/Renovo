@@ -687,7 +687,8 @@ final class ChargeService
      * reconstruction counts them through today, and the ledger does not
      * invent charges for months nobody was billed.
      *
-     * One-off and lifetime entries get their single row on their date.
+     * One-off and lifetime entries get their single row on their date, marked
+     * `one_off` rather than `reconstructed`, as the catch-up marks it.
      *
      * Every charge it writes carries its offer's reference, and every charge
      * already there on a promotional price that has none is given one —

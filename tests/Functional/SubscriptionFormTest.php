@@ -276,6 +276,37 @@ final class SubscriptionFormTest extends DatabaseTestCase
         self::assertSame('60,14', $this->onlySubscription()->reminderDays);
     }
 
+    /**
+     * K75: moving a one-off onto a day that already has a payment is refused
+     * on the form itself, at the start date, rather than dropping either.
+     */
+    public function testMovingAOneOffOntoADayWithAPaymentIsRefusedOnTheForm(): void
+    {
+        $day = fn (string $offset): string => (new DateTimeImmutable($offset))->format('Y-m-d');
+        $oneOff = fn (string $date): array => $this->form([
+            'name' => 'Desk',
+            'price' => '150.00',
+            'subscription_type' => 'one_off',
+            'billing_cycle' => '',
+            'next_payment_date' => '',
+            'start_date' => $date,
+        ]);
+        $this->request('POST', '/subscriptions', $oneOff($day('-10 days')));
+        $desk = $this->onlySubscription();
+        $this->container()->get(\App\Service\ChargeService::class)->addManual($this->ownerScope(), $desk->id, [
+            'date' => $day('-5 days'),
+            'amount' => '20.00',
+        ]);
+
+        $response = $this->request('POST', '/subscriptions/' . $desk->id, $oneOff($day('-5 days')));
+
+        self::assertSame(422, $response->getStatusCode());
+        $html = (string) $response->getBody();
+        self::assertStringContainsString('start_date-error', $html);
+        self::assertStringContainsString('There is already a payment on that date', $html);
+        self::assertSame($day('-10 days'), $this->onlySubscription()->startDate?->format('Y-m-d'));
+    }
+
     public function testChoosingDaysButNoneIsRefused(): void
     {
         $response = $this->request('POST', '/subscriptions', $this->form(['reminder_mode' => 'days']));
