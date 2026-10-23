@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service\Update;
 
+use App\Support\Environment;
+
 /**
  * What the operator's environment says about update checks.
  *
@@ -32,9 +34,7 @@ final class UpdateCheckConfig
     public static function fromEnvironment(): self
     {
         $read = static function (string $key): string {
-            $value = $_ENV[$key] ?? getenv($key);
-
-            return is_string($value) ? trim($value) : '';
+            return trim(Environment::get($key) ?? '');
         };
 
         $flag = strtolower($read('UPDATE_CHECK'));

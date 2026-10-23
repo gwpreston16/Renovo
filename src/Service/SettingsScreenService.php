@@ -19,6 +19,7 @@ use App\Domain\IsolationMode;
 use App\Domain\Permission;
 use App\Domain\Entity\User;
 use App\Repository\HouseholdRepository;
+use App\Security\KeyRing;
 use App\Security\PermissionService;
 use App\Security\Scope;
 use App\Service\ExchangeRate\ExchangeRateProvider;
@@ -62,6 +63,7 @@ final class SettingsScreenService
         private readonly PermissionService $permissions,
         private readonly UpdateCheckService $updates,
         private readonly AppVersion $version,
+        private readonly KeyRing $keys,
         private readonly string $smtpHost = '',
         private readonly int $smtpPort = 0,
         private readonly string $smtpEncryption = 'none',
@@ -176,6 +178,7 @@ final class SettingsScreenService
      *     trusted_hosts: list<array<string, mixed>>,
      *     smtp: array{host: string, port: int, encryption: string, authenticates: bool},
      *     metrics_enabled: bool,
+     *     secrets_key_set: bool,
      *     scheduler_last_run_at: DateTimeImmutable|null,
      *     version: string,
      *     version_build: string|null,
@@ -200,6 +203,10 @@ final class SettingsScreenService
                 'authenticates' => $this->smtpAuthenticates,
             ],
             'metrics_enabled' => $this->metricsEnabled,
+            // Without SECRETS_KEY, stored secrets are encrypted under
+            // SESSION_KEY (or TOTP_ENCRYPTION_KEY), and rotating the session
+            // key would make every channel and authenticator unreadable.
+            'secrets_key_set' => $this->keys->usesSecretsKey(),
             'scheduler_last_run_at' => $this->settings->schedulerLastRunAt(),
             // The Version row and the Updates switches. Unavailable is the
             // environment ruling checks out (UPDATE_CHECK=false, or a

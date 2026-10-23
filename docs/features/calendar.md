@@ -19,6 +19,8 @@ nothing more. **Create a new link** retires the old one immediately — every
 calendar subscribed to it stops updating — which is why it asks first. It
 replaces only the token that card issued; a read-only token you made yourself
 under **Settings → Data & integrations** works just as well and is left alone.
+Changing or resetting your password ends the link too, like every token. Create
+a new one afterwards.
 
 Every event is a whole-day event — a billing date is a date, not an instant —
 and its identifier is stable, so a client that refetches on a timer recognises

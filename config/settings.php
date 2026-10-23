@@ -10,13 +10,17 @@
 
 declare(strict_types=1);
 
+use App\Support\BuildFingerprint;
+use App\Support\Environment;
+
 /**
  * @return string
  */
 $env = static function (string $key, ?string $default = null): string {
-    $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+    // Never $_SERVER: php-fpm puts request headers there (App\Support\Environment).
+    $value = Environment::get($key);
 
-    if ($value === false || $value === '') {
+    if ($value === null || $value === '') {
         if ($default === null) {
             throw new RuntimeException(sprintf(
                 'Required environment variable %s is not set. Copy .env.example to .env and fill it in.',
@@ -188,7 +192,9 @@ return [
         // AssetVersion stats files relative to it to build cache-busted URLs.
         'public' => dirname(__DIR__) . '/public',
         'templates' => dirname(__DIR__) . '/templates',
-        'cache' => dirname(__DIR__) . '/var/cache',
+        // Compiled caches, in a directory named for the running code so a new
+        // release never reuses the last one's (App\Support\BuildFingerprint).
+        'cache' => dirname(__DIR__) . '/var/cache/' . BuildFingerprint::of(dirname(__DIR__)),
         'logs' => dirname(__DIR__) . '/var/log',
         // Staging for an in-progress import. Cleared when the import commits or
         // is abandoned, and swept by the scheduler.

@@ -39,6 +39,7 @@ use App\Service\MetricsService;
 use App\Repository\NotificationLogRepository;
 use App\Security\CsrfTokenManager;
 use App\Security\KeyRing;
+use App\Support\Settings;
 use App\Security\SecretCipher;
 use App\Security\Session;
 use App\Security\SessionInterface;
@@ -114,9 +115,15 @@ use function DI\autowire;
 use function DI\factory;
 use function DI\get;
 
-return static function (ContainerBuilder $builder, array $settings): void {
+/**
+ * @param array<string, mixed>|null $settings Fixed settings, for a test that builds
+ *        its own container. The application passes none: `settings` is then a
+ *        factory, read from the environment when the container starts, so a
+ *        compiled container never holds them (App\Support\Settings).
+ */
+return static function (ContainerBuilder $builder, ?array $settings = null): void {
     $builder->addDefinitions([
-        'settings' => $settings,
+        'settings' => $settings ?? factory([Settings::class, 'load']),
 
         // ------------------------------------------------------------------
         // Persistence

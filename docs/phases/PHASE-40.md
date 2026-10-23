@@ -200,20 +200,32 @@ Found while starting it:
   fallback chain cannot drift.
 - **New strings go in every catalogue** in `translations/`, not only `en.php`
   (`CLAUDE.md`).
+- **The operator documentation goes in `docs/`, not the README.** *Changed
+  2026-10-23*, as in Phase 37: **Rotating the encryption key** is a section of
+  `docs/operations.md`, the variables are rows in `docs/configuration.md`, and
+  `docs/upgrading.md` has the Phase 40 notes (`CLAUDE.md`: operator settings
+  live in `docs/`).
+- **`secrets:rotate` exits 2 when a value could not be opened** (found while
+  building it), so a script or a person notices; the values are still listed
+  and left as they are.
+- **The channel on/off switch is audited as an edit**
+  (`notification_channel.updated`), since it changes the channel.
+- **`bin/dev-setup.sh` generates a `SECRETS_KEY` for a new `.env` only.** An
+  existing development instance moves to it when its owner chooses.
 
 ## Status
 
-- [ ] `SecretCipher` key ring: `v2:<kid>:`, previous keys, `v1:` fallback;
+- [x] `SecretCipher` key ring: `v2:<kid>:`, previous keys, `v1:` fallback;
       `SECRETS_KEY`, `SECRETS_PREVIOUS_KEYS` wired in the container
 - [x] Channel config and rate key encrypted on write, decrypted on read
 - [x] Backfill migrations on both engines
-- [ ] `secrets:rotate` with `--dry-run`; audit entry; README section
+- [x] `secrets:rotate` with `--dry-run`; audit entry; README section
 - [x] API and feed tokens revoked on password change and reset; email copy
 - [x] Channel create / edit / delete audit entries
-- [ ] Settings read at run time; compiled container rebuilt on code change; no
+- [x] Settings read at run time; compiled container rebuilt on code change; no
       `$_SERVER` settings (K4, K5); compose passes the keys
-- [ ] `.env.example` and the README environment table updated
-- [ ] New strings in every catalogue in `translations/`
+- [x] `.env.example` and the README environment table updated
+- [x] New strings in every catalogue in `translations/`
 - [ ] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done

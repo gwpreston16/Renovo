@@ -2693,6 +2693,13 @@ return [
     'settings.status_metrics' => 'Metrics',
     'settings.status_metrics_off' => 'Off. Set {variable} to expose /metrics.',
     'settings.status_metrics_on' => '/metrics answers a request that carries the token.',
+    'settings.status_secrets_key' => 'Encryption key',
+    'settings.status_secrets_key_set' => 'Own key',
+    'settings.status_secrets_key_set_hint' => 'Stored secrets have a key of their own, so the session key can change freely.',
+    'settings.status_secrets_key_unset' => 'Shared with sessions',
+    'settings.status_secrets_key_unset_hint' =>
+        'Set {variable}. Until then, stored secrets are encrypted under {session}, and changing it would '
+        . 'make every notification channel and authenticator app unreadable.',
     'settings.status_scheduler' => 'Scheduler last ran',
     'settings.status_scheduler_never' => 'Not yet',
     'settings.subscriptions_count' => '{count, plural, one {subscription} other {subscriptions}}',

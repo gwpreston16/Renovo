@@ -42,6 +42,35 @@ Nothing else is touched. The migration's `down()` does nothing, because a
 deletion cannot be undone. The backup you took first is the only way back to
 the old arrangements.
 
+## After upgrading to secrets at rest (Phase 40)
+
+**Back up your database first**, as for every upgrade. Then:
+
+- **Notification channel settings and the exchange-rate API key are encrypted**
+  by the `migrate` container on start (two backfill migrations). Channels go on
+  sending throughout: until the backfill reaches a row, it is read as it was.
+- **Set `SECRETS_KEY`** (`openssl rand -hex 32`) in `.env`, restart, and run
+  `php bin/console secrets:rotate`. Without it everything is encrypted under
+  `SESSION_KEY`, and **Settings → Instance → Instance status** says so. Nothing
+  breaks if you leave it, but rotating `SESSION_KEY` would then make every
+  channel and authenticator app unreadable. See
+  [Rotating the encryption key](operations.md#rotating-the-encryption-key).
+- **`docker-compose.yml` now passes `SESSION_KEY`, `SECRETS_KEY`,
+  `SECRETS_PREVIOUS_KEYS` and `TOTP_ENCRYPTION_KEY` to the `migrate` and
+  `scheduler` containers too**, and refuses to start without `SESSION_KEY`.
+  If you keep your own compose file, add them to all three PHP services.
+  Before this release `TOTP_ENCRYPTION_KEY` never reached a container: if you
+  set it in `.env`, it was not in use, and your two-factor seeds are encrypted
+  under `SESSION_KEY`. Both keys are tried when reading, so nothing is lost
+  either way.
+- **Changing or resetting a password now revokes that account's API tokens and
+  calendar feed links.** Members who use them will need to create new ones
+  afterwards.
+- **A changed environment variable takes effect on restart.** Before this
+  release a production instance (`APP_DEBUG=false`) kept the settings it first
+  started with in `var/cache`, and could fail after an upgrade until that
+  directory was deleted. You no longer need to clear it.
+
 ## After upgrading to the payment ledger (Phase 34)
 
 From Phase 34 Renovo writes a ledger row for every billing date that passes.

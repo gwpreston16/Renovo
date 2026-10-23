@@ -171,6 +171,17 @@
                     {% endif %}
                 </dd>
 
+                <dt>{{ t('settings.status_secrets_key') }}</dt>
+                <dd>
+                    {% if secrets_key_set %}
+                        <span class="badge badge-ok">{{ t('settings.status_secrets_key_set') }}</span>
+                        <span class="muted block">{{ t('settings.status_secrets_key_set_hint') }}</span>
+                    {% else %}
+                        <span class="badge badge-warn">{{ t('settings.status_secrets_key_unset') }}</span>
+                        <span class="muted block">{{ t('settings.status_secrets_key_unset_hint', {'variable': 'SECRETS_KEY', 'session': 'SESSION_KEY'}) }}</span>
+                    {% endif %}
+                </dd>
+
                 <dt>{{ t('settings.status_scheduler') }}</dt>
                 <dd>
                     {% if scheduler_last_run_at %}

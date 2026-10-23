@@ -43,6 +43,13 @@ services:
       DB_USER: ${DB_USER:-renovo}
       DB_PASSWORD: ${DB_PASSWORD:-renovo}
       SESSION_KEY: "${SESSION_KEY:?Set SESSION_KEY in .env. Generate one with 'openssl rand -hex 32'}"
+      # Stored secrets (two-factor seeds, channel settings, the rate key) are
+      # encrypted under SECRETS_KEY, falling back to TOTP_ENCRYPTION_KEY and
+      # then SESSION_KEY. Every service that reads or writes them gets all
+      # four, or one would encrypt under a different key from the others.
+      SECRETS_KEY: ${SECRETS_KEY:-}
+      SECRETS_PREVIOUS_KEYS: ${SECRETS_PREVIOUS_KEYS:-}
+      TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:-}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       SMTP_HOST: ${SMTP_HOST:-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}
@@ -127,7 +134,12 @@ services:
       DB_NAME: ${DB_NAME:-renovo}
       DB_USER: ${DB_USER:-renovo}
       DB_PASSWORD: ${DB_PASSWORD:-renovo}
-      SESSION_KEY: ${SESSION_KEY:-unused-by-migrations}
+      # The Phase 40 backfills encrypt channel settings, so the migration needs
+      # the real keys — never a placeholder it would encrypt under.
+      SESSION_KEY: "${SESSION_KEY:?Set SESSION_KEY in .env. Generate one with 'openssl rand -hex 32'}"
+      SECRETS_KEY: ${SECRETS_KEY:-}
+      SECRETS_PREVIOUS_KEYS: ${SECRETS_PREVIOUS_KEYS:-}
+      TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:-}
     command: ["vendor/bin/phinx", "migrate", "--configuration", "phinx.php"]
     restart: "no"
 
@@ -155,7 +167,12 @@ services:
       DB_NAME: ${DB_NAME:-renovo}
       DB_USER: ${DB_USER:-renovo}
       DB_PASSWORD: ${DB_PASSWORD:-renovo}
-      SESSION_KEY: ${SESSION_KEY:-unused-by-scheduler}
+      # The scheduler sends through the channels, so it reads their settings
+      # with the same keys as the app.
+      SESSION_KEY: "${SESSION_KEY:?Set SESSION_KEY in .env. Generate one with 'openssl rand -hex 32'}"
+      SECRETS_KEY: ${SECRETS_KEY:-}
+      SECRETS_PREVIOUS_KEYS: ${SECRETS_PREVIOUS_KEYS:-}
+      TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:-}
       APP_URL: ${APP_URL:-http://localhost:9090}
       # The scheduler is what actually sends the reminders, so it needs the
       # whole relay configuration rather than the subset the app needs for

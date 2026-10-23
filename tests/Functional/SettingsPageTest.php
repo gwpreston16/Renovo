@@ -12,6 +12,7 @@ use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\TagRepository;
 use App\Repository\UserRepository;
+use App\Security\KeyRing;
 use App\Security\CsrfTokenManager;
 use App\Security\Scope;
 use App\Security\SessionInterface;
@@ -135,6 +136,35 @@ final class SettingsPageTest extends DatabaseTestCase
         self::assertStringContainsString('id="instance-status"', $page);
         self::assertStringContainsString('name="demo_mode"', $page);
         self::assertStringContainsString('name="allow_registration"', $page);
+    }
+
+    public function testInstanceStatusWarnsWhileSecretsShareTheSessionKey(): void
+    {
+        $page = $this->instancePageWith(new KeyRing('session-key', [], fromSecretsKey: false));
+
+        self::assertStringContainsString('Shared with sessions', $page);
+        self::assertStringContainsString('SECRETS_KEY', $page);
+    }
+
+    public function testInstanceStatusSaysWhenSecretsHaveAKeyOfTheirOwn(): void
+    {
+        $page = $this->instancePageWith(new KeyRing('secrets-key'));
+
+        self::assertStringContainsString('Own key', $page);
+        self::assertStringNotContainsString('Shared with sessions', $page);
+    }
+
+    private function instancePageWith(KeyRing $keys): string
+    {
+        $bootstrap = require dirname(__DIR__, 2) . '/config/bootstrap.php';
+        $this->app = $bootstrap(true, [
+            SessionInterface::class => $this->session,
+            MailerInterface::class => new RecordingMailer(),
+            KeyRing::class => $keys,
+        ]);
+        $this->signIn($this->adminId);
+
+        return $this->body($this->request('GET', '/settings/instance'));
     }
 
     public function testTheMailRelayIsDescribedAndItsPasswordIsNot(): void

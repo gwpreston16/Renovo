@@ -10,8 +10,10 @@
 
 declare(strict_types=1);
 
+use App\Support\BuildFingerprint;
+use App\Support\Environment;
+use App\Support\Settings;
 use DI\ContainerBuilder;
-use Dotenv\Dotenv;
 use Slim\App;
 use Slim\Factory\AppFactory;
 use Slim\Handlers\Strategies\RequestResponseNamedArgs;
@@ -21,19 +23,23 @@ return static function (bool $withMiddleware = true, array $overrides = []): App
 
     // .env is optional: in Docker and in CI the variables are already in the
     // environment, and a missing file there is normal rather than an error.
-    if (is_file($root . '/.env')) {
-        Dotenv::createImmutable($root)->safeLoad();
-    }
+    Environment::loadDotenv($root);
 
-    /** @var array<string, mixed> $settings */
-    $settings = require $root . '/config/settings.php';
+    $settings = Settings::load();
 
+    // The compiled container holds no settings (the container reads them when
+    // it starts), and its directory is named for the running code, so neither
+    // an environment change nor an upgrade is ever answered from a stale one.
     $builder = new ContainerBuilder();
     if (!$settings['app']['debug'] && $overrides === []) {
-        $builder->enableCompilation($settings['paths']['cache'] . '/container');
+        $compiled = $settings['paths']['cache'];
+        if (!is_dir($compiled)) {
+            BuildFingerprint::pruneSiblings($compiled);
+        }
+        $builder->enableCompilation($compiled . '/container');
     }
 
-    (require $root . '/config/container.php')($builder, $settings);
+    (require $root . '/config/container.php')($builder);
 
     // Tests replace a small number of services (the session, the clock) so the
     // rest of the container — the real routes, middleware, repositories and
