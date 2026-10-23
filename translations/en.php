@@ -715,6 +715,9 @@ return [
     'error.channel.type_required' => 'Choose a channel type.',
     'error.channel.missing' => 'That channel no longer exists.',
     'error.channel.type_unavailable' => 'That channel type is no longer available.',
+    'error.channel.unreadable' =>
+        "This channel's settings can't be read with the current encryption key. Ask your administrator to "
+        . 'restore the old key, or delete the channel and add it again.',
     'error.digest.weekday' => 'Choose a day of the week.',
     'error.demo.read_only' =>
         'This instance is a read-only demonstration. Nothing here can be changed.',

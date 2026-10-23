@@ -28,38 +28,41 @@ use Phinx\Migration\AbstractMigration;
  *
  * Rolling back decrypts every row to plain JSON again. A row no configured key
  * opens is left as it is and reported.
+ *
+ * It depends on the application's key resolution and cipher (KeyRing,
+ * SecretCipher's `v2:` format and its purpose strings), which later phases must
+ * keep compatible: this migration replays on every fresh install. The cipher is
+ * built only when a row needs it, so an empty database needs no key.
  */
 final class EncryptNotificationChannelConfig extends AbstractMigration
 {
     private const BATCH = 200;
 
+    private ?SecretCipher $cipher = null;
+
     public function up(): void
     {
-        $cipher = $this->cipher();
-
-        $this->eachRow(function (int $id, string $config) use ($cipher): void {
+        $this->eachRow(function (int $id, string $config): void {
             if (SecretCipher::isEncrypted($config)) {
                 return;
             }
 
             $this->execute(
                 'UPDATE notification_channels SET config = ? WHERE id = ? AND config = ?',
-                [$cipher->encrypt($config), $id, $config],
+                [$this->cipher()->encrypt($config), $id, $config],
             );
         });
     }
 
     public function down(): void
     {
-        $cipher = $this->cipher();
-
-        $this->eachRow(function (int $id, string $config) use ($cipher): void {
+        $this->eachRow(function (int $id, string $config): void {
             if (!SecretCipher::isEncrypted($config)) {
                 return;
             }
 
             try {
-                $plain = $cipher->decrypt($config);
+                $plain = $this->cipher()->decrypt($config);
             } catch (UnreadableSecretException) {
                 $this->getOutput()->writeln(sprintf(
                     '<comment>Notification channel %d could not be decrypted with any configured key; '
@@ -79,6 +82,10 @@ final class EncryptNotificationChannelConfig extends AbstractMigration
 
     private function cipher(): SecretCipher
     {
+        if ($this->cipher !== null) {
+            return $this->cipher;
+        }
+
         $ring = KeyRing::fromSettings(require dirname(__DIR__) . '/config/settings.php');
 
         if (!$ring->usesSecretsKey()) {
@@ -89,7 +96,7 @@ final class EncryptNotificationChannelConfig extends AbstractMigration
             );
         }
 
-        return new SecretCipher($ring, SecretCipher::PURPOSE_CHANNEL_CONFIG);
+        return $this->cipher = new SecretCipher($ring, SecretCipher::PURPOSE_CHANNEL_CONFIG);
     }
 
     /**

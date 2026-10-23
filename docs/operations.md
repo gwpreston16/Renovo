@@ -93,6 +93,13 @@ channel as misconfigured, and that member signs in with a recovery code.
 Rotating `SESSION_KEY` on its own is safe once `SECRETS_KEY` is set. It signs
 everybody out, by design.
 
+**Keep the key with your database backups.** A database dump is only readable
+with the key its secrets were encrypted under (`SECRETS_KEY`, or
+`TOTP_ENCRYPTION_KEY` or `SESSION_KEY` if that was the one in use). Restoring
+one onto a new host means giving it that key, as `SECRETS_KEY` or in
+`SECRETS_PREVIOUS_KEYS`, or every channel and authenticator app on it is
+unreadable. The household backup below holds none of these secrets.
+
 ## Backup and restore
 
 **Settings → Data & integrations → Backup & restore** downloads a ZIP of everything the household

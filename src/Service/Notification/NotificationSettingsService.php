@@ -111,6 +111,12 @@ final class NotificationSettingsService
             throw ValidationException::field('channel_type', 'error.channel.missing');
         }
 
+        // Merging the form into an empty config would save it over ciphertext
+        // the instance merely cannot open yet, losing the secrets for good.
+        if ($existing->configUnreadable) {
+            throw ValidationException::field('channel_type', 'error.channel.unreadable');
+        }
+
         $notifier = $this->notifiers->find($existing->type);
         if ($notifier === null) {
             throw ValidationException::field('channel_type', 'error.channel.type_unavailable');
@@ -125,8 +131,9 @@ final class NotificationSettingsService
 
     /**
      * Turn a channel on or off and change nothing else about it — the
-     * Notifications page's switch. Its label and configuration are rewritten
-     * as they are stored, so a secret is never round-tripped through a form.
+     * Notifications page's switch. Only the flag is written, so a secret is
+     * never round-tripped through a form, and a config this instance cannot
+     * decrypt is never overwritten.
      *
      * @throws ValidationException when the channel is not this user's.
      */
@@ -137,7 +144,7 @@ final class NotificationSettingsService
             throw ValidationException::field('channel_type', 'error.channel.missing');
         }
 
-        $this->channels->update($user->id, $id, $existing->label, $existing->config, $active);
+        $this->channels->setActive($user->id, $id, $active);
         $this->audited(AuditAction::NotificationChannelUpdated, $user, $existing->type, $existing->label);
     }
 

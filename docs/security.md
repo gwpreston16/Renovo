@@ -14,7 +14,7 @@ scan the QR code and type the six-digit code it shows, to prove the app received
 the key. Turning two-step verification off requires your password, so a stolen
 but still-signed-in session cannot quietly remove it.
 
-The secret is stored encrypted (see `TOTP_ENCRYPTION_KEY`), which is the best
+The secret is stored encrypted (see `SECRETS_KEY` and [Rotating the encryption key](operations.md#rotating-the-encryption-key)), which is the best
 available: the server has to reproduce codes from it, so it cannot be hashed.
 What that protects is a database dump or a stray backup, not an attacker who
 already owns the running application. A submitted code is also refused if its

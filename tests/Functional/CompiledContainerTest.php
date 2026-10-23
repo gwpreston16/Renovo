@@ -26,7 +26,10 @@ final class CompiledContainerTest extends TestCase
         $first = $this->container();
         $settings = $first->get('settings');
         self::assertIsArray($settings);
-        $compiled = $settings['paths']['cache'] . '/container/CompiledContainer.php';
+        $build = $settings['paths']['cache'];
+        $compiled = $build . '/container/CompiledContainer.php';
+        // This test's own compile is removed again, whole; a build directory a
+        // developer already had is left in place.
         $existed = is_file($compiled);
 
         try {
@@ -43,7 +46,7 @@ final class CompiledContainerTest extends TestCase
             self::assertSame($_ENV['SECRETS_KEY'], $this->container()->get(KeyRing::class)->current());
         } finally {
             if (!$existed) {
-                exec('rm -rf ' . escapeshellarg(dirname($compiled)));
+                exec('rm -rf ' . escapeshellarg($build));
             }
         }
     }

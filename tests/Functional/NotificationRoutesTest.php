@@ -146,6 +146,7 @@ final class NotificationRoutesTest extends DatabaseTestCase
         self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('Lost phone', (string) $response->getBody());
         self::assertStringNotContainsString('lost.example.net', (string) $response->getBody());
+        self::assertStringContainsString("settings can&#039;t be read", (string) $response->getBody());
     }
 
     /**
@@ -211,6 +212,42 @@ final class NotificationRoutesTest extends DatabaseTestCase
             TestKeys::ring(),
         );
         self::assertCount(1, $channels->findAllForUser($this->viewerId));
+    }
+
+    public function testSwitchingOrEditingAChannelNoKeyOpensLeavesItsCiphertextAlone(): void
+    {
+        $lost = new NotificationChannelRepository(
+            $this->db,
+            new SystemClock(new DateTimeZone('UTC')),
+            new KeyRing('a-key-this-instance-does-not-have'),
+        );
+        $id = $lost->create($this->viewerId, 'gotify', 'Lost phone', [
+            'url' => 'https://lost.example.net',
+            'token' => 'AsecretToken1',
+        ]);
+        $raw = static fn (self $test): string => (string) $test->db->fetchValue(
+            'SELECT config FROM notification_channels WHERE id = :id',
+            ['id' => $id],
+        );
+        $before = $raw($this);
+
+        $this->signIn($this->viewerId);
+        $this->request('POST', '/settings/notifications/channels/' . $id . '/active', ['is_active' => '0']);
+
+        self::assertSame($before, $raw($this), 'The switch must not rewrite a config it cannot read.');
+        self::assertFalse($lost->find($this->viewerId, $id)?->isActive);
+
+        $response = $this->request('POST', '/settings/notifications/channels/' . $id, [
+            'label' => 'Lost phone',
+            'url' => 'https://lost.example.net',
+            'token' => '',
+            'is_active' => '1',
+        ]);
+
+        self::assertSame(422, $response->getStatusCode());
+        self::assertStringContainsString("settings can&#039;t be read", (string) $response->getBody());
+        self::assertSame($before, $raw($this), 'An edit must not save the form over unreadable ciphertext.');
+        self::assertSame('AsecretToken1', $lost->find($this->viewerId, $id)?->config('token'));
     }
 
     public function testAddingEditingAndDeletingAChannelIsAuditedWithoutItsConfig(): void

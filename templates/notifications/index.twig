@@ -39,7 +39,9 @@
                             <div class="account-row-text">
                                 <span class="account-row-name">{{ channel.label }}</span>
                                 <span class="account-row-meta">{{ channel_description(channel) }}</span>
-                                {% if channel.lastError %}
+                                {% if channel.configUnreadable %}
+                                    <span class="field-error">{{ error_message('error.channel.unreadable') }}</span>
+                                {% elseif channel.lastError %}
                                     <span class="field-error">{{ t('notifications.last_error', {'reason': channel.lastError}) }}</span>
                                 {% elseif channel.lastSuccessAt %}
                                     <span class="account-row-meta">{{ t('notifications.last_delivered', {

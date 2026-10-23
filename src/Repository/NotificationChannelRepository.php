@@ -96,6 +96,27 @@ final class NotificationChannelRepository extends AbstractRepository
     }
 
     /**
+     * Turn a channel on or off and touch nothing else — in particular not its
+     * stored config, which may be ciphertext this instance cannot open.
+     */
+    public function setActive(int $userId, int $id, bool $isActive): void
+    {
+        $this->db->execute(
+            'UPDATE ' . $this->quote($this->table())
+            . ' SET ' . $this->quote('is_active') . ' = :active,'
+            . ' ' . $this->quote('updated_at') . ' = :now'
+            . ' WHERE ' . $this->quote('id') . ' = :id'
+            . ' AND ' . $this->quote('user_id') . ' = :user',
+            [
+                'active' => $this->db->platform()->booleanParameter($isActive),
+                'now' => $this->now(),
+                'id' => $id,
+                'user' => $userId,
+            ],
+        );
+    }
+
+    /**
      * @param array<string, string> $config
      */
     public function update(int $userId, int $id, string $label, array $config, bool $isActive): void
@@ -189,6 +210,7 @@ final class NotificationChannelRepository extends AbstractRepository
     private function hydrate(array $row): NotificationChannel
     {
         $config = [];
+        $unreadable = false;
         try {
             // An unprefixed row was written before configs were encrypted, and
             // is read as plain JSON until the backfill migration reaches it.
@@ -202,7 +224,13 @@ final class NotificationChannelRepository extends AbstractRepository
                     }
                 }
             }
-        } catch (JsonException | UnreadableSecretException) {
+        } catch (UnreadableSecretException) {
+            // Under a key that is no longer configured: read as empty, so the
+            // channel reports itself misconfigured, and marked so that nothing
+            // overwrites the ciphertext before the key is found.
+            $config = [];
+            $unreadable = true;
+        } catch (JsonException) {
             // A config row that cannot be read — corrupt, or under a key that
             // is no longer configured — is treated as empty rather than fatal:
             // the channel then reports itself as misconfigured, which is
@@ -221,6 +249,7 @@ final class NotificationChannelRepository extends AbstractRepository
             $row['last_success_at'] === null ? null : new DateTimeImmutable((string) $row['last_success_at']),
             new DateTimeImmutable((string) $row['created_at']),
             new DateTimeImmutable((string) $row['updated_at']),
+            $unreadable,
         );
     }
 

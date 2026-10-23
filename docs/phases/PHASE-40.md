@@ -215,6 +215,10 @@ Found while starting it:
   Owner's "Send reset" goes through the reset link, which revokes.
 - **The channel on/off switch is audited as an edit**
   (`notification_channel.updated`), since it changes the channel.
+- **Nothing writes over a channel config no key opens** (found in the merge
+  review). The on/off switch writes only the flag; an edit is refused with a
+  message, and the channel's row says its settings can't be read. Delete and
+  re-add it, or restore the old key.
 - **`bin/dev-setup.sh` generates a `SECRETS_KEY` for a new `.env` only.** An
   existing development instance moves to it when its owner chooses.
 
@@ -224,12 +228,13 @@ Found while starting it:
       `SECRETS_KEY`, `SECRETS_PREVIOUS_KEYS` wired in the container
 - [x] Channel config and rate key encrypted on write, decrypted on read
 - [x] Backfill migrations on both engines
-- [x] `secrets:rotate` with `--dry-run`; audit entry; README section
+- [x] `secrets:rotate` with `--dry-run`; audit entry; *Rotating the encryption key*
+      in `docs/operations.md`
 - [x] API and feed tokens revoked on password change and reset; email copy
 - [x] Channel create / edit / delete audit entries
 - [x] Settings read at run time; compiled container rebuilt on code change; no
       `$_SERVER` settings (K4, K5); compose passes the keys
-- [x] `.env.example` and the README environment table updated
+- [x] `.env.example` and the environment table in `docs/configuration.md` updated
 - [x] New strings in every catalogue in `translations/`
 - [ ] `composer check`, `i18n:check`, offline guard green on both engines
 

@@ -17,6 +17,9 @@ use Phinx\Migration\AbstractMigration;
  * `EXCHANGE_RATE_API_KEY` in the environment is never stored, so it is not
  * touched.
  *
+ * Like that backfill, it depends on KeyRing and SecretCipher staying
+ * compatible, and builds the cipher only when there is a key to encrypt.
+ *
  * Data-only, so on MySQL (no transactional DDL) it is safe to run again.
  * Rolling back stores the key in plain text again.
  */

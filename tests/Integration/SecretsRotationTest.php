@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
+use App\Domain\StoredSecretKind;
 use App\Service\Auth\TotpService;
 use App\Service\Auth\RecoveryCodeService;
 use App\Security\Totp;
@@ -103,6 +104,39 @@ final class SecretsRotationTest extends DatabaseTestCase
         );
 
         self::assertTrue($totp->verify($this->alice, Totp::codeForStep(self::SEED, $step)));
+    }
+
+    public function testEveryBatchIsRotatedAndAClearedRateKeyIsLeftAlone(): void
+    {
+        $old = new KeyRing('key-one');
+        foreach (range(1, 201) as $n) {
+            $this->channels($old)->create($this->bob, 'ntfy', 'Topic ' . $n, ['topic' => 't' . $n]);
+        }
+        $this->settings($old)->setRateProviderKey('');
+
+        $report = $this->service(new KeyRing('key-two', ['key-one']))->rotate();
+
+        self::assertSame(201, $report['channel_configs']['rotated']);
+        self::assertSame(0, $report['rate_provider_key']['rotated'] + $report['rate_provider_key']['current']);
+        $new = new SecretCipher(new KeyRing('key-two'), SecretCipher::PURPOSE_CHANNEL_CONFIG);
+        foreach (array_column($this->db->fetchAll('SELECT config FROM notification_channels'), 'config') as $config) {
+            self::assertTrue($new->isCurrent((string) $config));
+        }
+        self::assertSame('', (string) $this->db->fetchValue(
+            "SELECT setting_value FROM instance_settings WHERE setting_key = 'rate_provider_key'",
+        ));
+    }
+
+    public function testAValueRewrittenSinceItWasReadIsNotReplaced(): void
+    {
+        $id = $this->channels(new KeyRing('key-one'))->create($this->bob, 'ntfy', 'Topic', ['topic' => 'a']);
+        $current = $this->rawConfig($id);
+
+        $replaced = (new StoredSecretRepository($this->db))
+            ->replace(StoredSecretKind::ChannelConfig, $id, 'v2:stale:value', 'v2:new:value');
+
+        self::assertFalse($replaced);
+        self::assertSame($current, $this->rawConfig($id));
     }
 
     public function testASecondRunChangesNothing(): void
