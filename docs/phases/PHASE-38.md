@@ -252,7 +252,13 @@ Found while building it:
   and scheduler both get `BACKUP_ENCRYPTION_KEY` and `BACKUP_DIRECTORY`.
 - **The cross-engine test runs when `CROSS_ENGINE_DB_*` names the other
   engine's test database**, and skips otherwise. Both directions passed on
-  2026-10-23.
+  2026-10-23, and CI sets it on both legs.
+- **A run's plaintext never sits in `BACKUP_DIRECTORY`.** Its workspace is a
+  private directory beside it (`var/.backups-work`), or the system temporary
+  directory when that parent cannot be written; a run killed part-way leaves
+  it behind, and the next run sweeps it (merge review).
+- **Restore writes the files before the rows**, so a file it cannot write
+  leaves an empty database to run it again into (merge review).
 
 ## Status
 
