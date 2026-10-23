@@ -116,7 +116,12 @@ final class IconSpriteTest extends TestCase
         }
         preg_match_all("~icon\('([a-z0-9-]+)'~", $templates, $literal);
 
-        foreach ([...$matches[1], ...$literal[1], ...DefaultPaymentMethods::ICONS] as $icon) {
+        $destinations = array_map(
+            static fn (\App\Domain\BackupDestinationType $type): string => $type->icon(),
+            \App\Domain\BackupDestinationType::cases(),
+        );
+
+        foreach ([...$matches[1], ...$literal[1], ...DefaultPaymentMethods::ICONS, ...$destinations] as $icon) {
             self::assertContains($icon, $names, sprintf('"%s" is not in assets/theme/icons.json.', $icon));
         }
     }

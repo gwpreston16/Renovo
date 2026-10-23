@@ -2944,6 +2944,10 @@ return [
     'backup.instance_offsite_stale' => 'Nothing has reached a destination for two schedule periods.',
     'backup.instance_stored_offsite' => 'Stored off the server',
     'backup.instance_verified_locally' => 'Verified locally',
+    'backup.reason.password_hash' => 'A restored password hash is not one Renovo writes.',
+    'backup.reason.scratch_is_application' => 'The scratch database is the application\'s own database.',
+    'backup.reason.scratch_not_empty' => 'The scratch database is not empty.',
+    'backup.reason.secret_unreadable' => 'A restored secret does not open with this instance\'s keys.',
     'backup.rehearsal.database' => 'Scratch database',
     'backup.rehearsal.database_missing' =>
         'Not configured: rehearsals download and verify a copy, without restoring it. Set {variable} '

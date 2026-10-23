@@ -21,6 +21,14 @@ enum BackupDestinationType: string
     }
 
     /**
+     * Its name in `assets/theme/icons.json`.
+     */
+    public function icon(): string
+    {
+        return 'destination-' . $this->value;
+    }
+
+    /**
      * The form's fields, in order. A field's label and hint are
      * `backup.destination.field.<name>` and `….<name>_hint`.
      *

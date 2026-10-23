@@ -385,7 +385,7 @@
                 {% for item in backups.destinations %}
                     {% set destination = item.record %}
                     <li class="account-row channel-row{{ destination.enabled ? '' : ' is-off' }}">
-                        <span class="account-row-icon" aria-hidden="true">{{ icon('destination-' ~ destination.type.value) }}</span>
+                        <span class="account-row-icon" aria-hidden="true">{{ icon(destination.type.icon()) }}</span>
                         <div class="account-row-text">
                             <span class="account-row-name">{{ destination.name }}</span>
                             <span class="account-row-meta">{{ t(destination.type.labelKey()) }} · <code>{{ destination.location() }}</code></span>
@@ -503,7 +503,7 @@
 
             {% for type in backups.destination_types %}
                 <details class="channel-form">
-                    <summary>{{ icon('destination-' ~ type.value) }}{{ t(type.labelKey()) }}</summary>
+                    <summary>{{ icon(type.icon()) }}{{ t(type.labelKey()) }}</summary>
 
                     <form method="post" action="/settings/backups/destinations" class="stack">
                         {{ csrf_field() }}
