@@ -788,6 +788,46 @@ final class InstanceBackupTest extends DatabaseTestCase
         self::assertSame($before, $after);
     }
 
+    public function testAKilledVerifyOrRestoreIsSweptOnceItIsOld(): void
+    {
+        $this->seed();
+        $temp = sys_get_temp_dir();
+        $old = $temp . '/' . \App\Service\Backup\Workspace::RESTORE_PREFIX . 'killed' . bin2hex(random_bytes(3));
+        $fresh = $temp . '/' . \App\Service\Backup\Workspace::VERIFY_PREFIX . 'working' . bin2hex(random_bytes(3));
+        foreach ([$old, $fresh] as $directory) {
+            mkdir($directory, 0o700);
+            file_put_contents($directory . '/users.jsonl', '{"email":"plaintext@example.test"}');
+        }
+        touch($old, $this->clock->now()->getTimestamp() - 7 * 3600);
+
+        try {
+            $this->service()->runScheduled(force: true);
+
+            self::assertDirectoryDoesNotExist($old, 'Seven hours old: nothing could still be using it.');
+            self::assertDirectoryExists($fresh, 'Possibly a verify still running: left alone.');
+        } finally {
+            foreach ([$old, $fresh] as $directory) {
+                @unlink($directory . '/users.jsonl');
+                @rmdir($directory);
+            }
+        }
+    }
+
+    public function testARunNoLongerHoldingTheLockCannotNameAFile(): void
+    {
+        $this->seed();
+        $id = (int) $this->runs()->claim($this->clock->now(), BackupRun::TRIGGER_SCHEDULE);
+        self::assertTrue($this->runs()->recordFile($id, 'renovo-instance-20260601-090000-aaaaaa.renovo-backup'));
+        self::assertTrue(
+            $this->runs()->recordFile($id, 'renovo-instance-20260601-090000-aaaaaa.renovo-backup'),
+            'Naming the same file again still holds.',
+        );
+
+        $this->runs()->finish($id, BackupRun::FAILED, $this->clock->now(), ['error' => 'abandoned']);
+
+        self::assertFalse($this->runs()->recordFile($id, 'renovo-instance-20260601-090000-bbbbbb.renovo-backup'));
+    }
+
     public function testATakenOverRunKeepsItsFileNamed(): void
     {
         $this->seed();

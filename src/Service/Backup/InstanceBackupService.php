@@ -343,8 +343,8 @@ final class InstanceBackupService
             // Holding the lock, nothing else can be writing: whatever a
             // killed run left behind — its plaintext, a half-written file —
             // goes now.
-            $this->sweepLeftovers();
             $work = $this->workDirectory();
+            $this->sweepLeftovers($work);
 
             $manifest = $this->archive->write($work . '/archive.zip', $work);
 
@@ -365,8 +365,14 @@ final class InstanceBackupService
             }
             @chmod($this->path($file), 0o600);
             // On the row at once: a run killed from here on still names its
-            // file, so the takeover marks it and pruning can remove it.
-            $this->runs->recordFile($id, $file);
+            // file, so the takeover marks it and pruning can remove it. A
+            // run already taken over cannot name it, so it removes it.
+            if (!$this->runs->recordFile($id, $file)) {
+                @unlink($this->path($file));
+                $file = null;
+
+                throw new BackupException('abandoned', 'This run was taken over as abandoned while it worked.');
+            }
 
             $this->verify($this->path($file), $key, $work);
 
@@ -597,11 +603,18 @@ final class InstanceBackupService
      * a `.partial` file in BACKUP_DIRECTORY. Called only while holding the
      * run lock.
      */
-    private function sweepLeftovers(): void
+    private function sweepLeftovers(string $current): void
     {
         foreach ((array) glob($this->workParent() . '/run-*', GLOB_ONLYDIR) as $directory) {
-            Workspace::remove((string) $directory);
+            if ((string) $directory !== $current) {
+                Workspace::remove((string) $directory);
+            }
         }
+
+        // Whose directories these are is asked of the one this run just made:
+        // getmyuid() is the script file's owner, which in the image is root,
+        // not the www-data the process runs as.
+        $owner = @fileowner($current);
 
         // The shared temporary directory holds the fallback workspace and
         // those of `backup:verify` and `backup:restore`, which run without
@@ -617,8 +630,10 @@ final class InstanceBackupService
         foreach ($candidates as $directory) {
             $directory = (string) $directory;
             if (
-                !is_link($directory)
-                && @fileowner($directory) === getmyuid()
+                $directory !== $current
+                && !is_link($directory)
+                && $owner !== false
+                && @fileowner($directory) === $owner
                 && (int) @filemtime($directory) < $cutoff
             ) {
                 Workspace::remove($directory);

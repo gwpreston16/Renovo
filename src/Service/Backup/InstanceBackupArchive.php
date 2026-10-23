@@ -152,14 +152,15 @@ final class InstanceBackupArchive
         }
 
         $entries = [];
+        $added = true;
         foreach ($tables as $table => $dump) {
             $entry = 'tables/' . $table . '.jsonl';
-            $zip->addFile($dump['path'], $entry);
+            $added = $zip->addFile($dump['path'], $entry) && $added;
             $entries[$entry] = ['sha256' => $dump['sha256'], 'size' => $dump['size']];
         }
 
         foreach ($files as $entry => $file) {
-            $zip->addFile($file['path'], $entry);
+            $added = @$zip->addFile($file['path'], $entry) && $added;
             // Invoices, pictures and logos are already compressed; deflating
             // them again costs CPU and saves nothing. The rows are text, and
             // stay deflated.
@@ -170,7 +171,9 @@ final class InstanceBackupArchive
         $manifest['entries'] = $entries;
         $zip->addFromString(self::MANIFEST, json_encode($manifest, self::JSON | JSON_PRETTY_PRINT));
 
-        $closed = @$zip->close();
+        // A file gone before it could be added, or before the archive could
+        // read it at close: either way the caller drops it and builds again.
+        $closed = @$zip->close() && $added;
         if (!$closed) {
             @unlink($zipPath);
         }
