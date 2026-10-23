@@ -2921,7 +2921,7 @@ return [
     'backup.destination_reason.full' => 'The destination is full.',
     'backup.destination_reason.missing' => 'The directory does not exist.',
     'backup.destination_reason.mismatch' => 'What was read back is not what was written.',
-    'backup.destination_reason.not_found' => 'The bucket or folder was not found.',
+    'backup.destination_reason.not_found' => 'The bucket, folder or copy was not found.',
     'backup.destination_reason.not_writable' => 'The directory is not writable.',
     'backup.destination_reason.redirect' => 'It answered with a redirect, which Renovo does not follow. Enter the address it points to.',
     'backup.destination_reason.refused' => 'The destination refused the request.',
@@ -2947,6 +2947,7 @@ return [
     'backup.reason.scratch_not_empty' => 'The scratch database is not empty.',
     'backup.reason.secret_unreadable' => 'A restored secret does not open with this instance\'s keys.',
     'backup.rehearsal.database' => 'Scratch database',
+    'backup.rehearsal.database_configured' => 'Configured',
     'backup.rehearsal.database_missing' =>
         'Not configured: rehearsals download and verify a copy, without restoring it. Set {variable} '
         . 'to an empty database to restore into.',
@@ -3003,8 +3004,11 @@ return [
     'flash.instance_backup_taken_sending' =>
         'Backed up and verified. Sending it to {count, plural, one {# destination} other {# destinations}} now.',
     'notifications.backup_failed_alerts' => 'A backup fails, or reaches no destination',
+    'notifications.backup_failed_alerts_hint' => 'Once for each backup that did not verify or could not be sent off the server.',
     'notifications.backup_heading' => 'Instance backups',
     'notifications.backup_hint' => 'Only instance administrators are told these.',
     'notifications.backup_rehearsal_alerts' => 'A restore rehearsal fails',
+    'notifications.backup_rehearsal_alerts_hint' => 'With the step it failed at: downloading, verifying or restoring.',
     'notifications.backup_stale_alerts' => 'Nothing reaches a destination for two schedule periods',
+    'notifications.backup_stale_alerts_hint' => 'Once, until a backup is stored off the server again.',
 ];

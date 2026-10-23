@@ -257,7 +257,7 @@
                     offered the switches.
                 #}
                 {% if current_user.isInstanceAdmin %}
-                    <fieldset class="stack" id="backup-alerts">
+                    <fieldset class="preference" id="backup-alerts">
                         <legend>{{ t('notifications.backup_heading') }}</legend>
                         <p class="hint">{{ t('notifications.backup_hint') }}</p>
                         {% for switch in [
@@ -267,7 +267,10 @@
                         ] %}
                             <input type="hidden" name="{{ switch.name }}" value="0">
                             <label class="choice toggle-row">
-                                <span class="choice-title">{{ t('notifications.' ~ switch.name) }}</span>
+                                <span>
+                                    <span class="choice-title">{{ t('notifications.' ~ switch.name) }}</span>
+                                    <span class="choice-note">{{ t('notifications.' ~ switch.name ~ '_hint') }}</span>
+                                </span>
                                 <input type="checkbox" class="toggle" role="switch" name="{{ switch.name }}" value="1"
                                        {{ switch.on ? 'checked' : '' }}>
                             </label>

@@ -88,6 +88,12 @@ final class HttpClient implements ClientInterface
         $body = '';
         $received = 0;
         $limit = $options->maxResponseBytes;
+        // What is kept in memory — every body not streamed to a file, an
+        // error document above all — is held to the operator's ordinary cap,
+        // however large a transfer may be. A hostile destination answering
+        // with gigabytes must not take the process down with it.
+        $bufferLimit = min($limit, $this->options->maxResponseBytes);
+        $buffered = 0;
         $exceeded = false;
         $sink = null;
         $source = null;
@@ -144,7 +150,9 @@ final class HttpClient implements ClientInterface
                 &$body,
                 &$received,
                 &$exceeded,
+                &$buffered,
                 $limit,
+                $bufferLimit,
                 $sink,
             ): int {
                 $received += strlen($chunk);
@@ -161,6 +169,12 @@ final class HttpClient implements ClientInterface
                 $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
                 if ($sink !== null && $status >= 200 && $status < 300) {
                     return fwrite($sink, $chunk) === strlen($chunk) ? strlen($chunk) : -1;
+                }
+                $buffered += strlen($chunk);
+                if ($buffered > $bufferLimit) {
+                    $exceeded = true;
+
+                    return -1;
                 }
                 $body .= $chunk;
 
@@ -235,7 +249,7 @@ final class HttpClient implements ClientInterface
         }
 
         if ($exceeded) {
-            throw HttpClientException::responseTooLarge($request, $limit);
+            throw HttpClientException::responseTooLarge($request, $buffered > $bufferLimit ? $bufferLimit : $limit);
         }
 
         if ($succeeded === false && $errorNumber !== 0) {

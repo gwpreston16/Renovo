@@ -313,6 +313,7 @@ own: `docker-compose.yml` has a commented-out `rehearsal-db` service. Uncomment
 it (and its volume), then set in `.env`:
 
 ```dotenv
+BACKUP_REHEARSAL_DB_DRIVER=pgsql
 BACKUP_REHEARSAL_DB_HOST=rehearsal-db
 BACKUP_REHEARSAL_DB_NAME=rehearsal
 BACKUP_REHEARSAL_DB_USER=rehearsal
@@ -320,7 +321,9 @@ BACKUP_REHEARSAL_DB_PASSWORD=<a password>
 ```
 
 `BACKUP_REHEARSAL_DB_DRIVER` and `_HOST` default to the application's, and
-`_PORT` to the driver's standard port. The
+`_PORT` to the driver's standard port; the sample service is PostgreSQL, so set
+the driver to `pgsql` even on a MySQL install (a backup restores into either
+engine). The
 application's own database is refused (the same engine, host, port and name),
 as is a scratch database that is not empty. It holds a copy of the data only
 while a rehearsal runs; nothing in it is ever served.

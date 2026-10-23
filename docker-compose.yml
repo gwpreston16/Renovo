@@ -240,7 +240,8 @@ services:
         done
 
   # An empty database for restore rehearsals (Phase 39), never the one above.
-  # Uncomment it, then set BACKUP_REHEARSAL_DB_HOST=rehearsal-db,
+  # Uncomment it, then set BACKUP_REHEARSAL_DB_DRIVER=pgsql (even on MySQL),
+  # BACKUP_REHEARSAL_DB_HOST=rehearsal-db,
   # BACKUP_REHEARSAL_DB_NAME=rehearsal, BACKUP_REHEARSAL_DB_USER=rehearsal and
   # BACKUP_REHEARSAL_DB_PASSWORD in .env. A rehearsal restores into it, checks
   # what it restored and drops every table again. It holds a copy of the data

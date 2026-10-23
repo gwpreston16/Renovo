@@ -212,6 +212,22 @@ final class HttpTransportTest extends TestCase
         self::assertFileDoesNotExist($download);
     }
 
+    public function testABodyThatIsNotStreamedToAFileIsHeldToTheOrdinaryCap(): void
+    {
+        // A 5 GB transfer, but with no file to stream into this body would
+        // be held in memory, and memory is held to the operator's 1000 bytes.
+        $client = new GuardedTransferClient(
+            new HttpClient(new ResponseFactory(), new StreamFactory(), new HttpClientOptions(maxResponseBytes: 1000)),
+            $this->guard(new HttpClientOptions()),
+            (new HttpClientOptions())->forTransfers(60, 5 * 1024 ** 3),
+        );
+
+        $this->expectException(HttpClientException::class);
+        $this->expectExceptionMessage('1000 byte limit');
+
+        $client->send($this->request('PUT', self::$server->url('/bytes/500000', 'trusted.test')));
+    }
+
     public function testATransferNeverFollowsARedirect(): void
     {
         $response = $this->transfers()->send($this->request(
@@ -226,8 +242,10 @@ final class HttpTransportTest extends TestCase
     public function testATransferIsGuarded(): void
     {
         $this->expectException(BlockedTargetException::class);
+        $this->expectExceptionMessage('private or reserved address');
 
-        $this->transfers()->send($this->request('GET', self::$server->url('/echo', 'untrusted.test')));
+        $url = str_replace('http://', 'https://', self::$server->url('/echo', 'untrusted.test'));
+        $this->transfers()->send($this->request('GET', $url));
     }
 
     public function testTransferLimitsReplaceTheOperatorsForThatRequestOnly(): void

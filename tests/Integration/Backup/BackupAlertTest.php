@@ -74,6 +74,7 @@ final class BackupAlertTest extends NotificationTestCase
         $this->copy($partial, $cloud, BackupCopy::CONFIRMED);
 
         $this->alerts()->notify();
+        $this->alerts()->notify();
 
         self::assertCount(1, $this->notifier->sent);
         self::assertSame('A backup could not be sent off the server', $this->notifier->sent[0]['alert']->title);

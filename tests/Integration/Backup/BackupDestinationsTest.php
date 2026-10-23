@@ -120,7 +120,9 @@ final class BackupDestinationsTest extends TestCase
             $this->exchange([]),
             new RequestFactory(),
             new StreamFactory(),
-            self::$webdav->url('/dav/', 'nas.test'),
+            // https, so the scheme is no reason to refuse it: only the
+            // private address behind the name is.
+            str_replace('http://', 'https://', self::$webdav->url('/dav/', 'nas.test')),
             self::USER,
             self::PASSWORD,
         );
@@ -131,6 +133,7 @@ final class BackupDestinationsTest extends TestCase
         } catch (DestinationException $exception) {
             self::assertSame(DestinationException::STEP_CONNECT, $exception->step);
             self::assertSame('blocked', $exception->reason);
+            self::assertStringContainsString('private', $exception->getMessage());
         }
 
         self::assertSame([], self::$webdav->requests());

@@ -22,8 +22,10 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   upload is retried on the next two scheduler passes and never fails the local
   backup. **Test connection** writes, reads back and deletes a marker and says
   which step failed; removing a destination deletes nothing stored there.
-  Credentials are stored encrypted, never shown again and never logged.
-  *Phase 39.*
+  Credentials are stored encrypted, never shown again and never logged. An
+  instance backup carries the destinations (credentials still encrypted) but
+  not the record of what was sent, so a restored instance never prunes the old
+  server's copies. *Phase 39.*
 - **Restore rehearsal.** `backup:rehearse` (monthly from the scheduler by
   default; weekly, monthly or off on the card) downloads the newest copy from a
   destination — not the local file — and verifies it; given an empty scratch

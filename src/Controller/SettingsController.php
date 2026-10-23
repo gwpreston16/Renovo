@@ -103,11 +103,14 @@ final class SettingsController extends Controller
     public function instance(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $failed = $this->session->get(BackupDestinationController::FAILED_ADD);
+        $failedEdit = $this->session->get(BackupDestinationController::FAILED_EDIT);
         $this->session->remove(BackupDestinationController::FAILED_ADD);
+        $this->session->remove(BackupDestinationController::FAILED_EDIT);
 
         return $this->render($request, $response, 'settings/instance.twig', [
             ...$this->screen->instance(),
             'destination_form' => is_array($failed) ? $failed : null,
+            'destination_edit' => is_array($failedEdit) ? $failedEdit : null,
         ]);
     }
 

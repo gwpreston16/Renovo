@@ -288,7 +288,11 @@ final class BackupDestinationScreensTest extends DatabaseTestCase
         $id = $this->onlyDestination();
         $this->request('POST', '/settings/backups/destinations/' . $id, ['name' => '', 'path' => '/nowhere']);
         self::assertSame('NAS', $this->destinations()->find($id)?->name);
-        self::assertStringContainsString('Enter a name of up to 100 characters.', $this->page());
+        $page = $this->page();
+        self::assertStringContainsString('Enter a name of up to 100 characters.', $page);
+        // The edit comes back open, with the path that was typed.
+        self::assertStringContainsString('value="/nowhere"', $page);
+        self::assertStringContainsString('That directory does not exist inside the container.', $page);
     }
 
     public function testTestConnectionSaysWhichStepFailed(): void
@@ -349,6 +353,15 @@ final class BackupDestinationScreensTest extends DatabaseTestCase
         self::assertStringContainsString('Sending it to 1 destination now.', $this->page());
         self::assertSame(['.', '..'], scandir($this->root . '/nas'));
         self::assertCount(1, $this->after->work);
+
+        // While that upload is running, another Back up now starts none of
+        // its own: its copy waits for the scheduler.
+        $copies = $this->container()->get(\App\Repository\BackupCopyRepository::class);
+        $copies->claim($copies->pending()[0]->id, new DateTimeImmutable(), 3600);
+        $this->db->execute("UPDATE backup_runs SET started_at = '2020-01-01 00:00:00'");
+        $this->request('POST', '/settings/backups/run');
+        self::assertCount(1, $this->after->work);
+        $this->db->execute('UPDATE backup_copies SET attempted_at = NULL');
 
         $this->after->runAll();
 

@@ -30,6 +30,9 @@ final class BackupDestinationController extends Controller
     /** Where a failed add waits for the page it redirects to. */
     public const FAILED_ADD = 'backup_destination_failed_add';
 
+    /** And a failed edit, with the destination it was for. */
+    public const FAILED_EDIT = 'backup_destination_failed_edit';
+
     public function __construct(
         Twig $view,
         SessionInterface $session,
@@ -59,11 +62,21 @@ final class BackupDestinationController extends Controller
     {
         $this->existing($request, $id);
 
+        $body = $this->body($request);
         try {
-            $this->destinations->update($this->user($request), (int) $id, $this->body($request));
+            $this->destinations->update($this->user($request), (int) $id, $body);
             $this->flash('success', 'flash.backup_destination_saved');
         } catch (ValidationException $exception) {
-            $this->flashErrors($exception);
+            // As a failed add: the edit comes back open, with what was typed
+            // — never a credential — and each error under its field.
+            $existing = $this->destinations->find((int) $id);
+            $this->session->set(self::FAILED_EDIT, [
+                'id' => (int) $id,
+                ...BackupDestinationService::failedForm(
+                    ['type' => $existing?->type->value ?? ''] + $body,
+                    $exception,
+                ),
+            ]);
         }
 
         return $this->redirectAfterWrite($request, $response, self::SECTION);

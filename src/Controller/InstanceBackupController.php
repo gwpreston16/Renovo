@@ -93,7 +93,7 @@ final class InstanceBackupController extends Controller
         $queued = $outcome->result === BackupOutcome::VERIFIED && $outcome->run !== null
             ? $this->offsite->queue($outcome->run)
             : 0;
-        if ($queued > 0 && $outcome->run !== null) {
+        if ($queued > 0 && $outcome->run !== null && !$this->offsite->isSending()) {
             $runId = $outcome->run->id;
             $this->afterResponse->defer(function () use ($runId): void {
                 $this->offsite->sendPending($runId);

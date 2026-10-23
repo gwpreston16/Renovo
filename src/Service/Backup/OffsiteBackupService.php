@@ -164,6 +164,16 @@ final class OffsiteBackupService
     }
 
     /**
+     * Whether an upload is in progress. Back up now starts no second one
+     * beside it: its copies wait for the scheduler, so repeated clicks never
+     * hold every web worker in uploads.
+     */
+    public function isSending(): bool
+    {
+        return $this->copies->isSending($this->clock->now(), $this->leaseSeconds);
+    }
+
+    /**
      * Each run's copies, for the history.
      *
      * @param list<BackupRun> $runs

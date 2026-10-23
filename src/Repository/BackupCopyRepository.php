@@ -88,6 +88,20 @@ final class BackupCopyRepository extends AbstractRepository
     }
 
     /**
+     * Whether some copy is being sent right now: pending, and taken within
+     * the lease.
+     */
+    public function isSending(DateTimeImmutable $now, int $leaseSeconds): bool
+    {
+        return $this->db->fetchValue(
+            'SELECT 1 FROM ' . $this->quote($this->table())
+            . ' WHERE ' . $this->quote('status') . ' = :pending'
+            . ' AND ' . $this->quote('attempted_at') . ' >= :lease LIMIT 1',
+            ['pending' => BackupCopy::PENDING, 'lease' => $now->modify('-' . max(1, $leaseSeconds) . ' seconds')],
+        ) !== null;
+    }
+
+    /**
      * Record an attempt that failed; the last one marks the copy failed.
      */
     public function recordFailure(int $id, DateTimeImmutable $at, string $error, bool $final): void

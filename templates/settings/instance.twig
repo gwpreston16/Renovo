@@ -384,6 +384,7 @@
             <ul class="account-rows channel-rows destination-rows">
                 {% for item in backups.destinations %}
                     {% set destination = item.record %}
+                    {% set edit = destination_edit is defined and destination_edit and destination_edit.id == destination.id ? destination_edit : null %}
                     <li class="account-row channel-row{{ destination.enabled ? '' : ' is-off' }}">
                         <span class="account-row-icon" aria-hidden="true">{{ icon(destination.type.icon()) }}</span>
                         <div class="account-row-text">
@@ -419,14 +420,15 @@
                             </form>
                         </div>
 
-                        <details class="account-row-more">
+                        <details class="account-row-more" {{ edit ? 'open' : '' }}>
                             <summary class="button button-quiet">{{ icon('edit') }}{{ t('backup.destination.edit_named', {'name': destination.name}) }}</summary>
 
                             <form method="post" action="/settings/backups/destinations/{{ destination.id }}" class="stack">
                                 {{ csrf_field() }}
 
                                 <label for="destination_{{ destination.id }}_name">{{ t('backup.destination.field.name') }}</label>
-                                <input type="text" id="destination_{{ destination.id }}_name" name="name" value="{{ destination.name }}" required maxlength="100">
+                                <input type="text" id="destination_{{ destination.id }}_name" name="name" value="{{ edit ? edit.values.name|default('') : destination.name }}" required maxlength="100">
+                                {% if edit and edit.errors.name is defined %}<p class="field-error">{{ error_message(edit.errors.name) }}</p>{% endif %}
 
                                 {% for field in destination.type.fields() %}
                                     {% set id = 'destination_' ~ destination.id ~ '_' ~ field.name %}
@@ -438,7 +440,7 @@
                                                 {% if field.hint %}<span class="choice-note">{{ t('backup.destination.field.' ~ field.name ~ '_hint') }}</span>{% endif %}
                                             </span>
                                             <input type="checkbox" class="toggle" role="switch" id="{{ id }}" name="{{ field.name }}" value="1"
-                                                   {{ destination.configBool(field.name) ? 'checked' : '' }}>
+                                                   {{ (edit ? edit.values[field.name]|default('') == '1' : destination.configBool(field.name)) ? 'checked' : '' }}>
                                         </label>
                                     {% else %}
                                         <label for="{{ id }}">{{ t('backup.destination.field.' ~ field.name) }}</label>
@@ -451,9 +453,12 @@
                                                    placeholder="{{ t('backup.destination.credential_replace') }}">
                                         {% else %}
                                             <input type="{{ field.input }}" id="{{ id }}" name="{{ field.name }}" autocomplete="off"
-                                                   value="{{ destination.configString(field.name) }}">
+                                                   value="{{ edit ? edit.values[field.name]|default('') : destination.configString(field.name) }}">
                                             {% if field.hint %}<p class="hint">{{ t('backup.destination.field.' ~ field.name ~ '_hint') }}</p>{% endif %}
                                         {% endif %}
+                                    {% endif %}
+                                    {% if edit and edit.errors[field.name] is defined %}
+                                        <p class="field-error">{{ error_message(edit.errors[field.name]) }}</p>
                                     {% endif %}
                                 {% endfor %}
 
@@ -573,7 +578,7 @@
             <dt>{{ t('backup.rehearsal.database') }}</dt>
             <dd>
                 {% if rehearsal.scratch %}
-                    <span class="badge badge-ok">{{ t('backup.instance_key_set') }}</span>
+                    <span class="badge badge-ok">{{ t('backup.rehearsal.database_configured') }}</span>
                     <span class="muted block">{{ t('backup.rehearsal.database_set') }}</span>
                 {% else %}
                     <span class="muted">{{ t('backup.rehearsal.database_missing', {'variable': 'BACKUP_REHEARSAL_DB_NAME'}) }}</span>

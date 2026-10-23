@@ -161,8 +161,10 @@ final class OffsiteBackupTest extends DatabaseTestCase
         $run = $this->verifiedRun(0);
         $this->service()->queue($run);
         $copy = $this->copies()->pending()[0];
+        self::assertFalse($this->service()->isSending());
 
         self::assertTrue($this->copies()->claim($copy->id, $this->clock->now(), 3600));
+        self::assertTrue($this->service()->isSending());
 
         self::assertSame(0, array_sum($this->service()->sendPending()));
         self::assertFileDoesNotExist($this->root . '/nas/' . $run->file);
