@@ -46,7 +46,7 @@ can be moved.
 | 35 | [Contracts, fixed terms and bills that vary](docs/phases/PHASE-35.md) | 32, 34 | 5 migrations | ✅ done |
 | 36 | [What you've saved](docs/phases/PHASE-36.md) | 31, 33, 34, 35 | 1 column | ✅ done |
 | 37 | [The version, and knowing when there is a newer one](docs/phases/PHASE-37.md) | — | 1 column | ✅ done |
-| 38 | [Instance backups: scheduled, encrypted, verified](docs/phases/PHASE-38.md) | 40 | 1 table | 📋 planned |
+| 38 | [Instance backups: scheduled, encrypted, verified](docs/phases/PHASE-38.md) | 40 | 1 table | 🚧 in progress |
 | 39 | [Backups off the server, and proof they restore](docs/phases/PHASE-39.md) | 40, 38 | 3 tables, alert preferences | 📋 planned |
 | 40 | [Secrets at rest, and rotating the key that guards them](docs/phases/PHASE-40.md) | — | 2–3 migrations (backfill) | ✅ done |
 | 41 | [Security headers and a strict Content-Security-Policy](docs/phases/PHASE-41.md) | — | None | 📋 planned |

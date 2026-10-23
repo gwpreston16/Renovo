@@ -197,6 +197,35 @@ Schedule and retention are instance-settings keys.
 - **Instance admin only**, everywhere in this phase. A household Owner cannot
   see or download an instance backup — it holds other households.
 
+*Confirmed 2026-10-23*: engine-portable JSON rows; encryption mandatory with the
+key from the environment only; restore only into an empty database at the
+archive's migration version; off by default; retention 7 / 4 / 6; instance
+admin only.
+
+Found while starting it:
+
+- **Back up now runs in the request.** *Confirmed 2026-10-23.* The page waits
+  while the backup is taken and verified, then shows the result; the button is
+  rate-limited. Instances are small, and the scheduler loop only wakes daily.
+- **`BACKUP_DIRECTORY` defaults to `var/backups`.** *Confirmed 2026-10-23.* It
+  sits on the `appvar` volume the app and scheduler containers already share,
+  so the scheduler writes what the settings page lists and downloads.
+- **A scheduled backup is due by time since the last one started.**
+  *Confirmed 2026-10-23.* Daily: none started in the last 23 hours. Weekly:
+  none in the last 6 days 23 hours. The hour of slack absorbs the scheduler
+  loop's drift.
+- **The restore procedure goes in `docs/operations.md`, not the README.**
+  Settled by Phase 44: operator procedures live in the docs pages, and the
+  README changes only for a headline item.
+- **Strings go in every catalogue in `translations/`.** Settled by `CLAUDE.md`;
+  today that is `en.php` alone.
+- **The logo cache (`var/logo-cache`) is not backed up.** It is a per-domain
+  download cache that refills itself; each subscription's own logo in
+  `public/assets/logos` is.
+- **No open known issue sits in code this phase rewrites.** K98 is in
+  `templates/settings/instance.twig` but in the update-check card, which this
+  phase does not touch.
+
 ## Status
 
 - [ ] `BackupDumper` (repository layer), consistent snapshot, table coverage test
