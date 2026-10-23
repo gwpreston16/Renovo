@@ -184,6 +184,7 @@ the same values `GET /me` returns in its `permissions` array.
 | `GET` | `/openapi.yaml` | *public* |
 | `GET` | `/openapi.json` | *public* |
 | `GET` | `/me` | *any valid token* |
+| `GET` | `/instance` | *any valid token* |
 | `GET` | `/subscriptions` | `subscription.view` |
 | `POST` | `/subscriptions` | `subscription.create` |
 | `GET` | `/subscriptions/{id}` | `subscription.view` |
@@ -427,6 +428,32 @@ curl -H "Authorization: Bearer rnv_..." \
 `role` is one of `owner_admin`, `editor`, `contributor`, `viewer`, or `null` when
 the account
 holds no household membership. `isolation_mode` is `shared` or `isolated`.
+
+Responses: `200`, `401`.
+
+#### `GET /api/v1/instance`
+
+The release this instance runs. Requires only a valid token; no permission
+gate. Nothing without a token is told the version — not `/healthz`, not a
+signed-out page — since an exact release is a map to its known issues.
+
+```bash
+curl -H "Authorization: Bearer rnv_..." \
+     https://your-instance.example/api/v1/instance
+```
+
+```json
+{
+  "data": {
+    "version": "1.7.0",
+    "build": null
+  }
+}
+```
+
+`version` comes from the instance's `VERSION` file. `build` is the short commit
+id an edge or development image was built from (`RENOVO_BUILD`), and `null` for
+a release image.
 
 Responses: `200`, `401`.
 
@@ -901,6 +928,11 @@ Returned by `GET /me`. Fields: `user` (`id`, `email`, `display_name`,
 `is_instance_admin`), `household_id` (nullable), `role` (`owner_admin`,
 `editor`, `viewer`, or null), `isolation_mode` (`shared`, `isolated`),
 `permissions` (array of strings).
+
+### Instance
+
+Returned by `GET /instance`. Fields: `version` (string), `build` (string or
+null).
 
 ### Category · PaymentMethod · Tag · Attachment · Charge · Savings
 

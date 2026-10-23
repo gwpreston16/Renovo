@@ -22,6 +22,7 @@ use App\Application\Ops\OpsPath;
 use App\Controller\Api\AttachmentApiController;
 use App\Controller\Api\ChargeApiController;
 use App\Controller\Api\CalendarApiController;
+use App\Controller\Api\InstanceApiController;
 use App\Controller\Api\MeApiController;
 use App\Controller\Api\OpenApiController;
 use App\Controller\Api\SavingsApiController;
@@ -734,6 +735,9 @@ return static function (App $app): void {
 
     $app->group(ApiPath::PREFIX, function (RouteCollectorProxy $group) use ($requires): void {
         $group->get('/me', [MeApiController::class, 'show']);
+
+        // Phase 37: the release, to any valid token and to nobody else.
+        $group->get('/instance', [InstanceApiController::class, 'show']);
 
         $group->get('/subscriptions', [SubscriptionApiController::class, 'index'])
             ->add($requires(Permission::ViewSubscriptions));

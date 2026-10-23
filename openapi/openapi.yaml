@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.6.0"
+  version: "1.7.0"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -101,6 +101,29 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/Identity"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/instance:
+    get:
+      tags: [Meta]
+      summary: The release this instance runs.
+      description: |
+        The version from the instance's VERSION file, and the short commit id
+        an edge or development image was built from (null for a release
+        image). Any valid token may read it; it is not offered to anybody
+        without one.
+      responses:
+        "200":
+          description: The instance's release.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Instance"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -1213,6 +1236,13 @@ components:
         permissions:
           type: array
           items: { type: string }
+
+    Instance:
+      type: object
+      required: [version, build]
+      properties:
+        version: { type: string, example: "1.7.0" }
+        build: { type: string, nullable: true, example: null }
 
     Category:
       type: object

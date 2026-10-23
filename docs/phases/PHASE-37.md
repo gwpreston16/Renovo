@@ -180,7 +180,7 @@ Found while starting it:
 
 - [x] `VERSION` file, `AppVersion`, `RENOVO_BUILD` build argument; the
       VERSION / package.json / CHANGELOG agreement test in CI
-- [ ] Version on the Instance status card, in the sidebar, and on
+- [x] Version on the Instance status card, in the sidebar, and on
       `GET /api/v1/instance` (OpenAPI, `docs/api.md`)
 - [x] `UpdateCheckService`: fetch through the shared client, parse, store,
       back-off; scheduler step, lazy check, `updates:check`, Check now
