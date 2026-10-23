@@ -30,6 +30,26 @@ final class HttpClientOptions
     }
 
     /**
+     * The same options with tighter limits for one caller: each limit is the
+     * smaller of the configured one and the one asked for, so a caller can
+     * narrow the operator's limits and never widen them. The proxy and the
+     * user agent are kept.
+     */
+    public function narrowedTo(int $timeoutSeconds, int $connectTimeoutSeconds, int $maxResponseBytes): self
+    {
+        return new self(
+            timeoutSeconds: min($this->timeoutSeconds, $timeoutSeconds),
+            connectTimeoutSeconds: min($this->connectTimeoutSeconds, $connectTimeoutSeconds),
+            maxResponseBytes: min($this->maxResponseBytes, $maxResponseBytes),
+            maxRedirects: $this->maxRedirects,
+            userAgent: $this->userAgent,
+            httpProxy: $this->httpProxy,
+            httpsProxy: $this->httpsProxy,
+            noProxy: $this->noProxy,
+        );
+    }
+
+    /**
      * Decide whether a host should bypass the configured proxy, following the
      * usual NO_PROXY conventions ("*", exact host, ".suffix").
      */

@@ -188,7 +188,7 @@ Found while starting it:
 - [ ] Updates fieldset on Settings → Instance; audit entries
 - [ ] `UPDATE_CHECK_REPOSITORY` and `UPDATE_CHECK` env vars, documented in
       `docs/configuration.md` and `.env.example`
-- [ ] Migration on both engines
+- [x] Migration on both engines
 - [ ] New strings in `translations/en.php`
 - [ ] `composer check`, `i18n:check`, offline guard green on both engines
 

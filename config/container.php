@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 use App\Application\AppVersion;
 use App\Application\Twig\AppExtension;
+use App\Service\Update\UpdateCheckConfig;
+use App\Service\Update\UpdateCheckService;
 use App\Controller\SetupController;
 use App\Http\DnsResolver;
 use App\Http\GuardedClient;
@@ -205,6 +207,23 @@ return static function (ContainerBuilder $builder, array $settings): void {
                 $rates['api_key'],
             );
         },
+
+        // ------------------------------------------------------------------
+        // Update check
+        // ------------------------------------------------------------------
+        // The shared client with the instance's proxy and narrower limits: a
+        // release is a few kilobytes of JSON, and the lazy check runs while an
+        // administrator waits for their dashboard. Its own key, so a test can
+        // put a client there that fails if it is ever called.
+        UpdateCheckService::HTTP_CLIENT => static fn (ContainerInterface $c): ClientInterface => new HttpClient(
+            $c->get(ResponseFactoryInterface::class),
+            $c->get(StreamFactoryInterface::class),
+            $c->get(HttpClientOptions::class)->narrowedTo(5, 3, 65536),
+        ),
+
+        UpdateCheckConfig::class => static fn (): UpdateCheckConfig => UpdateCheckConfig::fromEnvironment(),
+
+        UpdateCheckService::class => autowire()->constructorParameter('http', get(UpdateCheckService::HTTP_CLIENT)),
 
         // ------------------------------------------------------------------
         // Notifications

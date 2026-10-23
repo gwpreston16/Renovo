@@ -49,4 +49,26 @@ final class HttpClientOptionsTest extends TestCase
 
         self::assertNull($options->proxyFor('https', 'host.test'));
     }
+
+    public function testNarrowingTakesTheSmallerLimitAndKeepsTheProxy(): void
+    {
+        $options = new HttpClientOptions(
+            timeoutSeconds: 3,
+            connectTimeoutSeconds: 5,
+            maxResponseBytes: 2_000_000,
+            maxRedirects: 2,
+            userAgent: 'Renovo',
+            httpsProxy: 'http://secure:3128',
+            noProxy: ['internal.test'],
+        );
+
+        $narrowed = $options->narrowedTo(5, 3, 65_536);
+
+        self::assertSame(3, $narrowed->timeoutSeconds, 'A narrower configured limit is not widened.');
+        self::assertSame(3, $narrowed->connectTimeoutSeconds);
+        self::assertSame(65_536, $narrowed->maxResponseBytes);
+        self::assertSame(2, $narrowed->maxRedirects);
+        self::assertSame('http://secure:3128', $narrowed->proxyFor('https', 'api.github.com'));
+        self::assertNull($narrowed->proxyFor('https', 'internal.test'));
+    }
 }
