@@ -119,6 +119,54 @@ No new table. Savings are computed, never stored.
 - **Card not on by default.** It earns a place on the dashboard by being looked
   at on Analytics first, as the insights did.
 
+*Confirmed 2026-10-23*, all five as written. The card belongs to the
+**Overview** view and is listed under Customise, hidden until turned on, as
+the subscriptions table is (`DashboardCard::visibleByDefault()`).
+
+Found while starting it:
+
+- **A restored row contributes nothing.** *Changed 2026-10-23:* the brief said
+  a cancelled-then-restored row counts for the period it was cancelled, but
+  nothing records that period: `uncancel()` clears `cancelled_at`
+  (`SubscriptionRepository::setCancelled()`), and no audit entry is written
+  for a cancel or an uncancel. Once restored a row is not a cancelled row, and
+  adds nothing. The test is rewritten to match.
+- **A fixed term that ended adds nothing, by the walk itself** (settled by the
+  code). `endTerm()` cancels it the day after its last payment, and
+  `ChargeSchedule::walk()` stops at `payments_end_on`, so the would-have
+  charges after its cancellation are none. A member who cancelled a fixed term
+  early is credited up to its last payment and no further; the run-rate removed
+  leaves out a row whose `cancelled_at` is after `payments_end_on`.
+- **Undo tells a discount from an offer by its amount.** *Confirmed
+  2026-10-23.* Ticking **This was a discount** sets the reference to the
+  expected amount; Undo, or clearing the actual, clears a reference equal to
+  the expected amount and keeps any other. The tick is offered only on a
+  charge with no reference: an offer's reference already counts a lower actual
+  through `reference − actual`. No second column.
+- **The backfill fills any reference that is missing.** *Confirmed
+  2026-10-23.* `ledger:backfill` gives a reference, by the offer rule, to every
+  charge on a promotional price that has none — catch-up, reconstructed and
+  one-off rows alike, including those written since Phase 34 — and never
+  overwrites one.
+- **The API marks a discount with `is_discount`.** *Confirmed 2026-10-23.*
+  `reference_minor` is read-only on the charge resource; `PATCH
+  /api/v1/charges/{id}` takes `is_discount: true|false`, by the same rule as
+  the form's tick.
+- **A skipped charge saves nothing even though it carries a reference**
+  (assumption): the saving checks the status before `reference − amount`,
+  since `amount()` of a skipped charge is zero.
+- **The notice period is the row's current one** (assumption): it is not kept
+  per date, so a notice changed after cancelling is the one applied.
+- **The run-rate removed is priced on the cancellation date** (assumption):
+  `annualMinor()` of the price in force that day, since `yearlyMinor()` reads
+  today's price.
+- **The trials line counts every trial cancelled before paying** (assumption),
+  not only the last twelve months, as the realised figure counts every
+  cancelled row.
+
+Known issues added to this phase (*Confirmed 2026-10-23*): **K75**, **K76**,
+**K82**, **K93** — all in ledger code this phase changes.
+
 ## Status
 
 - [ ] Migration on both engines; references written and frozen; backfill
@@ -128,6 +176,7 @@ No new table. Savings are computed, never stored.
       exclusions, currencies, scoping
 - [ ] Analytics Savings card; optional dashboard card; money page line
 - [ ] API endpoint and charge field, OpenAPI, `docs/api.md`; export
+- [ ] Known issues K75, K76, K82, K93
 - [ ] New strings in `translations/en.php`
 - [ ] `composer check`, `i18n:check`, offline guard green on both engines
 
@@ -151,7 +200,7 @@ splits; the gates pass on both engines. Then mark it ✅ in `ROADMAP.md`.
   realised; with one month's notice and a charge inside it: £32.97.
 - A row cancelled two years ago contributes at most twelve months.
 - A fixed term that ended contributes nothing; a cancelled-then-restored row
-  contributes only for the cancelled period.
+  contributes nothing.
 - A trial cancelled before conversion is counted on the trials line and adds
   nothing to the amount.
 - Two currencies with a rate combine; without, each currency is shown and the
