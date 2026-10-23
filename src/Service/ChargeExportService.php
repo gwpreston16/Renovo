@@ -24,6 +24,10 @@ final class ChargeExportService
 
     private const COLUMNS = [
         'subscription', 'due date', 'currency', 'expected', 'actual', 'amount', 'status', 'source', 'note',
+        // Phase 36, at the end so a reader of the earlier columns by position
+        // is not moved: what it would have cost without its offer, and what
+        // the offer took off.
+        'reference', 'saving',
     ];
 
     public function __construct(
@@ -106,6 +110,8 @@ final class ChargeExportService
             $charge->status->value,
             $charge->source->value,
             $charge->note ?? '',
+            $charge->reference()?->toDecimalString() ?? '',
+            $charge->saving()->toDecimalString(),
         ];
     }
 

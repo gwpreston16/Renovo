@@ -22,8 +22,8 @@ else does.
   want. Each of the Overview and Household dashboards has its own arrangement;
   **Reset layout** puts the one on screen back to its default.
   A card added by a later version appears in its default place rather than
-  silently going missing. The subscriptions table is listed but hidden until
-  you show it.
+  silently going missing. The subscriptions table and the Savings card are
+  listed but hidden until you show them.
   Which of the two dashboards you open on is remembered from the toggle at the
   top of the dashboard itself.
 

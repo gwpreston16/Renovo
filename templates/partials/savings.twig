@@ -1,0 +1,37 @@
+{#
+    The savings figures, drawn the same way wherever they appear: the Analytics
+    card and the optional dashboard card. `SavingsService` decides every
+    number; these macros only lay them out.
+#}
+{#
+    One figure, per currency with the combined total when there is an honest
+    one — `partials/spend.twig`'s rule — or a dash when nothing was saved.
+#}
+{% macro headline(figures) %}
+    {# A macro sees only what it imports itself. #}
+    {% import 'partials/spend.twig' as figure %}
+    {% if figures.totals is empty %}
+        <p class="stat-value num">{{ t('common.none_symbol') }}</p>
+    {% else %}
+        {{ figure.spend(figures, '') }}
+    {% endif %}
+{% endmacro %}
+
+{#
+    A figure as one line of text: the combined amount, or each currency's
+    joined when one has no rate.
+#}
+{% macro inline(figures) -%}
+    {%- if figures.totals|length == 1 -%}
+        {{ figures.totals[0].amount_minor|money(figures.totals[0].currency) }}
+    {%- elseif figures.combined.amount_minor is not null -%}
+        {{ figures.combined.amount_minor|money(figures.combined.currency) }}
+    {%- else -%}
+        {% for total in figures.totals %}{{ total.amount_minor|money(total.currency) }}{{ not loop.last ? ' · ' : '' }}{% endfor %}
+    {%- endif -%}
+{%- endmacro %}
+
+{# Each currency of one row, joined. #}
+{% macro totals(totals) -%}
+    {% for total in totals %}{{ total.amount_minor|money(total.currency) }}{{ not loop.last ? ' · ' : '' }}{% endfor %}
+{%- endmacro %}

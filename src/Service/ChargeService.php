@@ -33,6 +33,12 @@ use InvalidArgumentException;
  * **This is not bank sync.** Nothing here reads a bank or a provider; every
  * row is Renovo's own billing rules or a member's word.
  *
+ * A charge on an introductory or promotional price carries a **reference**,
+ * what it would have cost without the offer, written with it and frozen
+ * (`ChargeSchedule::referenceAsAt()`); a member recording a lower actual may
+ * say it was a discount, which makes the expected amount the reference. What
+ * the two save is `SavingsService`'s to add up.
+ *
  * Every write asks the write predicate, so a Viewer changes nothing and a
  * Contributor changes only the charges on rows they own. The permission that
  * gates the routes is `ManageCharges`; this class is what holds when a route
@@ -79,12 +85,13 @@ final class ChargeService
         foreach ($dates as $date) {
             $key = $date->format('Y-m-d');
             $due = ChargeSchedule::priceAsAt($history, $date) ?? $subscription->price;
+            $reference = ChargeSchedule::referenceAsAt($history, $date);
 
             // A payment a member added by hand on this billing date is this
             // date's charge, with what they paid as its actual: it becomes the
             // ledger's own row, so Undo later puts back the price due rather
             // than leaving the date with nothing (K70).
-            if (!$this->claimManual($scope, $subscription, $date, $due, ChargeSource::CatchUp, $existing)) {
+            if (!$this->claimManual($scope, $subscription, $date, $due, ChargeSource::CatchUp, $existing, $reference)) {
                 continue;
             }
 
@@ -96,6 +103,7 @@ final class ChargeService
                 $due,
                 ChargeSource::CatchUp,
                 now: $this->clock->now(),
+                reference: $reference,
             );
             $existing[$key] = ChargeSource::CatchUp;
             $written++;
@@ -130,7 +138,11 @@ final class ChargeService
 
         foreach ($dates as $date) {
             $due = ChargeSchedule::priceAsAt($history, $date) ?? $subscription->price;
-            if (!$this->claimManual($scope, $subscription, $date, $due, ChargeSource::Paused, $existing)) {
+            // Written on a month that was not billed too: a member who marks
+            // it billed after all is then credited with the offer, as a
+            // charge the catch-up wrote would be.
+            $reference = ChargeSchedule::referenceAsAt($history, $date);
+            if (!$this->claimManual($scope, $subscription, $date, $due, ChargeSource::Paused, $existing, $reference)) {
                 // One in another currency than the price due keeps its own
                 // amounts, but is still the month's paused row: Undo puts it
                 // back as not billed rather than leaving the month empty.
@@ -149,6 +161,7 @@ final class ChargeService
                 ChargeSource::Paused,
                 now: $this->clock->now(),
                 status: ChargeStatus::Skipped,
+                reference: $reference,
             );
             $written++;
         }
@@ -174,17 +187,30 @@ final class ChargeService
         }
 
         $price = $this->priceHistory->priceOn($scope, $entry->id, $entry->startDate) ?? $entry->price;
+        $reference = ChargeSchedule::referenceAsAt(
+            $this->priceHistory->historyFor($scope, $entry->id),
+            $entry->startDate,
+        );
         // Judged in the entry's own currency, as `findUnchargedOneOffs()`
         // selects it: a currency changed since the date would otherwise have
         // the entry chosen, and missed, on every catch-up.
         if ($price->currency !== $entry->price->currency) {
             $price = $entry->price;
+            $reference = null;
         }
 
         // A payment a member added by hand on the entry's date is its charge,
         // as the backfill makes it: then a later change of the date moves it,
         // rather than writing a second beside it.
-        if ($this->charges->adoptManual($scope, $entry->id, $entry->startDate, $price, ChargeSource::OneOff)) {
+        $adopted = $this->charges->adoptManual(
+            $scope,
+            $entry->id,
+            $entry->startDate,
+            $price,
+            ChargeSource::OneOff,
+            $reference,
+        );
+        if ($adopted) {
             return true;
         }
 
@@ -196,6 +222,7 @@ final class ChargeService
             $price,
             ChargeSource::OneOff,
             now: $this->clock->now(),
+            reference: $reference,
         );
         if ($id === null) {
             return false;
@@ -356,9 +383,12 @@ final class ChargeService
      * Record what was really charged, with an optional note.
      *
      * The status goes back to charged: recording an amount says the charge
-     * happened.
+     * happened. `discount` ticked says a lower amount was a discount, which
+     * makes the expected amount the charge's reference; left unticked, a
+     * discount marked before is taken off. An offer's reference is kept
+     * either way.
      *
-     * @param array<string, mixed> $input          `actual`, `note`.
+     * @param array<string, mixed> $input          `actual`, `note`, `discount`.
      * @param int|null             $subscriptionId When the request names the
      *                                             subscription, the charge must
      *                                             be one of its own.
@@ -371,12 +401,15 @@ final class ChargeService
         $errors = [];
         $actual = $this->amount($this->str($input, 'actual'), $charge->expected->currency, 'actual', $errors);
         $note = $this->note($input, $errors);
+        $reference = $actual === null
+            ? $charge->referenceMinor
+            : $this->referenceAfter($charge, $actual->amountMinor, $this->str($input, 'discount') === '1', $errors);
 
         if ($errors !== [] || $actual === null) {
             throw new ValidationException($errors === [] ? ['actual' => 'error.charge.actual_required'] : $errors);
         }
 
-        $this->charges->adjust($scope, $charge->id, $actual->amountMinor, ChargeStatus::Charged, $note);
+        $this->charges->adjust($scope, $charge->id, $actual->amountMinor, ChargeStatus::Charged, $note, $reference);
 
         return $this->reread($scope, $charge->id);
     }
@@ -398,7 +431,9 @@ final class ChargeService
             throw new ValidationException($errors);
         }
 
-        $this->charges->adjust($scope, $charge->id, null, ChargeStatus::Skipped, $note);
+        // The reference stays: a skipped charge saves nothing whatever it
+        // carries, and Undo brings the charge back as it was.
+        $this->charges->adjust($scope, $charge->id, null, ChargeStatus::Skipped, $note, $charge->referenceMinor);
 
         return $this->reread($scope, $charge->id);
     }
@@ -424,7 +459,10 @@ final class ChargeService
             return null;
         }
 
-        $this->charges->adjust($scope, $charge->id, null, $charge->writtenStatus(), null);
+        // A discount a member marked goes with the actual it was about; an
+        // offer's reference is the ledger's, and stays.
+        $reference = $charge->isDiscount() ? null : $charge->referenceMinor;
+        $this->charges->adjust($scope, $charge->id, null, $charge->writtenStatus(), null, $reference);
 
         return $this->reread($scope, $charge->id);
     }
@@ -449,7 +487,16 @@ final class ChargeService
             } elseif (is_int($value) && $value >= 0) {
                 $actualMinor = $value;
             } else {
-                $errors['actual_minor'] = 'error.price.invalid';
+                $errors['actual_minor'] = 'error.charge.minor_invalid';
+            }
+        }
+
+        $discount = null;
+        if (array_key_exists('is_discount', $input)) {
+            if (is_bool($input['is_discount'])) {
+                $discount = $input['is_discount'];
+            } else {
+                $errors['is_discount'] = 'error.charge.discount_invalid';
             }
         }
 
@@ -478,12 +525,28 @@ final class ChargeService
             throw new ValidationException(['actual_minor' => 'error.charge.actual_on_skipped']);
         }
 
+        // Skipping keeps the reference, as the web form's Skip does; any
+        // other change settles it by the form's rule.
+        $reference = $status === ChargeStatus::Skipped && $discount === null
+            ? $charge->referenceMinor
+            : $this->referenceAfter(
+                $charge,
+                $status === ChargeStatus::Skipped ? null : $actualMinor,
+                $discount,
+                $errors,
+                'is_discount',
+            );
+        if ($errors !== []) {
+            throw new ValidationException($errors);
+        }
+
         $this->charges->adjust(
             $scope,
             $charge->id,
             $status === ChargeStatus::Skipped ? null : $actualMinor,
             $status,
             $note,
+            $reference,
         );
 
         return $this->reread($scope, $charge->id);
@@ -574,7 +637,9 @@ final class ChargeService
             $minor = $input['amount_minor'];
             $amount = is_int($minor) && $minor >= 0 ? Money::of($minor, $subscription->price->currency) : null;
             if ($amount === null) {
-                $errors['amount_minor'] = $minor === null ? 'error.charge.amount_required' : 'error.price.invalid';
+                $errors['amount_minor'] = $minor === null
+                    ? 'error.charge.amount_required'
+                    : 'error.charge.minor_invalid';
             }
         } else {
             $amount = $this->amount($this->str($input, 'amount'), $subscription->price->currency, 'amount', $errors);
@@ -622,22 +687,31 @@ final class ChargeService
      * reconstruction counts them through today, and the ledger does not
      * invent charges for months nobody was billed.
      *
-     * One-off and lifetime entries get their single row on their date.
+     * One-off and lifetime entries get their single row on their date, marked
+     * `one_off` rather than `reconstructed`, as the catch-up marks it.
      *
-     * @return array{subscriptions: int, charges: int}
+     * Every charge it writes carries its offer's reference, and every charge
+     * already there on a promotional price that has none is given one —
+     * written before references existed. One that has a reference keeps it.
+     *
+     * @return array{subscriptions: int, charges: int, references: int}
      */
     public function backfill(Scope $scope): array
     {
         if (!$scope->canWrite()) {
-            return ['subscriptions' => 0, 'charges' => 0];
+            return ['subscriptions' => 0, 'charges' => 0, 'references' => 0];
         }
 
         $today = $this->clock->today();
         $touched = 0;
         $written = 0;
+        $references = 0;
 
         foreach ($this->subscriptions->findAllWritable($scope) as $subscription) {
             $existing = $this->charges->existingDates($scope, $subscription->id);
+            $history = $this->priceHistory->historyFor($scope, $subscription->id);
+            $references += $this->fillReferences($scope, $subscription, $history, $existing);
+
             $stop = $this->backfillStop($subscription, $existing, $today);
             if ($stop === null) {
                 continue;
@@ -646,7 +720,7 @@ final class ChargeService
             $count = 0;
             $rebuilt = $this->schedule->between(
                 $subscription,
-                $this->priceHistory->historyFor($scope, $subscription->id),
+                $history,
                 new DateTimeImmutable('0001-01-01'),
                 $stop->modify('-1 day'),
             );
@@ -663,7 +737,9 @@ final class ChargeService
                 // As the catch-up does: a payment added by hand on a date the
                 // reconstruction bills becomes that date's charge.
                 $date = $charge['date'];
-                if (!$this->claimManual($scope, $subscription, $date, $charge['amount'], $source, $existing)) {
+                $reference = ChargeSchedule::referenceAsAt($history, $date);
+                $amount = $charge['amount'];
+                if (!$this->claimManual($scope, $subscription, $date, $amount, $source, $existing, $reference)) {
                     continue;
                 }
 
@@ -675,6 +751,7 @@ final class ChargeService
                     $charge['amount'],
                     $source,
                     now: $this->clock->now(),
+                    reference: $reference,
                 );
                 $existing[$key] = $source;
                 $count++;
@@ -686,7 +763,33 @@ final class ChargeService
             }
         }
 
-        return ['subscriptions' => $touched, 'charges' => $written];
+        return ['subscriptions' => $touched, 'charges' => $written, 'references' => $references];
+    }
+
+    /**
+     * Give the charges a subscription already has on a promotional price the
+     * reference they would have been written with, where they have none.
+     *
+     * @param list<\App\Domain\Entity\PriceChange> $history
+     * @param array<string, ChargeSource> $existing
+     * @return int How many were given one.
+     */
+    private function fillReferences(Scope $scope, Subscription $subscription, array $history, array $existing): int
+    {
+        $filled = 0;
+        foreach ($existing as $key => $source) {
+            if ($source === ChargeSource::Manual) {
+                continue;
+            }
+
+            $date = new DateTimeImmutable($key);
+            $reference = ChargeSchedule::referenceAsAt($history, $date);
+            if ($reference !== null && $this->charges->fillReference($scope, $subscription->id, $date, $reference)) {
+                $filled++;
+            }
+        }
+
+        return $filled;
     }
 
     /**
@@ -709,6 +812,7 @@ final class ChargeService
         Money $due,
         ChargeSource $source,
         array &$existing,
+        ?Money $reference = null,
     ): bool {
         $key = $date->format('Y-m-d');
         if (!isset($existing[$key])) {
@@ -718,7 +822,7 @@ final class ChargeService
             return false;
         }
 
-        if ($this->charges->adoptManual($scope, $subscription->id, $date, $due, $source)) {
+        if ($this->charges->adoptManual($scope, $subscription->id, $date, $due, $source, $reference)) {
             $existing[$key] = $source;
 
             return false;
@@ -762,6 +866,53 @@ final class ChargeService
         }
 
         return $stop;
+    }
+
+    /**
+     * The reference a charge has once its actual is `$actualMinor`, by the
+     * rule for **This was a discount**.
+     *
+     * An offer's reference is the ledger's and stays, whatever is said; a
+     * discount is refused on such a charge, since the offer already counts a
+     * lower actual. Otherwise a discount said to be one makes the expected
+     * amount the reference — refused unless the actual is below it — and one
+     * said not to be takes it off. Not said at all (`null`, an API PATCH
+     * without the field), a discount marked before stays while the actual is
+     * still below the expected amount.
+     *
+     * @param array<string, string> $errors
+     */
+    private function referenceAfter(
+        Charge $charge,
+        ?int $actualMinor,
+        ?bool $discount,
+        array &$errors,
+        string $field = 'discount',
+    ): ?int {
+        $expected = $charge->expected->amountMinor;
+
+        if (!$charge->mayMarkDiscount()) {
+            if ($discount === true) {
+                $errors[$field] = 'error.charge.discount_on_offer';
+            }
+
+            return $charge->referenceMinor;
+        }
+
+        $lower = $actualMinor !== null && $actualMinor < $expected;
+        if ($discount === null) {
+            return $charge->isDiscount() && $lower ? $expected : null;
+        }
+        if (!$discount) {
+            return null;
+        }
+        if (!$lower) {
+            $errors[$field] = 'error.charge.discount_not_lower';
+
+            return null;
+        }
+
+        return $expected;
     }
 
     /**

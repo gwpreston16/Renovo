@@ -952,6 +952,33 @@ final class BackupRestoreTest extends DatabaseTestCase
         self::assertSame([], $this->container->get(ChargeService::class)->all($this->target));
     }
 
+    public function testADiscountMarkedOnAPaymentSurvivesABackupAndRestore(): void
+    {
+        $this->subscriptions->create($this->source, [
+            'name' => 'Energy',
+            'price' => '58.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-06-15',
+            'start_date' => '2026-04-15',
+        ]);
+        $this->container->get(LedgerBackfillRunner::class)->run();
+        $charges = $this->container->get(ChargeService::class);
+        $charge = $charges->all($this->source)[0];
+        $charges->recordActual($this->source, $charge->id, ['actual' => '50.00', 'discount' => '1']);
+
+        $this->backups->restore($this->target, $this->targetUser, $this->export());
+
+        $restored = $charges->all($this->target)[0];
+        self::assertSame([5000, 5800, true, 800], [
+            $restored->actualMinor,
+            $restored->referenceMinor,
+            $restored->isDiscount(),
+            $restored->saving()->amountMinor,
+        ]);
+    }
+
     public function testABadPaymentRowInAnArchiveIsSkippedNotWritten(): void
     {
         $this->subscriptions->create($this->source, [
@@ -967,13 +994,15 @@ final class BackupRestoreTest extends DatabaseTestCase
 
         $archive = $this->export();
         $data = $this->readArchiveJson($archive, 'data.json');
-        $good = $data['charges'][0];
+        // A reference travels with its charge (Phase 36).
+        $good = ['reference_minor' => 6000] + $data['charges'][0];
         $data['charges'] = [
             $good,
             'not a row',
             ['subscription_index' => 99] + $good,
             ['expected_minor' => -1, 'due_date' => '2026-01-01'] + $good,
             ['actual_minor' => -5, 'due_date' => '2026-01-02'] + $good,
+            ['reference_minor' => -5, 'due_date' => '2026-01-06'] + $good,
             ['status' => 'refunded', 'due_date' => '2026-01-03'] + $good,
             ['source' => 'bank', 'due_date' => '2026-01-04'] + $good,
             ['currency' => 'XX', 'due_date' => '2026-01-05'] + $good,
@@ -988,8 +1017,10 @@ final class BackupRestoreTest extends DatabaseTestCase
         $summary = $this->backups->restore($this->target, $this->targetUser, $archive);
 
         self::assertSame(1, $summary['charges']);
-        self::assertSame(9, $summary['skipped']);
-        self::assertCount(1, $this->container->get(ChargeService::class)->all($this->target));
+        self::assertSame(10, $summary['skipped']);
+        $restored = $this->container->get(ChargeService::class)->all($this->target);
+        self::assertCount(1, $restored);
+        self::assertSame(6000, $restored[0]->referenceMinor);
     }
 
     public function testARestoreThatFailsPartWayKeepsNothing(): void

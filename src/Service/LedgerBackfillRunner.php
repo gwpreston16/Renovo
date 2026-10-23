@@ -18,7 +18,8 @@ use App\Security\ScopeFactory;
  * Run once by the operator after upgrading, when they choose — a large
  * instance may not want it inside a migration, and migrations run no
  * application logic. Safe to run again: a date that has a charge is left
- * alone, whatever wrote it.
+ * alone, whatever wrote it — except that a charge on an offer with no
+ * reference is given one (Phase 36), which a second run finds already done.
  *
  * Each household is walked once per member who can write, through that
  * member's own scope. In SHARED mode the first Owner reaches everything; in
@@ -45,12 +46,12 @@ final class LedgerBackfillRunner
     }
 
     /**
-     * @return array{households: int, subscriptions: int, charges: int, invoices: int}
+     * @return array{households: int, subscriptions: int, charges: int, invoices: int, references: int}
      */
     public function run(?int $householdId = null): array
     {
         $ids = $householdId === null ? $this->households->allIds() : [$householdId];
-        $totals = ['households' => 0, 'subscriptions' => 0, 'charges' => 0, 'invoices' => 0];
+        $totals = ['households' => 0, 'subscriptions' => 0, 'charges' => 0, 'invoices' => 0, 'references' => 0];
 
         foreach ($ids as $id) {
             if ($this->households->findById($id) === null) {
@@ -62,17 +63,18 @@ final class LedgerBackfillRunner
             $totals['subscriptions'] += $result['subscriptions'];
             $totals['charges'] += $result['charges'];
             $totals['invoices'] += $result['invoices'];
+            $totals['references'] += $result['references'];
         }
 
         return $totals;
     }
 
     /**
-     * @return array{subscriptions: int, charges: int, invoices: int}
+     * @return array{subscriptions: int, charges: int, invoices: int, references: int}
      */
     private function household(int $id): array
     {
-        $totals = ['subscriptions' => 0, 'charges' => 0, 'invoices' => 0];
+        $totals = ['subscriptions' => 0, 'charges' => 0, 'invoices' => 0, 'references' => 0];
         $writer = null;
 
         foreach ($this->memberships->findMembersOfHousehold($id) as $member) {
@@ -85,6 +87,7 @@ final class LedgerBackfillRunner
             $result = $this->charges->backfill($scope);
             $totals['subscriptions'] += $result['subscriptions'];
             $totals['charges'] += $result['charges'];
+            $totals['references'] += $result['references'];
             $writer ??= $scope->canWrite() ? $scope : null;
         }
 

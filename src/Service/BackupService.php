@@ -159,6 +159,7 @@ final class BackupService
                 'currency' => $charge->expected->currency,
                 'expected_minor' => $charge->expected->amountMinor,
                 'actual_minor' => $charge->actualMinor,
+                'reference_minor' => $charge->referenceMinor,
                 'status' => $charge->status->value,
                 'source' => $charge->source->value,
                 'note' => $charge->note,
@@ -676,6 +677,9 @@ final class BackupService
             $status = is_string($row['status'] ?? null) ? ChargeStatus::tryFrom($row['status']) : null;
             $source = is_string($row['source'] ?? null) ? ChargeSource::tryFrom($row['source']) : null;
             $actual = is_int($row['actual_minor'] ?? null) ? $row['actual_minor'] : null;
+            // Absent from an archive made before Phase 36, which is a charge
+            // with no reference.
+            $reference = is_int($row['reference_minor'] ?? null) ? $row['reference_minor'] : null;
 
             if (
                 $subscriptionId === null
@@ -684,6 +688,7 @@ final class BackupService
                 || $expected === null
                 || $expected < 0
                 || ($actual !== null && $actual < 0)
+                || ($reference !== null && $reference < 0)
                 || $status === null
                 || $source === null
             ) {
@@ -712,6 +717,7 @@ final class BackupService
                 $status,
                 $source,
                 $note,
+                $reference,
             );
             $taken[$subscriptionId][$date->format('Y-m-d')] = $source;
             $summary['charges']++;

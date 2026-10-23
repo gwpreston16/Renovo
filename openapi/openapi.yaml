@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.5.0"
+  version: "1.6.0"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -51,6 +51,7 @@ tags:
   - name: Subscriptions
   - name: Attachments
   - name: Payments
+  - name: Savings
   - name: Taxonomy
   - name: Calendar
   - name: Meta
@@ -595,7 +596,15 @@ paths:
         happen, and clears its actual. An `actual_minor` sent without a
         `status` says the charge happened, so it also sets `charged` — on a
         skipped charge too; sending `skipped` with an actual is a 422. A charge the token can see but may not
-        change is a 404.
+        change is a 404. `is_discount: true` says an actual below the
+        expected amount was a discount, making the expected amount the
+        charge's `reference_minor`; `false` takes a discount off, and does
+        nothing on a charge an offer stands behind. Sent without it, a
+        discount stays while the actual is still lower — and through a skip,
+        while it saves nothing — and goes when it is cleared or raised to the
+        expected amount. A discount on an actual
+        that is not lower, or on a charge an offer already stands behind, is
+        a 422.
       requestBody:
         required: true
         content:
@@ -606,6 +615,7 @@ paths:
                 actual_minor: { type: integer, minimum: 0, nullable: true }
                 status: { type: string, enum: [charged, skipped] }
                 note: { type: string, nullable: true, maxLength: 255 }
+                is_discount: { type: boolean }
       responses:
         "200":
           description: The charge as it now stands.
@@ -625,6 +635,42 @@ paths:
           $ref: "#/components/responses/NotFound"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+
+  /api/v1/savings:
+    get:
+      tags: [Savings]
+      summary: What offers and cancellations have saved.
+      description: |
+        History, never a projection. **Offers**: each charge's reference —
+        the price after its introductory or promotional offer, or the
+        expected amount of one a member marked as a discount — less what it
+        cost, never below nothing; a skipped charge saves nothing.
+        **Cancellations**: for each cancelled subscription, the charges it
+        would have made after it was cancelled, priced as the history says,
+        up to today and at most `cap_months` months on — leaving out charges
+        its notice period had already committed. A fixed term that ran its
+        course, a restored subscription and one paused when it was cancelled
+        add nothing; a trial cancelled before it charged is counted in
+        `trials`, not valued. `run_rate` is the yearly cost removed by the
+        last twelve months' cancellations, at the price on each cancellation
+        date. In ISOLATED mode the figures are the token holder's own,
+        counting their share of a split bill. With a token that may write,
+        the request first runs the catch-up.
+      responses:
+        "200":
+          description: Both figures and what is behind them.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Savings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /api/v1/categories:
     get:
@@ -1230,6 +1276,9 @@ components:
         - status
         - source
         - note
+        - reference_minor
+        - saving_minor
+        - is_discount
         - created_at
         - updated_at
       properties:
@@ -1270,8 +1319,121 @@ components:
             catch-up and the backfill; a resume still makes it the month's
             `paused` charge, keeping its own `currency` and `expected_minor`.
         note: { type: string, nullable: true }
+        reference_minor:
+          type: integer
+          nullable: true
+          description: >-
+            What the charge would have cost without its offer: the first
+            ordinary price after the promotional one in force on its due date,
+            written with the charge and frozen — or, when a member marked a
+            lower actual as a discount, the expected amount. Read-only; set a
+            discount with `is_discount` on `PATCH`. When a `manual` charge is
+            adopted as a billing date's charge it takes that date's offer
+            reference, or keeps a discount — now against the price due —
+            while its actual is still below it.
+        saving_minor:
+          type: integer
+          description: >-
+            What the offer or discount took off: `reference_minor` less
+            `amount_minor`, never below 0; 0 when there is no reference or the
+            charge was skipped.
+        is_discount:
+          type: boolean
+          description: Whether the reference is a member's discount rather than an offer's.
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+
+    SavingsTotal:
+      type: object
+      required: [currency, amount_minor]
+      properties:
+        currency: { type: string }
+        amount_minor: { type: integer }
+
+    SavingsFigure:
+      type: object
+      required: [totals, combined]
+      description: >-
+        One figure: each currency's amount, and their sum in the instance's
+        base currency — `amount_minor` null, with the currencies that have no
+        rate in `unconvertible`, when one does not convert.
+      properties:
+        totals:
+          type: array
+          items: { $ref: "#/components/schemas/SavingsTotal" }
+        combined:
+          type: object
+          required: [currency, amount_minor, unconvertible]
+          properties:
+            currency: { type: string }
+            amount_minor: { type: integer, nullable: true }
+            unconvertible:
+              type: array
+              items: { type: string }
+
+    Savings:
+      type: object
+      required: [offers, cancellations]
+      properties:
+        offers:
+          type: object
+          required: [total, by_year, by_subscription]
+          properties:
+            total: { $ref: "#/components/schemas/SavingsFigure" }
+            by_year:
+              type: array
+              description: Newest year first.
+              items:
+                allOf:
+                  - $ref: "#/components/schemas/SavingsFigure"
+                  - type: object
+                    required: [year]
+                    properties:
+                      year: { type: integer }
+            by_subscription:
+              type: array
+              items:
+                type: object
+                required: [subscription_id, name, totals, charges]
+                properties:
+                  subscription_id: { type: integer }
+                  name: { type: string }
+                  totals:
+                    type: array
+                    items: { $ref: "#/components/schemas/SavingsTotal" }
+                  charges: { type: integer, description: The charges that saved something. }
+        cancellations:
+          type: object
+          required: [realised, run_rate, by_subscription, trials, cap_months]
+          properties:
+            realised: { $ref: "#/components/schemas/SavingsFigure" }
+            run_rate: { $ref: "#/components/schemas/SavingsFigure" }
+            by_subscription:
+              type: array
+              items:
+                type: object
+                required: [subscription_id, name, cancelled_on, totals, charges, committed, run_rate]
+                properties:
+                  subscription_id: { type: integer }
+                  name: { type: string }
+                  cancelled_on: { type: string, format: date }
+                  totals:
+                    type: array
+                    items: { $ref: "#/components/schemas/SavingsTotal" }
+                  charges: { type: integer, description: The charges avoided and counted. }
+                  committed:
+                    type: integer
+                    description: Charges its notice period had already committed, not counted.
+                  run_rate:
+                    type: object
+                    nullable: true
+                    required: [currency, amount_minor]
+                    description: Its yearly cost, when it was cancelled in the last twelve months.
+                    properties:
+                      currency: { type: string }
+                      amount_minor: { type: integer }
+            trials: { type: integer, description: Trials cancelled before they charged. }
+            cap_months: { type: integer }
 
     SubscriptionInput:
       type: object

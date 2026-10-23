@@ -198,6 +198,34 @@ final class VaryingBillTest extends DatabaseTestCase
         self::assertSame(6300, $average->average->amountMinor);
     }
 
+    /**
+     * K93: a row that changed currency keeps its old bills in the old one,
+     * and those are not averaged as though they were in the new one.
+     */
+    public function testBillsInAnotherCurrencyAreNotAveraged(): void
+    {
+        $id = $this->bill('Octopus Energy', 5000, ['2026-04-01' => 5200, '2026-05-01' => 5400]);
+        foreach (['2026-02-01', '2026-03-01'] as $date) {
+            $this->chargeRows->record(
+                $this->scope(),
+                $id,
+                $this->alice,
+                new DateTimeImmutable($date),
+                Money::of(6000, 'EUR'),
+                ChargeSource::CatchUp,
+                actualMinor: 6000,
+            );
+        }
+
+        $average = $this->charges->averageOfActuals($this->scope(), $this->find($id));
+
+        self::assertNotNull($average);
+        self::assertSame(
+            [2, 5300, 'GBP'],
+            [$average->count, $average->average->amountMinor, $average->average->currency],
+        );
+    }
+
     public function testExactlyFifteenPercentIsNotOff(): void
     {
         $id = $this->bill('Edge', 5000, ['2026-03-01' => 5750, '2026-04-01' => 5750, '2026-05-01' => 5750]);

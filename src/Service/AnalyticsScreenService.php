@@ -12,7 +12,8 @@ use App\Support\Clock;
 /**
  * The analytics screen: the year-to-date KPI row, twelve months back and twelve
  * ahead, this year against last, who pays what, the most expensive
- * subscriptions, the household's price history and the insights — then the
+ * subscriptions, the household's price history, the insights and what has
+ * been saved — then the
  * breakdown donuts and the review figures the page has always carried.
  *
  * The third of these assemblers, after DashboardService and
@@ -40,6 +41,7 @@ use App\Support\Clock;
  * @phpstan-import-type HouseholdChange from PriceHistoryService
  * @phpstan-import-type Insight from SpendInsightService
  * @phpstan-import-type ValueSignal from UsageService
+ * @phpstan-import-type Savings from SavingsService
  * @phpstan-type RankedRow array{subscription: Subscription, monthly_minor: int, comparable_minor: int}
  * @phpstan-type Figures array{totals: list<array{currency: string, amount_minor: int}>, combined: Combined}
  */
@@ -67,6 +69,7 @@ final class AnalyticsScreenService
         private readonly HouseholdDashboardService $householdDashboard,
         private readonly ExchangeRateService $rates,
         private readonly InstanceSettingsService $settings,
+        private readonly SavingsService $savings,
         private readonly Clock $clock,
     ) {
     }
@@ -152,6 +155,9 @@ final class AnalyticsScreenService
             // cannot contradict the KPI row above it.
             'insights' => $this->insights->insights($scope, $all, $valueSignals),
             'value_signals' => $valueSignals,
+            // What offers and cancellations have saved: the household's, or
+            // in ISOLATED mode the reader's own share, as who pays is.
+            'savings' => $this->savings->forScope($scope),
             'subscriptions' => $all,
         ];
     }

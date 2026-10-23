@@ -1223,6 +1223,46 @@ final class PaymentLedgerTest extends DatabaseTestCase
         self::assertSame(ChargeSource::OneOff, $charges[0]->source);
     }
 
+    /**
+     * K75: a lifetime purchase has one charge of its own, as a one-off does —
+     * written once, moved with its date, and backfilled as its own.
+     */
+    public function testALifetimeEntrysChargeIsWrittenMovedAndBackfilledAsItsOwn(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-10-05 08:00:00'));
+        $licence = fn (string $date): array => [
+            'name' => 'Licence',
+            'price' => '99.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'lifetime',
+            'start_date' => $date,
+        ];
+
+        $id = $this->subscriptions->create($this->alice, $licence('2026-10-01'));
+        $this->catchUp->run($this->alice);
+        $this->catchUp->run($this->alice);
+        $written = $this->charges->forSubscription($this->alice, $id);
+        self::assertSame([['2026-10-01', 9900]], $this->dueAndExpected($id));
+        self::assertSame(ChargeSource::OneOff, $written[0]->source);
+
+        // Moved with its date: the same row, not a second.
+        $this->subscriptions->update($this->alice, $id, $licence('2026-09-12'));
+        $this->catchUp->run($this->alice);
+        self::assertSame([['2026-09-12', 9900]], $this->dueAndExpected($id));
+        self::assertSame($written[0]->id, $this->charges->forSubscription($this->alice, $id)[0]->id);
+
+        // Backfilled as its own, once, when the ledger had nothing for it.
+        $this->db->execute('DELETE FROM subscription_charges WHERE subscription_id = :id', ['id' => $id]);
+        $this->container->get(LedgerBackfillRunner::class)->run();
+        $this->container->get(LedgerBackfillRunner::class)->run();
+        $backfilled = $this->charges->forSubscription($this->alice, $id);
+        self::assertCount(1, $backfilled);
+        self::assertSame(['2026-09-12', ChargeSource::OneOff], [
+            $backfilled[0]->dueDate->format('Y-m-d'),
+            $backfilled[0]->source,
+        ]);
+    }
+
     public function testAMovedOneOffsInvoiceMovesWithIt(): void
     {
         $this->clock->advanceTo(new DateTimeImmutable('2026-10-05 08:00:00'));
@@ -1990,7 +2030,7 @@ final class PaymentLedgerTest extends DatabaseTestCase
         $this->create('Monthly', '10.00', '2026-06-15', '2026-01-15');
         $viewer = Scope::forMember($this->bobId, false, $this->household, Role::Viewer, IsolationMode::Shared);
 
-        self::assertSame(['subscriptions' => 0, 'charges' => 0], $this->charges->backfill($viewer));
+        self::assertSame(['subscriptions' => 0, 'charges' => 0, 'references' => 0], $this->charges->backfill($viewer));
     }
 
     public function testAPageIsNewestFirstAndBounded(): void

@@ -12,6 +12,7 @@ use App\Service\DashboardLayoutService;
 use App\Service\DashboardService;
 use App\Service\HouseholdDashboardService;
 use App\Service\InstanceSettingsService;
+use App\Service\SavingsService;
 use App\Service\SpendTrendService;
 use App\Service\UserPreferencesService;
 use App\Support\Clock;
@@ -33,6 +34,7 @@ final class DashboardController extends Controller
         private readonly UserPreferencesService $preferences,
         private readonly Clock $clock,
         private readonly InstanceSettingsService $settings,
+        private readonly SavingsService $savings,
     ) {
         parent::__construct($view, $session, $translator);
     }
@@ -93,6 +95,11 @@ final class DashboardController extends Controller
             // has turned it on.
             if (in_array(DashboardCard::Recent, $cards, true)) {
                 $data['table'] = $this->dashboard->table($scope, is_string($show) ? $show : 'active');
+            }
+            // And the savings, for the same reason: they read the ledger and
+            // walk every cancelled row.
+            if (in_array(DashboardCard::Savings, $cards, true)) {
+                $data['savings'] = $this->savings->forScope($scope);
             }
         }
 

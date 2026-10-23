@@ -65,6 +65,7 @@ final class ChargeRepository extends AbstractScopedRepository
             'due_date',
             'status',
             'source',
+            'reference_minor',
             'created_at',
         ];
     }
@@ -150,6 +151,32 @@ final class ChargeRepository extends AbstractScopedRepository
             ->orderBy('subscription_id', 'asc')
             ->orderBy('due_date', 'asc')
             ->orderBy('id', 'asc');
+
+        $params = [];
+        $sql = $this->selectWithRecorder()
+            . $this->scopedWhere($scope, $criteria, $params)
+            . $this->compileOrderBy($criteria);
+
+        return array_map($this->hydrate(...), $this->db->fetchAll($sql, $params));
+    }
+
+    /**
+     * Every charge in scope that carries a reference — the charges an offer
+     * or a discount stands behind, which are all the offers figure reads —
+     * or, given a subscription, every one of its own.
+     *
+     * @return list<Charge>
+     */
+    public function findWithReference(Scope $scope, ?int $subscriptionId = null): array
+    {
+        $criteria = Criteria::new()
+            ->where('reference_minor', 'IS NOT NULL');
+        if ($subscriptionId !== null) {
+            $criteria = $criteria->equals('subscription_id', $subscriptionId);
+        }
+        $criteria = $criteria
+            ->orderBy('subscription_id', 'asc')
+            ->orderBy('due_date', 'asc');
 
         $params = [];
         $sql = $this->selectWithRecorder()
@@ -350,11 +377,16 @@ final class ChargeRepository extends AbstractScopedRepository
      * Only a payment in the currency of the price due is adopted: the row has
      * one currency for both amounts, and relabelling what a member entered
      * would change its value. One in another currency stays manual. A skipped
-     * payment stays skipped, with no actual.
+     * payment stays skipped, with no actual. It takes the date's reference,
+     * as a charge written there would — an offer's when the date is on one.
+     * Otherwise a discount a member marked on the payment is kept, moved to
+     * the price due, while what they paid is still below it; a reference
+     * that was not a discount is dropped.
      *
-     * `actual_minor` is assigned before `expected_minor`: MySQL evaluates a
-     * single-table UPDATE's assignments left to right, so the order is what
-     * makes both engines copy the entered amount rather than the new one.
+     * `reference_minor` is assigned first and `actual_minor` before
+     * `expected_minor`: MySQL evaluates a single-table UPDATE's assignments
+     * left to right, so the order is what makes both engines read the row as
+     * the member left it rather than as half-adopted.
      *
      * @return bool Whether a payment was adopted — false when there was none
      *              on the date (removed in the meantime) or its currency
@@ -366,14 +398,36 @@ final class ChargeRepository extends AbstractScopedRepository
         DateTimeImmutable $date,
         Money $due,
         ChargeSource $source,
+        ?Money $reference = null,
     ): bool {
         if (!$scope->hasHousehold()) {
             return false;
         }
 
+        // An offer's reference when the date is on one; otherwise a discount
+        // the member marked, kept against the price due while it is lower.
+        $referenceSql = $reference !== null
+            ? ':reference'
+            : 'CASE WHEN ' . $this->quote('reference_minor') . ' = ' . $this->quote('expected_minor')
+                . ' AND ' . $this->quote('status') . ' <> :skipped_discount'
+                // COALESCE with the column gives the bound value the column's
+                // type: PostgreSQL would otherwise type a CASE of untyped
+                // parameters as text, which a bigint column refuses.
+                . ' AND ' . $this->quote('actual_minor') . ' < :due_discount'
+                . ' THEN COALESCE(:due_reference, ' . $this->quote('reference_minor') . ')'
+                . ' ELSE NULL END';
+        $referenceParams = $reference !== null
+            ? ['reference' => $reference->amountMinor]
+            : [
+                'skipped_discount' => ChargeStatus::Skipped->value,
+                'due_discount' => $due->amountMinor,
+                'due_reference' => $due->amountMinor,
+            ];
+
         return $this->db->execute(
             'UPDATE ' . $this->quote($this->table())
-            . ' SET ' . $this->quote('actual_minor') . ' = CASE WHEN ' . $this->quote('status') . ' = :skipped'
+            . ' SET ' . $this->quote('reference_minor') . ' = ' . $referenceSql . ','
+            . ' ' . $this->quote('actual_minor') . ' = CASE WHEN ' . $this->quote('status') . ' = :skipped'
             . ' THEN NULL ELSE COALESCE(' . $this->quote('actual_minor') . ', '
             . $this->quote('expected_minor') . ') END,'
             . ' ' . $this->quote('expected_minor') . ' = :due,'
@@ -394,7 +448,7 @@ final class ChargeRepository extends AbstractScopedRepository
                 'household' => $scope->householdId,
                 'date' => $date->format('Y-m-d'),
                 'manual' => ChargeSource::Manual->value,
-            ],
+            ] + $referenceParams,
         ) > 0;
     }
 
@@ -478,6 +532,7 @@ final class ChargeRepository extends AbstractScopedRepository
         ?string $note = null,
         ?DateTimeImmutable $now = null,
         ChargeStatus $status = ChargeStatus::Charged,
+        ?Money $reference = null,
     ): int {
         $stamp = ($now ?? new DateTimeImmutable())->format('Y-m-d H:i:s');
 
@@ -488,6 +543,7 @@ final class ChargeRepository extends AbstractScopedRepository
             'expected_minor' => $expected->amountMinor,
             'currency' => $expected->currency,
             'actual_minor' => $actualMinor,
+            'reference_minor' => $reference?->amountMinor,
             'status' => $status->value,
             'source' => $source->value,
             'note' => $note,
@@ -515,6 +571,7 @@ final class ChargeRepository extends AbstractScopedRepository
         ChargeSource $source,
         ?string $note = null,
         ?DateTimeImmutable $now = null,
+        ?Money $reference = null,
     ): ?int {
         try {
             return $this->record(
@@ -527,6 +584,7 @@ final class ChargeRepository extends AbstractScopedRepository
                 null,
                 $note,
                 $now,
+                reference: $reference,
             );
         } catch (PDOException $exception) {
             if (Database::isUniqueViolation($exception)) {
@@ -553,6 +611,7 @@ final class ChargeRepository extends AbstractScopedRepository
         ChargeStatus $status,
         ChargeSource $source,
         ?string $note,
+        ?int $referenceMinor = null,
     ): int {
         $stamp = (new DateTimeImmutable())->format('Y-m-d H:i:s');
 
@@ -563,6 +622,7 @@ final class ChargeRepository extends AbstractScopedRepository
             'expected_minor' => $expected->amountMinor,
             'currency' => $expected->currency,
             'actual_minor' => $actualMinor,
+            'reference_minor' => $referenceMinor,
             'status' => $status->value,
             'source' => $source->value,
             'note' => $note,
@@ -573,21 +633,70 @@ final class ChargeRepository extends AbstractScopedRepository
     }
 
     /**
-     * Change what a member may change about a charge: the actual, the status
-     * and the note. Within write scope.
+     * Change what a member may change about a charge: the actual, the status,
+     * the note and — by marking a discount — the reference. Within write
+     * scope. The reference is always written, so a caller that is not
+     * changing it passes the one the charge has.
      *
      * @throws \App\Security\ScopeViolationException when the row is absent or
      *         not this scope's to change.
      */
-    public function adjust(Scope $scope, int $id, ?int $actualMinor, ChargeStatus $status, ?string $note): void
-    {
+    public function adjust(
+        Scope $scope,
+        int $id,
+        ?int $actualMinor,
+        ChargeStatus $status,
+        ?string $note,
+        ?int $referenceMinor,
+    ): void {
         $this->updateScoped($scope, $id, [
             'actual_minor' => $actualMinor,
+            'reference_minor' => $referenceMinor,
             'status' => $status->value,
             'note' => $note,
             'recorded_by_user_id' => $scope->userId,
             'updated_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
         ]);
+    }
+
+    /**
+     * Give a charge the ledger wrote its offer's reference, when it has none
+     * — what `ledger:backfill` does for the rows written before references
+     * existed. Never overwrites one, and never touches a payment a member
+     * added by hand, whose amount is theirs rather than an offer's. Asked of
+     * the subscription within the household, as `existingDates()` is: the
+     * caller may already write it.
+     *
+     * @return bool Whether a reference was written.
+     */
+    public function fillReference(Scope $scope, int $subscriptionId, DateTimeImmutable $date, Money $reference): bool
+    {
+        if (!$scope->hasHousehold()) {
+            return false;
+        }
+
+        return $this->db->execute(
+            'UPDATE ' . $this->quote($this->table())
+            . ' SET ' . $this->quote('reference_minor') . ' = :reference'
+            . ' WHERE ' . $this->quote('subscription_id') . ' = :subscription'
+            . ' AND ' . $this->quote('household_id') . ' = :household'
+            . ' AND ' . $this->quote('due_date') . ' = :date'
+            . ' AND ' . $this->quote('currency') . ' = :currency'
+            . ' AND ' . $this->quote('source') . ' <> :manual'
+            // One equal to what was charged would save nothing, and read as
+            // a member's discount.
+            . ' AND ' . $this->quote('expected_minor') . ' <> :charged'
+            . ' AND ' . $this->quote('reference_minor') . ' IS NULL',
+            [
+                'reference' => $reference->amountMinor,
+                'charged' => $reference->amountMinor,
+                'subscription' => $subscriptionId,
+                'household' => $scope->householdId,
+                'date' => $date->format('Y-m-d'),
+                'currency' => $reference->currency,
+                'manual' => ChargeSource::Manual->value,
+            ],
+        ) > 0;
     }
 
     /**
@@ -646,6 +755,7 @@ final class ChargeRepository extends AbstractScopedRepository
             recordedByName: ($row['recorded_by_name'] ?? null) === null ? null : (string) $row['recorded_by_name'],
             createdAt: new DateTimeImmutable((string) $row['created_at']),
             updatedAt: new DateTimeImmutable((string) $row['updated_at']),
+            referenceMinor: ($row['reference_minor'] ?? null) === null ? null : (int) $row['reference_minor'],
         );
     }
 }

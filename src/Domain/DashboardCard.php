@@ -42,6 +42,9 @@ enum DashboardCard: string
     case FreeTrials = 'free_trials';
     case PriceChange = 'price_change';
     case Recent = 'recent';
+    // Phase 36: what offers and cancellations have saved. Opt-in, like the
+    // table: it earns a place here by being looked at on Analytics first.
+    case Savings = 'savings';
 
     // Household
     case MonthSoFar = 'month_so_far';
@@ -100,7 +103,7 @@ enum DashboardCard: string
     {
         return match ($this) {
             self::SpendChart, self::ComingUp => 4,
-            self::WhereItGoes, self::Budgets, self::FreeTrials, self::PriceChange => 2,
+            self::WhereItGoes, self::Budgets, self::FreeTrials, self::PriceChange, self::Savings => 2,
             self::SpendTrend, self::ByCategory => 3,
             default => 6,
         };
@@ -124,11 +127,12 @@ enum DashboardCard: string
      *
      * The subscriptions table is the Subscriptions page's own subject, so on
      * the dashboard it is an opt-in: listed while customising, off until
-     * somebody turns it on.
+     * somebody turns it on. Savings is the same, because Analytics is its
+     * home.
      */
     public function visibleByDefault(): bool
     {
-        return $this !== self::Recent;
+        return $this !== self::Recent && $this !== self::Savings;
     }
 
     /**

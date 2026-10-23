@@ -12,6 +12,7 @@ use App\Service\CatchUpService;
 use App\Service\FixedTermService;
 use App\Service\ChargeService;
 use App\Service\PriceHistoryService;
+use App\Service\SavingsService;
 use App\Service\ScenarioService;
 use App\Service\SplitService;
 use App\Service\SubscriptionService;
@@ -45,6 +46,7 @@ final class SubscriptionMoneyController extends Controller
         private readonly ChargeService $charges,
         private readonly CatchUpService $catchUp,
         private readonly FixedTermService $terms,
+        private readonly SavingsService $savings,
     ) {
         parent::__construct($view, $session, $translator);
     }
@@ -88,6 +90,8 @@ final class SubscriptionMoneyController extends Controller
             'payments' => $this->charges->page($scope, $subscription->id, is_numeric($page) ? (int) $page : 1),
             'term' => $this->terms->progress($scope, $subscription),
             'actuals' => $this->charges->averageOfActuals($scope, $subscription),
+            // What its offers have saved, per currency; nothing when nothing.
+            'offer_savings' => $this->savings->offersFor($scope, $subscription->id),
             // A payment form the server refused, to reopen with what was typed.
             'failed' => $this->takeFailedPayment($subscription->id),
             'invoices' => $this->attachments->byCharge($scope, $subscription->id),

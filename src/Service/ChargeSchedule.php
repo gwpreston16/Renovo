@@ -163,4 +163,45 @@ final class ChargeSchedule
 
         return $price;
     }
+
+    /**
+     * What a charge on `$date` would have cost without the offer it was on:
+     * when the price in force that day is promotional, the first price after
+     * it that is not — the offer's "then costs". Null when the price was not
+     * on an offer, when no ordinary price is recorded after it, when that
+     * price is in another currency, which no saving can be measured in, or
+     * when it is the offer's own price: there is nothing it saved, and a
+     * reference equal to the price due is how a discount reads.
+     *
+     * Read when the charge is written, and frozen there.
+     *
+     * @param list<PriceChange> $history Oldest first.
+     */
+    public static function referenceAsAt(array $history, DateTimeImmutable $date): ?Money
+    {
+        $current = null;
+        foreach ($history as $index => $change) {
+            if (!$change->hasTakenEffectOn($date)) {
+                break;
+            }
+            $current = $index;
+        }
+
+        if ($current === null || !$history[$current]->isPromotional) {
+            return null;
+        }
+
+        foreach (array_slice($history, $current + 1) as $change) {
+            if (!$change->isPromotional) {
+                $offer = $history[$current]->price;
+
+                return $change->price->currency === $offer->currency
+                    && $change->price->amountMinor !== $offer->amountMinor
+                    ? $change->price
+                    : null;
+            }
+        }
+
+        return null;
+    }
 }

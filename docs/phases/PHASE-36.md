@@ -119,17 +119,100 @@ No new table. Savings are computed, never stored.
 - **Card not on by default.** It earns a place on the dashboard by being looked
   at on Analytics first, as the insights did.
 
+*Confirmed 2026-10-23*, all five as written. The card belongs to the
+**Overview** view and is listed under Customise, hidden until turned on, as
+the subscriptions table is (`DashboardCard::visibleByDefault()`).
+
+Found while starting it:
+
+- **A restored row contributes nothing.** *Changed 2026-10-23:* the brief said
+  a cancelled-then-restored row counts for the period it was cancelled, but
+  nothing records that period: `uncancel()` clears `cancelled_at`
+  (`SubscriptionRepository::setCancelled()`), and no audit entry is written
+  for a cancel or an uncancel. Once restored a row is not a cancelled row, and
+  adds nothing. The test is rewritten to match.
+- **A fixed term that ended adds nothing, by the walk itself** (settled by the
+  code). `endTerm()` cancels it the day after its last payment, and
+  `ChargeSchedule::walk()` stops at `payments_end_on`, so the would-have
+  charges after its cancellation are none. A member who cancelled a fixed term
+  early is credited up to its last payment and no further; the run-rate removed
+  leaves out a row whose `cancelled_at` is after `payments_end_on`.
+- **Undo tells a discount from an offer by its amount.** *Confirmed
+  2026-10-23.* Ticking **This was a discount** sets the reference to the
+  expected amount; Undo, or clearing the actual, clears a reference equal to
+  the expected amount and keeps any other. The tick is offered only on a
+  charge with no reference: an offer's reference already counts a lower actual
+  through `reference − actual`. No second column.
+- **The backfill fills any reference that is missing.** *Confirmed
+  2026-10-23.* `ledger:backfill` gives a reference, by the offer rule, to every
+  charge on a promotional price that has none — catch-up, reconstructed and
+  one-off rows alike, including those written since Phase 34 — and never
+  overwrites one.
+- **The API marks a discount with `is_discount`.** *Confirmed 2026-10-23.*
+  `reference_minor` is read-only on the charge resource; `PATCH
+  /api/v1/charges/{id}` takes `is_discount: true|false`, by the same rule as
+  the form's tick.
+- **A skipped charge saves nothing even though it carries a reference**
+  (assumption): the saving checks the status before `reference − amount`,
+  since `amount()` of a skipped charge is zero.
+- **The notice period is the row's current one** (assumption): it is not kept
+  per date, so a notice changed after cancelling is the one applied.
+- **The run-rate removed is priced on the cancellation date** (assumption):
+  `annualMinor()` of the price in force that day, since `yearlyMinor()` reads
+  today's price.
+- **The trials line counts every trial cancelled before paying** (assumption),
+  not only the last twelve months, as the realised figure counts every
+  cancelled row.
+
+- **A row paused when it was cancelled avoided nothing** (assumption, found
+  while building). Pausing keeps no start date, so the sign of it is a payment
+  date left behind the cancellation date — a running row's is caught up when
+  it is cancelled. Such a row adds nothing, as paused rows are out of scope.
+- **"A member's view" is ISOLATED mode** (assumption, found while building).
+  The figures are the household's in SHARED mode; in ISOLATED mode
+  (`Scope::restrictsReadsToOwner()`) they are the reader's own, counting their
+  share of a split bill as a member budget does (`SplitService::chargeShare()`),
+  and the run-rate removed likewise. The same split as who-pays draws.
+- **A trial cancelled while still a trial is on the trials line**
+  (assumption): it never converted, so it never charged.
+
+- **What each charge saved is shown too** (assumption, found while
+  building). The charge resource carries `saving_minor` and the payments
+  export a `saving` column beside the reference: read-only, from the rule
+  above, so each figure can be traced to the charges behind it.
+- **An offer that goes back to its own price has no reference** (assumption,
+  from the merge review). It saved nothing, and a reference equal to the
+  price due is how a discount reads.
+- **A manual payment's discount survives its adoption** (assumption, from the
+  merge review): moved to the price due while what was paid is still below
+  it; an offer's reference on the date replaces it.
+- **The cost page's line is the subscription's whole saving.** *Confirmed
+  2026-10-23:*
+  the page shows the row's own prices whole, in ISOLATED mode too, so its
+  saving is the row's, not the reader's share of it.
+
+- **Rows cancelled before 1.5.0 may read as paused** (limitation, from the
+  merge review). `cancel()` has brought the payment date up to date first
+  only since 1.5.0, so an older cancellation through the API, or of a row
+  whose page had not been loaded since a payment passed, can have a payment
+  date behind its cancellation and be counted as paused. Nothing stored tells
+  the two apart; the upgrading guide and the feature page say so.
+
+Known issues added to this phase (*Confirmed 2026-10-23*): **K75**, **K76**,
+**K82**, **K93** — all in ledger code this phase changes.
+
 ## Status
 
-- [ ] Migration on both engines; references written and frozen; backfill
+- [x] Migration on both engines; references written and frozen; backfill
       extended
-- [ ] "This was a discount" on recording an actual
-- [ ] `SavingsService`: offers, cancellations (realised, capped; run-rate),
+- [x] "This was a discount" on recording an actual
+- [x] `SavingsService`: offers, cancellations (realised, capped; run-rate),
       exclusions, currencies, scoping
-- [ ] Analytics Savings card; optional dashboard card; money page line
-- [ ] API endpoint and charge field, OpenAPI, `docs/api.md`; export
-- [ ] New strings in `translations/en.php`
-- [ ] `composer check`, `i18n:check`, offline guard green on both engines
+- [x] Analytics Savings card; optional dashboard card; money page line
+- [x] API endpoint and charge field, OpenAPI, `docs/api.md`; export
+- [x] Known issues K75, K76, K82, K93
+- [x] New strings in `translations/en.php`
+- [x] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done
 
@@ -151,7 +234,7 @@ splits; the gates pass on both engines. Then mark it ✅ in `ROADMAP.md`.
   realised; with one month's notice and a charge inside it: £32.97.
 - A row cancelled two years ago contributes at most twelve months.
 - A fixed term that ended contributes nothing; a cancelled-then-restored row
-  contributes only for the cancelled period.
+  contributes nothing.
 - A trial cancelled before conversion is counted on the trials line and adds
   nothing to the amount.
 - Two currencies with a rate combine; without, each currency is shown and the

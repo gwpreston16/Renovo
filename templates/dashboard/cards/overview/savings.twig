@@ -1,0 +1,30 @@
+{#
+    What offers and cancellations have saved, in brief: the two figures, and a
+    link to the Analytics card that says where each came from. Opt-in — off
+    until somebody turns it on — and computed only when it is shown.
+#}
+{% import 'partials/savings.twig' as saved %}
+
+<section class="card savings-card" aria-labelledby="savings-card-heading">
+    <header class="card-header">
+        <h2 id="savings-card-heading" class="stat-label">{{ t('savings.title') }}</h2>
+        <span class="card-icon">{{ icon('savings') }}</span>
+    </header>
+
+    {% if savings is not defined or not savings.has_any %}
+        <p class="muted empty">{{ t('savings.empty') }}</p>
+    {% else %}
+        <div class="stat">
+            <h3 class="hint">{{ t('savings.offers') }}</h3>
+            {{ saved.headline(savings.offers.total) }}
+        </div>
+        <div class="stat">
+            <h3 class="hint">{{ t('savings.cancellations') }}</h3>
+            {{ saved.headline(savings.cancellations.realised) }}
+        </div>
+        {% if savings.cancellations.trials > 0 %}
+            <p class="hint">{{ t('savings.trials', {'count': savings.cancellations.trials}) }}</p>
+        {% endif %}
+        <a class="button button-quiet" href="/stats#analytics-savings">{{ t('savings.see_all') }}</a>
+    {% endif %}
+</section>

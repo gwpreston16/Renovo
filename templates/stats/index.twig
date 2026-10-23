@@ -15,7 +15,7 @@
     {#
         The prototype's arrangement: the KPI row; twelve months back and twelve
         ahead; this year against last beside who pays and the most expensive;
-        the price history beside the insights. Then what this page has always
+        the price history beside the insights and the savings. Then what this page has always
         carried: the same cost by period across the full width, and below it
         the two breakdown donuts stacked beside the cost-per-use table with its
         usage form.
@@ -45,6 +45,7 @@
         {% include 'stats/_price_history.twig' %}
         <div class="analytics-stack">
             {% include 'stats/_insights.twig' %}
+            {% include 'stats/_savings.twig' %}
         </div>
     </div>
 
