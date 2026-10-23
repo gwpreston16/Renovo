@@ -980,6 +980,9 @@ return [
     'audit_action.login.succeeded' => 'Signed in',
     'audit_action.logout' => 'Signed out',
     'audit_action.membership.role_changed' => 'Household role changed',
+    'audit_action.notification_channel.created' => 'Notification channel added',
+    'audit_action.notification_channel.deleted' => 'Notification channel deleted',
+    'audit_action.notification_channel.updated' => 'Notification channel changed',
     'audit_action.passkey.registered' => 'Passkey added',
     'audit_action.passkey.renamed' => 'Passkey renamed',
     'audit_action.passkey.revoked' => 'Passkey revoked',
@@ -2526,7 +2529,8 @@ return [
     // mail
     'mail.password_changed.body' =>
         "Hello {name},\n\nYour password has just been changed. If this was not you, contact the "
-        . 'administrator of this instance immediately.',
+        . "administrator of this instance immediately.\n\nAny API tokens and calendar feed links on your "
+        . 'account have stopped working too. Create new ones if you still need them.',
     'mail.password_changed.subject' => 'Your {instance} password was changed',
     'mail.reset.body' =>
         "Hello {name},\n\nSomeone asked to reset the password for this account. If it was you, follow "

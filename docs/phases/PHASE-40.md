@@ -208,8 +208,8 @@ Found while starting it:
 - [x] Channel config and rate key encrypted on write, decrypted on read
 - [x] Backfill migrations on both engines
 - [ ] `secrets:rotate` with `--dry-run`; audit entry; README section
-- [ ] API and feed tokens revoked on password change and reset; email copy
-- [ ] Channel create / edit / delete audit entries
+- [x] API and feed tokens revoked on password change and reset; email copy
+- [x] Channel create / edit / delete audit entries
 - [ ] Settings read at run time; compiled container rebuilt on code change; no
       `$_SERVER` settings (K4, K5); compose passes the keys
 - [ ] `.env.example` and the README environment table updated

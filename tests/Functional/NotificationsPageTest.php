@@ -204,13 +204,15 @@ final class NotificationsPageTest extends DatabaseTestCase
     public function testAChannelAddedAfterRoutingWasSavedHearsEverything(): void
     {
         $settings = $this->container->get(NotificationSettingsService::class);
-        $first = $settings->createChannel($this->userId, [
+        $user = (new UserRepository($this->db))->findById($this->userId);
+        self::assertNotNull($user);
+        $first = $settings->createChannel($user, [
             'channel_type' => 'email',
             'address' => 'me@example.test',
         ]);
         $settings->saveRoutes($this->userId, [$first => ['renewal']]);
 
-        $second = $settings->createChannel($this->userId, [
+        $second = $settings->createChannel($user, [
             'channel_type' => 'email',
             'address' => 'me-too@example.test',
         ]);

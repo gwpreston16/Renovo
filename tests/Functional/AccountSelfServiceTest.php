@@ -8,12 +8,14 @@ use App\Application\Middleware\AuthenticationMiddleware;
 use App\Domain\AuditAction;
 use App\Domain\IsolationMode;
 use App\Domain\Role;
+use App\Domain\TokenAbility;
 use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\UserRepository;
 use App\Security\CsrfTokenManager;
 use App\Security\PasswordHasher;
 use App\Security\SessionInterface;
+use App\Service\ApiTokenService;
 use App\Service\InstanceSettingsService;
 use App\Support\AvatarTone;
 use App\Tests\Integration\DatabaseTestCase;
@@ -393,6 +395,41 @@ final class AccountSelfServiceTest extends DatabaseTestCase
         self::assertCount(2, $this->sessionIdsFor($this->memberId));
     }
 
+    public function testChangingThePasswordRevokesEveryApiAndFeedToken(): void
+    {
+        $container = $this->app->getContainer();
+        self::assertNotNull($container);
+        $tokens = $container->get(ApiTokenService::class);
+        $member = $this->reload($this->memberId);
+        $apiToken = $tokens->issue($member, $this->householdId, 'Script', TokenAbility::Read);
+        $tokens->replaceFeedToken($member, $this->householdId);
+        $housemate = $this->reload($this->housemateId);
+        $housemates = $tokens->issue($housemate, $this->householdId, 'Theirs', TokenAbility::Read);
+
+        self::assertSame(200, $this->api($apiToken)->getStatusCode());
+
+        $this->signIn($this->memberId);
+        $this->request('POST', '/profile/password', [
+            'current_password' => self::PASSWORD,
+            'password' => 'a-brand-new-password',
+            'password_confirm' => 'a-brand-new-password',
+        ]);
+
+        self::assertSame(401, $this->api($apiToken)->getStatusCode());
+        self::assertSame(200, $this->api($housemates)->getStatusCode(), 'Another member\'s token is not ended.');
+        self::assertSame(0, (int) $this->db->fetchValue(
+            'SELECT COUNT(*) FROM api_tokens WHERE user_id = :user AND revoked_at IS NULL',
+            ['user' => $this->memberId],
+        ));
+
+        $context = (string) $this->db->fetchValue(
+            "SELECT context FROM audit_log WHERE action = 'password.changed' AND actor_user_id = :user",
+            ['user' => $this->memberId],
+        );
+        self::assertStringContainsString('"api_tokens_revoked":2', $context);
+        self::assertStringContainsString('calendar feed links', $this->mailer->lastBody());
+    }
+
     // ------------------------------------------------------------ the avatar
 
     public function testAnUploadedPictureIsStoredOutsideTheWebRootAndStreamsBack(): void
@@ -631,6 +668,15 @@ final class AccountSelfServiceTest extends DatabaseTestCase
             ->withHeader(CsrfTokenManager::HEADER_NAME, $container->get(CsrfTokenManager::class)->token());
 
         return $this->app->handle($request);
+    }
+
+    private function api(string $token): ResponseInterface
+    {
+        return $this->app->handle(
+            (new ServerRequestFactory())
+                ->createServerRequest('GET', 'http://localhost/api/v1/subscriptions', ['REMOTE_ADDR' => '127.0.0.1'])
+                ->withHeader('Authorization', 'Bearer ' . $token),
+        );
     }
 
     /**

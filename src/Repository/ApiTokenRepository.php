@@ -144,6 +144,23 @@ final class ApiTokenRepository extends AbstractRepository
     }
 
     /**
+     * Revoke every live token this user holds — API tokens and calendar feed
+     * tokens alike — when their password changes.
+     *
+     * @return int How many were revoked.
+     */
+    public function revokeAllForUser(int $userId): int
+    {
+        return $this->db->execute(
+            'UPDATE ' . $this->quote('api_tokens')
+            . ' SET ' . $this->quote('revoked_at') . ' = :now'
+            . ' WHERE ' . $this->quote('user_id') . ' = :user'
+            . ' AND ' . $this->quote('revoked_at') . ' IS NULL',
+            ['now' => $this->clock->now()->format('Y-m-d H:i:s'), 'user' => $userId],
+        );
+    }
+
+    /**
      * Stamp a token as used.
      *
      * Deliberately not an audit entry: this runs on every API request, and a

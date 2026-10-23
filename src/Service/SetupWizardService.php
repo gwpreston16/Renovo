@@ -200,9 +200,9 @@ final class SetupWizardService
         if ($email === null && $emailOn) {
             // No address: the channel sends to the account's own, and follows
             // it if the owner changes it later.
-            $this->notifications->createChannel($admin->id, ['channel_type' => 'email', 'address' => '']);
+            $this->notifications->createChannel($admin, ['channel_type' => 'email', 'address' => '']);
         } elseif ($email !== null && $email->isActive !== $emailOn) {
-            $this->notifications->setChannelActive($admin->id, $email->id, $emailOn);
+            $this->notifications->setChannelActive($admin, $email->id, $emailOn);
         }
     }
 

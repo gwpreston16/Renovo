@@ -213,6 +213,56 @@ final class NotificationRoutesTest extends DatabaseTestCase
         self::assertCount(1, $channels->findAllForUser($this->viewerId));
     }
 
+    public function testAddingEditingAndDeletingAChannelIsAuditedWithoutItsConfig(): void
+    {
+        $this->signIn($this->viewerId);
+
+        $this->request('POST', '/settings/notifications/channels', [
+            'channel_type' => 'gotify',
+            'label' => 'Phone',
+            'url' => 'https://push.example.org',
+            'token' => 'AsecretToken1',
+        ]);
+        $channels = new NotificationChannelRepository(
+            $this->db,
+            new SystemClock(new DateTimeZone('UTC')),
+            TestKeys::ring(),
+        );
+        $id = $channels->findAllForUser($this->viewerId)[0]->id;
+
+        $this->request('POST', '/settings/notifications/channels/' . $id, [
+            'label' => 'Phone (renamed)',
+            'url' => 'https://push.example.org',
+            'token' => 'AnotherToken2',
+            'is_active' => '1',
+        ]);
+        $this->request('POST', '/settings/notifications/channels/' . $id . '/active', ['is_active' => '0']);
+        $this->request('POST', '/settings/notifications/channels/' . $id . '/delete');
+
+        $entries = $this->db->fetchAll(
+            "SELECT action, context FROM audit_log WHERE action LIKE 'notification_channel.%'"
+            . ' AND actor_user_id = :user ORDER BY id',
+            ['user' => $this->viewerId],
+        );
+
+        self::assertSame(
+            [
+                'notification_channel.created',
+                'notification_channel.updated',
+                'notification_channel.updated',
+                'notification_channel.deleted',
+            ],
+            array_column($entries, 'action'),
+        );
+        self::assertStringContainsString('"type":"gotify"', (string) $entries[0]['context']);
+        self::assertStringContainsString('"label":"Phone (renamed)"', (string) $entries[1]['context']);
+        foreach ($entries as $entry) {
+            foreach (['AsecretToken1', 'AnotherToken2', 'push.example.org'] as $secret) {
+                self::assertStringNotContainsString($secret, (string) $entry['context']);
+            }
+        }
+    }
+
     public function testEditingAChannelKeepsASecretTheFormNeverShowed(): void
     {
         // The form cannot render a stored token, so it cannot ask the user to

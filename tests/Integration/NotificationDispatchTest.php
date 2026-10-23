@@ -165,7 +165,11 @@ final class NotificationDispatchTest extends NotificationTestCase
     public function testAnInactiveChannelReceivesNothing(): void
     {
         $id = $this->addChannel($this->alice);
-        $this->notificationSettings->updateChannel($this->alice, $id, ['label' => 'Phone', 'is_active' => '0']);
+        $this->notificationSettings->updateChannel(
+            $this->user($this->alice),
+            $id,
+            ['label' => 'Phone', 'is_active' => '0'],
+        );
 
         self::assertSame(0, $this->dispatcher->dispatch($this->user($this->alice), [$this->alert()]));
     }

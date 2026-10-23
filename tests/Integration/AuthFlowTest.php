@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
+use App\Domain\TokenAbility;
 use App\Domain\IsolationMode;
 use App\Domain\Role;
 use App\Security\Scope;
 use App\Security\ScopeFactory;
+use App\Service\ApiTokenService;
 use App\Service\LogoStorage;
 use App\Service\PaymentMethodService;
 use App\Repository\PaymentMethodRepository;
 use App\Repository\AuditLogRepository;
+use App\Repository\ApiTokenRepository;
 use App\Repository\AuthAttemptRepository;
 use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
@@ -121,6 +124,8 @@ final class AuthFlowTest extends DatabaseTestCase
             new SessionDirectoryService(new SessionRepository($this->db), $audit, $this->clock),
             new ArraySession(),
             $this->clock,
+            new ApiTokenRepository($this->db, $this->clock),
+            $this->db,
             'https://renovo.test',
         );
     }
@@ -355,6 +360,41 @@ final class AuthFlowTest extends DatabaseTestCase
         self::assertFalse($this->resets->isTokenValid($token));
     }
 
+    public function testAResetRevokesEveryApiAndFeedToken(): void
+    {
+        $this->verifiedUser('tokens@example.test');
+        $user = $this->users->findByEmail('tokens@example.test');
+        self::assertNotNull($user);
+        $apiTokens = new ApiTokenRepository($this->db, $this->clock);
+        foreach (['Script', ApiTokenService::FEED_TOKEN_NAME] as $name) {
+            $apiTokens->create(
+                $user->id,
+                null,
+                $name,
+                'pub' . strlen($name),
+                hash('sha256', $name),
+                TokenAbility::Read,
+                null,
+            );
+        }
+        $this->mailer->reset();
+        $this->resets->request('tokens@example.test', '10.0.0.4');
+        $token = $this->mailer->lastToken();
+        self::assertNotNull($token);
+
+        $this->resets->reset($token, 'a-brand-new-password', 'a-brand-new-password');
+
+        $now = $this->clock->now();
+        self::assertSame([], array_filter(
+            $apiTokens->findAllForUser($user->id),
+            static fn ($apiToken): bool => $apiToken->isUsable($now),
+        ));
+        self::assertStringContainsString('calendar feed links', $this->mailer->lastBody());
+        self::assertStringContainsString('"api_tokens_revoked":2', (string) $this->db->fetchValue(
+            "SELECT context FROM audit_log WHERE action = 'password.changed'",
+        ));
+    }
+
     public function testResetRequestForAnUnknownAddressRevealsNothingAndSendsNothing(): void
     {
         $this->mailer->reset();
@@ -398,6 +438,8 @@ final class AuthFlowTest extends DatabaseTestCase
             new SessionDirectoryService(new SessionRepository($this->db), $this->audit(), $this->clock),
             new ArraySession(),
             $this->clock,
+            new ApiTokenRepository($this->db, $this->clock),
+            $this->db,
             'https://renovo.test',
         );
     }

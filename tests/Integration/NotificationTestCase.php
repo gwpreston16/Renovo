@@ -61,6 +61,10 @@ use Psr\Log\NullLogger;
 use Slim\Psr7\Factory\RequestFactory;
 use App\Tests\Support\TestFixedTermService;
 use App\Tests\Support\TestKeys;
+use App\Service\AuditLogService;
+use App\Security\RequestContextHolder;
+use App\Security\RequestContext;
+use App\Repository\AuditLogRepository;
 
 /**
  * The whole notification stack, wired by hand against a real database.
@@ -201,6 +205,13 @@ abstract class NotificationTestCase extends DatabaseTestCase
             new NotificationPreferenceRepository($this->db, $this->clock),
             new NotificationRouteRepository($this->db, $this->clock),
             $this->registry,
+            new AuditLogService(
+                new AuditLogRepository($this->db),
+                new MembershipRepository($this->db),
+                new RequestContextHolder(RequestContext::of('127.0.0.1', 'PHPUnit')),
+                $this->clock,
+                new NullLogger(),
+            ),
         );
 
         $this->dispatcher = new NotificationDispatcher(

@@ -56,7 +56,7 @@ final class NotificationController extends Controller
         $body = $this->body($request);
 
         try {
-            $this->settings->createChannel($user->id, $this->strings($body));
+            $this->settings->createChannel($user, $this->strings($body));
         } catch (ValidationException $exception) {
             return $this->render(
                 $request,
@@ -80,7 +80,7 @@ final class NotificationController extends Controller
         $body = $this->body($request);
 
         try {
-            $this->settings->updateChannel($user->id, (int) $id, $this->strings($body));
+            $this->settings->updateChannel($user, (int) $id, $this->strings($body));
         } catch (ValidationException $exception) {
             return $this->render(
                 $request,
@@ -108,7 +108,7 @@ final class NotificationController extends Controller
         $active = ($body['is_active'] ?? '0') === '1';
 
         try {
-            $this->settings->setChannelActive($this->user($request)->id, (int) $id, $active);
+            $this->settings->setChannelActive($this->user($request), (int) $id, $active);
         } catch (ValidationException) {
             throw $this->notFound($request);
         }
@@ -123,7 +123,7 @@ final class NotificationController extends Controller
         ResponseInterface $response,
         string $id,
     ): ResponseInterface {
-        $this->settings->deleteChannel($this->user($request)->id, (int) $id);
+        $this->settings->deleteChannel($this->user($request), (int) $id);
         $this->flash('success', 'flash.channel_removed');
 
         return $this->redirectAfterWrite($request, $response, self::PAGE);
