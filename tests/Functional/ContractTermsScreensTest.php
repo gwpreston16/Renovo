@@ -19,6 +19,8 @@ use App\Security\CsrfTokenManager;
 use App\Security\Scope;
 use App\Security\SessionInterface;
 use App\Service\InstanceSettingsService;
+use App\Support\Clock;
+use App\Support\FrozenClock;
 use App\Tests\Integration\DatabaseTestCase;
 use App\Tests\Support\ArraySession;
 use App\Tests\Support\RecordingMailer;
@@ -34,6 +36,8 @@ use Symfony\Component\Mailer\MailerInterface;
  */
 final class ContractTermsScreensTest extends DatabaseTestCase
 {
+    private const TODAY = '2026-10-15 09:00:00';
+
     /** @var App<\Psr\Container\ContainerInterface|null> */
     private App $app;
     private ArraySession $session;
@@ -54,6 +58,9 @@ final class ContractTermsScreensTest extends DatabaseTestCase
         $this->app = $bootstrap(true, [
             SessionInterface::class => $this->session,
             MailerInterface::class => new RecordingMailer(),
+            // Mid-month, so "+3 days" is still this month's and every date
+            // below means the same thing whatever day the suite runs.
+            Clock::class => FrozenClock::at(self::TODAY),
         ]);
 
         $container = $this->app->getContainer();
@@ -79,7 +86,7 @@ final class ContractTermsScreensTest extends DatabaseTestCase
             IsolationMode::Shared,
         );
         $this->subscriptions = new SubscriptionRepository($this->db);
-        $this->nextMonth = (new DateTimeImmutable('first day of next month'))->setTime(0, 0);
+        $this->nextMonth = $this->day('first day of next month');
     }
 
     public function testAFixedTermShowsItsProgress(): void
@@ -136,8 +143,8 @@ final class ContractTermsScreensTest extends DatabaseTestCase
     {
         $this->create('Octopus Energy', 5800, [
             'amount_varies' => true,
-            'next_payment_date' => (new DateTimeImmutable('+3 days'))->format('Y-m-d'),
-            'anchor_day' => (int) (new DateTimeImmutable('+3 days'))->format('j'),
+            'next_payment_date' => $this->day('+3 days')->format('Y-m-d'),
+            'anchor_day' => (int) $this->day('+3 days')->format('j'),
         ]);
         $this->signIn($this->ownerId);
         $this->request('POST', '/budgets', [
@@ -170,7 +177,7 @@ final class ContractTermsScreensTest extends DatabaseTestCase
     public function testFixedRowsOnlyAreNotEstimatesAnywhere(): void
     {
         $this->create('Netflix', 1099, [
-            'next_payment_date' => (new DateTimeImmutable('+3 days'))->format('Y-m-d'),
+            'next_payment_date' => $this->day('+3 days')->format('Y-m-d'),
         ]);
 
         foreach (['/', '/forecast', '/subscriptions', '/calendar'] as $path) {
@@ -205,8 +212,8 @@ final class ContractTermsScreensTest extends DatabaseTestCase
     public function testAContractEndIsOnTheCancelByListAndAnEndedOneIsAnInsight(): void
     {
         $this->create('Sky Broadband', 3500, [
-            'contract_ends_on' => (new DateTimeImmutable('-10 days'))->format('Y-m-d'),
-            'start_date' => (new DateTimeImmutable('-2 years'))->format('Y-m-d'),
+            'contract_ends_on' => $this->day('-10 days')->format('Y-m-d'),
+            'start_date' => $this->day('-2 years')->format('Y-m-d'),
         ]);
 
         $cancellations = $this->page('/cancellations', $this->ownerId);
@@ -225,7 +232,7 @@ final class ContractTermsScreensTest extends DatabaseTestCase
 
         // A future date is refused.
         $response = $this->request('POST', '/subscriptions/' . $id . '/charges', [
-            'date' => (new DateTimeImmutable('+5 days'))->format('Y-m-d'),
+            'date' => $this->day('+5 days')->format('Y-m-d'),
             'amount' => '12.34',
             'note' => 'typed by hand',
         ]);
@@ -251,7 +258,7 @@ final class ContractTermsScreensTest extends DatabaseTestCase
             $this->owner,
             $id,
             $this->ownerId,
-            new DateTimeImmutable('-3 days'),
+            $this->day('-3 days'),
             Money::of(1099, 'GBP'),
             ChargeSource::CatchUp,
         );
@@ -381,6 +388,14 @@ final class ContractTermsScreensTest extends DatabaseTestCase
         }
 
         return $id;
+    }
+
+    /**
+     * A day relative to the frozen today, at midnight.
+     */
+    private function day(string $relative): DateTimeImmutable
+    {
+        return (new DateTimeImmutable(self::TODAY))->modify($relative)->setTime(0, 0);
     }
 
     private function page(string $path, int $userId): string
