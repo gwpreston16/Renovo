@@ -319,7 +319,8 @@ BACKUP_REHEARSAL_DB_USER=rehearsal
 BACKUP_REHEARSAL_DB_PASSWORD=<a password>
 ```
 
-`BACKUP_REHEARSAL_DB_DRIVER` and `_PORT` default to the application's. The
+`BACKUP_REHEARSAL_DB_DRIVER` and `_HOST` default to the application's, and
+`_PORT` to the driver's standard port. The
 application's own database is refused (the same engine, host, port and name),
 as is a scratch database that is not empty. It holds a copy of the data only
 while a rehearsal runs; nothing in it is ever served.
@@ -352,16 +353,18 @@ verify, and says which.
 1. Put the keys back in `.env`: `BACKUP_ENCRYPTION_KEY`, and the same
    `SESSION_KEY`, `SECRETS_KEY`, `SECRETS_PREVIOUS_KEYS` and
    `TOTP_ENCRYPTION_KEY` the instance had.
-   If the server is gone, fetch a copy from a destination first. Its id and
-   the copy's name are on the old card's history, or in the bucket:
+   If the server is gone, download the newest copy from the destination with
+   the provider's own tools (a bucket browser, `rclone`, the NAS's file
+   manager): it is the same encrypted file, named
+   `<prefix>renovo-instance-….renovo-backup`. If the database is still there
+   but the local files are lost, `backup:fetch` reads the destination from it;
+   the destination's id is on its row in **Settings → Instance →
+   Destinations**, and the copy's name is the prefix plus the local file name:
 
    ```bash
    docker compose run --rm -v /path/to/backups:/restore app \
      php bin/console backup:fetch 1 renovo/renovo-instance-….renovo-backup /restore/renovo-instance-….renovo-backup
    ```
-
-   With no database left to read destinations from, download it with your
-   provider's own tools instead — it is the same encrypted file.
 2. Find the backup's migration version:
 
    ```bash
@@ -401,6 +404,9 @@ verify, and says which.
    ```
 
 Everyone signs in as before, with the same passwords, two-factor and passkeys.
+The destinations come back too, but not the record of what was sent to them:
+copies the old server uploaded are never pruned by the new one, so remove
+them at the destination when you no longer need them.
 A restore into the other engine works the same way. Before step 3, set
 `DB_DRIVER` and `DB_PORT` in `.env` for the new engine and add (or, going to
 PostgreSQL, drop) `-f docker-compose.yml -f docker-compose.mysql.yml` on every

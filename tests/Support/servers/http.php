@@ -8,7 +8,8 @@
  *  - `/bytes/<n>` answers n bytes;
  *  - `/status/<code>` answers that status with a short body;
  *  - `/redirect/<code>?to=<url>` answers a redirect to `to`;
- *  - `/hops/<n>` redirects to `/hops/<n-1>`, and `/hops/0` to `/echo`.
+ *  - `/hops/<n>` redirects to `/hops/<n-1>`, and `/hops/0` to `/echo`;
+ *  - `/moved/<anything>` redirects to https://elsewhere.example/moved.
  *
  * Every request is appended to the file named by `REQUEST_LOG`, so a test can
  * say that a request was never made.
@@ -61,6 +62,13 @@ if (preg_match('#^/status/(\d{3})$#', $path, $m) === 1) {
 if (preg_match('#^/redirect/(\d{3})$#', $path, $m) === 1) {
     http_response_code((int) $m[1]);
     header('Location: ' . (string) ($_GET['to'] ?? '/echo'));
+
+    return true;
+}
+
+if (str_starts_with($path, '/moved/')) {
+    http_response_code(302);
+    header('Location: https://elsewhere.example/moved');
 
     return true;
 }

@@ -124,6 +124,7 @@ use App\Service\Backup\OffsiteBackupService;
 use App\Support\AfterResponse;
 use App\Support\ShutdownAfterResponse;
 use App\Repository\ScratchDatabase;
+use App\Service\Backup\Destination\HttpExchange;
 
 use function DI\autowire;
 use function DI\factory;
@@ -572,6 +573,22 @@ return static function (ContainerBuilder $builder, ?array $settings = null): voi
         },
 
         AfterResponse::class => autowire(ShutdownAfterResponse::class),
+
+        // Test connection's exchange: the same guard, with the ordinary
+        // HTTP_* limits, since a page waits on it. Real transfers use the
+        // transfer limits above.
+        BackupDestinationFactory::class => static fn (ContainerInterface $c): BackupDestinationFactory
+            => new BackupDestinationFactory(
+                $c->get(HttpExchange::class),
+                $c->get(RequestFactoryInterface::class),
+                $c->get(StreamFactoryInterface::class),
+                $c->get(Clock::class),
+                new HttpExchange(new GuardedTransferClient(
+                    $c->get(HttpClient::class),
+                    $c->get(UrlGuard::class),
+                    $c->get(HttpClientOptions::class)->narrowedTo(PHP_INT_MAX, PHP_INT_MAX, 1024 * 1024),
+                )),
+            ),
 
         // The empty database a restore rehearsal restores into (Phase 39).
         // Unset, rehearsals download and verify only.

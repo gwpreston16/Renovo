@@ -164,12 +164,40 @@ final class BackupDestinationService
         }
 
         try {
-            $this->factory->create($record)->test();
+            $this->factory->createForTest($record)->test();
         } catch (DestinationException $exception) {
             return $exception;
         }
 
         return null;
+    }
+
+    /**
+     * What a failed add hands back to its form: the kind, what was typed but
+     * no credential, and each field's error.
+     *
+     * @param array<string, mixed> $input
+     * @return array{type: string, values: array<string, string>, errors: array<string, string>}
+     */
+    public static function failedForm(array $input, ValidationException $exception): array
+    {
+        $type = BackupDestinationType::tryFrom(is_string($input['type'] ?? null) ? $input['type'] : '');
+        $values = [];
+        foreach ($type?->fields() ?? [] as $field) {
+            $value = $input[$field['name']] ?? '';
+            if (!$field['secret'] && is_string($value)) {
+                $values[$field['name']] = mb_substr($value, 0, self::FIELD_MAX);
+            }
+        }
+        $name = $input['name'] ?? '';
+        $values['name'] = is_string($name) ? mb_substr($name, 0, self::NAME_MAX) : '';
+
+        $errors = [];
+        foreach ($exception->errors() as $field => $error) {
+            $errors[$field] = $error->key;
+        }
+
+        return ['type' => $type === null ? '' : $type->value, 'values' => $values, 'errors' => $errors];
     }
 
     /**
@@ -241,16 +269,22 @@ final class BackupDestinationService
             $secrets[$field] = $this->str($input, $field, false);
             $given = $given || $secrets[$field] !== '';
         }
-        if ($existing !== null && !$given) {
+        // Kept only while they still go where they were entered for: stored
+        // credentials are never sent to a new address, or an edit could
+        // read them back at a server of the editor's choosing.
+        $moved = $existing !== null && $this->targetChanged($type, $config, $existing);
+        if ($existing !== null && !$given && !$moved) {
             $secrets = null;
-        } elseif ($existing !== null && $existing->secretsUnreadable === false) {
+        } elseif ($existing !== null && !$moved && $existing->secretsUnreadable === false) {
             foreach ($secrets as $field => $value) {
                 $secrets[$field] = $value !== '' ? $value : ($existing->secrets[$field] ?? '');
             }
         }
         foreach ($secrets ?? [] as $field => $value) {
             if ($value === '' || strlen($value) > self::FIELD_MAX) {
-                $errors[$field] = 'error.backup_destination.credential';
+                $errors[$field] = $moved && !$given
+                    ? 'error.backup_destination.credential_moved'
+                    : 'error.backup_destination.credential';
             }
         }
 
@@ -259,6 +293,30 @@ final class BackupDestinationService
         }
 
         return [$name, $config, $secrets];
+    }
+
+    /**
+     * Whether an edit points the destination somewhere else: another server,
+     * bucket, region or account. A different prefix or path within the same
+     * place is not.
+     *
+     * @param array<string, string|bool> $config
+     */
+    private function targetChanged(BackupDestinationType $type, array $config, BackupDestinationRecord $existing): bool
+    {
+        $fields = match ($type) {
+            BackupDestinationType::S3 => ['endpoint', 'region', 'bucket', 'path_style'],
+            BackupDestinationType::WebDav => ['url', 'username'],
+            BackupDestinationType::Directory => [],
+        };
+
+        foreach ($fields as $field) {
+            if (($config[$field] ?? '') !== ($existing->config[$field] ?? ($field === 'path_style' ? false : ''))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

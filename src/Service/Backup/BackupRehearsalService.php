@@ -149,9 +149,13 @@ final class BackupRehearsalService
                 $this->restore($file, $manifest, $work, $step);
             }
         } catch (Throwable $exception) {
-            $message = $exception instanceof BackupException || $exception instanceof DestinationException
-                ? $exception->getMessage()
-                : 'The rehearsal failed unexpectedly; see the application log.';
+            // Recorded as a reason code the page translates; the message,
+            // which may name a host, goes to the log only.
+            $message = match (true) {
+                $exception instanceof DestinationException => BackupRehearsal::DESTINATION_REASON . $exception->reason,
+                $exception instanceof BackupException => $exception->reason,
+                default => 'unexpected',
+            };
             $this->logger->error('A restore rehearsal failed while {step}: {message}', [
                 'step' => $step,
                 'message' => $exception->getMessage(),

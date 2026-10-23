@@ -28,6 +28,19 @@ final class BackupReasonsTranslatedTest extends TestCase
         $codes = array_values(array_unique($codes));
 
         self::assertGreaterThan(10, count($codes), 'The reasons were found.');
+
+        // Phase 39: a destination's reasons, shown by Test connection and in
+        // the rehearsal history.
+        $reasons = [];
+        foreach ((array) glob($root . '/src/Service/Backup/{,Destination/}*.php', GLOB_BRACE) as $file) {
+            $source = (string) file_get_contents((string) $file);
+            preg_match_all("/new DestinationException\\(\\s*[^,]+,\\s*'([a-z_]+)'/", $source, $match);
+            $reasons = [...$reasons, ...$match[1]];
+        }
+        self::assertGreaterThan(8, count(array_unique($reasons)), 'The destination reasons were found.');
+        foreach (array_unique(['blocked', 'transport', ...$reasons]) as $reason) {
+            self::assertArrayHasKey('backup.destination_reason.' . $reason, $catalogue, $reason);
+        }
         foreach ($codes as $code) {
             self::assertArrayHasKey('backup.reason.' . $code, $catalogue, $code);
         }

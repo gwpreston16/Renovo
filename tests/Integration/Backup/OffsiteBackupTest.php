@@ -22,6 +22,7 @@ use App\Http\StaticTrustedTargets;
 use App\Http\UrlGuard;
 use App\Support\FrozenClock;
 use App\Tests\Support\FakeDnsResolver;
+use App\Tests\Support\LocalServer;
 use Psr\Log\NullLogger;
 use Slim\Psr7\Factory\ResponseFactory;
 use App\Tests\Integration\DatabaseTestCase;
@@ -117,6 +118,43 @@ final class OffsiteBackupTest extends DatabaseTestCase
         self::assertSame(BackupRun::VERIFIED, $this->runs()->find($run->id)?->status);
     }
 
+    public function testACredentialIsInNoLogNoCopyErrorAndNoAuditEntryWhenAnUploadFails(): void
+    {
+        $canary = 'canary-dav-password-0c4f';
+        $server = new LocalServer('webdav.php', [
+            'WEBDAV_ROOT' => $this->root . '/nas',
+            'WEBDAV_USER' => 'backup',
+            'WEBDAV_PASSWORD' => 'the-real-password',
+        ]);
+        try {
+            (new BackupDestinationRepository($this->db, $this->clock, $this->keys()))->create(
+                BackupDestinationType::WebDav,
+                'Nextcloud',
+                ['url' => $server->url('/dav/', 'nas.test'), 'username' => 'backup'],
+                ['password' => $canary],
+                true,
+                new BackupRetention(7, 4, 6),
+            );
+            $run = $this->verifiedRun(0);
+            $logger = new CapturingLogger();
+            $service = $this->service($logger, ['nas.test']);
+            $service->queue($run);
+
+            self::assertSame(1, $service->sendPending()['retrying']);
+        } finally {
+            $server->stop();
+        }
+
+        $copy = $this->copies()->forRuns([$run->id])[$run->id][0];
+        self::assertStringStartsWith('write:', (string) $copy->error);
+        self::assertNotEmpty($logger->lines);
+        $audit = (string) json_encode($this->db->fetchAll('SELECT * FROM audit_log'));
+        foreach ([implode("\n", $logger->lines), (string) $copy->error, $audit] as $text) {
+            self::assertStringNotContainsString($canary, $text);
+            self::assertStringNotContainsString(base64_encode('backup:' . $canary), $text);
+        }
+    }
+
     public function testACopyBeingSentIsNotTakenByASecondPass(): void
     {
         $this->destination('NAS', $this->root . '/nas');
@@ -128,6 +166,21 @@ final class OffsiteBackupTest extends DatabaseTestCase
 
         self::assertSame(0, array_sum($this->service()->sendPending()));
         self::assertFileDoesNotExist($this->root . '/nas/' . $run->file);
+    }
+
+    public function testSendingOneRunLeavesTheOthersToTheScheduler(): void
+    {
+        $this->destination('NAS', $this->root . '/nas');
+        $older = $this->verifiedRun(1);
+        $newer = $this->verifiedRun(0);
+        $this->service()->queue($older);
+        $this->service()->queue($newer);
+
+        self::assertSame(1, $this->service()->sendPending($newer->id)['confirmed']);
+
+        self::assertFileExists($this->root . '/nas/' . $newer->file);
+        self::assertFileDoesNotExist($this->root . '/nas/' . $older->file);
+        self::assertSame($older->id, $this->copies()->pending()[0]->runId);
     }
 
     public function testADisabledDestinationWaitsWithoutSpendingAnAttempt(): void
@@ -180,6 +233,23 @@ final class OffsiteBackupTest extends DatabaseTestCase
 
         self::assertCount(1, $this->copies()->confirmedAt($keepNone));
         self::assertCount(3, $this->copies()->confirmedAt($keepThree));
+    }
+
+    public function testADestinationWhoseCredentialsCannotBeOpenedIsNotSentTo(): void
+    {
+        (new BackupDestinationRepository($this->db, $this->clock, new KeyRing('another-key')))->create(
+            BackupDestinationType::WebDav,
+            'Locked',
+            ['url' => 'https://dav.example/', 'username' => 'me'],
+            ['password' => 'pw'],
+            true,
+            new BackupRetention(7, 4, 6),
+        );
+        $run = $this->verifiedRun(0);
+        $this->service()->queue($run);
+
+        self::assertSame(1, $this->service()->sendPending()['retrying']);
+        self::assertStringStartsWith('connect:', (string) $this->copies()->pending()[0]->error);
     }
 
     public function testRetentionDoesNotRunWhenNothingNewWasConfirmed(): void
@@ -251,7 +321,10 @@ final class OffsiteBackupTest extends DatabaseTestCase
         );
     }
 
-    private function service(): OffsiteBackupService
+    /**
+     * @param list<string> $trusted
+     */
+    private function service(?CapturingLogger $logger = null, array $trusted = []): OffsiteBackupService
     {
         return new OffsiteBackupService(
             $this->runs(),
@@ -261,19 +334,19 @@ final class OffsiteBackupTest extends DatabaseTestCase
                 new HttpExchange(new GuardedTransferClient(
                     new HttpClient(new ResponseFactory(), new StreamFactory(), new HttpClientOptions()),
                     new UrlGuard(
-                        new FakeDnsResolver(),
-                        new StaticTrustedTargets(),
+                        new FakeDnsResolver(['nas.test' => ['127.0.0.1']]),
+                        new StaticTrustedTargets($trusted),
                         new HttpClientOptions(),
                         new NullLogger(),
                     ),
-                    new HttpClientOptions(),
+                    (new HttpClientOptions())->forTransfers(60, 1024 * 1024 * 1024),
                 )),
                 new RequestFactory(),
                 new StreamFactory(),
                 $this->clock,
             ),
             $this->clock,
-            new CapturingLogger(),
+            $logger ?? new CapturingLogger(),
             $this->root . '/backups',
             3600,
         );

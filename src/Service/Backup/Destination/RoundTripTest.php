@@ -10,6 +10,15 @@ namespace App\Service\Backup\Destination;
  */
 trait RoundTripTest
 {
+    /**
+     * The marker's object name. A destination that keeps its objects under a
+     * prefix writes it there too, where a key limited to that prefix may.
+     */
+    protected function markerName(): string
+    {
+        return self::MARKER;
+    }
+
     public function test(): void
     {
         $work = sys_get_temp_dir() . '/renovo-destination-test-' . bin2hex(random_bytes(6));
@@ -21,7 +30,7 @@ trait RoundTripTest
             file_put_contents($marker, $contents);
 
             try {
-                $this->put($marker, self::MARKER, hash('sha256', $contents), strlen($contents));
+                $this->put($marker, $this->markerName(), hash('sha256', $contents), strlen($contents));
             } catch (DestinationException $exception) {
                 throw $exception->step === DestinationException::STEP_CONNECT
                     ? $exception
@@ -29,7 +38,7 @@ trait RoundTripTest
             }
 
             try {
-                $this->get(self::MARKER, $back);
+                $this->get($this->markerName(), $back);
             } catch (DestinationException $exception) {
                 throw $exception->withStep(DestinationException::STEP_READ);
             }
@@ -43,7 +52,7 @@ trait RoundTripTest
             }
 
             try {
-                $this->delete(self::MARKER);
+                $this->delete($this->markerName());
             } catch (DestinationException $exception) {
                 throw $exception->withStep(DestinationException::STEP_DELETE);
             }

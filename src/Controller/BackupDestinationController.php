@@ -27,6 +27,9 @@ final class BackupDestinationController extends Controller
     private const SECTION = SettingsController::INSTANCE . '#backup-destinations';
     private const REHEARSAL = SettingsController::INSTANCE . '#backup-rehearsal';
 
+    /** Where a failed add waits for the page it redirects to. */
+    public const FAILED_ADD = 'backup_destination_failed_add';
+
     public function __construct(
         Twig $view,
         SessionInterface $session,
@@ -39,11 +42,14 @@ final class BackupDestinationController extends Controller
 
     public function create(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
+        $body = $this->body($request);
         try {
-            $this->destinations->create($this->user($request), $this->body($request));
+            $this->destinations->create($this->user($request), $body);
             $this->flash('success', 'flash.backup_destination_added');
         } catch (ValidationException $exception) {
-            $this->flashErrors($exception);
+            // The form comes back open with what was typed — never a
+            // credential — and each error under its field.
+            $this->session->set(self::FAILED_ADD, BackupDestinationService::failedForm($body, $exception));
         }
 
         return $this->redirectAfterWrite($request, $response, self::SECTION);

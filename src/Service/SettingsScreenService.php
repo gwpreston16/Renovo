@@ -258,7 +258,8 @@ final class SettingsScreenService
      *     history: list<array{
      *         run: BackupRun,
      *         size: array{key: string, value: float, digits: int}|null,
-     *         copies: list<array{name: string|null, status: string}>
+     *         copies: list<array{name: string|null, status: string}>,
+     *         offsite: string|null
      *     }>,
      *     destinations: list<array{
      *         record: \App\Domain\Entity\BackupDestinationRecord,
@@ -287,6 +288,7 @@ final class SettingsScreenService
                 'name' => $copy->destinationId === null ? null : ($names[$copy->destinationId] ?? null),
                 'status' => $copy->status,
             ], $copies[$run->id] ?? []),
+            'offsite' => self::offsiteState($copies[$run->id] ?? []),
         ], $runs);
         $offsite = $this->offsite->hasOffsiteCopy();
 
@@ -319,6 +321,28 @@ final class SettingsScreenService
                 'has_destination' => $destinations !== [],
             ],
         ];
+    }
+
+    /**
+     * Where a run stands off the server: stored once any destination has
+     * confirmed it, sending while a copy waits, only here when every copy
+     * failed, and null when it was never sent anywhere.
+     *
+     * @param list<BackupCopy> $copies
+     * @return 'stored'|'sending'|'local'|null
+     */
+    private static function offsiteState(array $copies): ?string
+    {
+        if ($copies === []) {
+            return null;
+        }
+
+        $statuses = array_map(static fn (BackupCopy $copy): string => $copy->status, $copies);
+        if (in_array(BackupCopy::CONFIRMED, $statuses, true) || in_array(BackupCopy::PRUNED, $statuses, true)) {
+            return 'stored';
+        }
+
+        return in_array(BackupCopy::PENDING, $statuses, true) ? 'sending' : 'local';
     }
 
     /**

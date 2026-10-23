@@ -80,6 +80,20 @@ final class BackupAlertTest extends NotificationTestCase
         self::assertStringContainsString('any of its 2 destinations', $this->notifier->sent[0]['alert']->body());
     }
 
+    public function testACopyWaitingOnARemovedDestinationDoesNotHideTheFailure(): void
+    {
+        $nas = $this->destination('NAS');
+        $gone = $this->destination('Gone');
+        $run = $this->verifiedRun('2026-09-15 03:00:00');
+        $this->copy($run, $nas, BackupCopy::FAILED);
+        (new BackupCopyRepository($this->db))->queue($run, $gone, 'renovo-instance-' . $run);
+        $this->destinationRepository()->delete($gone);
+
+        $this->alerts()->notify();
+
+        self::assertSame(['A backup could not be sent off the server'], $this->notifier->titles());
+    }
+
     public function testStaleAfterTwoPeriodsOnceAndNotOnRecovery(): void
     {
         $nas = $this->destination('NAS');
@@ -94,6 +108,7 @@ final class BackupAlertTest extends NotificationTestCase
         $this->clock->advanceTo(new DateTimeImmutable('2026-09-17 04:00:00'));
         $this->alerts()->notify();
         self::assertSame([AlertType::BackupStale->value], $this->notifier->alertTypes());
+        self::assertSame($this->admin, $this->notifier->sent[0]['user']->id);
         self::assertStringContainsString('since 14 Sep 2026 03:05 UTC', $this->notifier->sent[0]['alert']->body());
 
         // A copy arrives: nothing is said, and the next gap is a new incident.
@@ -133,8 +148,10 @@ final class BackupAlertTest extends NotificationTestCase
         );
 
         $this->alerts()->notify();
+        $this->alerts()->notify();
 
         self::assertSame([AlertType::BackupRehearsalFailed->value], $this->notifier->alertTypes());
+        self::assertSame($this->admin, $this->notifier->sent[0]['user']->id);
         self::assertStringContainsString(
             'Rehearsing a restore from NAS failed while it was restoring.',
             $this->notifier->sent[0]['alert']->body(),

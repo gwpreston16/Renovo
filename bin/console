@@ -360,7 +360,7 @@ switch ($command) {
                 "The restore rehearsal from %s failed while %s: %s\n",
                 $rehearsal->destinationName,
                 $rehearsal->step,
-                $rehearsal->error,
+                $container->get(Translator::class)->trans($rehearsal->errorKey()),
             ));
             exit(1);
         }
@@ -375,7 +375,7 @@ switch ($command) {
 
     case 'backup:fetch':
         // Phase 39: one stored copy back from a destination, for
-        // backup:restore. Its id is in Settings → Instance → Backups.
+        // backup:restore. Its id is in Settings → Instance → Destinations.
         $destinationId = $argv[2] ?? '';
         $object = $argv[3] ?? '';
         $target = $argv[4] ?? basename($object);

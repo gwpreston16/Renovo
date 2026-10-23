@@ -312,12 +312,12 @@
                                 <span class="num">{{ run.startedAt|local_date('d MMM y, HH:mm') }}</span>
                                 {% if run.status == 'verified' %}
                                     <span class="badge badge-ok">{{ t('backup.status.verified') }}</span>
-                                    {% if item.copies is not empty %}
-                                        {% if item.copies|filter(c => c.status == 'confirmed' or c.status == 'pruned') is not empty %}
-                                            <span class="badge badge-ok">{{ t('backup.instance_stored_offsite') }}</span>
-                                        {% else %}
-                                            <span class="badge badge-warn">{{ t('backup.instance_verified_locally') }}</span>
-                                        {% endif %}
+                                    {% if item.offsite == 'stored' %}
+                                        <span class="badge badge-ok">{{ t('backup.instance_stored_offsite') }}</span>
+                                    {% elseif item.offsite == 'sending' %}
+                                        <span class="badge badge-info">{{ t('backup.instance_sending') }}</span>
+                                    {% elseif item.offsite == 'local' %}
+                                        <span class="badge badge-warn">{{ t('backup.instance_verified_locally') }}</span>
                                     {% endif %}
                                 {% elseif run.status == 'failed' %}
                                     <span class="badge badge-bad">{{ t('backup.status.failed') }}</span>
@@ -388,7 +388,7 @@
                         <span class="account-row-icon" aria-hidden="true">{{ icon(destination.type.icon()) }}</span>
                         <div class="account-row-text">
                             <span class="account-row-name">{{ destination.name }}</span>
-                            <span class="account-row-meta">{{ t(destination.type.labelKey()) }} · <code>{{ destination.location() }}</code></span>
+                            <span class="account-row-meta">{{ t(destination.type.labelKey()) }} · {{ t('backup.destination.id', {'id': destination.id}) }} · <code>{{ destination.location() }}</code></span>
                             <span class="account-row-meta">
                                 {%- if item.last_upload -%}
                                     {{ t('backup.destination.last_upload', {'date': item.last_upload|local_date('d MMM y, HH:mm')}) }}
@@ -498,11 +498,14 @@
             </ul>
         {% endif %}
 
-        <details class="settings-disclosure" id="add-destination">
+        {% set failed = destination_form ?? null %}
+        <details class="settings-disclosure" id="add-destination" {{ failed ? 'open' : '' }}>
             <summary class="button button-outline">{{ icon('add') }}{{ t('backup.destination.add') }}</summary>
+            {% if failed and failed.errors.type is defined %}<p class="field-error">{{ error_message(failed.errors.type) }}</p>{% endif %}
 
             {% for type in backups.destination_types %}
-                <details class="channel-form">
+                {% set is_this = failed and failed.type == type.value %}
+                <details class="channel-form" {{ is_this ? 'open' : '' }}>
                     <summary>{{ icon(type.icon()) }}{{ t(type.labelKey()) }}</summary>
 
                     <form method="post" action="/settings/backups/destinations" class="stack">
@@ -511,7 +514,9 @@
 
                         <label for="new_{{ type.value }}_name">{{ t('backup.destination.field.name') }}</label>
                         <input type="text" id="new_{{ type.value }}_name" name="name" required maxlength="100"
-                               placeholder="{{ t(type.labelKey()) }}">
+                               placeholder="{{ t(type.labelKey()) }}"
+                               value="{{ is_this ? failed.values.name|default('') : '' }}">
+                        {% if is_this and failed.errors.name is defined %}<p class="field-error">{{ error_message(failed.errors.name) }}</p>{% endif %}
 
                         {% for field in type.fields() %}
                             {% set id = 'new_' ~ type.value ~ '_' ~ field.name %}
@@ -522,13 +527,18 @@
                                         <span class="choice-title">{{ t('backup.destination.field.' ~ field.name) }}</span>
                                         {% if field.hint %}<span class="choice-note">{{ t('backup.destination.field.' ~ field.name ~ '_hint') }}</span>{% endif %}
                                     </span>
-                                    <input type="checkbox" class="toggle" role="switch" id="{{ id }}" name="{{ field.name }}" value="1">
+                                    <input type="checkbox" class="toggle" role="switch" id="{{ id }}" name="{{ field.name }}" value="1"
+                                           {{ is_this and failed.values[field.name]|default('') == '1' ? 'checked' : '' }}>
                                 </label>
                             {% else %}
                                 <label for="{{ id }}">{{ t('backup.destination.field.' ~ field.name) }}</label>
                                 <input type="{{ field.input }}" id="{{ id }}" name="{{ field.name }}" autocomplete="off"
-                                       {{ field.name in ['region', 'prefix'] ? '' : 'required' }}>
+                                       {{ field.required ? 'required' : '' }}
+                                       {% if is_this and not field.secret %}value="{{ failed.values[field.name]|default('') }}"{% endif %}>
                                 {% if field.hint %}<p class="hint">{{ t('backup.destination.field.' ~ field.name ~ '_hint') }}</p>{% endif %}
+                            {% endif %}
+                            {% if is_this and failed.errors[field.name] is defined %}
+                                <p class="field-error">{{ error_message(failed.errors[field.name]) }}</p>
                             {% endif %}
                         {% endfor %}
 
@@ -618,7 +628,7 @@
                             <span class="account-row-meta">{{ item.destinationName ?? t('backup.copy.removed_destination') }} · {{ t('backup.rehearsal.kind.' ~ item.kind) }}</span>
                             {% if item.status == 'failed' %}
                                 <span class="account-row-meta instance-backup-error">
-                                    {{- t('backup.rehearsal.step.' ~ (item.step ?? 'unknown')) }}: {{ item.error -}}
+                                    {{- t('backup.rehearsal.step.' ~ (item.step ?? 'unknown')) }}: {{ t(item.errorKey()) -}}
                                 </span>
                             {% endif %}
                         </div>

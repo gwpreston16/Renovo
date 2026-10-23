@@ -34,6 +34,9 @@ final class CreateBackupRehearsalsTable extends AbstractMigration
             ->addColumn('step', 'string', ['limit' => 20, 'null' => true])
             ->addColumn('error', 'text', ['null' => true])
             ->addIndex(['started_at'], ['name' => 'ix_backup_rehearsals_started'])
+            // Named, so both engines have it: MySQL would otherwise make one
+            // for the foreign key by itself and PostgreSQL would not.
+            ->addIndex(['copy_id'], ['name' => 'ix_backup_rehearsals_copy'])
             ->addForeignKey('copy_id', 'backup_copies', 'id', ['delete' => 'SET_NULL', 'update' => 'NO_ACTION'])
             ->create();
     }

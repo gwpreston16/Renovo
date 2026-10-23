@@ -18,18 +18,44 @@ use Psr\Http\Message\StreamFactoryInterface;
  */
 class BackupDestinationFactory
 {
+    /**
+     * @param HttpExchange|null $quick For Test connection, which a page waits
+     *        on: the operator's ordinary HTTP limits, not a backup's. Defaults
+     *        to `$http`.
+     */
     public function __construct(
         private readonly HttpExchange $http,
         private readonly RequestFactoryInterface $requests,
         private readonly StreamFactoryInterface $streams,
         private readonly Clock $clock,
+        private readonly ?HttpExchange $quick = null,
     ) {
+    }
+
+    /**
+     * The destination for Test connection: its marker is a few bytes, and a
+     * server that never answers must not hold the page for a backup's
+     * transfer timeout.
+     *
+     * @throws DestinationException When its credentials cannot be opened.
+     */
+    public function createForTest(BackupDestinationRecord $record): BackupDestination
+    {
+        return $this->build($record, $this->quick ?? $this->http);
     }
 
     /**
      * @throws DestinationException When its credentials cannot be opened.
      */
     public function create(BackupDestinationRecord $record): BackupDestination
+    {
+        return $this->build($record, $this->http);
+    }
+
+    /**
+     * @throws DestinationException
+     */
+    private function build(BackupDestinationRecord $record, HttpExchange $http): BackupDestination
     {
         if ($record->secretsUnreadable) {
             throw new DestinationException(
@@ -41,7 +67,7 @@ class BackupDestinationFactory
 
         return match ($record->type) {
             BackupDestinationType::S3 => new S3Destination(
-                $this->http,
+                $http,
                 $this->requests,
                 $this->clock,
                 $record->configString('endpoint'),
@@ -53,7 +79,7 @@ class BackupDestinationFactory
                 $record->secrets['secret_key'] ?? '',
             ),
             BackupDestinationType::WebDav => new WebDavDestination(
-                $this->http,
+                $http,
                 $this->requests,
                 $this->streams,
                 $record->configString('url'),

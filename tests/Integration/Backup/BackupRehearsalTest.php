@@ -102,7 +102,25 @@ final class BackupRehearsalTest extends DatabaseTestCase
         self::assertNotNull($rehearsal);
         self::assertFalse($rehearsal->passed());
         self::assertSame(BackupRehearsalService::STEP_CHECKING, $rehearsal->step);
-        self::assertStringContainsString('does not open with this instance\'s keys', (string) $rehearsal->error);
+        self::assertSame('backup.reason.secret_unreadable', $rehearsal->errorKey());
+        self::assertSame([], $container->get(ScratchDatabase::class)->tables());
+    }
+
+    public function testAPasswordHashRenovoDoesNotWriteFailsTheCheck(): void
+    {
+        $container = $this->container();
+        $this->db->execute(
+            "INSERT INTO users (email, display_name, password_hash, is_instance_admin, created_at, updated_at)"
+            . " VALUES ('plain@example.test', 'Plain', 'not-a-hash', :f, '2026-01-01 00:00:00', '2026-01-01 00:00:00')",
+            ['f' => false],
+        );
+        $this->backupTo($container, ['nas']);
+
+        $rehearsal = $container->get(BackupRehearsalService::class)->run(true);
+
+        self::assertNotNull($rehearsal);
+        self::assertSame(BackupRehearsalService::STEP_CHECKING, $rehearsal->step);
+        self::assertSame('backup.reason.password_hash', $rehearsal->errorKey());
         self::assertSame([], $container->get(ScratchDatabase::class)->tables());
     }
 
@@ -117,7 +135,7 @@ final class BackupRehearsalTest extends DatabaseTestCase
         self::assertNotNull($rehearsal);
         self::assertFalse($rehearsal->passed());
         self::assertSame(BackupRehearsalService::STEP_MIGRATING, $rehearsal->step);
-        self::assertStringContainsString('application\'s own database', (string) $rehearsal->error);
+        self::assertSame('backup.reason.scratch_is_application', $rehearsal->errorKey());
         self::assertSame($users, (int) $this->db->fetchValue('SELECT COUNT(*) FROM users'));
     }
 
@@ -133,7 +151,7 @@ final class BackupRehearsalTest extends DatabaseTestCase
 
             self::assertNotNull($rehearsal);
             self::assertFalse($rehearsal->passed());
-            self::assertStringContainsString('not empty', (string) $rehearsal->error);
+            self::assertSame('backup.reason.scratch_not_empty', $rehearsal->errorKey());
             self::assertSame(['someone_elses'], $scratch->tables());
         } finally {
             $scratch->database()->execute('DROP TABLE someone_elses');

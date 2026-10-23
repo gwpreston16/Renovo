@@ -32,7 +32,7 @@ enum BackupDestinationType: string
      * The form's fields, in order. A field's label and hint are
      * `backup.destination.field.<name>` and `….<name>_hint`.
      *
-     * @return list<array{name: string, input: string, secret: bool, hint: bool}>
+     * @return list<array{name: string, input: string, secret: bool, hint: bool, required: bool}>
      */
     public function fields(): array
     {
@@ -41,6 +41,7 @@ enum BackupDestinationType: string
             'input' => $input,
             'secret' => in_array($name, ['access_key_id', 'secret_key', 'password'], true),
             'hint' => $hint,
+            'required' => !in_array($name, ['region', 'prefix', 'path_style'], true),
         ];
 
         return match ($this) {

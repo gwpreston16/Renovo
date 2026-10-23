@@ -102,7 +102,13 @@ final class SettingsController extends Controller
 
     public function instance(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        return $this->render($request, $response, 'settings/instance.twig', $this->screen->instance());
+        $failed = $this->session->get(BackupDestinationController::FAILED_ADD);
+        $this->session->remove(BackupDestinationController::FAILED_ADD);
+
+        return $this->render($request, $response, 'settings/instance.twig', [
+            ...$this->screen->instance(),
+            'destination_form' => is_array($failed) ? $failed : null,
+        ]);
     }
 
     public function updateHousehold(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface

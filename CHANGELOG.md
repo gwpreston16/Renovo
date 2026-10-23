@@ -40,7 +40,7 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 - **The backup history shows where each run was sent**, and whether it is
   verified locally or stored off the server; the "only on this server" warning
   clears once a destination holds a copy. `/metrics` gains
-  `renovo_backup_offsite_last_success_timestamp_seconds{destination}` and
+  `renovo_backup_offsite_last_success_timestamp_seconds{destination,id}` and
   `renovo_backup_rehearsal_last_success_timestamp_seconds`. *Phase 39.*
 - `BACKUP_TRANSFER_TIMEOUT_SECONDS` (default 1800): how long one backup
   transfer may take, in place of the general HTTP limits. *Phase 39.*

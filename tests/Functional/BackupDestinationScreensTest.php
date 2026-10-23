@@ -185,6 +185,7 @@ final class BackupDestinationScreensTest extends DatabaseTestCase
         $this->request('POST', '/settings/backups/destinations/' . $id, [
             'name' => 'B2',
             'endpoint' => 'https://s3.us-west-004.backblazeb2.com',
+            'region' => 'us-west-004',
             'bucket' => 'renovo-backups',
             'secret_key' => 'a-new-secret',
         ]);
@@ -194,34 +195,100 @@ final class BackupDestinationScreensTest extends DatabaseTestCase
         self::assertSame(self::ACCESS, $record->secrets['access_key_id']);
     }
 
-    public function testABadDestinationIsRefusedWithItsReason(): void
+    public function testStoredCredentialsAreNeverSentToANewAddress(): void
+    {
+        $this->signIn($this->adminId);
+        $this->request('POST', '/settings/backups/destinations', [
+            'type' => 'webdav',
+            'name' => 'Nextcloud',
+            'url' => 'https://cloud.example.com/remote.php/dav/files/me/',
+            'username' => 'me',
+            'password' => self::SECRET,
+        ]);
+        $id = $this->onlyDestination();
+
+        foreach (
+            [
+                ['url' => 'https://attacker.example/', 'username' => 'me'],
+                ['url' => 'https://cloud.example.com/remote.php/dav/files/me/', 'username' => 'someone-else'],
+            ] as $moved
+        ) {
+            $body = ['name' => 'Nextcloud', 'password' => ''] + $moved;
+            $this->request('POST', '/settings/backups/destinations/' . $id, $body);
+
+            $record = $this->destinations()->find($id);
+            self::assertNotNull($record);
+            self::assertSame('https://cloud.example.com/remote.php/dav/files/me/', $record->configString('url'));
+            self::assertSame('me', $record->configString('username'));
+        }
+        self::assertStringContainsString('saved ones are never sent to a new address', $this->page());
+
+        // With the password entered again, the move is saved.
+        $this->request('POST', '/settings/backups/destinations/' . $id, [
+            'name' => 'Nextcloud',
+            'url' => 'https://dav.example.org/backups/',
+            'username' => 'me',
+            'password' => 'typed-again',
+        ]);
+        $record = $this->destinations()->find($id);
+        self::assertNotNull($record);
+        self::assertSame('https://dav.example.org/backups/', $record->configString('url'));
+        self::assertSame('typed-again', $record->secrets['password']);
+    }
+
+    public function testABadDestinationIsRefusedWithItsReasonAndTheFormKeepsWhatWasTyped(): void
     {
         $this->signIn($this->adminId);
 
-        $this->request('POST', '/settings/backups/destinations', [
-            'type' => 'directory',
-            'name' => 'Inside',
-            'path' => dirname(__DIR__, 2) . '/var',
-        ]);
-        $this->request('POST', '/settings/backups/destinations', [
-            'type' => 'webdav',
-            'name' => 'Dav',
-            'url' => 'https://user:pass@dav.example/folder/',
-            'username' => 'me',
-            'password' => 'pw',
-        ]);
-        $this->request('POST', '/settings/backups/destinations', [
-            'type' => 's3',
-            'name' => 'S3',
-            'endpoint' => 'ftp://s3.example',
-            'bucket' => 'b',
-            'access_key_id' => 'a',
-        ]);
-        $this->request('POST', '/settings/backups/destinations', ['type' => 'tape', 'name' => 'Tape']);
+        foreach (
+            [
+                [
+                    ['type' => 'directory', 'name' => 'Inside', 'path' => dirname(__DIR__, 2) . '/var'],
+                    'Choose a directory outside Renovo',
+                ],
+                [
+                    [
+                        'type' => 'webdav',
+                        'name' => 'Dav',
+                        'url' => 'https://user:pass@dav.example/folder/',
+                        'username' => 'me',
+                        'password' => 'canary-typed-password',
+                    ],
+                    'Enter the folder',
+                ],
+                [
+                    [
+                        'type' => 's3',
+                        'name' => 'S3',
+                        'endpoint' => 'ftp://s3.example',
+                        'bucket' => 'b',
+                        'access_key_id' => 'a',
+                    ],
+                    'Enter the endpoint as an https:// address',
+                ],
+                [['type' => 'tape', 'name' => 'Tape'], 'Choose what kind of destination this is.'],
+            ] as [$form, $reason]
+        ) {
+            $this->request('POST', '/settings/backups/destinations', $form);
+            $page = $this->page();
+            self::assertStringContainsString($reason, $page, $form['type']);
+            if ($form['type'] !== 'tape') {
+                // Open again, with the name typed still there.
+                self::assertStringContainsString('value="' . $form['name'] . '"', $page);
+            }
+            self::assertStringNotContainsString('canary-typed-password', $page);
+        }
 
+        // Shown once: the next visit is a fresh form.
+        self::assertStringNotContainsString('value="Tape"', $this->page());
         self::assertSame([], $this->destinations()->all());
-        $page = $this->page();
-        self::assertStringContainsString('Choose a directory outside Renovo', $page);
+
+        // A bad edit is refused, and changes nothing.
+        $this->request('POST', '/settings/backups/destinations', $this->directoryForm());
+        $id = $this->onlyDestination();
+        $this->request('POST', '/settings/backups/destinations/' . $id, ['name' => '', 'path' => '/nowhere']);
+        self::assertSame('NAS', $this->destinations()->find($id)?->name);
+        self::assertStringContainsString('Enter a name of up to 100 characters.', $this->page());
     }
 
     public function testTestConnectionSaysWhichStepFailed(): void
@@ -237,7 +304,7 @@ final class BackupDestinationScreensTest extends DatabaseTestCase
         try {
             $this->request('POST', '/settings/backups/destinations/' . $id . '/test');
             self::assertStringContainsString(
-                'The connection test failed while Connecting: The directory is not writable.',
+                'The connection test failed while connecting: The directory is not writable.',
                 $this->page(),
             );
         } finally {

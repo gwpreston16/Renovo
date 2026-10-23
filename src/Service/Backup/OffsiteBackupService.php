@@ -69,11 +69,13 @@ final class OffsiteBackupService
     }
 
     /**
-     * One attempt at every pending copy.
+     * One attempt at every pending copy, or only one run's.
      *
+     * @param int|null $runId Only this run's copies: Back up now sends what
+     *        it took and leaves any backlog to the scheduler.
      * @return array{confirmed: int, failed: int, retrying: int, pruned: int}
      */
-    public function sendPending(): array
+    public function sendPending(?int $runId = null): array
     {
         $totals = ['confirmed' => 0, 'failed' => 0, 'retrying' => 0, 'pruned' => 0];
         $destinations = [];
@@ -82,6 +84,9 @@ final class OffsiteBackupService
         }
 
         foreach ($this->copies->pending() as $copy) {
+            if ($runId !== null && $copy->runId !== $runId) {
+                continue;
+            }
             $destination = $destinations[(int) $copy->destinationId] ?? null;
             if ($destination === null || !$destination->enabled) {
                 // Switched off: it waits, without spending an attempt.

@@ -114,7 +114,8 @@ recovery is not alerted.
 - **History** gains per-destination status for each run and the rehearsal
   results.
 - The Phase 38 "only on this server" warning clears once a destination has a
-  confirmed copy.
+  confirmed copy; while copies are not reaching a destination (`BackupStale`),
+  the card says so instead.
 - `/metrics` gains `renovo_backup_offsite_last_success_timestamp_seconds{destination}`
   and `renovo_backup_rehearsal_last_success_timestamp_seconds`.
 
@@ -129,9 +130,12 @@ Migrations, sequenced after the last existing one, each with an explicit
 2. `create_backup_copies_table` — `run_id` FK to `backup_runs`
    (`ON DELETE CASCADE`), `destination_id` FK (`ON DELETE SET NULL`),
    `object_key`, `status` (`pending`, `confirmed`, `failed`, `pruned`),
-   `attempts`, `uploaded_at`, `error`; unique (`run_id`, `destination_id`).
-3. `create_backup_rehearsals_table` — `id`, `copy_id` FK, `started_at`,
-   `finished_at`, `kind` (`download`, `restore`), `status`, `error`.
+   `attempts`, `attempted_at` (the retry lease), `uploaded_at`, `pruned_at`,
+   `error`; unique (`run_id`, `destination_id`).
+3. `create_backup_rehearsals_table` — `id`, `copy_id` FK (`ON DELETE SET
+   NULL`), `destination_name` (so the history reads after a destination is
+   removed), `started_at`, `finished_at`, `kind` (`download`, `restore`),
+   `status`, `step`, `error` (a reason code).
 4. `add_backup_alerts_to_notification_preferences` — one column per new type.
 5. `copy_renewal_routes_to_backup_alerts` — data step, for instance admins only.
 
@@ -268,9 +272,22 @@ Found while building it:
   `BACKUP_DIRECTORY` or any upload directory**, nor hold one of them.
 - **The restore check uses `StoredSecretRepository` on the scratch database**,
   so every kind of stored secret is checked by the same code that rotates it.
-- **`/metrics` names each destination by the name an administrator gave it**,
-  escaped as the exposition format requires; nothing about its address or
-  credentials is emitted.
+- **`/metrics` names each destination by the name an administrator gave it,
+  and its id** (two may share a name), escaped as the exposition format
+  requires; nothing about its address or credentials is emitted.
+
+From the merge review:
+
+- **An S3 object's stored key is its whole key.** The prefix is added once,
+  when the copy is queued; a prefix changed later never moves old copies, and
+  the connection test's marker is written under the prefix.
+- **Stored credentials never go to a new address.** An edit that points a
+  destination at another server, bucket, region or account must enter its
+  credentials again.
+- **Test connection uses the ordinary `HTTP_*` limits**, not the transfer
+  timeout, and Back up now sends only the run it took.
+- **A rehearsal records a reason code**, which the page and the console
+  translate; the message, which may name a host, goes to the log only.
 
 ## Status
 

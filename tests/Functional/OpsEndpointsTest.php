@@ -228,7 +228,7 @@ final class OpsEndpointsTest extends DatabaseTestCase
 
         $body = (string) $this->get('/metrics')->getBody();
         self::assertStringContainsString(
-            'renovo_backup_offsite_last_success_timestamp_seconds{destination="Office \\"NAS\\""} 0',
+            'renovo_backup_offsite_last_success_timestamp_seconds{destination="Office \\"NAS\\"",id="' . $nas . '"} 0',
             $body,
         );
         self::assertStringContainsString('renovo_backup_rehearsal_last_success_timestamp_seconds 0', $body);
@@ -248,7 +248,8 @@ final class OpsEndpointsTest extends DatabaseTestCase
         $body = (string) $this->get('/metrics')->getBody();
         $utc = new \DateTimeZone('UTC');
         self::assertStringContainsString(
-            '{destination="Office \\"NAS\\""} ' . (new \DateTimeImmutable('2026-06-01 03:05:00', $utc))->getTimestamp(),
+            '{destination="Office \\"NAS\\"",id="' . $nas . '"} '
+            . (new \DateTimeImmutable('2026-06-01 03:05:00', $utc))->getTimestamp(),
             $body,
         );
         self::assertStringContainsString(

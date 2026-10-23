@@ -189,10 +189,13 @@ final class MetricsService
         $lines[] = '# HELP ' . $name . ' When each backup destination last confirmed a copy. Zero when none has.';
         $lines[] = '# TYPE ' . $name . ' gauge';
         foreach ($this->destinations->all() as $destination) {
+            // The id as well as the name: two destinations may share a name,
+            // and Prometheus refuses two samples of one series.
             $lines[] = sprintf(
-                '%s{destination="%s"} %d',
+                '%s{destination="%s",id="%d"} %d',
                 $name,
                 self::label($destination->name),
+                $destination->id,
                 isset($uploads[$destination->id]) ? $uploads[$destination->id]->getTimestamp() : 0,
             );
         }

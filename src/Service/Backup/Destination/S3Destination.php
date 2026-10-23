@@ -88,8 +88,13 @@ final class S3Destination implements BackupDestination
         }
     }
 
+    protected function markerName(): string
+    {
+        return $this->prefix . self::MARKER;
+    }
+
     /**
-     * The URL an object lives at.
+     * The URL an object lives at. `$object` is its full key.
      */
     public function url(string $object): string
     {
@@ -98,7 +103,9 @@ final class S3Destination implements BackupDestination
         $host = (string) ($parts['host'] ?? '');
         $port = isset($parts['port']) ? ':' . $parts['port'] : '';
         $base = rtrim((string) ($parts['path'] ?? ''), '/');
-        $key = implode('/', array_map('rawurlencode', explode('/', $this->prefix . $object)));
+        // The object name is the whole key, prefix included, as recorded when
+        // it was uploaded: a prefix changed later never moves old copies.
+        $key = implode('/', array_map('rawurlencode', explode('/', $object)));
 
         return $this->pathStyle
             ? sprintf('%s://%s%s%s/%s/%s', $scheme, $host, $port, $base, rawurlencode($this->bucket), $key)

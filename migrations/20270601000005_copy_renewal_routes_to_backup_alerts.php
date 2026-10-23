@@ -10,9 +10,12 @@ use Phinx\Migration\AbstractMigration;
  *
  * Instance administrators only: nobody else ever receives these, so nobody
  * else gets a route for them. An administrator with no routing rows at all
- * already gets every type everywhere and needs nothing. Someone made an
- * instance administrator later is given the same copy by the application at
- * that moment.
+ * already gets every type everywhere and needs nothing; one who routes no
+ * renewals anywhere gets nothing copied, and ticks them in the grid.
+ *
+ * Today only the setup wizard makes an instance administrator, before any
+ * route exists. Whatever later promotes an existing user must copy that
+ * user's renewal routes to these three types, as this does.
  *
  * Idempotent — a route that already exists is not copied twice, which the
  * unique index on (channel_id, alert_type) would refuse anyway. One statement

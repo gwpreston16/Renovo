@@ -104,6 +104,13 @@ final class BackupAlertService
 
         $runs = $this->runs->startedSince($since);
         $copies = $this->copies->forRuns(array_map(static fn (BackupRun $run): int => $run->id, $runs));
+        // A copy waiting on a destination that was removed or switched off
+        // is not going anywhere: only the ones that could still be sent
+        // decide whether the run reached a destination.
+        $live = [];
+        foreach ($this->destinations->all(true) as $destination) {
+            $live[$destination->id] = true;
+        }
         foreach ($runs as $run) {
             if ($run->status === BackupRun::FAILED) {
                 $alerts[] = $this->alert(
@@ -120,7 +127,12 @@ final class BackupAlertService
                 continue;
             }
 
-            $ofRun = $copies[$run->id] ?? [];
+            $ofRun = array_values(array_filter(
+                $copies[$run->id] ?? [],
+                static fn (BackupCopy $copy): bool => $copy->status === BackupCopy::CONFIRMED
+                    || $copy->status === BackupCopy::PRUNED
+                    || isset($live[(int) $copy->destinationId]),
+            ));
             $failed = array_filter($ofRun, static fn (BackupCopy $copy): bool => $copy->status === BackupCopy::FAILED);
             if ($ofRun !== [] && count($failed) === count($ofRun)) {
                 $alerts[] = $this->alert(

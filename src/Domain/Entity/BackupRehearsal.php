@@ -19,6 +19,9 @@ final class BackupRehearsal
     public const PASSED = 'passed';
     public const FAILED = 'failed';
 
+    /** Marks a stored reason as a destination's rather than a backup's. */
+    public const DESTINATION_REASON = 'destination:';
+
     public function __construct(
         public readonly int $id,
         public readonly ?int $copyId,
@@ -35,5 +38,18 @@ final class BackupRehearsal
     public function passed(): bool
     {
         return $this->status === self::PASSED;
+    }
+
+    /**
+     * The translation key for why it failed: a destination's reason or a
+     * backup's.
+     */
+    public function errorKey(): string
+    {
+        $error = $this->error ?? 'unexpected';
+
+        return str_starts_with($error, self::DESTINATION_REASON)
+            ? 'backup.destination_reason.' . substr($error, strlen(self::DESTINATION_REASON))
+            : 'backup.reason.' . $error;
     }
 }

@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Backup;
 
+use App\Domain\Entity\BackupDestinationRecord;
 use App\Http\GuardedTransferClient;
 use App\Http\HttpClient;
 use App\Http\HttpClientOptions;
 use App\Http\StaticTrustedTargets;
 use App\Http\UrlGuard;
 use App\Service\Backup\Destination\BackupDestination;
+use App\Service\Backup\Destination\BackupDestinationFactory;
 use App\Service\Backup\Destination\DestinationException;
 use App\Service\Backup\Destination\DirectoryDestination;
 use App\Service\Backup\Destination\HttpExchange;
@@ -136,9 +138,10 @@ final class BackupDestinationsTest extends TestCase
 
     public function testPlainHttpIsRefusedForAHostThatIsNotTrusted(): void
     {
-        // A public address, so only the scheme can be the reason.
+        // A public address (TEST-NET-3, never routed), so only the scheme
+        // can be the reason.
         $destination = new WebDavDestination(
-            $this->exchange([], ['dav.example' => ['93.184.216.34']]),
+            $this->exchange([], ['dav.example' => ['203.0.113.10']]),
             new RequestFactory(),
             new StreamFactory(),
             'http://dav.example/remote.php/dav/files/me/',
@@ -146,10 +149,43 @@ final class BackupDestinationsTest extends TestCase
             self::PASSWORD,
         );
 
-        $this->expectException(DestinationException::class);
-        $this->expectExceptionMessage('http');
+        try {
+            $destination->head('anything');
+            self::fail('Plain http to an untrusted host was allowed.');
+        } catch (DestinationException $exception) {
+            self::assertSame(DestinationException::STEP_CONNECT, $exception->step);
+            self::assertSame('blocked', $exception->reason);
+            self::assertStringContainsString('http', $exception->getMessage());
+        }
+    }
 
-        $destination->head('anything');
+    public function testARedirectFromADestinationIsRefusedNamingWhereItPointed(): void
+    {
+        $http = new LocalServer('http.php');
+        try {
+            $destination = new WebDavDestination(
+                $this->exchange(['nas.test']),
+                new RequestFactory(),
+                new StreamFactory(),
+                $http->url('/moved/', 'nas.test'),
+                self::USER,
+                self::PASSWORD,
+            );
+            $destination->get('renovo-instance-x.renovo-backup', $this->work . '/out');
+            self::fail('A redirect was accepted.');
+        } catch (DestinationException $exception) {
+            self::assertSame('redirect', $exception->reason);
+            self::assertStringContainsString('https://elsewhere.example/moved', $exception->getMessage());
+            self::assertFileDoesNotExist($this->work . '/out');
+        } finally {
+            $http->stop();
+        }
+    }
+
+    public function testWhatTheFarEndSaysIsMadePrintableAndShortBeforeItIsShown(): void
+    {
+        self::assertSame('https://x/?y', HttpExchange::printable("https://x/\x01y"));
+        self::assertSame(str_repeat('a', 200) . '…', HttpExchange::printable(str_repeat('a', 300)));
     }
 
     public function testWebDavPropfindAnswersAreReadWhateverThePrefix(): void
@@ -231,7 +267,7 @@ final class BackupDestinationsTest extends TestCase
     public function testS3TestConnectionPasses(): void
     {
         $this->s3()->test();
-        self::assertNull($this->s3()->head(BackupDestination::MARKER));
+        self::assertNull($this->s3()->head('phase39-tests/' . BackupDestination::MARKER));
     }
 
     public function testTheStorageServiceRejectsABodyThatDoesNotMatchItsSignedHash(): void
@@ -279,12 +315,43 @@ final class BackupDestinationsTest extends TestCase
 
         self::assertSame(
             'https://s3.eu-west-2.amazonaws.com/my-bucket/renovo/renovo-instance-a.renovo-backup',
-            $make(true)->url('renovo-instance-a.renovo-backup'),
+            $make(true)->url('renovo/renovo-instance-a.renovo-backup'),
         );
         self::assertSame(
             'https://my-bucket.s3.eu-west-2.amazonaws.com/renovo/renovo-instance-a.renovo-backup',
-            $make(false)->url('renovo-instance-a.renovo-backup'),
+            $make(false)->url('renovo/renovo-instance-a.renovo-backup'),
         );
+    }
+
+    public function testAStoredS3KeyCarriesThePrefixOnceAndAChangedPrefixDoesNotMoveIt(): void
+    {
+        $record = static fn (string $prefix): BackupDestinationRecord => new BackupDestinationRecord(
+            1,
+            \App\Domain\BackupDestinationType::S3,
+            'B2',
+            ['endpoint' => 'https://s3.example.com', 'bucket' => 'b', 'prefix' => $prefix, 'path_style' => true],
+            ['access_key_id' => 'a', 'secret_key' => 's'],
+            false,
+            true,
+            new \App\Service\Backup\BackupRetention(7, 4, 6),
+            null,
+        );
+        $factory = new \App\Service\Backup\Destination\BackupDestinationFactory(
+            $this->exchange([]),
+            new RequestFactory(),
+            new StreamFactory(),
+            new SystemClock(new \DateTimeZone('UTC')),
+        );
+        $file = 'renovo-instance-20270101-000000-abcdef.renovo-backup';
+        $key = BackupDestinationFactory::objectKey($record('home/'), $file);
+
+        self::assertSame('home/' . $file, $key);
+        $now = $factory->create($record('home/'));
+        self::assertInstanceOf(S3Destination::class, $now);
+        self::assertSame('https://s3.example.com/b/home/' . $file, $now->url($key));
+        $later = $factory->create($record('elsewhere/'));
+        self::assertInstanceOf(S3Destination::class, $later);
+        self::assertSame('https://s3.example.com/b/home/' . $file, $later->url($key));
     }
 
     private function assertRoundTrip(BackupDestination $destination): void
