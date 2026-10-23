@@ -88,7 +88,8 @@ The household archive keeps its name and its screen. Every new string says
 - A restore also needs the instance's `SESSION_KEY` and `TOTP_ENCRYPTION_KEY`
   (and, after Phase 40, `SECRETS_KEY` and any `SECRETS_PREVIOUS_KEYS`) to make
   the restored secrets usable.
-  The settings card and the README say so, plainly, next to the key fingerprint:
+  The settings card (next to the key fingerprint) and `docs/operations.md` say
+  so, plainly:
   **store these keys somewhere that is not this server.**
 
 ### Verification

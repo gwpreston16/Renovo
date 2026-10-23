@@ -39,7 +39,7 @@ final class InstanceBackupArchive
 
     public const MANIFEST = 'manifest.json';
 
-    private const TABLE_ENTRY = '#^tables/([a-z_]{1,64})\.jsonl$#';
+    private const TABLE_ENTRY = '#^tables/([a-z_]{1,64})\.jsonl$#D';
 
     /** Far beyond any household's attachments, far short of a zip bomb's. */
     private const MAX_ENTRIES = 200000;

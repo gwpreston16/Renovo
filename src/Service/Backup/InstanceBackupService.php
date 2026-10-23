@@ -56,7 +56,7 @@ final class InstanceBackupService
     public const LISTED_WARNINGS = 50;
 
     /** The only names this service writes into BACKUP_DIRECTORY. */
-    public const FILE_PATTERN = '#^renovo-instance-[0-9]{8}-[0-9]{6}-[0-9a-f]{6}\.renovo-backup$#';
+    public const FILE_PATTERN = '#^renovo-instance-[0-9]{8}-[0-9]{6}-[0-9a-f]{6}\.renovo-backup$#D';
 
     public function __construct(
         private readonly BackupRunRepository $runs,
@@ -170,7 +170,7 @@ final class InstanceBackupService
         $key = $this->key();
         // The system temporary directory, not the run's: a check from the
         // console holds no lock, and a run sweeps its own workspace clean.
-        $work = Workspace::create(sys_get_temp_dir(), 'renovo-verify-');
+        $work = Workspace::create(sys_get_temp_dir(), Workspace::VERIFY_PREFIX);
 
         try {
             return $this->verify($path, $key, $work);
@@ -534,7 +534,7 @@ final class InstanceBackupService
             // BACKUP_DIRECTORY is a mount at the root, say, whose parent this
             // process cannot write: the system temporary directory instead,
             // still never inside the directory that is copied off.
-            return Workspace::create(sys_get_temp_dir(), 'renovo-backup-run-');
+            return Workspace::create(sys_get_temp_dir(), $this->tempPrefix());
         }
 
         return Workspace::create($parent, 'run-');
@@ -561,6 +561,16 @@ final class InstanceBackupService
         ];
     }
 
+    /**
+     * The fallback workspace's prefix, named for this backup directory: two
+     * instances sharing a host's temporary directory never sweep each
+     * other's live run.
+     */
+    private function tempPrefix(): string
+    {
+        return 'renovo-backup-run-' . substr(hash('sha256', rtrim($this->directory, '/')), 0, 12) . '-';
+    }
+
     private function workParent(): string
     {
         $directory = rtrim($this->directory, '/');
@@ -575,12 +585,30 @@ final class InstanceBackupService
      */
     private function sweepLeftovers(): void
     {
-        $stale = [
-            ...(array) glob($this->workParent() . '/run-*', GLOB_ONLYDIR),
-            ...(array) glob(sys_get_temp_dir() . '/renovo-backup-run-*', GLOB_ONLYDIR),
-        ];
-        foreach ($stale as $directory) {
+        foreach ((array) glob($this->workParent() . '/run-*', GLOB_ONLYDIR) as $directory) {
             Workspace::remove((string) $directory);
+        }
+
+        // The shared temporary directory holds the fallback workspace and
+        // those of `backup:verify` and `backup:restore`, which run without
+        // the lock. Only directories this process's user made, that are not
+        // links and are older than any of those could still be working.
+        $cutoff = $this->clock->now()->getTimestamp() - self::ABANDONED_AFTER_SECONDS;
+        $temp = sys_get_temp_dir();
+        $candidates = [
+            ...(array) glob($temp . '/' . $this->tempPrefix() . '*', GLOB_ONLYDIR),
+            ...(array) glob($temp . '/' . Workspace::VERIFY_PREFIX . '*', GLOB_ONLYDIR),
+            ...(array) glob($temp . '/' . Workspace::RESTORE_PREFIX . '*', GLOB_ONLYDIR),
+        ];
+        foreach ($candidates as $directory) {
+            $directory = (string) $directory;
+            if (
+                !is_link($directory)
+                && @fileowner($directory) === getmyuid()
+                && (int) @filemtime($directory) < $cutoff
+            ) {
+                Workspace::remove($directory);
+            }
         }
 
         foreach ((array) glob(rtrim($this->directory, '/') . '/*' . BackupCipher::EXTENSION . '.partial') as $partial) {

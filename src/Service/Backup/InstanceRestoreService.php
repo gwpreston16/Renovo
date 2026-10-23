@@ -52,7 +52,7 @@ final class InstanceRestoreService
     public function restore(string $path): array
     {
         $key = $this->backups->key();
-        $work = Workspace::create(sys_get_temp_dir(), 'renovo-restore-');
+        $work = Workspace::create(sys_get_temp_dir(), Workspace::RESTORE_PREFIX);
 
         try {
             $plain = $work . '/restore.zip';

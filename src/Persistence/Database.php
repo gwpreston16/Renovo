@@ -208,13 +208,6 @@ final class Database
     }
 
     /**
-     * Roll back only if a transaction is still open.
-     *
-     * The check is not redundant: MySQL performs an implicit commit on DDL, so
-     * by the time an exception surfaces the transaction may already be gone,
-     * and rolling back then would itself throw.
-     */
-    /**
      * Run `$work` inside a read-only transaction that sees one consistent
      * snapshot of every table (Platform::snapshotStatements()).
      *
@@ -251,6 +244,13 @@ final class Database
         return $result;
     }
 
+    /**
+     * Roll back only if a transaction is still open.
+     *
+     * The check is not redundant: MySQL performs an implicit commit on DDL, so
+     * by the time an exception surfaces the transaction may already be gone,
+     * and rolling back then would itself throw.
+     */
     private function rollBackIfOpen(PDO $pdo): void
     {
         if ($pdo->inTransaction()) {

@@ -28,24 +28,24 @@ final class BackupFiles
         'attachments' => [
             'table' => 'attachments',
             'column' => 'stored_path',
-            'stored' => '#^([0-9]{1,20}/[0-9a-f]{32}\.(?:pdf|png|jpg|webp|gif))$#',
+            'stored' => '#^([0-9]{1,20}/[0-9a-f]{32}\.(?:pdf|png|jpg|webp|gif))$#D',
         ],
         'avatars' => [
             'table' => 'users',
             'column' => 'avatar_path',
-            'stored' => '#^([0-9]{1,20}/[0-9a-f]{32}\.png)$#',
+            'stored' => '#^([0-9]{1,20}/[0-9a-f]{32}\.png)$#D',
         ],
         'logos' => [
             'table' => ['subscriptions', 'payment_methods'],
             'column' => 'logo_path',
-            'stored' => '#^assets/logos/([0-9a-f]{32}\.(?:png|jpg|gif|webp))$#',
+            'stored' => '#^assets/logos/([0-9a-f]{32}\.(?:png|jpg|gif|webp))$#D',
         ],
     ];
 
     /** Every entry name a file may have inside an instance backup. */
     public const ENTRY_PATTERN = '#^files/(?:attachments/[0-9]{1,20}/[0-9a-f]{32}\.(?:pdf|png|jpg|webp|gif)'
         . '|avatars/[0-9]{1,20}/[0-9a-f]{32}\.png'
-        . '|logos/[0-9a-f]{32}\.(?:png|jpg|gif|webp))$#';
+        . '|logos/[0-9a-f]{32}\.(?:png|jpg|gif|webp))$#D';
 
     /**
      * @param array<string, string> $directories Kind => absolute directory.

@@ -24,11 +24,14 @@ use InvalidArgumentException;
  * in a `bool` is what `Database` binds as each engine's own boolean; an `int`
  * bound to a PostgreSQL boolean column is an error.
  *
+ * Not final: a test stands in a dumper that checks every read happens inside
+ * the snapshot.
+ *
  * It is not scoped, by design: an instance backup is the whole instance. Only
  * `InstanceBackupService` and the restore use it, and only an instance
  * administrator or the operator's shell reaches them.
  */
-final class BackupDumper
+class BackupDumper
 {
     /**
      * Every table an instance backup carries, parents before children: the

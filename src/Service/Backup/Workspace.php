@@ -14,6 +14,9 @@ use RecursiveIteratorIterator;
  */
 final class Workspace
 {
+    public const VERIFY_PREFIX = 'renovo-verify-';
+    public const RESTORE_PREFIX = 'renovo-restore-';
+
     public static function create(string $parent, string $prefix): string
     {
         $directory = rtrim($parent, '/') . '/' . $prefix . bin2hex(random_bytes(8));
@@ -26,7 +29,9 @@ final class Workspace
 
     public static function remove(string $directory): void
     {
-        if (!is_dir($directory)) {
+        // Never through a link: one planted where a workspace is expected
+        // would otherwise have this empty the directory it points at.
+        if (is_link($directory) || !is_dir($directory)) {
             return;
         }
 

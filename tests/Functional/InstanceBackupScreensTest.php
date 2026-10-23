@@ -249,6 +249,32 @@ final class InstanceBackupScreensTest extends DatabaseTestCase
         self::assertMatchesRegularExpression('~value="weekly"\s+checked~', $page);
     }
 
+    public function testAFailedBackUpNowSaysWhy(): void
+    {
+        $this->boot(self::KEY, new class () extends \App\Service\Backup\BackupCipher {
+            public function encryptFile(
+                string $plainPath,
+                string $encryptedPath,
+                \App\Service\Backup\BackupKey $key,
+            ): void {
+                parent::encryptFile($plainPath, $encryptedPath, $key);
+                $bytes = (string) file_get_contents($encryptedPath);
+                $bytes[60] = chr(ord($bytes[60]) ^ 0xFF);
+                file_put_contents($encryptedPath, $bytes);
+            }
+        });
+        $this->signIn($this->adminId);
+
+        $this->request('POST', '/settings/backups/run');
+        $page = $this->page();
+
+        self::assertStringContainsString(
+            'The instance backup failed. It does not decrypt: it has been altered or damaged.',
+            $page,
+        );
+        self::assertStringContainsString('<span class="badge badge-bad">Failed</span>', $page);
+    }
+
     public function testBackUpNowWhileAnotherRunsSaysSo(): void
     {
         (new \App\Repository\BackupRunRepository($this->db))->claim(
@@ -290,7 +316,7 @@ final class InstanceBackupScreensTest extends DatabaseTestCase
         self::assertSame(404, $this->request('GET', '/settings/backups/' . $id . '/download')->getStatusCode());
     }
 
-    private function boot(string $key): void
+    private function boot(string $key, ?\App\Service\Backup\BackupCipher $cipher = null): void
     {
         $this->session ??= new ArraySession();
 
@@ -298,6 +324,7 @@ final class InstanceBackupScreensTest extends DatabaseTestCase
         $this->app = $bootstrap(true, [
             SessionInterface::class => $this->session,
             MailerInterface::class => new RecordingMailer(),
+            \App\Service\Backup\BackupCipher::class => $cipher ?? new \App\Service\Backup\BackupCipher(),
             InstanceBackupService::class => autowire(InstanceBackupService::class)
                 ->constructorParameter('directory', $this->directory)
                 ->constructorParameter('keyHex', $key),

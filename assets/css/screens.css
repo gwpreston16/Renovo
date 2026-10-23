@@ -4887,6 +4887,16 @@ a.segmented-option {
     color: var(--bad);
 }
 
+/*
+ * Without a key every backup control is disabled; it should look it, as a
+ * disabled segmented option and toggle do.
+ */
+#backup-schedule:disabled .role-option,
+#backup-retention:disabled input {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
 /* A figure and its unit stay together when the row wraps on a phone. */
 .instance-backup-rows .account-row-meta .num {
     white-space: nowrap;

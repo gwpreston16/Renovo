@@ -167,8 +167,11 @@ weekly, none in the last 6 days 23 hours. One runs at a time.
 
 While a run works, its plaintext sits in a private directory beside
 `BACKUP_DIRECTORY` (`var/.backups-work` by default), never inside it, so a copy
-of `BACKUP_DIRECTORY` taken mid-run holds only ciphertext. A run that was killed
-part-way leaves it behind; the next run removes it.
+of `BACKUP_DIRECTORY` taken mid-run holds only ciphertext. When that parent
+cannot be written (a `BACKUP_DIRECTORY` mounted at the root, say), the system
+temporary directory is used instead; it needs room for one unencrypted backup,
+as `backup:verify`, `backup:decrypt` and `backup:restore` always do. A run that
+was killed part-way leaves it behind; the next run removes it.
 
 A backup that fails verification is kept for inspection, marked **Failed** with
 the reason, and never counts as the last good one. Left out on purpose:
@@ -206,11 +209,13 @@ verify, and says which.
      php bin/console backup:verify /restore/renovo-instance-….renovo-backup
    ```
 
-3. Start from an empty database — a new volume, or a dropped and re-created
-   database — with the app and scheduler stopped:
+3. Start from an empty database, with the app and scheduler stopped. On the
+   compose stack that is a new database volume (`renovo_database`, or
+   `renovo_database_mysql` on MySQL) — this deletes whatever that volume holds:
 
    ```bash
-   docker compose stop app scheduler
+   docker compose down
+   docker volume rm renovo_database
    docker compose up -d database
    ```
 

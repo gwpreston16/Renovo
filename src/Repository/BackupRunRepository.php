@@ -14,10 +14,13 @@ use PDOException;
  * The history of instance backups (Phase 38), and the lock that lets only one
  * run at a time.
  *
+ * Not final: a test stands in one whose pruning fails, to show a verified
+ * backup stays verified.
+ *
  * Instance-wide and unscoped: only an instance administrator's pages and the
  * operator's console reach it.
  */
-final class BackupRunRepository extends AbstractRepository
+class BackupRunRepository extends AbstractRepository
 {
     private const LOCK = 'run';
 

@@ -630,6 +630,139 @@ final class InstanceBackupTest extends DatabaseTestCase
         ));
     }
 
+    public function testAFailureAfterVerifyingLeavesTheBackupVerified(): void
+    {
+        $this->seed();
+        $this->container()->get(InstanceSettingsService::class)->setBackupRetention(new BackupRetention(0, 0, 0));
+        $this->verifiedRunsBefore(1);
+        $container = $this->container();
+        $runs = new class ($this->db) extends BackupRunRepository {
+            public function markPruned(int $id, DateTimeImmutable $at): void
+            {
+                throw new \RuntimeException('the disk went read-only');
+            }
+        };
+        $service = new InstanceBackupService(
+            $runs,
+            $container->get(\App\Service\Backup\InstanceBackupArchive::class),
+            new BackupCipher(),
+            $container->get(InstanceSettingsService::class),
+            $container->get(\App\Service\AuditLogService::class),
+            $this->clock,
+            $this->logger,
+            $this->root . '/backups',
+            self::KEY,
+        );
+
+        $outcome = $service->runScheduled(force: true);
+
+        self::assertSame(BackupOutcome::VERIFIED, $outcome->result);
+        self::assertSame($outcome->run?->id, $this->service()->lastVerified()?->id);
+        self::assertNotEmpty(preg_grep('/pruning after it failed/', $this->logger->lines));
+        self::assertSame(0, (int) $this->db->fetchValue(
+            "SELECT COUNT(*) FROM audit_log WHERE action = 'instance_backup.failed'",
+        ));
+        $this->assertNoKeyAnywhere();
+    }
+
+    public function testARestoreRefusesARowNamingAColumnThisDatabaseLacks(): void
+    {
+        $this->seed();
+        $path = $this->root . '/backups/' . $this->service()->runScheduled(force: true)->run?->file;
+        $bad = $this->rewritten($path, static function (ZipArchive $zip): void {
+            $lines = explode("\n", trim((string) $zip->getFromName('tables/tags.jsonl')));
+            $row = json_decode($lines[0], true);
+            $row['no_such_column'] = 1;
+            $lines[0] = (string) json_encode($row);
+            $zip->addFromString('tables/tags.jsonl', implode("\n", $lines) . "\n");
+        }, reseal: true);
+        $this->truncateAll();
+
+        try {
+            $this->container()->get(InstanceRestoreService::class)->restore($bad);
+            self::fail('A row with an unknown column was restored.');
+        } catch (BackupException $exception) {
+            self::assertSame('row_unreadable', $exception->reason);
+        }
+
+        foreach (BackupDumper::TABLES as $table) {
+            if ($table !== BackupDumper::MIGRATIONS_TABLE) {
+                self::assertSame(0, (new BackupDumper($this->db))->count($table), $table);
+            }
+        }
+    }
+
+    public function testEveryRowTheBackupReadsIsReadInsideTheSnapshot(): void
+    {
+        $this->seed();
+        $container = $this->container();
+        $database = $container->get(Database::class);
+        $reads = 0;
+        $dumper = new class ($database, $reads) extends BackupDumper {
+            public function __construct(private readonly Database $database, private int &$reads)
+            {
+                parent::__construct($database);
+            }
+
+            public function rows(string $table): iterable
+            {
+                InstanceBackupTest::assertTrue(
+                    $this->database->connection()->inTransaction(),
+                    $table . ' was read outside the snapshot.',
+                );
+                $this->reads++;
+
+                yield from parent::rows($table);
+            }
+        };
+        $service = new InstanceBackupService(
+            $container->get(BackupRunRepository::class),
+            new \App\Service\Backup\InstanceBackupArchive(
+                $dumper,
+                $container->get(\App\Service\Backup\BackupFiles::class),
+                $container->get(\App\Application\AppVersion::class),
+                $this->clock,
+            ),
+            new BackupCipher(),
+            $container->get(InstanceSettingsService::class),
+            $container->get(\App\Service\AuditLogService::class),
+            $this->clock,
+            $this->logger,
+            $this->root . '/backups',
+            self::KEY,
+        );
+
+        self::assertSame(BackupOutcome::VERIFIED, $service->runScheduled(force: true)->result);
+        self::assertSame(count(BackupDumper::TABLES), $reads);
+    }
+
+    public function testTheSweepNeverFollowsALink(): void
+    {
+        $this->seed();
+        // Somebody else's directory, and a link to it planted where a stale
+        // workspace would be.
+        $victim = $this->root . '/victim';
+        mkdir($victim);
+        file_put_contents($victim . '/precious.pdf', 'keep');
+        $link = sys_get_temp_dir() . '/' . \App\Service\Backup\Workspace::RESTORE_PREFIX
+            . 'planted' . bin2hex(random_bytes(3));
+        symlink($victim, $link);
+        touch($link, time() - 86400);
+        $workLink = $this->root . '/.backups-work/run-planted';
+        @mkdir(dirname($workLink), 0o700, true);
+        symlink($victim, $workLink);
+
+        try {
+            $this->clock->advanceTo(new DateTimeImmutable('+1 day'));
+            self::assertSame(BackupOutcome::VERIFIED, $this->service()->runScheduled(force: true)->result);
+
+            self::assertFileExists($victim . '/precious.pdf');
+        } finally {
+            @unlink($link);
+            @unlink($workLink);
+        }
+    }
+
     public function testARunSweepsWhatAKilledRunLeftBehind(): void
     {
         $this->seed();

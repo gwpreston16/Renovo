@@ -117,7 +117,8 @@ for both accounts (an Owner/Admin and a Contributor) when it is ready.
 
 - Import and export, and whole-household backup and restore, files included.
 - Scheduled instance backups of everything: encrypted, checked after they are
-  written, pruned by policy, and restorable into PostgreSQL or MySQL.
+  written, pruned by policy, and restorable into PostgreSQL or MySQL. Keep
+  the key somewhere that is not the server.
 - An iCalendar feed of what is due ([calendar](docs/features/calendar.md)).
 - Invoices and receipts attached to a subscription.
 - A versioned JSON API with an OpenAPI contract ([API](docs/api.md)).
