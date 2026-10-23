@@ -47,12 +47,14 @@ use DateTimeImmutable;
  *     date: DateTimeImmutable,
  *     amount: Money,
  *     approx_base: Money|null,
+ *     estimate: bool,
  *     charge_date: DateTimeImmutable|null,
  *     ends_offer: bool
  * }
  * @phpstan-type Figures array{
  *     totals: list<array{currency: string, amount_minor: int}>,
- *     combined: array<string, mixed>
+ *     combined: array<string, mixed>,
+ *     estimate: bool
  * }
  * @phpstan-type CalendarDay array{
  *     date: DateTimeImmutable,
@@ -354,7 +356,12 @@ final class CalendarService
         $deadlines = [];
         foreach ($this->cancellations->deadlines($scope) as $row) {
             $charge = $first[$row['subscription']->id] ?? null;
-            if ($charge === null || $row['is_passed'] || $row['deadline']->format('Y-m') !== $monthKey) {
+            if (
+                $row['kind'] !== 'notice'
+                || $charge === null
+                || $row['is_passed']
+                || $row['deadline']->format('Y-m') !== $monthKey
+            ) {
                 continue;
             }
 
@@ -388,6 +395,11 @@ final class CalendarService
             'date' => $date,
             'amount' => $amount,
             'approx_base' => $this->approxBase($amount),
+            // A bill whose amount varies, still to come: its amount is the
+            // estimate. One the ledger recorded is what was charged.
+            'estimate' => $kind !== 'cancel_by'
+                && $subscription->amountVaries
+                && $date >= $this->clock->today()->setTime(0, 0),
             'charge_date' => $chargeDate,
             // The first charge at full price after an intro offer: still a
             // charge, named for what it is.
@@ -422,7 +434,11 @@ final class CalendarService
             $totals[] = ['currency' => (string) $currency, 'amount_minor' => $amount];
         }
 
-        return ['totals' => $totals, 'combined' => $this->stats->combine($byCurrency)];
+        return [
+            'totals' => $totals,
+            'combined' => $this->stats->combine($byCurrency),
+            'estimate' => in_array(true, array_column($charges, 'estimate'), true),
+        ];
     }
 
     /**
@@ -453,7 +469,11 @@ final class CalendarService
 
             // Strictly greater, so a tie goes to the earlier day.
             if ($heaviest === null || $total > $heaviest['amount']->amountMinor) {
-                $heaviest = ['date' => $cell['date'], 'amount' => Money::of($total, $base)];
+                $heaviest = [
+                    'date' => $cell['date'],
+                    'amount' => Money::of($total, $base),
+                    'estimate' => in_array(true, array_column($charges, 'estimate'), true),
+                ];
             }
         }
 

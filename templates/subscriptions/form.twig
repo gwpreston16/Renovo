@@ -90,7 +90,11 @@
             #}
             <div class="field-grid field-grid-3">
                 <div class="field">
-                    <label for="price">{{ t('field.price') }}</label>
+                    {# "Estimated amount" while the Terms switch says the amount varies. #}
+                    <label for="price">
+                        <span class="when-fixed-amount">{{ t('field.price') }}</span>
+                        <span class="when-varying-amount">{{ t('subscriptions_form.estimated_amount') }}</span>
+                    </label>
                     <input type="text" id="price" name="price" inputmode="decimal" class="num"
                            value="{{ values.price|default('') }}" placeholder="{{ 0|decimal(2) }}" required
                            aria-describedby="price-conversion{% if errors.price is defined %} price-error{% endif %}"
@@ -598,6 +602,61 @@
                 </div>
             </div>
         </fieldset>
+
+        {#
+            Terms: how a row behaves rather than what it is — a contract that
+            ends, payments that stop, an amount that varies. Each is optional
+            and a row using none behaves as it always has, so the section is
+            collapsed unless one is set or has come back with an error.
+        #}
+        {% set terms_fields = ['contract_ends_on', 'payments_end_on', 'amount_varies'] %}
+        {% set terms_open = values.contract_ends_on|default('') != ''
+            or values.payments_end_on|default('') != ''
+            or values.amount_varies|default('0') == '1' %}
+        {% for field in terms_fields %}
+            {% if errors[field] is defined %}{% set terms_open = true %}{% endif %}
+        {% endfor %}
+        <details class="more-details terms-details" id="terms" {{ terms_open ? 'open' : '' }}>
+            <summary>{{ t('subscriptions_form.terms') }}</summary>
+
+            <div class="more-details-body">
+                <p class="hint">{{ t('subscriptions_form.terms_hint') }}</p>
+
+                <div class="field-grid">
+                    <div class="field">
+                        <label for="contract_ends_on">{{ t('subscriptions_form.contract_ends_on') }}</label>
+                        <input type="date" id="contract_ends_on" name="contract_ends_on"
+                               value="{{ values.contract_ends_on|default('') }}"
+                               aria-describedby="contract_ends_on-hint{% if errors.contract_ends_on is defined %} contract_ends_on-error{% endif %}">
+                        <p class="hint" id="contract_ends_on-hint">{{ t('subscriptions_form.contract_ends_on_hint') }}</p>
+                        {% if errors.contract_ends_on is defined %}
+                            <p class="field-error" id="contract_ends_on-error">{{ error_message(errors.contract_ends_on) }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="field recurring-only">
+                        <label for="payments_end_on">{{ t('subscriptions_form.payments_end_on') }}</label>
+                        <input type="date" id="payments_end_on" name="payments_end_on"
+                               value="{{ values.payments_end_on|default('') }}"
+                               aria-describedby="payments_end_on-hint{% if errors.payments_end_on is defined %} payments_end_on-error{% endif %}">
+                        <p class="hint" id="payments_end_on-hint">{{ t('subscriptions_form.payments_end_on_hint') }}</p>
+                        {% if errors.payments_end_on is defined %}
+                            <p class="field-error" id="payments_end_on-error">{{ error_message(errors.payments_end_on) }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <input type="hidden" name="amount_varies" value="0">
+                <label class="choice toggle">
+                    <span>
+                        <span class="choice-title">{{ t('subscriptions_form.amount_varies') }}</span>
+                        <span class="choice-note">{{ t('subscriptions_form.amount_varies_note') }}</span>
+                    </span>
+                    <input type="checkbox" class="toggle" role="switch" id="amount_varies" name="amount_varies" value="1"
+                           {{ values.amount_varies|default('0') == '1' ? 'checked' : '' }}>
+                </label>
+            </div>
+        </details>
 
         {#
             More details: every field the application had before the prototype

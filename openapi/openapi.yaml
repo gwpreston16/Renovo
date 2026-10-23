@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.4.0"
+  version: "1.5.0"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -111,9 +111,10 @@ paths:
         Returns only what the token's role and the instance's isolation mode
         allow — the same rows the same user would see in the web interface.
         With a token that may write, it first runs the catch-up: due price
-        changes take effect, ended trials convert and overdue payment dates
-        move on, recording each passed date as a payment. A read-only token
-        changes nothing.
+        changes take effect, ended trials convert, overdue payment dates
+        move on, recording each passed date as a payment, and a fixed term
+        whose last payment has passed is cancelled as of the day after it. A
+        read-only token changes nothing.
       parameters:
         - { name: q, in: query, schema: { type: string }, description: Search names and notes. }
         - { name: category, in: query, schema: { type: integer }, description: Category id. }
@@ -308,7 +309,11 @@ paths:
       description: |
         Clears `cancelled_at`. The subscription returns to **paused**, not
         active, so an accidental cancel corrected cannot silently restart
-        charges; resume it with a PUT setting `is_active` to true.
+        charges; resume it with a PUT setting `is_active` to true. A fixed
+        term the catch-up ended is ended again by any catch-up while its
+        `payments_end_on` has passed: to bring one back, PUT a later or empty
+        `payments_end_on` first, while it is still cancelled, then uncancel
+        and resume it.
       responses:
         "200":
           description: The subscription, now paused.
@@ -1033,7 +1038,9 @@ paths:
       tags: [Calendar]
       summary: Renewals, trial conversions and cancellation deadlines as iCalendar.
       description: |
-        A read-only feed for a calendar client. Because such a client cannot
+        A read-only feed for a calendar client. A fixed term's renewals stop
+        at its last payment, and no deadline is published after it. Because
+        such a client cannot
         send an `Authorization` header, this endpoint — and only this endpoint —
         takes its token in the `token` query parameter, and accepts read-only
         tokens exclusively. A write-capable token is refused rather than
@@ -1382,6 +1389,35 @@ components:
           description: |
             The tier it is on — "Standard", "Family". An absent key keeps the
             current value; send null or an empty string to clear it.
+        contract_ends_on:
+          type: string
+          format: date
+          nullable: true
+          description: |
+            The day its contract ends. The subscription keeps running after
+            it; the date is announced at the member's lead times (alert type
+            `contract_ending`) and listed beside cancel-by deadlines. An absent
+            key keeps the current value; send null or an empty string to clear
+            it.
+        payments_end_on:
+          type: string
+          format: date
+          nullable: true
+          description: |
+            The last charge of a fixed term: the last billing date on or
+            before it is the final payment. Nothing is charged or forecast
+            after it, and when the catch-up next runs after the final payment
+            the subscription is cancelled with `cancelled_at` the day after it. Recurring subscriptions
+            only (ignored for a one-off or lifetime entry); it may not come
+            before `start_date` or the next charge (`422`), which a PUT that
+            leaves it out is measured against too. An absent key keeps
+            the current value; send null or an empty string to clear it.
+        amount_varies:
+          type: boolean
+          description: |
+            The amount varies from bill to bill, so the price is an estimate.
+            An absent key keeps the current value; a new subscription defaults
+            to `false`.
         visibility:
           type: string
           enum: [household, payer]
@@ -1495,7 +1531,8 @@ components:
               nullable: true
               description: |
                 Read-only. The day it was cancelled. Set and cleared by the
-                cancel and uncancel endpoints only.
+                cancel and uncancel endpoints, and set by the catch-up to the
+                day after a fixed term's last payment.
             status:
               type: string
               enum: [active, trial, paused, cancelled]

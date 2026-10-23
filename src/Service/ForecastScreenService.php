@@ -106,6 +106,7 @@ final class ForecastScreenService
         $all = [];
         $long = [];
         $longCount = 0;
+        $longEstimate = false;
 
         foreach ($charges as $charge) {
             $currency = $charge['amount']->currency;
@@ -119,6 +120,7 @@ final class ForecastScreenService
             ) {
                 $long[$currency] = ($long[$currency] ?? 0) + $charge['amount']->amountMinor;
                 $longCount++;
+                $longEstimate = $longEstimate || $charge['subscription']->amountVaries;
             }
         }
 
@@ -127,14 +129,20 @@ final class ForecastScreenService
         $busiest = null;
         if ($chart['is_drawable'] && $chart['busiest_index'] !== null) {
             $bar = $chart['bars'][$chart['busiest_index']];
-            $busiest = ['label' => $bar['long_label'], 'total_display' => $bar['total_display']];
+            $busiest = [
+                'label' => $bar['long_label'],
+                'total_display' => $bar['total_display'],
+                'estimate' => $bar['estimate'],
+            ];
         }
 
+        $estimate = StatsService::chargesIncludeEstimate($charges);
+
         return [
-            'total' => $this->figures($all),
-            'average' => $this->figures($average),
+            'total' => $this->figures($all) + ['estimate' => $estimate],
+            'average' => $this->figures($average) + ['estimate' => $estimate],
             'busiest' => $busiest,
-            'long' => $this->figures($long) + ['count' => $longCount],
+            'long' => $this->figures($long) + ['count' => $longCount, 'estimate' => $longEstimate],
         ];
     }
 
@@ -192,6 +200,8 @@ final class ForecastScreenService
                 'regular_display' => $this->money->formatMinor($regular, $currency),
                 'long_display' => $this->money->formatMinor($long, $currency),
                 'total_display' => $this->money->formatMinor($total, $currency),
+                // A bill whose amount varies is in the month: its total is an estimate.
+                'estimate' => StatsService::chargesIncludeEstimate($month['events']),
             ];
 
             // Ties go to the earlier month, as on the spend chart.

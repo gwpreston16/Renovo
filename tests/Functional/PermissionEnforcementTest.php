@@ -160,6 +160,7 @@ final class PermissionEnforcementTest extends DatabaseTestCase
             // which the tests below assert separately.
             ['POST', '/subscriptions/bulk'],
             ['POST', '/subscriptions/{id}/price-changes'],
+            ['POST', '/subscriptions/{id}/estimate'],
             ['POST', '/subscriptions/{id}/split'],
             ['POST', '/subscriptions/{id}/usage'],
             ['POST', '/subscriptions/{id}/usage/rating'],

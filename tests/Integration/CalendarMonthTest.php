@@ -109,6 +109,23 @@ final class CalendarMonthTest extends DatabaseTestCase
         self::assertSame('2026-01-27', $deadlines[0]['date']->format('Y-m-d'));
     }
 
+    public function testAContractEndIsNotDrawnAsADeadline(): void
+    {
+        // Broadband's contract ends in January; only the gym's notice period
+        // is a cancel-by deadline on the calendar.
+        $broadband = $this->createSubscription('Broadband', 3500, '2026-02-10');
+        $this->db->execute(
+            "UPDATE subscriptions SET contract_ends_on = '2026-01-25' WHERE id = :id",
+            ['id' => $broadband],
+        );
+        $this->createSubscription('Gym', 4000, '2026-02-20', notice: 30);
+
+        $deadlines = $this->deadlines($this->month('2026-01'));
+
+        self::assertCount(1, $deadlines);
+        self::assertSame('Gym', $deadlines[0]['subscription']->name);
+    }
+
     public function testADeadlineThatHasAlreadyPassedIsNotShown(): void
     {
         // Seven days' notice on a charge due on the 18th: the deadline was the

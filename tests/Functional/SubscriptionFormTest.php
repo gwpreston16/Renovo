@@ -44,6 +44,9 @@ use Symfony\Component\Mailer\MailerInterface;
  */
 final class SubscriptionFormTest extends DatabaseTestCase
 {
+    /** The More details disclosure, not the Terms one beside it. */
+    private const MORE_DETAILS = './/details[contains(@class, "more-details") and not(@id="terms")]';
+
     /** @var App<ContainerInterface> */
     private App $app;
     private ArraySession $session;
@@ -372,9 +375,14 @@ final class SubscriptionFormTest extends DatabaseTestCase
     {
         $form = $this->formElement($this->body($this->request('GET', '/subscriptions/new')));
 
-        $details = $this->xpath($form, './/details[contains(@class, "more-details")]');
+        $details = $this->xpath($form, self::MORE_DETAILS);
         self::assertCount(1, $details);
         self::assertFalse($details[0]->hasAttribute('open'));
+
+        // Terms is a section of its own, closed for a row that uses none.
+        $terms = $this->xpath($form, './/details[@id="terms"]');
+        self::assertCount(1, $terms);
+        self::assertFalse($terms[0]->hasAttribute('open'));
 
         foreach (['notice_period_amount', 'tags', 'website_url', 'logo', 'start_date', 'notes'] as $field) {
             self::assertCount(
@@ -391,7 +399,7 @@ final class SubscriptionFormTest extends DatabaseTestCase
 
         self::assertSame(422, $response->getStatusCode());
         $form = $this->formElement($this->body($response));
-        self::assertTrue($this->xpath($form, './/details[contains(@class, "more-details")]')[0]->hasAttribute('open'));
+        self::assertTrue($this->xpath($form, self::MORE_DETAILS)[0]->hasAttribute('open'));
     }
 
     // ------------------------------------------------------- edit-only parts

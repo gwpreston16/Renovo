@@ -75,6 +75,8 @@ for both accounts (an Owner/Admin and a Contributor) when it is ready.
 - Subscriptions and recurring bills, on any cycle: weekly, monthly, yearly or
   every N weeks, months or years.
 - Free trials that convert on their date, and introductory prices that end.
+- Contract end dates, fixed terms that stop after their last payment, and
+  bills whose amount varies.
 - Notice periods, and a "cancel by" date worked out from them.
 - Categories, tags and payment methods, with saved list views.
 - Import from CSV or JSON, with every row previewed before it is written.
@@ -90,7 +92,7 @@ for both accounts (an Owner/Admin and a Contributor) when it is ready.
 **Notifications** ([docs](docs/features/notifications.md))
 
 - Reminders before a renewal, a trial conversion or a cancellation deadline,
-  and alerts for budgets and price changes.
+  and alerts for budgets, price changes and contracts ending.
 - Email, Gotify, Slack, Discord, Telegram, Pushover, ntfy, Mattermost and more,
   or a signed generic webhook.
 - Per-person lead times and digests, and each alert routed to the channels you

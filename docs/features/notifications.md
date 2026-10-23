@@ -13,12 +13,13 @@ interruption and nothing else is:
 | **Trial about to convert** | A free trial is about to start charging, quoting what it will cost. |
 | **Cancellation deadline** | The last day to give notice and avoid the next charge — only when a subscription has a notice period, since otherwise the deadline *is* the renewal date. |
 | **Budget projected to be exceeded** | A budget's projection crosses its limit. |
+| **Contract ending** | A contract end date you have recorded is coming up, at each of your lead times, for a running subscription. |
 | **Price change** | A price is edited or a future one is scheduled — once, when it is recorded, naming the old and new price, the date and the effect over a year. Not for a first price, a trial converting or a currency conversion. |
 
 Everything is configured per user on the **Notifications** page; each member of
 a household sets their own. One set of lead times (any of 1, 3, 7, 14 and 30
 days) applies to renewals, trial conversions and cancel-by deadlines alike;
-budget alerts and price changes each have a switch; and the routing grid has a
+budget alerts, price changes and contract endings each have a switch; and the routing grid has a
 column for every channel, with a channel that is switched off greyed out but
 keeping its choices. You are notified about the subscriptions you own and
 the ones you pay for, not about everything in the household — a household of
@@ -69,6 +70,12 @@ A summary collects everything coming up into one message on the day you choose;
 lead times stop applying, and each thing is mentioned once. (A summary whose
 day is missed entirely — the scheduler down for that whole day — is skipped
 rather than deferred.)
+
+A **Contract ending** alert is sent at your lead times before a contract end
+date you have recorded, for a running subscription. It can be switched off on
+its own; existing members received it on the channels their renewal reminders
+already used. A renewal reminder for a bill whose amount varies says "about"
+the estimate, and a fixed term's renewals stop at its last payment.
 
 A budget alert fires on the crossing, not on the state: a budget that stays
 over its limit for three weeks says so once, and only speaks again if it drops

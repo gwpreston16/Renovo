@@ -126,6 +126,15 @@ final class SubscriptionService
             // Paused or cancelled through the edit form, the API or an import:
             // the dates already passed are recorded first.
             $this->settlePassedDates($scope, $existing);
+
+            // And the date they moved the row to is kept, unless the save
+            // asked for another: the form was drawn before the catch-up ran,
+            // so it posts back the date the row has just left (K72).
+            $settled = $this->subscriptions->find($scope, $id)?->nextPaymentDate;
+            $stale = $existing->nextPaymentDate?->format('Y-m-d');
+            if ($settled !== null && $stale !== null && ($data['next_payment_date'] ?? null) === $stale) {
+                $data['next_payment_date'] = $settled->format('Y-m-d');
+            }
         }
 
         $paused = [];
@@ -582,7 +591,9 @@ final class SubscriptionService
 
     /**
      * The billing dates a subscription has rolled past, and the date it lands
-     * on — the first that is today or later.
+     * on — the first that is today or later, or the first after a fixed
+     * term's last payment, which is never charged: a catch-up running late
+     * writes nothing after the final payment.
      *
      * @return array{dates: list<DateTimeImmutable>, next: ?DateTimeImmutable}
      */
@@ -597,7 +608,11 @@ final class SubscriptionService
 
         $dates = [];
         $iterations = 0;
-        while ($current < $today->setTime(0, 0) && $iterations < self::MAX_ADVANCE_ITERATIONS) {
+        while (
+            $current < $today->setTime(0, 0)
+            && $subscription->chargesOn($current)
+            && $iterations < self::MAX_ADVANCE_ITERATIONS
+        ) {
             $dates[] = $current;
             $current = $cycle->advance(
                 $current,
@@ -636,7 +651,16 @@ final class SubscriptionService
             return $submitted;
         }
 
-        return $existing->resumedPaymentDate($this->clock->today(), $date)?->format('Y-m-d') ?? $submitted;
+        // Walked by the cycle the save gives the row, not the one it had: a
+        // monthly row resumed as yearly moves on by years (K73).
+        $resumed = $existing->withSchedule(
+            BillingCycle::tryFromString(is_string($data['billing_cycle'] ?? null) ? $data['billing_cycle'] : null),
+            is_int($data['cycle_days'] ?? null) ? $data['cycle_days'] : null,
+            is_int($data['cycle_interval'] ?? null) ? $data['cycle_interval'] : $existing->cycleInterval,
+            is_int($data['anchor_day'] ?? null) ? $data['anchor_day'] : null,
+        );
+
+        return $resumed->resumedPaymentDate($this->clock->today(), $date)?->format('Y-m-d') ?? $submitted;
     }
 
     /**
@@ -654,7 +678,11 @@ final class SubscriptionService
             return [];
         }
 
-        return $existing->pausedDates($this->clock->today());
+        // A fixed term had no billing dates after its last payment to skip.
+        return array_values(array_filter(
+            $existing->pausedDates($this->clock->today()),
+            static fn (DateTimeImmutable $date): bool => $existing->chargesOn($date),
+        ));
     }
 
     /**
@@ -734,11 +762,25 @@ final class SubscriptionService
     /**
      * Every in-scope subscription, unpaginated, for the dashboard figures.
      *
+     * The running rows, by default — and a fixed term whose last payment has
+     * passed is not running, though the catch-up may not have ended it yet:
+     * every total read from here drops it on the day after.
+     *
      * @return list<Subscription>
      */
     public function allForStats(Scope $scope, bool $activeOnly = true): array
     {
-        return $this->subscriptions->findAllForStats($scope, $activeOnly);
+        $rows = $this->subscriptions->findAllForStats($scope, $activeOnly);
+        if (!$activeOnly) {
+            return $rows;
+        }
+
+        $today = $this->clock->today();
+
+        return array_values(array_filter(
+            $rows,
+            static fn (Subscription $subscription): bool => $subscription->hasChargesRemaining($today),
+        ));
     }
 
     /**
@@ -851,6 +893,9 @@ final class SubscriptionService
         }
 
         $startDate = $this->date($this->str($input, 'start_date'));
+        if ($this->str($input, 'start_date') !== '' && $startDate === null) {
+            $errors['start_date'] = 'error.date.invalid';
+        }
 
         [$trial, $trialErrors] = $this->validateTrial($input, $type, $existing);
         $errors += $trialErrors;
@@ -913,6 +958,17 @@ final class SubscriptionService
 
         $anchorDay = $this->anchorDay($input, $cycle, $nextPaymentDate, $existing, $errors);
 
+        $terms = $this->validateTerms(
+            $input,
+            $type,
+            $nextPaymentDate,
+            $startDate,
+            $trial,
+            $existing,
+            $cancelledAt !== null,
+            $errors,
+        );
+
         // Null when the field was not submitted at all, which is what keeps a
         // form that does not show it — a bulk edit, a later API — from wiping a
         // per-subscription reminder schedule it never asked about.
@@ -956,6 +1012,9 @@ final class SubscriptionService
                 ? false
                 : ($input['is_active'] ?? '1') !== '0',
             'plan' => $plan === '' ? null : $plan,
+            'contract_ends_on' => $terms['contract_ends_on'],
+            'payments_end_on' => $terms['payments_end_on'],
+            'amount_varies' => $terms['amount_varies'],
             'visibility' => $visibility->value,
             'category_id' => $categoryId,
             'payment_method_id' => $paymentMethodId,
@@ -985,13 +1044,78 @@ final class SubscriptionService
             $data['cancelled_at'] = $cancelledAt->format('Y-m-d');
         }
 
-        foreach (['visibility', 'plan'] as $column) {
+        foreach (['visibility', 'plan', 'contract_ends_on', 'payments_end_on', 'amount_varies'] as $column) {
             if ($existing !== null && !array_key_exists($column, $input)) {
                 unset($data[$column]);
             }
         }
 
         return [$data, $tagIds, $offer];
+    }
+
+    /**
+     * Read the Terms fields: when a contract ends, when a fixed term's
+     * payments end, and whether the amount varies.
+     *
+     * A one-off or lifetime entry has no further charges, so it carries no
+     * fixed term. A running row's last charge cannot come before its next
+     * one — that would be a term already over, which the catch-up could not
+     * date — so `payments_end_on` is measured against the next charge (the
+     * conversion, for a trial). A cancelled row is history and is not
+     * measured.
+     *
+     * @param array<string, mixed> $input
+     * @param array<string, mixed> $trial
+     * @param array<string, string> $errors
+     * @return array{contract_ends_on: ?string, payments_end_on: ?string, amount_varies: bool}
+     */
+    private function validateTerms(
+        array $input,
+        SubscriptionType $type,
+        ?DateTimeImmutable $nextPaymentDate,
+        ?DateTimeImmutable $startDate,
+        array $trial,
+        ?Subscription $existing,
+        bool $restoringCancelled,
+        array &$errors,
+    ): array {
+        $contractEnds = $this->date($this->str($input, 'contract_ends_on'));
+        if ($this->str($input, 'contract_ends_on') !== '' && $contractEnds === null) {
+            $errors['contract_ends_on'] = 'error.date.invalid';
+        }
+
+        $paymentsEnd = $this->date($this->str($input, 'payments_end_on'));
+        if ($this->str($input, 'payments_end_on') !== '' && $paymentsEnd === null) {
+            $errors['payments_end_on'] = 'error.date.invalid';
+        }
+
+        if (!$type->countsTowardsRecurringTotals()) {
+            $paymentsEnd = null;
+        }
+
+        $firstCharge = $trial['is_trial'] && is_string($trial['trial_end_date'])
+            ? $this->date($trial['trial_end_date'])
+            : $nextPaymentDate;
+        $cancelled = $existing?->isCancelled() === true || $restoringCancelled;
+        // An edit that leaves the field out keeps the stored date, which a
+        // moved payment date is measured against all the same.
+        $end = array_key_exists('payments_end_on', $input) || $existing === null
+            ? $paymentsEnd
+            : ($type->countsTowardsRecurringTotals() ? $existing->paymentsEndOn : null);
+
+        if ($end !== null && !$cancelled) {
+            if ($startDate !== null && $end < $startDate) {
+                $errors['payments_end_on'] = 'error.payments_end.before_start';
+            } elseif ($firstCharge !== null && $end < $firstCharge) {
+                $errors['payments_end_on'] = 'error.payments_end.before_next';
+            }
+        }
+
+        return [
+            'contract_ends_on' => $contractEnds?->format('Y-m-d'),
+            'payments_end_on' => $paymentsEnd?->format('Y-m-d'),
+            'amount_varies' => ($input['amount_varies'] ?? '0') === '1',
+        ];
     }
 
     /**
@@ -1263,6 +1387,21 @@ final class SubscriptionService
         $day = (int) $nextPaymentDate->format('j');
         $isMonthEnd = $day === (int) $nextPaymentDate->format('t');
 
+        // An edit that leaves the date on the day its anchor clamps to in a
+        // shorter month — the 30th's 28 February, 29 February's 28th in a
+        // common year — keeps the anchor rather than taking the clamped day
+        // as the new one (K11). Re-derived when the cycle changes. A monthly
+        // last-day anchor is the switch's to keep, below.
+        $kept = $existing?->anchorDay;
+        $keepsAnchor = $kept !== null
+            && $existing?->billingCycle === $cycle
+            && $day < $kept
+            && $day === min($kept, (int) $nextPaymentDate->format('t'))
+            && !($cycle === BillingCycle::Monthly && $kept === BillingCycle::LAST_DAY_ANCHOR);
+        if ($keepsAnchor) {
+            $day = $kept;
+        }
+
         if ($cycle !== BillingCycle::Monthly) {
             return $day;
         }
@@ -1313,7 +1452,9 @@ final class SubscriptionService
         }
 
         $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        $errors = DateTimeImmutable::getLastErrors();
 
-        return $date === false ? null : $date;
+        // "2026-02-31" is not 3 March: an impossible date is no date.
+        return $date === false || ($errors !== false && $errors['warning_count'] > 0) ? null : $date;
     }
 }

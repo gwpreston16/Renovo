@@ -9,6 +9,7 @@ use App\Repository\MembershipRepository;
 use App\Security\SessionInterface;
 use App\Service\AttachmentService;
 use App\Service\CatchUpService;
+use App\Service\FixedTermService;
 use App\Service\ChargeService;
 use App\Service\PriceHistoryService;
 use App\Service\ScenarioService;
@@ -43,6 +44,7 @@ final class SubscriptionMoneyController extends Controller
         private readonly ScenarioService $scenarios,
         private readonly ChargeService $charges,
         private readonly CatchUpService $catchUp,
+        private readonly FixedTermService $terms,
     ) {
         parent::__construct($view, $session, $translator);
     }
@@ -84,6 +86,10 @@ final class SubscriptionMoneyController extends Controller
             'can_plan' => $this->scenarios->isPlannable($subscription),
             'attachments' => $this->attachments->forSubscription($scope, $subscription->id),
             'payments' => $this->charges->page($scope, $subscription->id, is_numeric($page) ? (int) $page : 1),
+            'term' => $this->terms->progress($scope, $subscription),
+            'actuals' => $this->charges->averageOfActuals($scope, $subscription),
+            // A payment form the server refused, to reopen with what was typed.
+            'failed' => $this->takeFailedPayment($subscription->id),
             'invoices' => $this->attachments->byCharge($scope, $subscription->id),
             'today' => $this->charges->today(),
             'errors' => [],
@@ -104,6 +110,25 @@ final class SubscriptionMoneyController extends Controller
         $this->flash('success', 'flash.price_change_scheduled');
 
         return $this->redirectAfterWrite($request, $response, $this->subscriptionReturn($request, (int) $id));
+    }
+
+    /**
+     * Make a varying bill's estimate the average of its latest bills.
+     */
+    public function useEstimate(
+        ServerRequestInterface $request,
+        ResponseInterface $response,
+        string $id,
+    ): ResponseInterface {
+        try {
+            $this->charges->useAverageAsEstimate($this->scope($request), (int) $id);
+        } catch (ValidationException $exception) {
+            return $this->redirectWithErrors($request, $response, (int) $id, $exception);
+        }
+
+        $this->flash('success', 'flash.estimate_updated');
+
+        return $this->redirectAfterWrite($request, $response, '/subscriptions/' . (int) $id . '/money#payments');
     }
 
     public function updateSplit(
@@ -172,6 +197,35 @@ final class SubscriptionMoneyController extends Controller
         }
 
         return '/subscriptions/' . $id . '/money';
+    }
+
+    /**
+     * The payment form the charge routes stashed when they refused it, for
+     * this subscription — read once, then gone.
+     *
+     * @return array{form: string, charge: int|null, values: array<string, string>}|null
+     */
+    private function takeFailedPayment(int $subscriptionId): ?array
+    {
+        $failed = $this->session->get(SubscriptionChargeController::FAILED_KEY);
+        $this->session->remove(SubscriptionChargeController::FAILED_KEY);
+
+        if (!is_array($failed) || ($failed['subscription'] ?? null) !== $subscriptionId) {
+            return null;
+        }
+
+        $values = [];
+        foreach (is_array($failed['values'] ?? null) ? $failed['values'] : [] as $key => $value) {
+            if (is_string($key) && is_scalar($value)) {
+                $values[$key] = (string) $value;
+            }
+        }
+
+        return [
+            'form' => is_string($failed['form'] ?? null) ? $failed['form'] : '',
+            'charge' => is_int($failed['charge'] ?? null) ? $failed['charge'] : null,
+            'values' => $values,
+        ];
     }
 
     private function redirectWithErrors(

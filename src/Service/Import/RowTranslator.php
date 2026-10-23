@@ -113,6 +113,9 @@ final class RowTranslator
                 ImportField::ConvertsToPriceMinor,
                 $currency,
             ),
+            'contract_ends_on' => $this->date($this->value($row, ImportField::ContractEndsOn)),
+            'payments_end_on' => $this->date($this->value($row, ImportField::PaymentsEndOn)),
+            'amount_varies' => $this->boolean($this->value($row, ImportField::AmountVaries), false) ? '1' : '0',
         ];
 
         // Category is resolved to an id by the importer, which can create one;
@@ -271,17 +274,37 @@ final class RowTranslator
         }
 
         // ISO first: it is unambiguous, and it is what this application emits.
+        // Each format is strict: a day or month out of range is not rolled
+        // into the next one, so "12/25/2026" is not 12 January 2028 (K48) and
+        // falls through to be read as the American date it is.
         foreach (['!Y-m-d', '!Y/m/d', '!d/m/Y', '!d-m-Y', '!d.m.Y'] as $format) {
             $date = DateTimeImmutable::createFromFormat($format, $raw);
-            if ($date !== false) {
+            if ($date !== false && !self::overflowed()) {
                 return $date->format('Y-m-d');
             }
         }
 
         // A full timestamp, as produced by this application's own export.
         $parsed = date_create_immutable($raw);
+        if ($parsed !== false && !self::overflowed()) {
+            return $parsed->format('Y-m-d');
+        }
 
-        return $parsed === false ? '' : $parsed->format('Y-m-d');
+        // Nothing reads it as a real date — "31/02/2026". Handed on as it
+        // came, so the row is refused with an invalid date rather than
+        // imported on a day somebody did not write.
+        return $raw;
+    }
+
+    /**
+     * Whether the last parse rolled an impossible day or month over into a
+     * real date, which PHP reports as a warning rather than a failure.
+     */
+    private static function overflowed(): bool
+    {
+        $errors = DateTimeImmutable::getLastErrors();
+
+        return $errors !== false && $errors['warning_count'] > 0;
     }
 
     /**

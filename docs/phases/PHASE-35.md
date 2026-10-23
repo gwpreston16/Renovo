@@ -113,17 +113,100 @@ Migrations, sequenced after the last existing one, each with an explicit
   expenses") is worth doing once these behaviours exist, as a separate small
   change across the catalogue and README. Not in this phase.
 
+*Confirmed 2026-10-22*, all five as written. The finished term is cancelled
+with the computed date (the day after the last charge), not by `cancel()`,
+which stamps today — through `endTerm()` (below). Uncancelling an ended term lands on Paused, as
+any uncancel does; resuming it with the end date still passed ends it again at
+the next catch-up.
+
+Found while starting it:
+
+- **The last charge is the last billing date on or before `payments_end_on`.**
+  *Confirmed 2026-10-22.* Any date is accepted; it need not be a billing date.
+- **A fixed term that ends while paused is ended anyway.** *Confirmed
+  2026-10-22.* The catch-up cancels it as of the day after its last billing
+  date, and the paused dates up to there are written `skipped` with source
+  `paused`, as a resume writes them.
+- **Every reader respects `payments_end_on` on its own** (assumption). The
+  forecast, totals, budget projection and renewal alert stop at the last
+  charge whether or not the catch-up has run, because a Viewer never runs it.
+  The catch-up stops recording at the last charge, so a late run writes no
+  charge after it.
+- **Contract alerts and the insight follow running rows** (assumption).
+  `AlertScanner` already alerts on active rows only; a paused or cancelled row
+  gets no Contract ending alert and no Out of contract insight.
+  `ContractEnding` uses the lead times, as `usesLeadTimes()` already allows.
+- **A passed contract end stays on the cancel-by list** (assumption), first,
+  as a passed deadline does, until the date is moved or the row stops running.
+- **≈ marks forward-looking figures** (assumption, from the ≈ rule): monthly
+  and annual equivalents, the forecast and budget projections. Past spend
+  read from recorded ledger actuals is exact and is not marked.
+
+Found while reviewing (merge review, 2026-10-22):
+
+- **A finished term is ended by `SubscriptionRepository::endTerm()`**, not
+  `setCancelled()`: the same write with the computed date, as a
+  compare-and-set on `cancelled_at` being empty, so two catch-ups at once end
+  it, and audit it, once.
+- **Use as estimate is offered from the first recorded bill**, averaging up
+  to the last three (assumption); the insight still waits for three.
+- **The budget window bounds each row by its own schedule** (K2): its charges
+  from the first on or after today up to that charge a period on by its own
+  anchor, and none after the same day a period on, clamped to its month. A
+  single cut-off date cannot count rows billed on the 28th to the 31st once
+  each near a month's end.
+- **The calendar feed stops at the last payment**, and drops a cancel-by
+  event that falls after it, like every other reader.
+- **Where "≈" is drawn**, as confirmed ("any total with a varying row"): the
+  subscription list, the dashboard's totals, due card and Coming up list, the
+  forecast's headline, "If cancelled" and scenario figures, budgets, and the
+  calendar's charges still to come and the totals that include them. A
+  charge the ledger recorded is what was charged, and is not marked.
+- **A trial in a budget's window** (K2) is walked from its conversion day, as
+  the forecast walks it, when it converts to a cycle counted in months.
+- **A scenario stops at a fixed term's last payment** too, on whatever cycle
+  it walks the row.
+- **Progress without a start date** is counted from the ledger's first billing
+  date.
+- **A payment added by hand on a varying bill** is what was paid, not an
+  estimate, and carries no estimate beside it.
+- **`payments_end_on` is validated** (found while building): it may not come
+  before the start date or the next charge, which a save that leaves the field
+  out is measured against too; it is ignored for a one-off or lifetime entry.
+- **A day-cycle row's window** (K2): a weekly or custom-day row's stored
+  anchor is the day it was saved, so its own charge's day bounds it instead.
+
+### Known issues taken
+
+Added *2026-10-22* at the owner's request, as rows in code this phase rewrites:
+
+- **K2** — the budget-alert projection counts a charge due today twice; the
+  projection section B changes.
+- **K11** — an edit re-derives the anchor day from a clamped date, which
+  would throw "Payment N of M" off.
+- **K48** — the importer accepts impossible dates; the new date columns
+  arrive through it.
+- **K72**, **K73** — pausing, cancelling and resuming through the form; the
+  `update()` path the new fields go through.
+- **K78**, **K79**, **K80**, **K81** — the Payments card, which section C
+  rewrites.
+- **K39**, for subscription dates — found while building: the strict date the
+  new Terms fields need is the service's one parser, so the form and the API
+  refuse an impossible next payment, start or trial-end date too. Price-history
+  dates are not this phase's and stay open.
+
 ## Status
 
-- [ ] Migrations on both engines; entity, repository, form service
-- [ ] Contracts: field, alert type and routes, insight, cancel-by listing
-- [ ] Fixed terms: forecast and totals stop, catch-up ends the row, progress
-- [ ] Varying bills: estimate wording, ≈ figures, average and Use as estimate,
+- [x] Migrations on both engines; entity, repository, form service
+- [x] Contracts: field, alert type and routes, insight, cancel-by listing
+- [x] Fixed terms: forecast and totals stop, catch-up ends the row, progress
+- [x] Varying bills: estimate wording, ≈ figures, average and Use as estimate,
       insight, alert wording
-- [ ] Terms section on the form
-- [ ] API, OpenAPI, `docs/api.md`, import, export, backup
-- [ ] New strings in `translations/en.php`
-- [ ] `composer check`, `i18n:check`, offline guard green on both engines
+- [x] Terms section on the form
+- [x] API, OpenAPI, `docs/api.md`, import, export, backup
+- [x] K2, K11, K48, K72, K73, K78–K81 fixed and marked in `known-issues.md`
+- [x] New strings in `translations/en.php`
+- [x] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done
 

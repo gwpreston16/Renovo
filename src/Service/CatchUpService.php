@@ -19,8 +19,10 @@ use App\Security\Scope;
  *   2. **Convert ended trials.** A conversion sets a price and a first payment
  *      date, so it has to happen after step 1 could have moved that price and
  *      before step 3 rolls the date forward.
- *   3. **Advance overdue payment dates.** Last, because it consumes what the
- *      first two produce.
+ *   3. **Advance overdue payment dates.** After the first two, because it
+ *      consumes what they produce.
+ *   4. **End finished fixed terms.** Last, so a term's final charge is
+ *      already in the ledger when the row ends.
  *
  * Get this backwards and the errors are quiet ones. Advance payment dates
  * first and a renewal that just rolled over was priced at yesterday's figure,
@@ -41,22 +43,24 @@ final class CatchUpService
         private readonly PriceHistoryService $priceHistory,
         private readonly TrialService $trials,
         private readonly SubscriptionService $subscriptions,
+        private readonly FixedTermService $terms,
     ) {
     }
 
     /**
-     * @return array{prices: int, trials: int, payments: int}
+     * @return array{prices: int, trials: int, payments: int, terms: int}
      */
     public function run(Scope $scope): array
     {
         if (!$scope->canWrite()) {
-            return ['prices' => 0, 'trials' => 0, 'payments' => 0];
+            return ['prices' => 0, 'trials' => 0, 'payments' => 0, 'terms' => 0];
         }
 
         return [
             'prices' => $this->priceHistory->applyDueChanges($scope),
             'trials' => $this->trials->convertDueTrials($scope),
             'payments' => $this->subscriptions->advanceDuePayments($scope),
+            'terms' => $this->terms->endFinishedTerms($scope),
         ];
     }
 }

@@ -153,6 +153,7 @@ final class BudgetProjectionTest extends DatabaseTestCase
             $forecast,
             $rates,
             $this->settings,
+            $this->clock,
         );
 
         $this->streamingCategory = $this->categories->create($this->scope($this->alice), 'Streaming', null);
@@ -177,6 +178,140 @@ final class BudgetProjectionTest extends DatabaseTestCase
         self::assertSame(75, $progress['percent']);
         self::assertFalse($progress['is_over']);
         self::assertSame(500, $progress['remaining']?->amountMinor);
+    }
+
+    public function testAChargeDueTodayIsCountedOnceInAMonthlyBudget(): void
+    {
+        // Today is 15 January: due today, and not again until 15 February,
+        // which is outside a month from today (K2).
+        $this->createSubscription('Streaming', 1000, '2026-01-15');
+        $this->monthlyBudget('20.00');
+
+        self::assertSame(1000, $this->budgets->progress($this->scope($this->alice))[0]['projected']?->amountMinor);
+    }
+
+    public function testAYearlyRenewalDueTodayIsCountedOnceInAnAnnualBudget(): void
+    {
+        $this->subscriptions->create($this->scope($this->alice), [
+            'name' => 'Insurance',
+            'price_minor' => 30000,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'yearly',
+            'next_payment_date' => '2026-01-15',
+            'anchor_day' => 15,
+            'is_active' => true,
+        ], []);
+        $this->budgets->create($this->scope($this->alice), [
+            'name' => 'Yearly',
+            'period' => BudgetPeriod::Annual->value,
+            'amount' => '500.00',
+            'currency' => 'GBP',
+        ]);
+
+        self::assertSame(30000, $this->budgets->progress($this->scope($this->alice))[0]['projected']?->amountMinor);
+    }
+
+    public function testTheWindowDoesNotOverflowAtTheEndOfAMonth(): void
+    {
+        // 31 January plus a month is 28 February, not 3 March: a charge on
+        // 1 March is outside it.
+        $this->clock->advanceTo(new DateTimeImmutable('2026-01-31 09:00:00'));
+        $this->createSubscription('Streaming', 1000, '2026-02-10');
+        $this->createSubscription('Gym', 4000, '2026-03-01');
+        $this->monthlyBudget('100.00');
+
+        self::assertSame(1000, $this->budgets->progress($this->scope($this->alice))[0]['projected']?->amountMinor);
+    }
+
+    /**
+     * Near a month's end, rows billed on the 28th to the 31st each count
+     * once: 31 January and 28 February are both "a month" apart, and only
+     * the row's own schedule says which is the next period's.
+     *
+     * @return array<string, array{string, int}>
+     */
+    public static function monthEnds(): array
+    {
+        return [
+            'billed on the 28th, due 28 Feb' => ['2026-02-28', 28],
+            'billed on the 29th, due 28 Feb' => ['2026-02-28', 29],
+            'billed on the 30th, due 28 Feb' => ['2026-02-28', 30],
+            'billed on the 31st, due today' => ['2026-01-31', 31],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('monthEnds')]
+    public function testEveryRowNearAMonthsEndCountsOnce(string $next, int $anchor): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-01-31 09:00:00'));
+        $this->subscriptions->create($this->scope($this->alice), [
+            'name' => 'Rent',
+            'price_minor' => 1000,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => $next,
+            'anchor_day' => $anchor,
+            'is_active' => true,
+        ], []);
+        $this->monthlyBudget('100.00');
+
+        self::assertSame(1000, $this->budgets->progress($this->scope($this->alice))[0]['projected']?->amountMinor);
+    }
+
+    public function testATrialConvertingTodayIsWalkedFromItsConversion(): void
+    {
+        // Today is 15 January. Once billed on the 20th, now a trial ending
+        // today: it is charged today and again on 15 February, the next
+        // period's.
+        $this->subscriptions->create($this->scope($this->alice), [
+            'name' => 'Streaming',
+            'price_minor' => 0,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'is_trial' => true,
+            'trial_end_date' => '2026-01-15',
+            'converts_to_price_minor' => 1000,
+            'next_payment_date' => '2026-01-20',
+            'anchor_day' => 20,
+            'is_active' => true,
+        ], []);
+        $this->monthlyBudget('100.00');
+
+        self::assertSame(1000, $this->budgets->progress($this->scope($this->alice))[0]['projected']?->amountMinor);
+    }
+
+    /**
+     * @return array<string, array{string, int|null}>
+     */
+    public static function dayCycles(): array
+    {
+        return ['weekly' => ['weekly', null], 'every 10 days' => ['custom_days', 10]];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('dayCycles')]
+    public function testADayCycleIsNotCutShortByAStaleAnchor(string $cycle, ?int $days): void
+    {
+        // Today is 15 January. Saved on the 3rd of some month: its anchor is
+        // a day of the month that means nothing to a weekly row.
+        $this->subscriptions->create($this->scope($this->alice), [
+            'name' => 'Cleaner',
+            'price_minor' => 1000,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => $cycle,
+            'cycle_days' => $days,
+            'next_payment_date' => '2026-01-17',
+            'anchor_day' => 3,
+            'is_active' => true,
+        ], []);
+        $this->monthlyBudget('500.00');
+
+        // Weekly: 17, 24, 31 Jan, 7, 14 Feb. Every 10 days: 17, 27 Jan, 6 Feb.
+        $expected = $cycle === 'weekly' ? 5000 : 3000;
+        self::assertSame($expected, $this->budgets->progress($this->scope($this->alice))[0]['projected']?->amountMinor);
     }
 
     public function testABudgetIsOverWhenProjectedSpendExceedsIt(): void
@@ -592,6 +727,16 @@ final class BudgetProjectionTest extends DatabaseTestCase
             'category_id' => $categoryId,
             'is_active' => true,
         ], []);
+    }
+
+    private function monthlyBudget(string $amount): void
+    {
+        $this->budgets->create($this->scope($this->alice), [
+            'name' => 'Monthly',
+            'period' => BudgetPeriod::Monthly->value,
+            'amount' => $amount,
+            'currency' => 'GBP',
+        ]);
     }
 
     private function scope(int $userId, IsolationMode $mode = IsolationMode::Shared): Scope

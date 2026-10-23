@@ -303,14 +303,73 @@ final class UsageAndCancellationTest extends DatabaseTestCase
         self::assertFalse($rows[0]['is_passed']);
     }
 
+    public function testContractEndsAreListedBesideDeadlinesInTheSameOrder(): void
+    {
+        // Today is 15 June.
+        $this->create('Gym', 1000, notice: 30, nextPayment: '2026-07-20');           // 20 Jun, in 5 days
+        $this->create('Broadband', 3500, nextPayment: '2026-07-01', extra: [
+            'contract_ends_on' => '2026-06-17',                                    // in 2 days
+        ]);
+        $this->create('Mobile', 2000, nextPayment: '2026-07-01', extra: [
+            'contract_ends_on' => '2026-03-01',                                    // ended
+        ]);
+        $this->create('Paused', 2000, nextPayment: '2026-07-01', isActive: false, extra: [
+            'contract_ends_on' => '2026-06-20',
+        ]);
+
+        $rows = $this->cancellations->deadlines($this->scope());
+
+        self::assertSame(
+            ['Mobile:contract', 'Broadband:contract', 'Gym:notice'],
+            array_map(static fn (array $row): string => $row['subscription']->name . ':' . $row['kind'], $rows),
+        );
+        self::assertTrue($rows[0]['is_passed']);
+        self::assertTrue($rows[1]['is_urgent']);
+        self::assertSame('2026-06-17', $rows[1]['deadline']->format('Y-m-d'));
+    }
+
+    public function testARowWithANoticePeriodAndAContractEndIsListedForEach(): void
+    {
+        $this->create('Broadband', 3500, notice: 30, nextPayment: '2026-08-01', extra: [
+            'contract_ends_on' => '2026-08-01',
+        ]);
+
+        $rows = $this->cancellations->deadlines($this->scope());
+
+        self::assertSame(['notice', 'contract'], array_column($rows, 'kind'));
+    }
+
+    public function testAContractEndOutsideTheWindowIsLeftOff(): void
+    {
+        $this->create('Broadband', 3500, nextPayment: '2026-07-01', extra: ['contract_ends_on' => '2026-08-14']);
+
+        self::assertSame([], $this->cancellations->deadlines($this->scope(), 7));
+        self::assertCount(1, $this->cancellations->deadlines($this->scope()));
+    }
+
+    public function testAFixedTermPastItsLastPaymentHasNothingToCancel(): void
+    {
+        // Last payment 1 June; the stored date has not been caught up.
+        $this->create('Phone', 3000, notice: 30, nextPayment: '2026-06-01', extra: [
+            'payments_end_on' => '2026-06-10',
+            'contract_ends_on' => '2026-06-10',
+        ]);
+
+        self::assertSame([], $this->cancellations->deadlines($this->scope()));
+    }
+
+    /**
+     * @param array<string, mixed> $extra
+     */
     private function create(
         string $name,
         int $priceMinor,
         ?int $notice = null,
         string $nextPayment = '2026-12-01',
         bool $isActive = true,
+        array $extra = [],
     ): int {
-        return $this->subscriptions->create($this->scope(), [
+        return $this->subscriptions->create($this->scope(), $extra + [
             'name' => $name,
             'price_minor' => $priceMinor,
             'currency' => 'GBP',

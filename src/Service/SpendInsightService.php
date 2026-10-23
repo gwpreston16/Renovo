@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Domain\ActualsAverage;
 use App\Domain\Entity\PriceChange;
 use App\Domain\Entity\Subscription;
 use App\Domain\InsightKind;
 use App\Domain\Money;
+use App\Repository\ChargeRepository;
 use App\Security\Scope;
 use App\Support\Clock;
 use DateTimeImmutable;
@@ -85,6 +87,7 @@ final class SpendInsightService
 
     public function __construct(
         private readonly PriceHistoryService $priceHistory,
+        private readonly ChargeRepository $charges,
         private readonly ExchangeRateService $rates,
         private readonly InstanceSettingsService $settings,
         private readonly Clock $clock,
@@ -118,6 +121,8 @@ final class SpendInsightService
         $insights = array_merge(
             $this->trialsConverting($subscriptions, $today),
             $this->priceMoves($subscriptions, $history, $today),
+            $this->outOfContract($subscriptions, $today),
+            $this->estimatesOff($scope, $subscriptions),
             $this->overlaps($subscriptions),
             $this->rarelyUsed($valueSignals),
         );
@@ -282,6 +287,84 @@ final class SpendInsightService
                 $price->currency,
                 days: $days,
                 date: $subscription->trialEndDate,
+            );
+        }
+
+        return $insights;
+    }
+
+    /**
+     * Running rows whose contract has ended — shown from the day after the
+     * end date until somebody moves it.
+     *
+     * It says the contract has ended and that this is the time to check. It
+     * never says the member is overpaying: Renovo does not know the rate the
+     * row rolled onto, only that the terms have lapsed.
+     *
+     * @param list<Subscription> $subscriptions
+     * @return list<Insight>
+     */
+    private function outOfContract(array $subscriptions, DateTimeImmutable $today): array
+    {
+        $insights = [];
+
+        foreach ($subscriptions as $subscription) {
+            if (!$subscription->isOutOfContract($today) || !$subscription->hasChargesRemaining($today)) {
+                continue;
+            }
+
+            $insights[] = $this->insight(
+                InsightKind::OutOfContract,
+                $subscription,
+                $subscription->yearlyMinor() ?? $subscription->price->amountMinor,
+                $subscription->price->currency,
+                date: $subscription->contractEndsOn,
+            );
+        }
+
+        return $insights;
+    }
+
+    /**
+     * Bills whose amount varies, where the last three recorded amounts
+     * average more than 15% from the estimate — low or high.
+     *
+     * One query per varying row, of its own ledger; such rows are a few
+     * utilities, not the household's whole list. `then` carries the average
+     * and `difference_minor` how far it sits from the estimate, signed.
+     *
+     * @param list<Subscription> $subscriptions
+     * @return list<Insight>
+     */
+    private function estimatesOff(Scope $scope, array $subscriptions): array
+    {
+        $insights = [];
+
+        foreach ($subscriptions as $subscription) {
+            if (!$subscription->amountVaries || !$subscription->isActive || $subscription->billingCycle === null) {
+                continue;
+            }
+
+            $average = ActualsAverage::of(
+                $this->charges->findForSubscription($scope, $subscription->id, 1, ActualsAverage::LOOK_BACK),
+                $subscription->price,
+            );
+            if ($average === null || !$average->isOff()) {
+                continue;
+            }
+
+            $insights[] = $this->insight(
+                InsightKind::EstimateOff,
+                $subscription,
+                $subscription->billingCycle->annualMinor(
+                    $average->average->amountMinor,
+                    $subscription->cycleDays,
+                    $subscription->cycleInterval,
+                ),
+                $subscription->price->currency,
+                count: $average->count,
+                difference: $average->average->amountMinor - $subscription->price->amountMinor,
+                then: $average->average,
             );
         }
 

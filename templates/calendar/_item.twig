@@ -49,7 +49,8 @@
         </span>
     {% endif %}
     <span class="calendar-item-amount">
-        <span class="num">{{ item.amount.amountMinor|money(item.amount.currency) }}</span>
+        {% set amount = item.amount.amountMinor|money(item.amount.currency) %}
+        <span class="num">{{ item.estimate|default(false) ? t('subscriptions_list.approximately', {'amount': amount}) : amount }}</span>
         {% if item.approx_base %}
             <span class="hint num">{{ t('dashboard.approx', {'amount': item.approx_base.amountMinor|money(item.approx_base.currency)}) }}</span>
         {% endif %}

@@ -37,8 +37,15 @@ enum ChargeSource: string
      */
     case Paused = 'paused';
 
-    public function labelKey(): string
+    /**
+     * The hint the Payments card draws beside a charge's date, or null for a
+     * billing date that passed and an entry's own charge, which need none.
+     */
+    public function labelKey(): ?string
     {
-        return 'charge.source.' . $this->value;
+        return match ($this) {
+            self::CatchUp, self::OneOff => null,
+            default => 'charge.source.' . $this->value,
+        };
     }
 }

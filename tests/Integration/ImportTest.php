@@ -365,6 +365,75 @@ final class ImportTest extends DatabaseTestCase
         self::assertSame(36000, $imported->yearlyMinor());
     }
 
+    /**
+     * @dataProvider intervalRoundTrips
+     */
+    public function testTheTermsRoundTripThroughEveryExport(string $format): void
+    {
+        $this->subscriptions->create($this->scope, [
+            'name' => 'Energy',
+            'price' => '58.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-08-31',
+            'contract_ends_on' => '2027-03-14',
+            'payments_end_on' => '2028-11-01',
+            'amount_varies' => '1',
+        ]);
+
+        if ($format === 'renovo') {
+            $original = $this->subscriptions->allForStats($this->scope, activeOnly: false)[0];
+            $contents = json_encode(
+                ['subscriptions' => [Resource::subscription($original, $this->clock->today())]],
+                JSON_THROW_ON_ERROR,
+            );
+            $preset = 'renovo';
+            $name = 'renovo-export.json';
+        } else {
+            $export = $this->container()->get(\App\Service\SubscriptionExportService::class);
+            $filter = \App\Domain\SubscriptionFilter::fromQueryParams([])->withIncludeInactive();
+            $contents = $format === 'csv' ? $export->csv($this->scope, $filter) : $export->json($this->scope, $filter);
+            $preset = ImportPreset::AUTOMATIC;
+            $name = 'subscriptions.' . $format;
+        }
+
+        $id = $this->imports->stage(FakeUpload::of($contents, $name));
+        $mapping = $this->imports->suggestMapping($preset, $this->imports->read($id)->headers);
+
+        $target = $this->secondHousehold();
+        self::assertSame(
+            ['imported' => 1, 'skipped' => 0],
+            $this->imports->commit($target, $this->user, $id, $mapping, 'GBP'),
+        );
+
+        $imported = $this->subscriptions->allForStats($target, activeOnly: false)[0];
+        self::assertSame('2027-03-14', $imported->contractEndsOn?->format('Y-m-d'));
+        self::assertSame('2028-11-01', $imported->paymentsEndOn?->format('Y-m-d'));
+        self::assertTrue($imported->amountVaries);
+    }
+
+    public function testAnImpossibleDateIsARefusedRowNotAnotherDay(): void
+    {
+        $csv = <<<CSV
+        Name,Price,Currency,Billing cycle,Next payment date
+        Broken,10.00,GBP,Monthly,31/02/2026
+        Fine,10.00,GBP,Monthly,28/02/2027
+        CSV;
+
+        $id = $this->imports->stage(FakeUpload::of($csv, 'dates.csv'));
+        $mapping = $this->imports->suggestMapping(ImportPreset::AUTOMATIC, $this->imports->read($id)->headers);
+
+        $target = $this->secondHousehold();
+        $result = $this->imports->commit($target, $this->user, $id, $mapping, 'GBP');
+
+        self::assertSame(['imported' => 1, 'skipped' => 1], $result);
+        self::assertSame(['Fine'], array_map(
+            static fn ($row): string => $row->name,
+            $this->subscriptions->allForStats($target, activeOnly: false),
+        ));
+    }
+
     public function testSixMonthsImportsAsSixMonthsNotSixDays(): void
     {
         $csv = <<<CSV

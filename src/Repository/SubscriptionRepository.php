@@ -121,6 +121,8 @@ final class SubscriptionRepository extends AbstractScopedRepository
             'cancelled_at',
             'start_date',
             'plan',
+            'contract_ends_on',
+            'payments_end_on',
         ];
     }
 
@@ -529,6 +531,53 @@ final class SubscriptionRepository extends AbstractScopedRepository
 
         // The new date always differs from the old one, so MySQL's "changed
         // rows" and PostgreSQL's "matched rows" agree here.
+        return $this->db->execute($sql, $params) > 0;
+    }
+
+    /**
+     * Rows on a fixed term that have not been ended — running or paused —
+     * for the catch-up's last step, which ends those whose last payment has
+     * passed. Write-scoped: every row returned may be about to be ended.
+     *
+     * @return list<Subscription>
+     */
+    public function findOpenFixedTerms(Scope $scope): array
+    {
+        $criteria = Criteria::new()
+            ->where('payments_end_on', 'IS NOT NULL')
+            ->equals('cancelled_at', null)
+            ->equals('subscription_type', SubscriptionType::Recurring->value);
+
+        $params = [];
+        $sql = $this->selectWithJoins() . $this->writableWhere($scope, $criteria, $params);
+
+        return $this->hydrateAll($scope, $this->db->fetchAll($sql, $params));
+    }
+
+    /**
+     * End a fixed term: cancelled as of `$endedOn`, the day after its last
+     * payment. A compare-and-set on `cancelled_at` being empty, so two
+     * catch-ups at the same moment end it once and only one of them says so.
+     *
+     * @return bool Whether this call ended it.
+     */
+    public function endTerm(Scope $scope, int $id, DateTimeImmutable $endedOn): bool
+    {
+        $params = [
+            'set_cancelled' => $endedOn->format('Y-m-d'),
+            'set_active' => $this->db->platform()->booleanParameter(false),
+            'set_updated' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+            '__id' => $id,
+        ];
+
+        $sql = 'UPDATE ' . $this->quote($this->table())
+            . ' SET ' . $this->quote('cancelled_at') . ' = :set_cancelled,'
+            . ' ' . $this->quote('is_active') . ' = :set_active,'
+            . ' ' . $this->quote('updated_at') . ' = :set_updated'
+            . ' WHERE ' . $this->qualify('id') . ' = :__id'
+            . ' AND ' . $this->qualify('cancelled_at') . ' IS NULL'
+            . ' AND ' . $this->scopePredicate($scope, $params);
+
         return $this->db->execute($sql, $params) > 0;
     }
 
@@ -1127,6 +1176,9 @@ final class SubscriptionRepository extends AbstractScopedRepository
             cancelledAt: $this->nullableDate($row['cancelled_at'] ?? null),
             plan: $this->nullableString($row['plan'] ?? null),
             categoryColour: $this->nullableString($row['category_colour'] ?? null),
+            contractEndsOn: $this->nullableDate($row['contract_ends_on'] ?? null),
+            paymentsEndOn: $this->nullableDate($row['payments_end_on'] ?? null),
+            amountVaries: $this->db->platform()->toBoolean($row['amount_varies'] ?? false),
         );
     }
 

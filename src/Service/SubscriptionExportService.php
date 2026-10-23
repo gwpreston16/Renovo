@@ -43,7 +43,7 @@ final class SubscriptionExportService
         'cycle interval', 'next payment date', 'start date', 'category', 'tags', 'payment method',
         'owner', 'payer', 'visibility', 'active', 'cancelled on', 'notice period',
         'notice unit', 'trial end', 'price after trial', 'intro price', 'offer ends',
-        'price after offer', 'notes',
+        'price after offer', 'contract ends', 'payments end', 'amount varies', 'notes',
     ];
 
     public function __construct(
@@ -129,6 +129,9 @@ final class SubscriptionExportService
             $promotion !== null ? 'yes' : 'no',
             ($promotion['ends_on'] ?? null)?->format('Y-m-d') ?? '',
             ($promotion['then'] ?? null)?->toDecimalString() ?? '',
+            $subscription->contractEndsOn?->format('Y-m-d') ?? '',
+            $subscription->paymentsEndOn?->format('Y-m-d') ?? '',
+            $subscription->amountVaries ? 'yes' : 'no',
             $subscription->notes ?? '',
         ];
     }

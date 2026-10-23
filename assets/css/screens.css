@@ -967,6 +967,30 @@ tr.is-passed > td {
 
 /* ------------------------------------------------------- the payment ledger */
 
+/* A fixed term's progress, above the ledger: the sentence, then the track. */
+.payments-term {
+    display: grid;
+    gap: 0.5rem;
+    margin-block: 0.75rem 1rem;
+}
+
+.payments-term p {
+    margin: 0;
+}
+
+/* A varying bill's average of its latest bills, and the offer to use it. */
+.payments-estimate {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin-block: 0.75rem 1rem;
+}
+
+.payments-estimate p {
+    margin: 0;
+}
+
 /* What was due, struck through beside what was really charged. */
 .payments-expected {
     color: var(--muted);
@@ -977,7 +1001,7 @@ tr.is-passed > td {
     white-space: nowrap;
 }
 
-.payments-actions {
+.settings-disclosure.payments-actions {
     margin-top: 0.35rem;
 }
 
@@ -2392,6 +2416,16 @@ a.segmented-option {
  */
 .subscription-form .reveal {
     display: none;
+}
+
+/* The price's label: "Estimated amount" while the amount varies. */
+.subscription-form .when-varying-amount,
+.subscription-form:has(#amount_varies:checked) .when-fixed-amount {
+    display: none;
+}
+
+.subscription-form:has(#amount_varies:checked) .when-varying-amount {
+    display: inline;
 }
 
 .subscription-form:has(input[name='cycle_kind'][value='custom_days']:checked) .reveal-custom-cycle,

@@ -164,6 +164,14 @@ final class ForecastService
                 $walked = $this->overlay($subscription, $walked, $scenario, $today, $horizon);
             }
 
+            // A fixed term stops at its last payment, whether or not the
+            // catch-up has ended the row yet — and on whatever cycle a
+            // scenario walks it.
+            $walked = array_values(array_filter(
+                $walked,
+                static fn (array $charge): bool => $subscription->chargesOn($charge['date']),
+            ));
+
             foreach ($walked as $charge) {
                 if ($forUserId !== null) {
                     $participants = $splits[$subscription->id] ?? [];

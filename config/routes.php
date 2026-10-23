@@ -243,6 +243,11 @@ return static function (App $app): void {
             [SubscriptionMoneyController::class, 'schedulePriceChange'],
         )->add($requires(Permission::ManagePrices));
 
+        // Phase 35: a varying bill's estimate set from its latest bills — a
+        // price change like any other.
+        $group->post('/subscriptions/{id:[0-9]+}/estimate', [SubscriptionMoneyController::class, 'useEstimate'])
+            ->add($requires(Permission::ManagePrices));
+
         // Phase 34: the payment ledger. Recording, skipping, undoing and
         // adding a charge are all writes to a row's money.
         $group->post('/subscriptions/{id:[0-9]+}/charges', [SubscriptionChargeController::class, 'add'])

@@ -11,31 +11,35 @@
     Shared by the dashboard's spend tiles and the my-subscriptions strip. The
     rule is the same on both screens, so it is written once: two copies of it
     would eventually be two rules.
+
+    `figures.estimate`, when set, says a bill whose amount varies is in the
+    figure: its amount is an estimate, so every number here is drawn "≈".
 #}
 {% macro spend(figures, unit) %}
+    {% set estimate = figures.estimate|default(false) %}
     {% if figures.totals is empty %}
         <p class="stat-value num">{{ t('common.none_symbol') }}</p>
         <p class="muted">{{ t('dashboard.recurring_empty') }}</p>
     {% elseif figures.totals|length == 1 %}
         <p class="stat-value num">
-            {{ figures.totals[0].amount_minor|money(figures.totals[0].currency) }}
+            {{ estimate ? t('subscriptions_list.approximately', {'amount': figures.totals[0].amount_minor|money(figures.totals[0].currency)}) : figures.totals[0].amount_minor|money(figures.totals[0].currency) }}
             <span class="stat-unit num">{{ unit }}</span>
         </p>
     {% elseif figures.combined.amount_minor is not null %}
         <p class="stat-value num">
-            {{ figures.combined.amount_minor|money(figures.combined.currency) }}
+            {{ estimate ? t('subscriptions_list.approximately', {'amount': figures.combined.amount_minor|money(figures.combined.currency)}) : figures.combined.amount_minor|money(figures.combined.currency) }}
             <span class="stat-unit num">{{ unit }}</span>
         </p>
         <p class="muted">
             {% for total in figures.totals %}
-                {{ total.amount_minor|money(total.currency) }}{{ not loop.last ? ' · ' : '' }}
+                {{ estimate ? t('subscriptions_list.approximately', {'amount': total.amount_minor|money(total.currency)}) : total.amount_minor|money(total.currency) }}{{ not loop.last ? ' · ' : '' }}
             {% endfor %}
         </p>
     {% else %}
         {# No rate for one of them, so there is no total — only the subtotals. #}
         <ul class="plain stat-lines">
             {% for total in figures.totals %}
-                <li class="stat-value stat-line num">{{ total.amount_minor|money(total.currency) }}</li>
+                <li class="stat-value stat-line num">{{ estimate ? t('subscriptions_list.approximately', {'amount': total.amount_minor|money(total.currency)}) : total.amount_minor|money(total.currency) }}</li>
             {% endfor %}
         </ul>
         <p class="hint">

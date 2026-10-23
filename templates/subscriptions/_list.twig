@@ -262,21 +262,22 @@
     <p class="list-summary" id="list-summary">
         <span class="num">{{ t('subscriptions_list.summary', {'matched': summary.matched, 'of': summary.of}) }}</span>
         {% set figures = summary.per_month %}
+        {% set estimate = figures.estimate|default(false) %}
         {% if figures.totals is not empty %}
             <span aria-hidden="true">·</span>
             {% if figures.totals|length == 1 %}
                 <span class="num">{{ t('subscriptions_list.per_month', {
-                    'amount': figures.totals[0].amount_minor|money(figures.totals[0].currency),
+                    'amount': (estimate ? t('subscriptions_list.approximately', {'amount': figures.totals[0].amount_minor|money(figures.totals[0].currency)}) : figures.totals[0].amount_minor|money(figures.totals[0].currency)),
                 }) }}</span>
             {% elseif figures.combined.amount_minor is not null %}
                 <span class="num">{{ t('subscriptions_list.per_month', {
-                    'amount': figures.combined.amount_minor|money(figures.combined.currency),
+                    'amount': (estimate ? t('subscriptions_list.approximately', {'amount': figures.combined.amount_minor|money(figures.combined.currency)}) : figures.combined.amount_minor|money(figures.combined.currency)),
                 }) }}</span>
             {% else %}
                 {# No rate for one of them, so there is no total — only the subtotals. #}
                 <span class="num">
                     {%- for total in figures.totals -%}
-                        {{ t('subscriptions_list.per_month', {'amount': total.amount_minor|money(total.currency)}) }}
+                        {{ t('subscriptions_list.per_month', {'amount': (estimate ? t('subscriptions_list.approximately', {'amount': total.amount_minor|money(total.currency)}) : total.amount_minor|money(total.currency))}) }}
                         {{- not loop.last ? ' · ' : '' -}}
                     {%- endfor -%}
                 </span>
@@ -330,7 +331,12 @@
     {% import 'subscriptions/_promo.twig' as promo %}
     {% set subscription = row.subscription %}
     <span class="price-figure">
-        <span class="num">{{ subscription.price.amountMinor|money(subscription.price.currency) }}</span>
+        {% set amount = subscription.price.amountMinor|money(subscription.price.currency) %}
+        {# A bill whose amount varies carries an estimate, and says so. #}
+        <span class="num"{% if subscription.amountVaries %} title="{{ t('subscriptions_list.estimate') }}"{% endif %}>
+            {{- subscription.amountVaries ? t('subscriptions_list.approximately', {'amount': amount}) : amount -}}
+            {%- if subscription.amountVaries %}<span class="visually-hidden"> {{ t('subscriptions_list.estimate') }}</span>{% endif -%}
+        </span>
         <span class="muted">
             {%- if subscription.billingCycle -%}
                 {{ t('subscriptions_list.per_cycle.' ~ subscription.billingCycle.value, {'days': subscription.cycleDays ?? 0, 'n': subscription.cycleInterval}) }}
@@ -349,7 +355,8 @@
 
 {% macro monthly(row, subscription) %}
     {% if row.monthly.state == 'ok' %}
-        <span class="num">{{ row.monthly.amount_minor|money(row.monthly.currency) }}</span>
+        {% set amount = row.monthly.amount_minor|money(row.monthly.currency) %}
+        <span class="num">{{ subscription.amountVaries ? t('subscriptions_list.approximately', {'amount': amount}) : amount }}</span>
     {% elseif row.monthly.state == 'no_rate' %}
         <span class="muted" title="{{ t('subscriptions_list.no_rate', {'currency': subscription.price.currency}) }}">
             {{- t('common.none_symbol') -}}

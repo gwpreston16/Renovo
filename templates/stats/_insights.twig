@@ -75,6 +75,8 @@
             'count': insight.count,
             'category': insight.category_name,
         }) }}
+    {%- elseif insight.kind.value == 'estimate_off' -%}
+        {{ t(insight.difference_minor > 0 ? 'insight.estimate_off.headline_low' : 'insight.estimate_off.headline_high') }}
     {%- else -%}
         {{ t(insight.kind.labelKey) }}
     {%- endif -%}
@@ -114,6 +116,18 @@
                 ? t('subscriptions_list.per_cycle.' ~ subscription.billingCycle.value, {'days': subscription.cycleDays ?? 0, 'n': subscription.cycleInterval})
                 : '',
             'difference': insight.difference_minor|money(insight.currency, true),
+        }) }}
+    {%- elseif kind == 'out_of_contract' -%}
+        {{ t('insight.out_of_contract.detail', {
+            'name': insight.subscription.name,
+            'date': insight.date|local_date('d MMM y'),
+        }) }}
+    {%- elseif kind == 'estimate_off' -%}
+        {{ t('insight.estimate_off.detail', {
+            'name': insight.subscription.name,
+            'count': insight.count,
+            'average': insight.then.amountMinor|money(insight.then.currency),
+            'estimate': insight.subscription.price.amountMinor|money(insight.subscription.price.currency),
         }) }}
     {%- elseif kind == 'promo_no_end' -%}
         {{ t('insight.promo_no_end.detail', {'name': insight.subscription.name}) }}

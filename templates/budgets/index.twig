@@ -118,7 +118,8 @@
                     {% else %}
                         {% set limit = card.limit.amountMinor|money(card.limit.currency) %}
                         <p class="budget-figure">
-                            <span class="budget-projected num">{{ card.projected.amountMinor|money(card.projected.currency) }}</span>
+                            {% set projected = card.projected.amountMinor|money(card.projected.currency) %}
+                            <span class="budget-projected num">{{ card.estimate ? t('subscriptions_list.approximately', {'amount': projected}) : projected }}</span>
                             <span class="muted">{{ t('budgets.of_limit_projected', {'limit': limit}) }}</span>
                         </p>
 
@@ -131,7 +132,9 @@
                         <div class="budget-bar" role="img"
                              aria-label="{{ t('budgets.bar_label', {
                                  'charged': card.charged.amountMinor|money(card.charged.currency),
-                                 'projected': card.projected.amountMinor|money(card.projected.currency),
+                                 'projected': card.estimate
+                                     ? t('subscriptions_list.approximately', {'amount': projected})
+                                     : projected,
                                  'limit': limit,
                              }) }}">
                             <span class="budget-bar-projected" style="width: {{ card.projected_width }}"></span>

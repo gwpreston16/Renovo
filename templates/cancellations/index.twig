@@ -45,7 +45,15 @@
                             <td>
                                 <strong>{{ row.deadline|local_date('d MMM y') }}</strong>
                                 <div class="hint">
-                                    {% if row.is_passed %}
+                                    {% if row.kind == 'contract' %}
+                                        {% if row.is_passed %}
+                                            <span class="badge badge-warn">{{ t('cancellations.contract_ended') }}</span>
+                                            {{ t('cancellations.contract_ended_days', {'days': row.days_remaining * -1}) }}
+                                        {% else %}
+                                            {{ t('cancellations.contract_ends') }} ·
+                                            {{ row.days_remaining == 0 ? t('state.today') : t('cancellations.days_left', {'days': row.days_remaining}) }}
+                                        {% endif %}
+                                    {% elseif row.is_passed %}
                                         <span class="badge badge-bad">{{ t('cancellations.deadline_passed') }}</span>
                                         {{ t('cancellations.passed_days', {'days': row.days_remaining * -1}) }}
                                     {% elseif row.days_remaining == 0 %}
@@ -62,7 +70,7 @@
                                     <div class="hint">{{ t('state.trial_converts') }}</div>
                                 {% endif %}
                             </td>
-                            <td>{{ notice_label(row.subscription.noticePeriod.amount,
+                            <td>{{ row.kind == 'contract' ? t('common.none_symbol') : notice_label(row.subscription.noticePeriod.amount,
                                 row.subscription.noticePeriod.unit) }}</td>
                             <td class="numeric num">{{
                                 row.subscription.price.amountMinor|money(row.subscription.price.currency) }}</td>

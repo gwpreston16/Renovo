@@ -103,6 +103,18 @@ final class Subscription
         public readonly int $cycleInterval = 1,
         /** The interval of the cycle a trial converts to; null for its own. */
         public readonly ?int $convertsToCycleInterval = null,
+        /**
+         * The day its contract ends. The row keeps running after it; the
+         * date marks when the terms lapse and a dearer rate usually begins.
+         */
+        public readonly ?DateTimeImmutable $contractEndsOn = null,
+        /**
+         * The last charge of a fixed term: the last billing date on or before
+         * it is the final payment, and the catch-up ends the row the day after.
+         */
+        public readonly ?DateTimeImmutable $paymentsEndOn = null,
+        /** Whether the amount varies from bill to bill, making `price` an estimate. */
+        public readonly bool $amountVaries = false,
     ) {
     }
 
@@ -125,6 +137,53 @@ final class Subscription
     public function isCancelled(): bool
     {
         return $this->cancelledAt !== null;
+    }
+
+    /**
+     * Whether a billing date falls inside a fixed term — always, for a row
+     * without one. Every reader that walks dates forward asks this, so a row
+     * past its last charge stops counting whether or not the catch-up has
+     * ended it yet (a Viewer never runs the catch-up).
+     */
+    public function chargesOn(DateTimeImmutable $date): bool
+    {
+        return $this->paymentsEndOn === null || $date->setTime(0, 0) <= $this->paymentsEndOn->setTime(0, 0);
+    }
+
+    /**
+     * Whether any charge is still to come on or after `$today`: false for a
+     * fixed term whose last billing date has passed, so totals drop it.
+     */
+    public function hasChargesRemaining(DateTimeImmutable $today): bool
+    {
+        if ($this->paymentsEndOn === null) {
+            return true;
+        }
+
+        $next = $this->nextChargeDate();
+        if ($next === null) {
+            return $this->paymentsEndOn->setTime(0, 0) >= $today->setTime(0, 0);
+        }
+
+        $cycle = $this->billingCycle;
+        $today = $today->setTime(0, 0);
+        for ($i = 0; $cycle !== null && $next < $today && $i < 15_000; $i++) {
+            $next = $cycle->advance($next, $this->cycleDays, $this->anchorDay, $this->cycleInterval);
+        }
+
+        return $this->chargesOn($next);
+    }
+
+    /**
+     * Whether the contract has ended on a row that is still running — the
+     * "Out of contract" insight, shown until the date is moved.
+     */
+    public function isOutOfContract(DateTimeImmutable $today): bool
+    {
+        return $this->contractEndsOn !== null
+            && $this->isActive
+            && $this->cancelledAt === null
+            && $this->contractEndsOn->setTime(0, 0) < $today->setTime(0, 0);
     }
 
     public function isPrivate(): bool
@@ -254,6 +313,21 @@ final class Subscription
             'cycleInterval' => $interval,
             'nextPaymentDate' => $from,
             'anchorDay' => $changesCycle ? (int) $from->format('j') : $this->anchorDay,
+        ]);
+    }
+
+    /**
+     * A copy billed on another schedule — what an edit is about to save — so
+     * a date can be walked by the cycle the row will have rather than the one
+     * it had.
+     */
+    public function withSchedule(?BillingCycle $cycle, ?int $cycleDays, int $cycleInterval, ?int $anchorDay): self
+    {
+        return $this->with([
+            'billingCycle' => $cycle,
+            'cycleDays' => $cycleDays,
+            'cycleInterval' => $cycleInterval,
+            'anchorDay' => $anchorDay,
         ]);
     }
 

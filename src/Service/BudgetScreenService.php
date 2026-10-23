@@ -50,7 +50,8 @@ use App\Support\CssPercent;
  *     warn_left: string|null,
  *     unconvertible: list<string>,
  *     alert_channels: list<string>,
- *     may_edit: bool
+ *     may_edit: bool,
+ *     estimate: bool
  * }
  */
 final class BudgetScreenService
@@ -133,6 +134,7 @@ final class BudgetScreenService
             'unconvertible' => [],
             'alert_channels' => $alertChannels,
             'may_edit' => $mayEdit,
+            'estimate' => $read['estimate'] ?? false,
         ];
 
         if ($read === null) {

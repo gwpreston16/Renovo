@@ -456,21 +456,24 @@ return [
 
     'charge.status.charged' => 'Charged',
     'charge.status.skipped' => 'Skipped',
-    'charge.source.catch_up' => 'Billing date passed',
-    'charge.source.manual' => 'Added by hand',
-    'charge.source.reconstructed' => 'Reconstructed',
-    'charge.source.one_off' => 'The entry’s own charge',
-    'charge.source.paused' => 'Paused',
+    'charge.source.manual' => 'added by hand',
+    'charge.source.reconstructed' => 'reconstructed',
+    'charge.source.paused' => 'paused',
 
+    'payments.against_estimate' => 'estimate {estimate}',
+    'payments.estimate_average' =>
+        'The last {count, plural, one {bill was} other {# bills averaged}} {average}, against an estimate of '
+        . '{estimate}.',
+    'payments.use_as_estimate' => 'Use as estimate',
+    'payments.term_amount' => '{paid} of {total} paid',
+    'payments.term_count' => 'Payment {paid} of {total}',
+    'payments.term_ends' => 'last payment by {date}',
     'payments.heading' => 'Payments',
     'payments.note' => 'One row for each billing date that has passed, at the price due that day. Record what was really charged, or mark a charge that did not happen.',
     'payments.empty' => 'No payments yet. A row appears here once a billing date has passed.',
     'payments.status' => 'Status',
     'payments.invoice' => 'Invoice',
     'payments.note_column' => 'Note',
-    'payments.reconstructed' => 'reconstructed',
-    'payments.paused' => 'paused',
-    'payments.added_by_hand' => 'added by hand',
     'payments.recorded' => 'Recorded',
     'payments.expected' => 'Expected',
     'payments.charged_as' => 'Charged',
@@ -487,6 +490,7 @@ return [
     'payments.add_submit' => 'Add payment',
     'payments.amount_in' => 'Amount ({currency})',
     'confirm.remove_payment' => 'Remove this payment?',
+    'flash.estimate_updated' => 'Estimate updated to the average of the latest bills.',
     'flash.charge_added' => 'Payment added.',
     'flash.charge_recorded' => 'Amount recorded.',
     'flash.charge_skipped' => 'Payment marked as skipped.',
@@ -533,6 +537,11 @@ return [
     'alert.trial_conversion' => 'Trial about to convert',
     'alert.cancel_by' => 'Cancellation deadline',
     'alert.budget_exceeded' => 'Budget projected to be exceeded',
+    'alert.about' => 'about {amount}',
+    'alert.contract_ending' => 'Contract ending',
+    'alert.contract.line' =>
+        'Your {name} contract ends on {date} — a good time to compare prices or renegotiate.',
+    'alert.contract.title' => '{name}: contract ends {when}',
 
     // -----------------------------------------------------------------------
     // Display preferences
@@ -611,6 +620,9 @@ return [
     'error.note.too_long_255' => 'Note must be 255 characters or fewer.',
     'error.notes.too_long_5000' => 'Notes must be 5000 characters or fewer.',
     'error.date.invalid' => 'Enter a valid date.',
+    'error.estimate.nothing_to_use' => 'There is no different average of recorded bills to use yet.',
+    'error.payments_end.before_next' => 'The last payment can’t come before the next one.',
+    'error.payments_end.before_start' => 'The last payment can’t come before the start date.',
     'error.file.required' => 'Choose a file to upload.',
     'error.upload.failed' => 'The file could not be uploaded. Try again.',
 
@@ -950,6 +962,7 @@ return [
     'audit_action.attachment.uploaded' => 'Attachment uploaded',
     'audit_action.backup.exported' => 'Backup exported',
     'audit_action.backup.restored' => 'Backup restored',
+    'audit_action.subscription.ended' => 'Ended — final payment made',
     'audit_action.data.imported' => 'Data imported',
     'audit_action.email.verified' => 'Email address verified',
     'audit_action.household.updated' => 'Household renamed',
@@ -1179,11 +1192,18 @@ return [
     // cancellations
     'cancellations.days_left' => '{days, plural, one {# day left} other {# days left}}',
     'cancellations.deadline_passed' => 'Deadline passed',
-    'cancellations.empty' => 'Nothing with a notice period. Add one to a subscription and it will appear here.',
+    'cancellations.contract_ended' => 'Contract ended',
+    'cancellations.contract_ended_days' =>
+        '{days, plural, one {# day ago} other {# days ago}} — a good time to compare prices or renegotiate.',
+    'cancellations.contract_ends' => 'Contract ends',
+    'cancellations.empty' =>
+        'Nothing with a notice period or a contract end date. Add one to a subscription and it will appear '
+        . 'here.',
     'cancellations.intro' =>
         'The date that matters is not the renewal — it is the last day you can still give notice and '
-        . 'avoid the next charge. Only subscriptions with a notice period appear here; everything else can '
-        . 'be cancelled right up to its renewal date, which the subscriptions list already shows.',
+        . 'avoid the next charge. Only subscriptions with a notice period appear here, with the day any '
+        . 'contract ends; everything else can be cancelled right up to its renewal date, which the '
+        . 'subscriptions list already shows.',
     'cancellations.note' =>
         'Deadlines within {days} days are highlighted. Anything already passed is kept on the list '
         . 'rather than hidden — you have been committed to another period, and that is worth knowing.',
@@ -1511,6 +1531,14 @@ return [
         . 'subscription\'s own price. Nothing here is estimated, and nothing is converted.',
     'insight.overlap.detail' =>
         'Dropping {name} would remove {amount} a year. Also in this category: {others}.',
+    'insight.estimate_off.detail' =>
+        '{name}’s last {count} bills averaged {average} against an estimate of {estimate}. Use the '
+        . 'average as the estimate from its Payments card.',
+    'insight.estimate_off.headline_high' => 'An estimate looks high',
+    'insight.estimate_off.headline_low' => 'An estimate looks low',
+    'insight.out_of_contract.detail' =>
+        '{name} has been out of contract since {date} — a good time to compare prices or renegotiate.',
+    'insight.out_of_contract.headline' => 'Out of contract',
     'insight.overlap.headline' =>
         '{count, plural, one {# subscription} other {# subscriptions}} in {category}',
     'insight.price_risen.detail' =>
@@ -1639,6 +1667,10 @@ return [
         'When a price is edited or a future one is scheduled, on any subscription you can see. Routed '
         . 'like the other alerts below.',
     'notifications.price_change_toggle' => 'Tell me when a price changes',
+    'notifications.contract_hint' =>
+        'At your lead times before a contract end date you have recorded. Routed like the other alerts '
+        . 'below.',
+    'notifications.contract_toggle' => 'Tell me before a contract ends',
     'notifications.recently_sent' => 'Recently sent',
     'notifications.routing_hint' =>
         'Which channel each alert goes to. Channels that are off are greyed out, and keep their choices '
@@ -2052,6 +2084,19 @@ return [
         'Your role covers the entries you own, so new ones belong to you.',
     'subscriptions_form.logo' => 'Logo',
     'subscriptions_form.logo_hint' => 'Uploading a new file replaces it.',
+    'subscriptions_form.amount_varies' => 'The amount varies',
+    'subscriptions_form.amount_varies_note' =>
+        'Gas, electricity, water: the price becomes an estimate, and figures that include it are shown “≈”.',
+    'subscriptions_form.contract_ends_on' => 'Contract ends',
+    'subscriptions_form.contract_ends_on_hint' =>
+        'It keeps running after this. You’ll be reminded before the date, when it’s worth comparing prices.',
+    'subscriptions_form.estimated_amount' => 'Estimated amount',
+    'subscriptions_form.payments_end_on' => 'Payments end on',
+    'subscriptions_form.payments_end_on_hint' =>
+        'The last payment, for finance and fixed terms. It ends itself after the last one is made.',
+    'subscriptions_form.terms' => 'Terms',
+    'subscriptions_form.terms_hint' =>
+        'Optional. A contract that ends, payments that stop, or an amount that changes every bill.',
     'subscriptions_form.more_details' => 'More details',
     'subscriptions_form.next_payment_date' => 'Next payment date',
     'subscriptions_form.no_rate_yet' => 'No exchange rate from {currency} to {base} yet.',
@@ -2114,6 +2159,7 @@ return [
     'subscriptions_list.add_tag' => 'Add tag',
     'subscriptions_list.add_the_first_one' => 'Add the first one.',
     'subscriptions_list.approximately' => '≈ {amount}',
+    'subscriptions_list.estimate' => 'An estimate — the amount varies from bill to bill.',
     'subscriptions_list.cancel' => 'Cancel',
     'subscriptions_list.cancel_by' => 'Cancel by {date}',
     'subscriptions_list.cancel_name' => 'Cancel {name}',
@@ -2260,6 +2306,7 @@ return [
     'alert.cancel.renews' => 'It renews at {amount}.',
     'alert.cancel.title' => 'Cancel {name} by {date}',
     'alert.renewal.line' => '{amount} is due on {date}.',
+    'alert.renewal.line_estimate' => 'About {amount} is due on {date}.',
     'alert.renewal.title' => '{name} renews {when}',
     'alert.test.line' => 'If you are reading this, {channel} is configured correctly.',
     'alert.test.title' => 'Test notification',
@@ -2421,6 +2468,10 @@ return [
     'import_field.cycle_days.label' => 'Days between payments',
     'import_field.cycle_interval.label' => 'Cycle interval',
     'import_field.cycle_interval.hint' => 'how many of the cycle’s unit: 6 with monthly is every six months',
+    'import_field.amount_varies.hint' => 'yes/no — the price is then an estimate',
+    'import_field.amount_varies.label' => 'Amount varies',
+    'import_field.contract_ends_on.hint' => 'The day its contract ends; it keeps running after',
+    'import_field.contract_ends_on.label' => 'Contract ends',
     'import_field.is_active.hint' => 'yes/no, true/false or 1/0',
     'import_field.is_active.label' => 'Active',
     'import_field.name.label' => 'Name',
@@ -2430,6 +2481,8 @@ return [
     'import_field.notice_period_amount.label' => 'Notice period',
     'import_field.notice_period_unit.hint' => 'days, weeks or months',
     'import_field.notice_period_unit.label' => 'Notice period unit',
+    'import_field.payments_end_on.hint' => 'The last payment of a fixed term',
+    'import_field.payments_end_on.label' => 'Payments end on',
     'import_field.plan.label' => 'Plan',
     'import_field.price.hint' => 'A decimal amount, for example 9.99',
     'import_field.price.label' => 'Price',

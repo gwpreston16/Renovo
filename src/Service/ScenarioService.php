@@ -179,6 +179,11 @@ final class ScenarioService
         return [
             'is_empty' => $scenario->isEmpty(),
             'horizon_months' => $horizon,
+            // Any bill whose amount varies in either picture makes every
+            // figure here an estimate.
+            'estimate' => StatsService::includesEstimate($all)
+                || StatsService::chargesIncludeEstimate($current)
+                || StatsService::chargesIncludeEstimate($planned),
             'run_rate' => [
                 'current' => [
                     'monthly' => $this->figures($runRateNow['monthly']),

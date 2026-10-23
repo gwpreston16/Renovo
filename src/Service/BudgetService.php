@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Domain\BillingCycle;
 use App\Domain\BudgetPeriod;
 use App\Domain\Currency;
 use App\Domain\Entity\Budget;
@@ -14,6 +15,7 @@ use App\Repository\BudgetRepository;
 use App\Repository\CategoryRepository;
 use App\Repository\MembershipRepository;
 use App\Security\Scope;
+use App\Support\Clock;
 use DateTimeImmutable;
 use InvalidArgumentException;
 
@@ -53,6 +55,13 @@ use InvalidArgumentException;
  *     unconvertible: list<string>,
  *     unavailable: bool
  * }
+ *
+ * @phpstan-type WindowCharge array{
+ *     subscription: \App\Domain\Entity\Subscription,
+ *     date: DateTimeImmutable,
+ *     amount: Money,
+ *     reason: string
+ * }
  */
 final class BudgetService
 {
@@ -71,6 +80,7 @@ final class BudgetService
         private readonly ForecastService $forecast,
         private readonly ExchangeRateService $rates,
         private readonly InstanceSettingsService $settings,
+        private readonly Clock $clock,
     ) {
     }
 
@@ -112,16 +122,80 @@ final class BudgetService
             }
 
             $key = ($budget->subjectUserId ?? 'household') . ':' . $budget->period->months();
-            $chargeCache[$key] ??= $this->forecast->charges(
-                $scope,
+            $chargeCache[$key] ??= $this->withinWindow(
+                $this->forecast->charges($scope, $budget->period->months(), $budget->subjectUserId),
                 $budget->period->months(),
-                $budget->subjectUserId,
             );
 
             $progress[] = $this->progressFor($budget, $chargeCache[$key]);
         }
 
         return $progress;
+    }
+
+    /**
+     * The charges inside a rolling window of `$months` from today (K2).
+     *
+     * Two bounds, because no single date counts every row once near a month
+     * end. Each row is bounded by its own schedule: its charges from the
+     * first one on or after today up to, not including, that charge
+     * `$months` on by the row's own anchor — so a monthly charge due today
+     * is not counted again a month later, and one billed on the 31st is
+     * counted once on 31 January whatever February does. And every charge
+     * must fall on or before the same day `$months` on, clamped to its month
+     * (31 January plus a month is 28 February, not 3 March), so a yearly
+     * renewal in July is not in a monthly budget.
+     *
+     * @param list<WindowCharge> $charges Oldest first, as the forecast lists them.
+     * @return list<WindowCharge>
+     */
+    private function withinWindow(array $charges, int $months): array
+    {
+        $today = $this->clock->today()->setTime(0, 0);
+        $month = $today->modify('first day of this month')->modify(sprintf('+%d months', $months));
+        $last = $month->setDate(
+            (int) $month->format('Y'),
+            (int) $month->format('n'),
+            min((int) $today->format('j'), (int) $month->format('t')),
+        );
+
+        $rowEnds = [];
+        $kept = [];
+        foreach ($charges as $charge) {
+            $date = $charge['date']->setTime(0, 0);
+            if ($date < $today || $date > $last) {
+                continue;
+            }
+
+            // The anchor is a day of the month only for a cycle counted in
+            // months; a weekly or custom-day row's stored one is whatever day
+            // it was saved on, so its own charge's day stands in. A trial is
+            // walked from its conversion day, as the forecast walks it.
+            $subscription = $charge['subscription'];
+            $byMonths = in_array(
+                $subscription->billingCycleAfterConversion(),
+                [BillingCycle::Monthly, BillingCycle::Quarterly, BillingCycle::Yearly],
+                true,
+            );
+            $anchor = match (true) {
+                !$byMonths => null,
+                $subscription->isTrial && $subscription->trialEndDate !== null
+                    => (int) $subscription->trialEndDate->format('j'),
+                default => $subscription->anchorDay,
+            };
+            $rowEnds[$subscription->id] ??= BillingCycle::Monthly->advance(
+                $date,
+                null,
+                $anchor ?? (int) $date->format('j'),
+                $months,
+            );
+
+            if ($date < $rowEnds[$subscription->id]) {
+                $kept[] = $charge;
+            }
+        }
+
+        return $kept;
     }
 
     /**

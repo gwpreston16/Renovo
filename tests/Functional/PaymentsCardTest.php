@@ -196,6 +196,11 @@ final class PaymentsCardTest extends DatabaseTestCase
             'date' => (new DateTimeImmutable('-1 day'))->format('Y-m-d'),
             'amount' => '4.00',
         ]);
+        // Its date carries the catalogue's hint for a payment added by hand.
+        self::assertStringContainsString(
+            '<span class="hint">added by hand</span>',
+            (string) $this->get($this->ownerId)->getBody(),
+        );
         $this->session->set('_flashes', []);
         $this->post($this->ownerId, $base . '/' . $fee->id . '/undo');
         self::assertSame(['flash.charge_removed'], $this->flashes());

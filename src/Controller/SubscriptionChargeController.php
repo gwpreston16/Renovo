@@ -24,6 +24,13 @@ use Slim\Views\Twig;
  */
 final class SubscriptionChargeController extends Controller
 {
+    /**
+     * Where a refused payment form waits for the Payments card to reopen it
+     * with what was typed (K78): the page is reached by a redirect, so what
+     * was posted cannot ride along any other way.
+     */
+    public const FAILED_KEY = 'payments.failed';
+
     public function __construct(
         Twig $view,
         SessionInterface $session,
@@ -38,7 +45,7 @@ final class SubscriptionChargeController extends Controller
     {
         $write = fn () => $this->charges->addManual($this->scope($request), (int) $id, $this->body($request));
 
-        return $this->act($request, $response, (int) $id, 'flash.charge_added', $write);
+        return $this->act($request, $response, (int) $id, 'flash.charge_added', $write, ['form' => 'add']);
     }
 
     public function recordActual(
@@ -54,7 +61,14 @@ final class SubscriptionChargeController extends Controller
             (int) $id,
         );
 
-        return $this->act($request, $response, (int) $id, 'flash.charge_recorded', $write);
+        return $this->act(
+            $request,
+            $response,
+            (int) $id,
+            'flash.charge_recorded',
+            $write,
+            ['form' => 'actual', 'charge' => (int) $charge],
+        );
     }
 
     public function skip(
@@ -123,6 +137,8 @@ final class SubscriptionChargeController extends Controller
      * @param string|\Closure(mixed): string $success The message, or how to
      *                                            pick it from what the write returned.
      * @param callable(): mixed $write
+     * @param array{form: string, charge?: int}|null $form The form to reopen
+     *                                            with what was typed, when it is refused.
      */
     private function act(
         ServerRequestInterface $request,
@@ -130,12 +146,23 @@ final class SubscriptionChargeController extends Controller
         int $id,
         string|\Closure $success,
         callable $write,
+        ?array $form = null,
     ): ResponseInterface {
         try {
             $result = $write();
             $this->flash('success', is_string($success) ? $success : $success($result));
         } catch (ValidationException $exception) {
             $this->flashErrors($exception);
+
+            if ($form !== null) {
+                $body = $this->body($request);
+                $this->session->set(self::FAILED_KEY, [
+                    'subscription' => $id,
+                    'form' => $form['form'],
+                    'charge' => $form['charge'] ?? null,
+                    'values' => array_intersect_key($body, array_flip(['date', 'amount', 'note', 'actual'])),
+                ]);
+            }
         }
 
         return $this->redirectAfterWrite($request, $response, '/subscriptions/' . $id . '/money#payments');
