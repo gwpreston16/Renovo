@@ -15,6 +15,7 @@ use App\Repository\WebAuthnCredentialRepository;
 use App\Security\PasswordHasher;
 use App\Security\RequestContext;
 use App\Security\RequestContextHolder;
+use App\Security\KeyRing;
 use App\Security\SecretCipher;
 use App\Security\Totp;
 use App\Service\AuditLogService;
@@ -69,7 +70,7 @@ final class TotpEnrolmentTest extends DatabaseTestCase
             $this->enrolments,
             $this->recovery,
             $credentials,
-            new SecretCipher('test-instance-secret-for-totp'),
+            new SecretCipher(new KeyRing('test-instance-secret-for-totp')),
             $hasher,
             $audit,
             $this->clock,
@@ -171,7 +172,9 @@ final class TotpEnrolmentTest extends DatabaseTestCase
 
         $codes = $this->totp->confirmEnrolment(
             $this->user,
-            $this->codeFor((new SecretCipher('test-instance-secret-for-totp'))->decrypt($enrolment['secret'])),
+            $this->codeFor(
+                (new SecretCipher(new KeyRing('test-instance-secret-for-totp')))->decrypt($enrolment['secret']),
+            ),
         );
 
         self::assertTrue($this->twoFactor->redeemRecoveryCode($this->user, $codes[0]));

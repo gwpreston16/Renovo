@@ -50,6 +50,10 @@ enum AuditAction: string
     case RoleChanged = 'membership.role_changed';
     case TrustedHostAdded = 'trusted_host.added';
     case TrustedHostRemoved = 'trusted_host.removed';
+    case SecretsRotated = 'secrets.rotated';
+    case NotificationChannelCreated = 'notification_channel.created';
+    case NotificationChannelUpdated = 'notification_channel.updated';
+    case NotificationChannelDeleted = 'notification_channel.deleted';
 
     // Phase 5. A token is a standing credential, so both ends of its life are
     // recorded; what is deliberately absent is a "token used" event, which

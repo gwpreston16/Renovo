@@ -4,6 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
+use App\Tests\Support\TestKeys;
+use App\Service\SecretsRotationService;
+use App\Service\AuditLogService;
+use App\Security\RequestContextHolder;
+use App\Security\RequestContext;
+use App\Security\KeyRing;
+use App\Repository\StoredSecretRepository;
+use App\Repository\MembershipRepository;
+use App\Repository\AuditLogRepository;
 use App\Domain\AlertType;
 use App\Notification\Alert;
 use App\Notification\NotifierException;
@@ -162,10 +171,67 @@ final class NotificationDispatchTest extends NotificationTestCase
         self::assertNotNull($channel->lastSuccessAt);
     }
 
+    public function testAChannelStillSendsAfterTheKeyIsRotatedAndTheOldOneRemoved(): void
+    {
+        $id = $this->addChannel($this->alice, 'Phone');
+        $old = TestKeys::ring()->current();
+
+        (new SecretsRotationService(
+            new StoredSecretRepository($this->db),
+            new KeyRing('a-brand-new-key', [$old]),
+            $this->db,
+            new AuditLogService(
+                new AuditLogRepository($this->db),
+                new MembershipRepository($this->db),
+                new RequestContextHolder(RequestContext::of('127.0.0.1', 'console')),
+                $this->clock,
+                new NullLogger(),
+            ),
+        ))->rotate();
+        $this->useChannelKeys(new KeyRing('a-brand-new-key'));
+
+        self::assertSame(1, $this->dispatcher->dispatch($this->user($this->alice), [$this->alert()]));
+        self::assertSame($id, $this->notifier->sent[0]['channel']->id);
+        self::assertSame(['target' => 'Phone'], $this->notifier->sent[0]['channel']->config);
+    }
+
+    public function testAChannelNoKeyOpensSendsNothingAndTheAlertWaitsForTheKey(): void
+    {
+        $this->addChannel($this->alice, 'Phone');
+        $this->useChannelKeys(new KeyRing('a-key-the-channel-was-not-written-under'));
+
+        self::assertSame(0, $this->dispatcher->dispatch($this->user($this->alice), [$this->alert()]));
+        self::assertSame([], $this->notifier->sent);
+        self::assertStringContainsString(
+            'cannot be read',
+            (string) $this->channels->findAllForUser($this->alice)[0]->lastError,
+        );
+
+        $this->useChannelKeys(TestKeys::ring());
+
+        self::assertSame(1, $this->dispatcher->dispatch($this->user($this->alice), [$this->alert()]));
+    }
+
+    public function testATestMessageToAChannelNoKeyOpensIsRefused(): void
+    {
+        $id = $this->addChannel($this->alice, 'Phone');
+        $this->useChannelKeys(new KeyRing('a-key-the-channel-was-not-written-under'));
+        $channel = $this->channels->find($this->alice, $id);
+        self::assertNotNull($channel);
+
+        $this->expectException(NotifierException::class);
+        $this->expectExceptionMessageMatches('/cannot be read/');
+        $this->dispatcher->sendTest($this->user($this->alice), $channel);
+    }
+
     public function testAnInactiveChannelReceivesNothing(): void
     {
         $id = $this->addChannel($this->alice);
-        $this->notificationSettings->updateChannel($this->alice, $id, ['label' => 'Phone', 'is_active' => '0']);
+        $this->notificationSettings->updateChannel(
+            $this->user($this->alice),
+            $id,
+            ['label' => 'Phone', 'is_active' => '0'],
+        );
 
         self::assertSame(0, $this->dispatcher->dispatch($this->user($this->alice), [$this->alert()]));
     }

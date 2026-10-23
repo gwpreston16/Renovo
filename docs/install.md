@@ -45,8 +45,10 @@ APP_PORT=8080 ./bin/dev-setup.sh       # if 9090 is taken
 
 ```bash
 cp .env.example .env
-# Generate the session key — an instance will refuse to start without one.
+# Generate the session key — an instance will refuse to start without one —
+# and the key stored secrets are encrypted under.
 printf 'SESSION_KEY=%s\n' "$(openssl rand -hex 32)" >> .env
+printf 'SECRETS_KEY=%s\n' "$(openssl rand -hex 32)" >> .env
 
 docker compose up
 ```
@@ -123,7 +125,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml \
 ```bash
 composer install
 npm install && npm run build  # compile the front-end assets into public/build
-cp .env.example .env          # then edit DB_* and set SESSION_KEY
+cp .env.example .env          # then edit DB_* and set SESSION_KEY and SECRETS_KEY
 
 vendor/bin/phinx migrate      # create the schema
 php -S localhost:9090 -t public

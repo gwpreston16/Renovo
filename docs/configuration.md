@@ -9,14 +9,16 @@ list. `.env` is never committed. The ones that matter most:
 
 | Variable                    | Notes                                                         |
 |-----------------------------|---------------------------------------------------------------|
-| `SESSION_KEY`               | Required. `openssl rand -hex 32`. Rotating it signs everybody out — and, unless `TOTP_ENCRYPTION_KEY` is set, makes every enrolled authenticator app unreadable (recovery codes still work). |
+| `SESSION_KEY`               | Required. `openssl rand -hex 32`. Rotating it signs everybody out. Unless `SECRETS_KEY` is set, stored secrets are encrypted under it too, so before rotating it move the old value into `SECRETS_PREVIOUS_KEYS` and run `secrets:rotate`, or every notification channel and authenticator app becomes unreadable. Instance status warns while `SECRETS_KEY` is unset. |
+| `SECRETS_KEY`               | Recommended. `openssl rand -hex 32`. Encrypts what has to be stored recoverably: two-factor seeds, notification channel settings and the exchange-rate API key. Unset falls back to `TOTP_ENCRYPTION_KEY`, then `SESSION_KEY`. See [Rotating the encryption key](operations.md#rotating-the-encryption-key). |
+| `SECRETS_PREVIOUS_KEYS`     | Comma-separated keys that still decrypt but never encrypt: the old key while `secrets:rotate` moves everything to the new one. `TOTP_ENCRYPTION_KEY` and `SESSION_KEY` are always tried too. |
 | `DB_DRIVER`                 | `pgsql` or `mysql`.                                           |
 | `DB_HOST`                   | Host-side value for CLI tools; containers always use `database`. |
 | `APP_URL`                   | Used to build links in emails — set it to the real URL.       |
 | `SESSION_BROWSER_LIFETIME_SECONDS` | How long a sign-in with **Keep me signed in** unticked survives unused. 12 hours by default; a ticked one lasts `SESSION_LIFETIME_SECONDS` (14 days). |
 | `SESSION_COOKIE_SECURE`     | Leave `true` unless you are serving plain HTTP on a trusted network. |
 | `AUTH_MAX_ATTEMPTS_PER_*`   | Login, reset and second-factor throttling, per account and per IP. |
-| `TOTP_ENCRYPTION_KEY`       | Optional. Encrypts stored two-factor secrets; falls back to `SESSION_KEY`. |
+| `TOTP_ENCRYPTION_KEY`       | Superseded by `SECRETS_KEY`. Still the key when `SECRETS_KEY` is unset, and always tried when reading. |
 | `AUDIT_LOG_RETENTION_DAYS`  | How long audit entries are kept. 365 by default.              |
 | `EXCHANGE_RATE_API_KEY`     | Only for providers that need one. Takes precedence over a key entered in the UI. |
 | `EXCHANGE_RATE_TTL_SECONDS` | How long a cached rate table stays current. 12 hours by default. |

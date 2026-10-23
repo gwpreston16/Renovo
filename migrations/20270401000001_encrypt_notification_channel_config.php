@@ -1,0 +1,130 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Security\KeyRing;
+use App\Security\SecretCipher;
+use App\Security\UnreadableSecretException;
+use Phinx\Migration\AbstractMigration;
+
+/**
+ * Encrypt every notification channel's stored config (Phase 40).
+ *
+ * The config holds bot tokens, app tokens and webhook URLs that are
+ * credentials in themselves. From this release the application writes it as
+ * ciphertext; this migration encrypts the rows written before that. Until it
+ * runs the application reads an unprefixed row as plain JSON, so channels keep
+ * sending in between.
+ *
+ * The key is resolved exactly as the container resolves it
+ * ({@see KeyRing::fromSettings()}). With no key configured the migration stops
+ * before touching a row.
+ *
+ * Idempotent: a row already encrypted (`v1:` or `v2:`) is skipped, and each
+ * update only applies if the row still holds the plaintext it read. On MySQL
+ * there is no transactional DDL — but this migration is data-only, so a run
+ * that stops part-way leaves some rows encrypted and some not, both of which
+ * the application reads, and running it again finishes the job.
+ *
+ * Rolling back decrypts every row to plain JSON again. A row no configured key
+ * opens is left as it is and reported. With no key configured at all, a
+ * rollback stops at the first encrypted row; run it again once a key is set.
+ *
+ * It depends on the application's key resolution and cipher (KeyRing,
+ * SecretCipher's `v2:` format and its purpose strings), which later phases must
+ * keep compatible: this migration replays on every fresh install. The cipher is
+ * built only when a row needs it, so an empty database needs no key.
+ */
+final class EncryptNotificationChannelConfig extends AbstractMigration
+{
+    private const BATCH = 200;
+
+    private ?SecretCipher $cipher = null;
+
+    public function up(): void
+    {
+        $this->eachRow(function (int $id, string $config): void {
+            if (SecretCipher::isEncrypted($config)) {
+                return;
+            }
+
+            $this->execute(
+                'UPDATE notification_channels SET config = ? WHERE id = ? AND config = ?',
+                [$this->cipher()->encrypt($config), $id, $config],
+            );
+        });
+    }
+
+    public function down(): void
+    {
+        $this->eachRow(function (int $id, string $config): void {
+            if (!SecretCipher::isEncrypted($config)) {
+                return;
+            }
+
+            try {
+                $plain = $this->cipher()->decrypt($config);
+            } catch (UnreadableSecretException) {
+                $this->getOutput()->writeln(sprintf(
+                    '<comment>Notification channel %d could not be decrypted with any configured key; '
+                    . 'left as is.</comment>',
+                    $id,
+                ));
+
+                return;
+            }
+
+            $this->execute(
+                'UPDATE notification_channels SET config = ? WHERE id = ? AND config = ?',
+                [$plain, $id, $config],
+            );
+        });
+    }
+
+    private function cipher(): SecretCipher
+    {
+        if ($this->cipher !== null) {
+            return $this->cipher;
+        }
+
+        $ring = KeyRing::fromSettings(require dirname(__DIR__) . '/config/settings.php');
+
+        // An older docker-compose.yml gave this container a placeholder session
+        // key. Encrypting under it would leave every channel unreadable.
+        if (in_array($ring->current(), ['unused-by-migrations', 'unused-by-scheduler'], true)) {
+            throw new RuntimeException(
+                'The migrate container has a placeholder SESSION_KEY. Pass it the real SESSION_KEY '
+                . '(or SECRETS_KEY) as docker-compose.yml now does; see docs/upgrading.md.',
+            );
+        }
+
+        if (!$ring->usesSecretsKey()) {
+            $this->getOutput()->writeln(
+                '<comment>SECRETS_KEY is not set: channel settings are encrypted under TOTP_ENCRYPTION_KEY or '
+                . 'SESSION_KEY. Changing that key will make them unreadable unless the old key is kept in '
+                . 'SECRETS_PREVIOUS_KEYS. See docs/configuration.md.</comment>',
+            );
+        }
+
+        return $this->cipher = new SecretCipher($ring, SecretCipher::PURPOSE_CHANNEL_CONFIG);
+    }
+
+    /**
+     * @param callable(int, string): void $each
+     */
+    private function eachRow(callable $each): void
+    {
+        $after = 0;
+        do {
+            $rows = $this->query(
+                'SELECT id, config FROM notification_channels WHERE id > ? ORDER BY id LIMIT ' . self::BATCH,
+                [$after],
+            )->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($rows as $row) {
+                $after = (int) $row['id'];
+                $each($after, (string) $row['config']);
+            }
+        } while (count($rows) === self::BATCH);
+    }
+}

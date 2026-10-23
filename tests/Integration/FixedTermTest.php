@@ -35,6 +35,7 @@ use App\Tests\Support\TestFixedTermService;
 use App\Tests\Support\TestSubscriptionService;
 use DateTimeImmutable;
 use Psr\Log\NullLogger;
+use App\Tests\Support\TestKeys;
 
 /**
  * Fixed terms: a set number of payments, counted only while they remain,
@@ -81,7 +82,7 @@ final class FixedTermTest extends DatabaseTestCase
         $this->service = TestSubscriptionService::build($this->db, $this->clock, $this->priceHistory);
         $this->terms = TestFixedTermService::build($this->db, $this->clock, $this->priceHistory);
 
-        $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db));
+        $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring());
         $settings->setBaseCurrency('GBP');
 
         $this->forecast = new ForecastService(

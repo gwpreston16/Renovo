@@ -18,7 +18,8 @@ info:
     `Authorization: Bearer rnv_<public id>_<secret>`. Session cookies are not
     accepted: the API is deliberately unreachable with a browser's ambient
     credentials, which is what makes it safe for it to be exempt from CSRF
-    tokens.
+    tokens. Changing or resetting the issuing account's password revokes all of
+    its tokens, calendar feed tokens included.
 
     **A token narrows, it never grants.** The request runs under the household
     role of the account that issued the token, so a Viewer's write token still

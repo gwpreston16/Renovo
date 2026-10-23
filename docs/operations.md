@@ -20,6 +20,7 @@ php bin/console maintenance:prune   # expired sessions, tokens, throttle, notifi
 php bin/console i18n:check          # every locale against the base catalogue; non-zero on drift
 php bin/console assets:offline-check # non-zero if anything the browser loads names a third-party host
 php bin/console ledger:backfill     # after upgrading to the ledger (Phase 34) and again to savings (Phase 36): see upgrading.md [--household=ID]
+php bin/console secrets:rotate      # re-encrypt every stored secret under the current key [--dry-run]
 php bin/console demo:seed           # the demonstration household and its two accounts
 ```
 
@@ -59,6 +60,45 @@ Whatever runs it needs the same environment the application has — in
 particular `DB_*`, `APP_URL` (notifications contain links, and a link needs to
 know its own host) and the `SMTP_*` settings, since the scheduler is what
 actually sends the mail.
+
+## Rotating the encryption key
+
+Two-factor seeds, notification channel settings and the exchange-rate API key
+are stored encrypted under `SECRETS_KEY` (or, while it is unset,
+`TOTP_ENCRYPTION_KEY` and then `SESSION_KEY`). A database dump or a backup
+shows only ciphertext. Every value names the key it was written with, so a key
+can be replaced without anybody re-entering a channel or enrolling their
+authenticator again.
+
+**Back up your database first.** Then:
+
+1. Move the current key into `SECRETS_PREVIOUS_KEYS`. On an instance that never
+   set `SECRETS_KEY` there is nothing to move: `TOTP_ENCRYPTION_KEY` and
+   `SESSION_KEY` are always tried when reading.
+2. Set the new `SECRETS_KEY` (`openssl rand -hex 32`).
+3. Restart: `docker compose up -d`. The app, the scheduler and the migration
+   container all read the keys, and a restart is enough. Nothing is cached.
+4. Run `php bin/console secrets:rotate` (`docker compose exec app php
+   bin/console secrets:rotate`). Add `--dry-run` first to see the counts
+   without writing anything. It re-encrypts every value under the new key, in
+   batches, and is safe to run again: a second run reports nothing to do.
+5. Once it reports no unreadable values, remove the old key from
+   `SECRETS_PREVIOUS_KEYS` and restart again.
+
+A value no configured key opens is left exactly as it is and listed by id, and
+the command exits with status 2. Put the key it was written under back into
+`SECRETS_PREVIOUS_KEYS` and run it again. Until then the app treats that
+channel as misconfigured, and that member signs in with a recovery code.
+
+Rotating `SESSION_KEY` on its own is safe once `SECRETS_KEY` is set. It signs
+everybody out, by design.
+
+**Keep the key with your database backups.** A database dump is only readable
+with the key its secrets were encrypted under (`SECRETS_KEY`, or
+`TOTP_ENCRYPTION_KEY` or `SESSION_KEY` if that was the one in use). Restoring
+one onto a new host means giving it that key, as `SECRETS_KEY` or in
+`SECRETS_PREVIOUS_KEYS`, or every channel and authenticator app on it is
+unreadable. The household backup below holds none of these secrets.
 
 ## Backup and restore
 

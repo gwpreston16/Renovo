@@ -30,6 +30,10 @@ final class NotificationChannel
         public readonly ?DateTimeImmutable $lastSuccessAt,
         public readonly DateTimeImmutable $createdAt,
         public readonly DateTimeImmutable $updatedAt,
+        // The stored config is ciphertext no configured key opens. `config` is
+        // then empty, and nothing may write it back over the ciphertext: the
+        // operator may yet restore the key.
+        public readonly bool $configUnreadable = false,
     ) {
     }
 

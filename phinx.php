@@ -10,14 +10,12 @@ declare(strict_types=1);
  * engines are described; DB_DRIVER picks between them.
  */
 
-if (is_file(__DIR__ . '/.env')) {
-    Dotenv\Dotenv::createImmutable(__DIR__)->safeLoad();
-}
+App\Support\Environment::loadDotenv(__DIR__);
 
 $env = static function (string $key, string $default = ''): string {
-    $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+    $value = App\Support\Environment::get($key);
 
-    return ($value === false || $value === null || $value === '') ? $default : (string) $value;
+    return ($value === null || $value === '') ? $default : $value;
 };
 
 $driver = $env('DB_DRIVER', 'pgsql');

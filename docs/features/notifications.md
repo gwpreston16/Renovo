@@ -51,7 +51,9 @@ a dependency on a third party's server.
 Add as many as you like, name them, route each alert type to whichever you
 want, and **send a test message** — a token that looks right and is not is
 better discovered now than during the renewal you missed. A channel that fails
-shows the reason next to it.
+shows the reason next to it. A channel's settings are stored encrypted and its
+secrets are never shown back to you, so leaving a token field blank when you
+edit a channel keeps the one it has.
 
 ### When they arrive
 

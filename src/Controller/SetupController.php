@@ -174,7 +174,7 @@ final class SetupController extends Controller
         }
 
         try {
-            $this->notifications->createChannel($user->id, $strings);
+            $this->notifications->createChannel($user, $strings);
         } catch (ValidationException $exception) {
             return $this->render(
                 $request,

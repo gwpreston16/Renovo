@@ -32,6 +32,7 @@ use App\Service\UsageService;
 use App\Support\FrozenClock;
 use DateTimeImmutable;
 use Psr\Log\NullLogger;
+use App\Tests\Support\TestKeys;
 
 /**
  * The spend-insight rules.
@@ -73,7 +74,7 @@ final class SpendInsightTest extends DatabaseTestCase
         $this->clock = FrozenClock::at(self::TODAY);
         $this->subscriptions = new SubscriptionRepository($this->db);
         $this->categories = new CategoryRepository($this->db);
-        $this->settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db));
+        $this->settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring());
         $this->settings->setBaseCurrency('GBP');
 
         $this->priceHistory = new PriceHistoryService(

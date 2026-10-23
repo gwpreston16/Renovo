@@ -8,7 +8,9 @@ use App\Domain\AuditAction;
 use App\Domain\Entity\User;
 use App\I18n\Locales;
 use App\I18n\Translator;
+use App\Repository\ApiTokenRepository;
 use App\Repository\TokenRepository;
+use App\Persistence\Database;
 use App\Repository\UserRepository;
 use App\Security\PasswordHasher;
 use App\Security\SessionInterface;
@@ -51,6 +53,8 @@ final class AccountService
         private readonly SessionDirectoryService $sessions,
         private readonly SessionInterface $session,
         private readonly Clock $clock,
+        private readonly ApiTokenRepository $apiTokens,
+        private readonly Database $db,
         private readonly string $appUrl,
     ) {
     }
@@ -379,7 +383,15 @@ final class AccountService
             throw new ValidationException($errors);
         }
 
-        $this->users->updatePasswordHash($user->id, $this->hasher->hash($password));
+        // A token is a password by another name, and a password change is
+        // usually a response to suspected compromise: every API and calendar
+        // feed token ends with the old password, in the same transaction.
+        $hash = $this->hasher->hash($password);
+        $tokensRevoked = $this->db->transactional(function () use ($user, $hash): int {
+            $this->users->updatePasswordHash($user->id, $hash);
+
+            return $this->apiTokens->revokeAllForUser($user->id);
+        });
 
         // Whichever way they arrived at this screen, they have now set a
         // password of their own and the temporary one is spent.
@@ -394,6 +406,7 @@ final class AccountService
         $this->audit->record(AuditAction::PasswordChanged, $user, [
             'via' => 'account_page',
             'sessions_revoked' => $revoked,
+            'api_tokens_revoked' => $tokensRevoked,
         ]);
 
         if ($user->canReceiveMail()) {

@@ -8,6 +8,58 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Added
+
+- **Every recoverable secret is encrypted at rest.** Notification channel
+  settings (bot tokens, app tokens, webhook URLs) and the exchange-rate API key
+  are now stored as ciphertext, as two-factor seeds already were, so a database
+  dump or backup carries none of them. Existing rows are encrypted by two
+  migrations on upgrade, and channels keep sending in between. *Phase 40.*
+- **`SECRETS_KEY`, and a key that can be replaced.** Stored secrets are
+  encrypted under `SECRETS_KEY`, falling back to `TOTP_ENCRYPTION_KEY` and then
+  `SESSION_KEY`, so nothing has to change to upgrade. Each value names the key
+  it was written with; `SECRETS_PREVIOUS_KEYS` lists old keys that still
+  decrypt, and `php bin/console secrets:rotate [--dry-run]` re-encrypts
+  everything under the current key, with no authenticator to re-enrol and no
+  channel to re-enter. See *Rotating the encryption key* in
+  `docs/operations.md`. *Phase 40.*
+- **Instance status says whether stored secrets have a key of their own**, and
+  warns while they share `SESSION_KEY`. *Phase 40.*
+- Adding, changing and deleting a notification channel, and rotating the key,
+  are recorded in the audit log, a channel by its type and label only.
+  *Phase 40.*
+
+### Changed
+
+- **Changing or resetting a password revokes that account's API tokens and
+  calendar feed links**, in the same transaction, and the password-changed
+  email says so. Create new ones afterwards. *Phase 40.*
+- **`docker-compose.yml` passes `SESSION_KEY`, `SECRETS_KEY`,
+  `SECRETS_PREVIOUS_KEYS` and `TOTP_ENCRYPTION_KEY` to the app, migration and
+  scheduler containers**, and the migration and scheduler no longer start on a
+  placeholder session key. Copy the change into a compose file of your own
+  **before** starting the new images; see *After upgrading to secrets at rest*
+  in `docs/upgrading.md`.
+  *Phase 40.*
+- `TOTP_ENCRYPTION_KEY` is superseded by `SECRETS_KEY`; it still works, and is
+  always tried when reading. *Phase 40.*
+
+### Fixed
+
+- **A changed setting takes effect on restart, and an upgrade no longer runs on
+  the last release's compiled container.** With `APP_DEBUG=false` the compiled
+  container in `var/cache` kept every setting it was first built with, and
+  survived upgrades, so a changed key or password did nothing and a changed
+  service could fail every request until the directory was deleted. Settings
+  are now read when the app starts, and compiled caches are kept per build.
+  *Phase 40.* (K4)
+- **A request header can no longer set an `HTTP_*` setting** such as
+  `HTTP_PROXY` ("httpoxy"): settings are read from the environment and `.env`
+  only, never from the request. *Phase 40.* (K5)
+- `TOTP_ENCRYPTION_KEY` set in `.env` now reaches the containers; before, it
+  never did, and two-factor seeds were encrypted under `SESSION_KEY`.
+  *Phase 40.*
+
 ## [1.8.0] - 2026-10-23
 
 ### Added

@@ -14,7 +14,7 @@ scan the QR code and type the six-digit code it shows, to prove the app received
 the key. Turning two-step verification off requires your password, so a stolen
 but still-signed-in session cannot quietly remove it.
 
-The secret is stored encrypted (see `TOTP_ENCRYPTION_KEY`), which is the best
+The secret is stored encrypted (see `SECRETS_KEY` and [Rotating the encryption key](operations.md#rotating-the-encryption-key)), which is the best
 available: the server has to reproduce codes from it, so it cannot be hashed.
 What that protects is a database dump or a stray backup, not an attacker who
 already owns the running application. A submitted code is also refused if its
@@ -59,8 +59,8 @@ the second factor optional for anybody who can read your mailbox.
 ### Audit log
 
 Every sign-in, failed sign-in, sign-out, password reset, second-factor change,
-passkey change, session revocation, role change and instance-setting change is
-recorded with who did it, to whom, when, and from which address and browser.
+passkey change, session revocation, role change, instance-setting change,
+notification channel change and key rotation is recorded with who did it, to whom, when, and from which address and browser.
 
 Who sees what is decided in the repository layer, not by the route: an instance
 administrator sees the whole instance at **/audit**, a household Owner sees their
@@ -95,8 +95,16 @@ the reset may well have been prompted by somebody else having one.
   no authenticated route can mistake it for a session.
 - **TOTP secrets are encrypted at rest** and a used time-step is remembered, so a
   code cannot be replayed within its validity window. A secret that no longer
-  decrypts — a rotated key — fails the sign-in closed and says so in the log,
-  rather than throwing an error at somebody holding a correct code.
+  decrypts — a key removed too early — fails the sign-in closed and says so in
+  the log, rather than throwing an error at somebody holding a correct code.
+- **Every recoverable secret is encrypted at rest**: two-factor seeds,
+  notification channel settings (bot tokens, webhook URLs) and the
+  exchange-rate API key, with XChaCha20-Poly1305 under `SECRETS_KEY` and a
+  subkey per kind. A database dump or backup holds only ciphertext. The key
+  can be replaced, and everything re-encrypted with `secrets:rotate`, without
+  losing anything (see [Rotating the encryption key](operations.md#rotating-the-encryption-key)).
+  An audit entry for a channel change names its type and label, never its
+  settings.
 - **Recovery codes are hashed** like passwords, each works once, and they are
   issued for whichever second factor an account has — a passkey earns them just
   as an authenticator app does, because losing your only passkey locks you out
@@ -122,7 +130,9 @@ the reset may well have been prompted by somebody else having one.
 - **API tokens are stored as hashes**, split into a public identifier and a
   secret so that verifying one is a single indexed read rather than a scan. They
   can be given an expiry, revoked at any moment, and can only ever be weaker
-  than the account that issued them.
+  than the account that issued them. **Changing or resetting the password ends
+  every one of them**, calendar feed links included: a token is a password by
+  another name.
 - The **API refuses session cookies**. No ambient browser credential can
   authenticate an API request, which is what makes the CSRF exemption on those
   paths safe rather than a hole; the exemption itself additionally requires a

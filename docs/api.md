@@ -48,6 +48,10 @@ Issue one under **Settings → Data & integrations → API tokens**. A token loo
 once and cannot be recovered. Choose **read-only** unless something genuinely
 needs to make changes.
 
+Changing or resetting your password revokes every token you hold, calendar
+feed links included, so a token is never worth more than the password it was
+issued under. Issue new ones afterwards.
+
 A token narrows and never grants. The request runs under the household role of
 the account that issued it, so a Viewer's "read and write" token still cannot
 write — it fails the same permission check the browser would. A read-only token

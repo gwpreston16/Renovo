@@ -17,6 +17,7 @@ use App\Support\FrozenClock;
 use App\Tests\Support\FakeHttpClient;
 use Psr\Log\NullLogger;
 use Slim\Psr7\Factory\RequestFactory;
+use App\Tests\Support\TestKeys;
 
 /**
  * Caching, cross-rating and — the part that matters most — what happens when
@@ -40,7 +41,7 @@ final class ExchangeRateServiceTest extends DatabaseTestCase
     {
         parent::setUp();
 
-        $this->settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db));
+        $this->settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring());
         $this->rates = new ExchangeRateRepository($this->db);
         $this->clock = FrozenClock::at('2026-09-14 09:00:00');
 
@@ -341,6 +342,35 @@ final class ExchangeRateServiceTest extends DatabaseTestCase
         );
 
         self::assertTrue($service->isMisconfigured());
+    }
+
+    public function testAStoredKeyIsSentDecrypted(): void
+    {
+        $this->settings->setRateProviderKey('key-from-the-database');
+
+        $http = FakeHttpClient::returningJson([
+            'success' => true,
+            'source' => 'GBP',
+            'quotes' => ['GBPEUR' => 1.1723],
+        ]);
+
+        $service = new ExchangeRateService(
+            $this->rates,
+            new ExchangeRateProviderRegistry([
+                new \App\Service\ExchangeRate\ExchangeRateHostProvider($http, new RequestFactory()),
+            ]),
+            $this->settings,
+            $this->clock,
+            new NullLogger(),
+            self::TTL_SECONDS,
+            self::RETRY_SECONDS,
+            '',
+        );
+
+        $service->refresh();
+
+        // Stored encrypted, sent as entered.
+        self::assertStringContainsString('access_key=key-from-the-database', $http->requestedUrls[0]);
     }
 
     public function testAnEnvironmentKeyIsUsedInPreferenceToAStoredOne(): void

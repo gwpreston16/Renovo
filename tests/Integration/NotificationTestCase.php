@@ -60,6 +60,12 @@ use DateTimeImmutable;
 use Psr\Log\NullLogger;
 use Slim\Psr7\Factory\RequestFactory;
 use App\Tests\Support\TestFixedTermService;
+use App\Tests\Support\TestKeys;
+use App\Security\KeyRing;
+use App\Service\AuditLogService;
+use App\Security\RequestContextHolder;
+use App\Security\RequestContext;
+use App\Repository\AuditLogRepository;
 
 /**
  * The whole notification stack, wired by hand against a real database.
@@ -114,7 +120,10 @@ abstract class NotificationTestCase extends DatabaseTestCase
 
         $this->subscriptions = new SubscriptionRepository($this->db);
         $categories = new CategoryRepository($this->db);
-        $this->instanceSettings = new InstanceSettingsService(new InstanceSettingsRepository($this->db));
+        $this->instanceSettings = new InstanceSettingsService(
+            new InstanceSettingsRepository($this->db),
+            TestKeys::ring(),
+        );
         $this->instanceSettings->setBaseCurrency('GBP');
 
         $historyRepository = new PriceHistoryRepository($this->db);
@@ -189,26 +198,8 @@ abstract class NotificationTestCase extends DatabaseTestCase
         $this->notifier = new RecordingNotifier();
         $this->registry = new NotifierRegistry([$this->notifier]);
 
-        $this->channels = new NotificationChannelRepository($this->db, $this->clock);
         $this->log = new NotificationLogRepository($this->db, $this->clock);
-
-        $this->notificationSettings = new NotificationSettingsService(
-            $this->channels,
-            new NotificationPreferenceRepository($this->db, $this->clock),
-            new NotificationRouteRepository($this->db, $this->clock),
-            $this->registry,
-        );
-
-        $this->dispatcher = new NotificationDispatcher(
-            $this->notificationSettings,
-            $this->registry,
-            $this->log,
-            $this->channels,
-            new NotificationRateLimiter($this->log, $this->clock, 60, 20),
-            new NullLogger(),
-            $this->clock,
-            TestTranslator::create(),
-        );
+        $this->useChannelKeys(TestKeys::ring());
 
         $this->scanner = new AlertScanner(
             $this->subscriptionService,
@@ -247,6 +238,40 @@ abstract class NotificationTestCase extends DatabaseTestCase
             $this->clock,
             new NullLogger(),
             'https://renovo.example',
+        );
+    }
+
+    /**
+     * Rebuild the channel repository, and what reads through it, under a key
+     * ring — as the application does when it restarts with a new key.
+     */
+    protected function useChannelKeys(KeyRing $keys): void
+    {
+        $this->channels = new NotificationChannelRepository($this->db, $this->clock, $keys);
+
+        $this->notificationSettings = new NotificationSettingsService(
+            $this->channels,
+            new NotificationPreferenceRepository($this->db, $this->clock),
+            new NotificationRouteRepository($this->db, $this->clock),
+            $this->registry,
+            new AuditLogService(
+                new AuditLogRepository($this->db),
+                new MembershipRepository($this->db),
+                new RequestContextHolder(RequestContext::of('127.0.0.1', 'PHPUnit')),
+                $this->clock,
+                new NullLogger(),
+            ),
+        );
+
+        $this->dispatcher = new NotificationDispatcher(
+            $this->notificationSettings,
+            $this->registry,
+            $this->log,
+            $this->channels,
+            new NotificationRateLimiter($this->log, $this->clock, 60, 20),
+            new NullLogger(),
+            $this->clock,
+            TestTranslator::create(),
         );
     }
 

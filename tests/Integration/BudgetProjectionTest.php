@@ -41,6 +41,7 @@ use App\Support\FrozenClock;
 use DateTimeImmutable;
 use Psr\Log\NullLogger;
 use Slim\Psr7\Factory\RequestFactory;
+use App\Tests\Support\TestKeys;
 
 /**
  * Budgets: projection, per-member shares, isolation, and the refusal to report
@@ -79,7 +80,7 @@ final class BudgetProjectionTest extends DatabaseTestCase
         $this->categories = new CategoryRepository($this->db);
         $this->clock = FrozenClock::at('2026-01-15 09:00:00');
 
-        $this->settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db));
+        $this->settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring());
         $this->settings->setBaseCurrency('GBP');
 
         $historyRepository = new PriceHistoryRepository($this->db);

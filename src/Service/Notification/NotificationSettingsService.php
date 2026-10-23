@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace App\Service\Notification;
 
 use App\Domain\AlertType;
+use App\Domain\AuditAction;
 use App\Domain\DigestMode;
 use App\Domain\Entity\NotificationChannel;
 use App\Domain\Entity\NotificationPreferences;
+use App\Domain\Entity\User;
 use App\Notification\NotifierRegistry;
 use App\Repository\NotificationChannelRepository;
 use App\Repository\NotificationPreferenceRepository;
 use App\Repository\NotificationRouteRepository;
+use App\Service\AuditLogService;
 use App\Service\ValidationError;
 use App\Service\ValidationException;
 
@@ -40,6 +43,7 @@ final class NotificationSettingsService
         private readonly NotificationPreferenceRepository $preferences,
         private readonly NotificationRouteRepository $routes,
         private readonly NotifierRegistry $notifiers,
+        private readonly AuditLogService $audit,
     ) {
     }
 
@@ -60,8 +64,9 @@ final class NotificationSettingsService
      * @param array<string, string> $input
      * @throws ValidationException
      */
-    public function createChannel(int $userId, array $input): int
+    public function createChannel(User $user, array $input): int
     {
+        $userId = $user->id;
         $type = trim($input['channel_type'] ?? '');
         $notifier = $this->notifiers->find($type);
 
@@ -73,6 +78,7 @@ final class NotificationSettingsService
         $config = $notifier->normaliseConfig($input);
 
         $id = $this->channels->create($userId, $notifier->key(), $label, $config, $this->isActive($input));
+        $this->audited(AuditAction::NotificationChannelCreated, $user, $notifier->key(), $label);
 
         // With no routing at all, every channel hears everything and a new one
         // needs nothing. Once a member has saved routing, though, a channel
@@ -97,11 +103,18 @@ final class NotificationSettingsService
      * @param array<string, string> $input
      * @throws ValidationException
      */
-    public function updateChannel(int $userId, int $id, array $input): void
+    public function updateChannel(User $user, int $id, array $input): void
     {
+        $userId = $user->id;
         $existing = $this->channels->find($userId, $id);
         if ($existing === null) {
             throw ValidationException::field('channel_type', 'error.channel.missing');
+        }
+
+        // Merging the form into an empty config would save it over ciphertext
+        // the instance merely cannot open yet, losing the secrets for good.
+        if ($existing->configUnreadable) {
+            throw ValidationException::field('channel_type', 'error.channel.unreadable');
         }
 
         $notifier = $this->notifiers->find($existing->type);
@@ -110,36 +123,49 @@ final class NotificationSettingsService
         }
 
         $config = $notifier->normaliseConfig($input, $existing->config);
+        $label = $this->label($input, $existing->label);
 
-        $this->channels->update(
-            $userId,
-            $id,
-            $this->label($input, $existing->label),
-            $config,
-            $this->isActive($input),
-        );
+        $this->channels->update($userId, $id, $label, $config, $this->isActive($input));
+        $this->audited(AuditAction::NotificationChannelUpdated, $user, $existing->type, $label);
     }
 
     /**
      * Turn a channel on or off and change nothing else about it — the
-     * Notifications page's switch. Its label and configuration are rewritten
-     * as they are stored, so a secret is never round-tripped through a form.
+     * Notifications page's switch. Only the flag is written, so a secret is
+     * never round-tripped through a form, and a config this instance cannot
+     * decrypt is never overwritten.
      *
      * @throws ValidationException when the channel is not this user's.
      */
-    public function setChannelActive(int $userId, int $id, bool $active): void
+    public function setChannelActive(User $user, int $id, bool $active): void
     {
-        $existing = $this->channels->find($userId, $id);
+        $existing = $this->channels->find($user->id, $id);
         if ($existing === null) {
             throw ValidationException::field('channel_type', 'error.channel.missing');
         }
 
-        $this->channels->update($userId, $id, $existing->label, $existing->config, $active);
+        $this->channels->setActive($user->id, $id, $active);
+        $this->audited(AuditAction::NotificationChannelUpdated, $user, $existing->type, $existing->label);
     }
 
-    public function deleteChannel(int $userId, int $id): void
+    public function deleteChannel(User $user, int $id): void
     {
-        $this->channels->delete($userId, $id);
+        $existing = $this->channels->find($user->id, $id);
+        if ($existing === null) {
+            return;
+        }
+
+        $this->channels->delete($user->id, $id);
+        $this->audited(AuditAction::NotificationChannelDeleted, $user, $existing->type, $existing->label);
+    }
+
+    /**
+     * A channel change in the audit log: its type and label, never its config,
+     * which holds the very secrets the log must not carry.
+     */
+    private function audited(AuditAction $action, User $user, string $type, string $label): void
+    {
+        $this->audit->record($action, $user, ['type' => $type, 'label' => $label]);
     }
 
     public function preferences(int $userId): NotificationPreferences

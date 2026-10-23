@@ -232,8 +232,10 @@ fi
 # ---------------------------------------------------------------------------
 step "Writing .env"
 # ---------------------------------------------------------------------------
+NEW_ENV=0
 if [ ! -f .env ]; then
     cp .env.example .env
+    NEW_ENV=1
     ok "created .env from .env.example"
 else
     ok ".env already exists — keeping it, updating only what this script owns"
@@ -244,6 +246,13 @@ if [ -z "$(get_env SESSION_KEY)" ]; then
     ok "generated a session key"
 else
     info "session key already set — left alone"
+fi
+
+# Only on a new .env: an existing instance's secrets are encrypted under its
+# session key, and moving to SECRETS_KEY is the operator's step (secrets:rotate).
+if [ "$NEW_ENV" = 1 ] && [ -z "$(get_env SECRETS_KEY)" ]; then
+    set_env SECRETS_KEY "$(openssl rand -hex 32)"
+    ok "generated a key for stored secrets"
 fi
 
 # Development defaults. These differ from .env.example, which ships with

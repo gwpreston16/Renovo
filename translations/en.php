@@ -715,6 +715,9 @@ return [
     'error.channel.type_required' => 'Choose a channel type.',
     'error.channel.missing' => 'That channel no longer exists.',
     'error.channel.type_unavailable' => 'That channel type is no longer available.',
+    'error.channel.unreadable' =>
+        "This channel's settings can't be read with the current encryption key. Ask your administrator to "
+        . 'restore the old key, or delete the channel and add it again.',
     'error.digest.weekday' => 'Choose a day of the week.',
     'error.demo.read_only' =>
         'This instance is a read-only demonstration. Nothing here can be changed.',
@@ -980,11 +983,15 @@ return [
     'audit_action.login.succeeded' => 'Signed in',
     'audit_action.logout' => 'Signed out',
     'audit_action.membership.role_changed' => 'Household role changed',
+    'audit_action.notification_channel.created' => 'Notification channel added',
+    'audit_action.notification_channel.deleted' => 'Notification channel deleted',
+    'audit_action.notification_channel.updated' => 'Notification channel changed',
     'audit_action.passkey.registered' => 'Passkey added',
     'audit_action.passkey.renamed' => 'Passkey renamed',
     'audit_action.passkey.revoked' => 'Passkey revoked',
     'audit_action.password.changed' => 'Password changed',
     'audit_action.password.reset_requested' => 'Password reset requested',
+    'audit_action.secrets.rotated' => 'Stored secrets re-encrypted',
     'audit_action.session.revoked' => 'Session revoked',
     'audit_action.session.revoked_all' => 'All other sessions revoked',
     'audit_action.totp.disabled' => 'Authenticator app disabled',
@@ -2525,7 +2532,8 @@ return [
     // mail
     'mail.password_changed.body' =>
         "Hello {name},\n\nYour password has just been changed. If this was not you, contact the "
-        . 'administrator of this instance immediately.',
+        . "administrator of this instance immediately.\n\nAny API tokens and calendar feed links on your "
+        . 'account have stopped working too. Create new ones if you still need them.',
     'mail.password_changed.subject' => 'Your {instance} password was changed',
     'mail.reset.body' =>
         "Hello {name},\n\nSomeone asked to reset the password for this account. If it was you, follow "
@@ -2688,6 +2696,13 @@ return [
     'settings.status_metrics' => 'Metrics',
     'settings.status_metrics_off' => 'Off. Set {variable} to expose /metrics.',
     'settings.status_metrics_on' => '/metrics answers a request that carries the token.',
+    'settings.status_secrets_key' => 'Encryption key',
+    'settings.status_secrets_key_set' => 'Own key',
+    'settings.status_secrets_key_set_hint' => 'Stored secrets have a key of their own, so the session key can change freely.',
+    'settings.status_secrets_key_unset' => 'Shared with sessions',
+    'settings.status_secrets_key_unset_hint' =>
+        'Set {variable}. Until then, stored secrets are encrypted under {session}, and changing it would '
+        . 'make every notification channel and authenticator app unreadable.',
     'settings.status_scheduler' => 'Scheduler last ran',
     'settings.status_scheduler_never' => 'Not yet',
     'settings.subscriptions_count' => '{count, plural, one {subscription} other {subscriptions}}',

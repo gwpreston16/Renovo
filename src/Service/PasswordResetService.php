@@ -8,6 +8,8 @@ use App\I18n\Locales;
 use App\I18n\Translator;
 use App\Domain\AuditAction;
 use App\Domain\Entity\User;
+use App\Repository\ApiTokenRepository;
+use App\Persistence\Database;
 use App\Repository\AuthAttemptRepository;
 use App\Repository\TokenRepository;
 use App\Repository\UserRepository;
@@ -48,6 +50,8 @@ final class PasswordResetService
         private readonly SessionDirectoryService $sessions,
         private readonly SessionInterface $session,
         private readonly Clock $clock,
+        private readonly ApiTokenRepository $apiTokens,
+        private readonly Database $db,
         private readonly string $appUrl,
     ) {
     }
@@ -153,7 +157,14 @@ final class PasswordResetService
             throw ValidationException::field('token', 'error.reset.invalid_token');
         }
 
-        $this->users->updatePasswordHash($userId, $this->hasher->hash($password));
+        // Every API and calendar feed token ends with the old password, in the
+        // same transaction (AccountService::changePassword() says why).
+        $hash = $this->hasher->hash($password);
+        $tokensRevoked = $this->db->transactional(function () use ($userId, $hash): int {
+            $this->users->updatePasswordHash($userId, $hash);
+
+            return $this->apiTokens->revokeAllForUser($userId);
+        });
 
         $user = $this->users->findById($userId);
         if ($user !== null) {
@@ -171,6 +182,7 @@ final class PasswordResetService
             $this->audit->record(AuditAction::PasswordChanged, $user, [
                 'via' => 'reset_link',
                 'sessions_revoked' => $revoked,
+                'api_tokens_revoked' => $tokensRevoked,
             ]);
 
             $locale = $this->locales->resolve($user->locale);

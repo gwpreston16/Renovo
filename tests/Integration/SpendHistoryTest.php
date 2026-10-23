@@ -46,6 +46,7 @@ use DateTimeImmutable;
 use Psr\Log\NullLogger;
 use Slim\Psr7\Factory\RequestFactory;
 use App\Tests\Support\TestFixedTermService;
+use App\Tests\Support\TestKeys;
 
 /**
  * The twelve months behind, month by month.
@@ -91,7 +92,7 @@ final class SpendHistoryTest extends DatabaseTestCase
         // The 15th: eleven whole months behind it and this one half-done.
         $clock = FrozenClock::at('2026-06-15 09:00:00');
 
-        $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db));
+        $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring());
         $settings->setBaseCurrency('GBP');
 
         $historyRepository = new PriceHistoryRepository($this->db);

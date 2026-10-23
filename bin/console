@@ -31,6 +31,7 @@ use App\Service\ImportService;
 use App\Service\InstanceSettingsService;
 use App\Service\LedgerBackfillRunner;
 use App\Service\Notification\ReminderRunner;
+use App\Service\SecretsRotationService;
 use App\Service\Update\CheckNowResult;
 use App\Service\Update\UpdateCheckService;
 use App\Support\Clock;
@@ -205,6 +206,46 @@ switch ($command) {
         ));
         exit(0);
 
+    case 'secrets:rotate':
+        // After replacing SECRETS_KEY (the old key moved to
+        // SECRETS_PREVIOUS_KEYS): re-encrypt every stored secret under the new
+        // key. Idempotent; a value no key opens is left as it is and listed.
+        $dryRun = false;
+        foreach (array_slice($argv, 2) as $argument) {
+            if ($argument === '--dry-run') {
+                $dryRun = true;
+            } else {
+                fwrite(STDERR, sprintf("Unknown option \"%s\". Usage: secrets:rotate [--dry-run]\n", $argument));
+                exit(1);
+            }
+        }
+
+        $rotation = $container->get(SecretsRotationService::class);
+        if (!$rotation->usesSecretsKey()) {
+            fwrite(STDERR, 'SECRETS_KEY is not set, so stored secrets are encrypted under TOTP_ENCRYPTION_KEY or '
+                . "SESSION_KEY. Set SECRETS_KEY so the session key can be rotated on its own.\n");
+        }
+
+        $failed = false;
+        foreach ($rotation->rotate($dryRun) as $kind => $counts) {
+            $out(sprintf(
+                '%s: %d %s, %d already under the current key, %d unreadable%s',
+                $kind,
+                $counts['rotated'],
+                $dryRun ? 'would be re-encrypted' : 're-encrypted',
+                $counts['current'],
+                count($counts['unreadable']),
+                $counts['unreadable'] === [] ? '' : ' (ids ' . implode(', ', $counts['unreadable']) . ')',
+            ));
+            $failed = $failed || $counts['unreadable'] !== [];
+        }
+
+        if ($failed) {
+            fwrite(STDERR, "Some values could not be opened by any configured key and were left as they are. "
+                . "Add the key they were written under to SECRETS_PREVIOUS_KEYS and run this again.\n");
+        }
+        exit($failed ? 2 : 0);
+
     case 'demo:seed':
         // Builds the household a read-only demonstration shows. Safe to run
         // twice: it does nothing at all if the demo account already exists.
@@ -366,6 +407,7 @@ switch ($command) {
         $out('  assets:offline-check Fail if any template or built asset references a third-party host');
         $out('  coverage:check       Fail if a Clover report\'s line coverage is under the floor (default 85%)');
         $out('  ledger:backfill      Rebuild past charges into the payment ledger [--household=ID]');
+        $out('  secrets:rotate       Re-encrypt every stored secret under the current key [--dry-run]');
         $out('  demo:seed            Create the demonstration household and its subscriptions');
         exit(0);
 
