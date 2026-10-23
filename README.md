@@ -172,9 +172,10 @@ uses it, and a deployment from the published image never installs it. See
 ## What's new
 
 Release notes are in [CHANGELOG.md](CHANGELOG.md), and what each phase built is
-in [docs/history.md](docs/history.md). The latest phase is **Phase 36, what you've
-saved** ([brief](docs/phases/PHASE-36.md)); the [roadmap](ROADMAP.md) shows
-what is in progress and what is planned.
+in [docs/history.md](docs/history.md). The latest phase is **Phase 37, the
+version, and knowing when there is a newer one**
+([brief](docs/phases/PHASE-37.md)); the [roadmap](ROADMAP.md) shows what is in
+progress and what is planned.
 
 ## Contributing
 

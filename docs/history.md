@@ -432,6 +432,18 @@ Since v1, each phase has shipped as a minor release (see
   `reference_minor`, `saving_minor` and `is_discount` on a charge; the
   OpenAPI document is version 1.6.0. The payments export and the backup carry
   each payment's reference. One migration. See [Savings](features/money.md#savings).
+- **Phase 37 — the version, and knowing when there is a newer one — complete
+  (1.8.0).** Renovo knows which release it is, from a single `VERSION` file:
+  the sidebar names it on every signed-in page and the Instance tab leads with
+  it, with the commit an image was built from. An instance administrator can
+  turn on **update checks**, which ask GitHub once a day for the latest
+  release; a banner on the dashboard then says when a newer one is out, and
+  **Check now** and `updates:check` check on demand. Both are off by default,
+  and `UPDATE_CHECK=false` keeps them off for the server. A settings-cache bug
+  that read every other instance setting as its default after a first write
+  was fixed along the way. `GET /api/v1/instance` returns `version` and
+  `build` to any valid token; the OpenAPI document is version 1.7.0. One
+  migration. See [Version and updates](operations.md#version-and-updates).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
