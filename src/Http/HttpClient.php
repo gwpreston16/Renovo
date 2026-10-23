@@ -168,6 +168,12 @@ final class HttpClient implements ClientInterface
             },
         ]);
 
+        // A HEAD has no body to wait for; without this curl waits for the
+        // Content-Length it was promised.
+        if (strtoupper($request->getMethod()) === 'HEAD') {
+            curl_setopt($handle, CURLOPT_NOBODY, true);
+        }
+
         // The host name stays in the URL: it is what TLS verifies the
         // certificate against and what the server needs in the Host header.
         // Only the address behind it is fixed.

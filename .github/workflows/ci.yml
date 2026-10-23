@@ -110,6 +110,16 @@ jobs:
           --health-cmd "mysqladmin ping -h 127.0.0.1 -u root -prenovo-root"
           --health-interval 5s --health-timeout 5s --health-retries 20
 
+      # S3-compatible storage for the backup-destination tests (Phase 39).
+      # MinIO no longer publishes a pullable image; RustFS speaks the same API
+      # and checks the signed payload hash the way S3 does.
+      s3:
+        image: rustfs/rustfs:1.0.3
+        env:
+          RUSTFS_ACCESS_KEY: renovotest
+          RUSTFS_SECRET_KEY: renovotestsecret
+        ports: ['9000:9000']
+
     env:
       APP_ENV: test
       APP_DEBUG: 'true'
@@ -130,6 +140,10 @@ jobs:
       CROSS_ENGINE_DB_NAME: renovo_test
       CROSS_ENGINE_DB_USER: renovo
       CROSS_ENGINE_DB_PASSWORD: renovo
+      TEST_S3_ENDPOINT: http://127.0.0.1:9000
+      TEST_S3_KEY: renovotest
+      TEST_S3_SECRET: renovotestsecret
+      TEST_S3_BUCKET: renovo-test
 
     steps:
       # Full history, so the coverage step can diff this branch against the
