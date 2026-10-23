@@ -8,6 +8,44 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Added
+
+- **Savings.** A **Savings** card on Analytics adds up what introductory and
+  promotional prices took off the normal price, payment by payment, and what
+  the subscriptions you cancelled would have cost since — up to twelve months
+  after each, leaving out payments their notice period had already committed —
+  with the yearly cost the last twelve months' cancellations took off, and the
+  trials you cancelled before they charged. **Where it came from** names the
+  subscriptions behind each figure. A fixed term that ran its course, a
+  restored subscription and one paused when it was cancelled are not counted.
+  Under ISOLATED the figures are your own, with your share of a split bill.
+  *Phase 36.*
+- A payment at an offer price shows what it would otherwise have cost —
+  "£5.99 (normally £11.99)" — and a subscription's cost page what its offers
+  saved. **This was a discount**, when recording a lower amount, counts what
+  the discount took off. *Phase 36.*
+- An optional **Savings** card on the Overview dashboard, hidden until you show
+  it. *Phase 36.*
+- **`GET /api/v1/savings`**, and `reference_minor`, `saving_minor` and
+  `is_discount` on a charge, with `is_discount` on `PATCH /api/v1/charges/{id}`
+  (the OpenAPI contract is now version 1.6.0). The payments export and
+  household backups carry each payment's reference. *Phase 36.*
+
+### Changed
+
+- **`ledger:backfill`** also gives each payment made at an offer before the
+  upgrade the price it would otherwise have cost, and says how many it filled.
+  Run it once after upgrading, with a backup taken first. See
+  [upgrading](docs/upgrading.md#after-upgrading-to-savings-phase-36). *Phase 36.*
+
+### Fixed
+
+- A charge `PATCH` or `POST` with a malformed `actual_minor` or `amount_minor`
+  now asks for a whole number of minor units, not a decimal price (K76).
+  *Phase 36.*
+- The upgrading guide says a one-off or lifetime entry's backfilled payment is
+  marked *one_off*, which its undo SQL leaves (K82). *Phase 36.*
+
 ## [1.6.0] - 2026-10-23
 
 ### Added
