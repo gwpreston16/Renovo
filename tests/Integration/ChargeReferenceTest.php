@@ -345,6 +345,30 @@ final class ChargeReferenceTest extends DatabaseTestCase
         self::assertSame(0, $this->container->get(LedgerBackfillRunner::class)->run()['references']);
     }
 
+    public function testTheBackfillLeavesAManualPaymentAndOneAtTheSamePrice(): void
+    {
+        $id = $this->intro();
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-20 09:00:00'));
+        $this->catchUp->run($this->alice);
+        // A payment added by hand on a day the offer covers but nothing bills.
+        $manual = $this->charges->addManual($this->alice, $id, ['date' => '2026-03-18', 'amount' => '3.00']);
+        // As written before references existed; one of them at £11.99, the
+        // price the offer goes back to, which saved nothing.
+        $this->db->execute('UPDATE subscription_charges SET reference_minor = NULL');
+        $first = $this->charges->forSubscription($this->alice, $id);
+        $equal = end($first);
+        self::assertNotFalse($equal);
+        $this->db->execute(
+            'UPDATE subscription_charges SET expected_minor = 1199 WHERE id = :id',
+            ['id' => $equal->id],
+        );
+
+        $this->charges->backfill($this->alice);
+
+        self::assertNull($this->charges->find($this->alice, $manual->id)?->referenceMinor);
+        self::assertNull($this->charges->find($this->alice, $equal->id)?->referenceMinor);
+    }
+
     public function testTheBackfillsReconstructedChargesOnAnOfferCarryTheirReference(): void
     {
         $id = $this->intro();

@@ -169,7 +169,12 @@ is behind it under **Where it came from**:
 
 Not counted as savings: a fixed term that ran to its last payment (finishing a
 finance plan is not a saving), a subscription cancelled and later restored,
-and one that was paused when it was cancelled. A trial cancelled before it ever
+and one that was paused when it was cancelled. A pause keeps no date, so a
+subscription counts as paused when its payment date was left behind its
+cancellation. Before version 1.5.0 cancelling did not bring the payment date
+up to date first, so a subscription cancelled before then, through the API or
+from a page that had not been loaded since a payment passed, may be counted as
+paused and add nothing. A trial cancelled before it ever
 charged is counted on a line of its own — "2 trials cancelled before paying" —
 and given no amount.
 

@@ -140,6 +140,21 @@ final class SavingsTest extends DatabaseTestCase
         self::assertSame([12, 12000], [$row['charges'], $row['totals'][0]['amount_minor']]);
     }
 
+    public function testTwelveMonthsFromTheTwentyNinthOfFebruaryEndOnTheTwentyEighth(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2028-02-29 09:00:00'));
+        $id = $this->create($this->alice, 'Streaming', '10.00', [
+            'next_payment_date' => '2028-03-01',
+            'start_date' => '2028-02-01',
+        ]);
+        $this->subscriptions->cancel($this->alice, $id);
+        $this->at('2029-06-01');
+
+        // 1 March 2028 to 1 February 2029: twelve, not the thirteenth on 1 March.
+        $row = $this->savings->summary($this->alice)['cancellations']['by_subscription'][0];
+        self::assertSame(12, $row['charges']);
+    }
+
     public function testAMonthlyRowCancelledFourMonthsAgoWithNoNoticeRemovedFourCharges(): void
     {
         $id = $this->create($this->alice, 'Streaming', '10.99');
@@ -212,6 +227,33 @@ final class SavingsTest extends DatabaseTestCase
         self::assertSame([], $summary['cancellations']['run_rate']['totals']);
         self::assertSame([], $summary['cancellations']['by_subscription']);
         self::assertFalse($summary['has_any']);
+    }
+
+    public function testAFixedTermCancelledEarlyIsCreditedUpToItsLastPayment(): void
+    {
+        $id = $this->create($this->alice, 'Phone plan', '20.00', ['payments_end_on' => '2026-04-15']);
+        $this->subscriptions->cancel($this->alice, $id);
+        $this->at('2026-08-01');
+
+        // Feb, Mar and Apr: the three payments it had left.
+        $realised = $this->savings->summary($this->alice)['cancellations']['realised'];
+        self::assertSame(6000, $realised['totals'][0]['amount_minor'] ?? null);
+    }
+
+    public function testTheRunRateCountsCancellationsInsideTheLastTwelveMonthsOnly(): void
+    {
+        $id = $this->create($this->alice, 'Streaming', '10.00');
+        $this->subscriptions->cancel($this->alice, $id);
+
+        $this->at('2027-01-31');
+        self::assertSame(
+            12000,
+            $this->savings->summary($this->alice)['cancellations']['run_rate']['totals'][0]['amount_minor'] ?? null,
+        );
+
+        // Twelve months to the day: no longer in the last twelve months.
+        $this->at('2027-02-01');
+        self::assertSame([], $this->savings->summary($this->alice)['cancellations']['run_rate']['totals']);
     }
 
     public function testACancelledThenRestoredRowContributesNothing(): void

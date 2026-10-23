@@ -236,6 +236,12 @@ final class ApiChargesTest extends ApiTestCase
         $data = $this->decode($this->api('PATCH', $path, $this->ownerToken, ['is_discount' => false]))['data'];
         self::assertSame([null, 0, false], [$data['reference_minor'], $data['saving_minor'], $data['is_discount']]);
 
+        // Not sent, it stays: a note changes nothing about it.
+        $this->api('PATCH', $path, $this->ownerToken, ['actual_minor' => 5000, 'is_discount' => true]);
+        $data = $this->decode($this->api('PATCH', $path, $this->ownerToken, ['note' => 'Loyalty']))['data'];
+        self::assertSame([5800, true], [$data['reference_minor'], $data['is_discount']]);
+        $this->api('PATCH', $path, $this->ownerToken, ['actual_minor' => null]);
+
         foreach ([['is_discount' => 'yes'], ['actual_minor' => 6000, 'is_discount' => true]] as $bad) {
             $response = $this->api('PATCH', $path, $this->ownerToken, $bad);
             self::assertSame(422, $response->getStatusCode(), (string) json_encode($bad));
@@ -289,6 +295,18 @@ final class ApiChargesTest extends ApiTestCase
         // A token that may write catches up first: three charges at £5.99
         // against £11.99.
         $offers = $this->decode($this->api('GET', '/api/v1/savings', $this->ownerToken))['data']['offers'];
+
+        // An offer's charge refuses a discount on top.
+        $charge = (int) $this->db->fetchValue(
+            'SELECT MIN(id) FROM subscription_charges WHERE subscription_id = :id',
+            ['id' => $id],
+        );
+        $refused = $this->api('PATCH', '/api/v1/charges/' . $charge, $this->ownerToken, [
+            'actual_minor' => 499,
+            'is_discount' => true,
+        ]);
+        self::assertSame(422, $refused->getStatusCode());
+        self::assertArrayHasKey('is_discount', $this->decode($refused)['error']['errors'] ?? []);
         self::assertSame(3, $count());
         self::assertSame([['currency' => 'GBP', 'amount_minor' => 1800]], $offers['total']['totals']);
         self::assertSame(1800, $offers['total']['combined']['amount_minor']);

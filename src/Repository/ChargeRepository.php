@@ -683,9 +683,13 @@ final class ChargeRepository extends AbstractScopedRepository
             . ' AND ' . $this->quote('due_date') . ' = :date'
             . ' AND ' . $this->quote('currency') . ' = :currency'
             . ' AND ' . $this->quote('source') . ' <> :manual'
+            // One equal to what was charged would save nothing, and read as
+            // a member's discount.
+            . ' AND ' . $this->quote('expected_minor') . ' <> :charged'
             . ' AND ' . $this->quote('reference_minor') . ' IS NULL',
             [
                 'reference' => $reference->amountMinor,
+                'charged' => $reference->amountMinor,
                 'subscription' => $subscriptionId,
                 'household' => $scope->householdId,
                 'date' => $date->format('Y-m-d'),

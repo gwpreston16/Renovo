@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Domain\BillingCycle;
 use App\Domain\Entity\PriceChange;
 use App\Domain\Entity\Subscription;
 use App\Domain\Entity\SubscriptionSplit;
@@ -212,7 +213,9 @@ final class SavingsService
     private function cancellations(Scope $scope, array $rows, array $splits, ?int $forUserId): array
     {
         $today = $this->clock->today();
-        $runRateSince = $today->modify('-' . self::CANCELLATION_MONTHS . ' months');
+        // Calendar months, clamped to the month's end: a year before 29 February
+        // is 28 February, not 1 March.
+        $runRateSince = BillingCycle::addMonths($today, -self::CANCELLATION_MONTHS);
 
         $cancelled = array_filter($rows, static fn (Subscription $row): bool => $row->isCancelled());
         if ($cancelled === []) {
@@ -332,7 +335,7 @@ final class SavingsService
         DateTimeImmutable $cancelledOn,
         DateTimeImmutable $today,
     ): array {
-        $cap = $cancelledOn->modify('+' . self::CANCELLATION_MONTHS . ' months');
+        $cap = BillingCycle::addMonths($cancelledOn, self::CANCELLATION_MONTHS);
 
         // A charge on the day it was cancelled is spend, as the history counts
         // it, so the walk starts after it.

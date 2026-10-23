@@ -176,6 +176,27 @@ Found while starting it:
 - **A trial cancelled while still a trial is on the trials line**
   (assumption): it never converted, so it never charged.
 
+- **What each charge saved is shown too** (assumption, found while
+  building). The charge resource carries `saving_minor` and the payments
+  export a `saving` column beside the reference: read-only, from the rule
+  above, so each figure can be traced to the charges behind it.
+- **An offer that goes back to its own price has no reference** (assumption,
+  from the merge review). It saved nothing, and a reference equal to the
+  price due is how a discount reads.
+- **A manual payment's discount survives its adoption** (assumption, from the
+  merge review): moved to the price due while what was paid is still below
+  it; an offer's reference on the date replaces it.
+- **The cost page's line is the subscription's whole saving** (assumption):
+  the page shows the row's own prices whole, in ISOLATED mode too, so its
+  saving is the row's, not the reader's share of it.
+
+- **Rows cancelled before 1.5.0 may read as paused** (limitation, from the
+  merge review). `cancel()` has brought the payment date up to date first
+  only since 1.5.0, so an older cancellation through the API, or of a row
+  whose page had not been loaded since a payment passed, can have a payment
+  date behind its cancellation and be counted as paused. Nothing stored tells
+  the two apart; the upgrading guide and the feature page say so.
+
 Known issues added to this phase (*Confirmed 2026-10-23*): **K75**, **K76**,
 **K82**, **K93** — all in ledger code this phase changes.
 

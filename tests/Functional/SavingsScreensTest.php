@@ -158,11 +158,44 @@ final class SavingsScreensTest extends DatabaseTestCase
         $this->fixture();
 
         $spotify = $this->body($this->get('/subscriptions/' . $this->spotifyId . '/money', $this->ownerId));
-        self::assertStringContainsString('Saved £18.00 through offers', $spotify);
+        self::assertMatchesRegularExpression(
+            '#Saved through offers:\s*<strong class="num">£18\.00</strong>#',
+            $spotify,
+        );
         self::assertStringContainsString('(normally £11.99)', $spotify);
+
+        // An offer already counts a lower amount: no discount tick on its
+        // rows, and one on the first charge at the ordinary price.
+        $owner = Scope::forMember($this->ownerId, false, $this->householdId, Role::OwnerAdmin, IsolationMode::Shared);
+        $charges = $this->container()->get(\App\Service\ChargeService::class)
+            ->forSubscription($owner, $this->spotifyId);
+        foreach ($charges as $charge) {
+            $tick = 'id="discount-' . $charge->id . '"';
+            $charge->referenceMinor === null
+                ? self::assertStringContainsString($tick, $spotify)
+                : self::assertStringNotContainsString($tick, $spotify);
+        }
 
         $gym = $this->body($this->get('/subscriptions/' . $this->gymId . '/money', $this->ownerId));
         self::assertStringNotContainsString('through offers', $gym);
+    }
+
+    public function testThePaymentsExportCarriesEachChargesReferenceAndSaving(): void
+    {
+        $this->fixture();
+        $this->get('/stats', $this->ownerId);
+
+        $csv = $this->body($this->get('/payments/export.csv', $this->ownerId));
+        $spotify = array_values(array_filter(
+            explode("\n", $csv),
+            static fn (string $line): bool => str_starts_with($line, 'Spotify,'),
+        ));
+
+        // Three at the intro price, saving £6.00 each; May at the ordinary
+        // price, with no reference and nothing saved.
+        $offer = array_filter($spotify, static fn (string $line): bool => str_ends_with($line, ',11.99,6.00'));
+        self::assertCount(3, $offer);
+        self::assertCount(4, $spotify);
     }
 
     /**

@@ -36,7 +36,8 @@
     {% if offer_savings is not empty %}
         <p class="savings-line">
             {{ icon('savings') }}
-            {{ t('savings.saved_on_row', {'amount': offer_savings|map(total => total.amount_minor|money(total.currency))|join(' · ')}) }}
+            {{ t('savings.saved_on_row') }}
+            <strong class="num">{{ offer_savings|map(total => total.amount_minor|money(total.currency))|join(' · ') }}</strong>
         </p>
     {% endif %}
 

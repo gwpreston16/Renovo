@@ -104,6 +104,11 @@ none the price the offer went back to — the first ordinary price after it in
 the subscription's price history — and never changes one that has a price
 already. Its last line says how many it filled. Running it again fills nothing.
 
+A subscription cancelled before version 1.5.0 may add nothing to **Spend
+removed by cancellations**: cancelling did not then bring its payment date up
+to date, and a payment date left behind the cancellation is how Renovo tells a
+subscription that was paused, which saved nothing by stopping.
+
 Rolling back the migration (`20270201000001_add_reference_minor_to_subscription_charges`)
 drops that price from every payment, and with it the payments members marked
 **This was a discount**; the backfill can fill the offers' again, but not the

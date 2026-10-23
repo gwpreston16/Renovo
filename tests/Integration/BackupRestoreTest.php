@@ -952,6 +952,33 @@ final class BackupRestoreTest extends DatabaseTestCase
         self::assertSame([], $this->container->get(ChargeService::class)->all($this->target));
     }
 
+    public function testADiscountMarkedOnAPaymentSurvivesABackupAndRestore(): void
+    {
+        $this->subscriptions->create($this->source, [
+            'name' => 'Energy',
+            'price' => '58.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-06-15',
+            'start_date' => '2026-04-15',
+        ]);
+        $this->container->get(LedgerBackfillRunner::class)->run();
+        $charges = $this->container->get(ChargeService::class);
+        $charge = $charges->all($this->source)[0];
+        $charges->recordActual($this->source, $charge->id, ['actual' => '50.00', 'discount' => '1']);
+
+        $this->backups->restore($this->target, $this->targetUser, $this->export());
+
+        $restored = $charges->all($this->target)[0];
+        self::assertSame([5000, 5800, true, 800], [
+            $restored->actualMinor,
+            $restored->referenceMinor,
+            $restored->isDiscount(),
+            $restored->saving()->amountMinor,
+        ]);
+    }
+
     public function testABadPaymentRowInAnArchiveIsSkippedNotWritten(): void
     {
         $this->subscriptions->create($this->source, [

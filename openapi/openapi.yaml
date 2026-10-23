@@ -600,8 +600,9 @@ paths:
         expected amount was a discount, making the expected amount the
         charge's `reference_minor`; `false` takes a discount off, and does
         nothing on a charge an offer stands behind. Sent without it, a
-        discount stays while the actual is still lower, and goes when it is
-        cleared or raised to the expected amount. A discount on an actual
+        discount stays while the actual is still lower — and through a skip,
+        while it saves nothing — and goes when it is cleared or raised to the
+        expected amount. A discount on an actual
         that is not lower, or on a charge an offer already stands behind, is
         a 422.
       requestBody:

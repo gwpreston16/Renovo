@@ -1970,7 +1970,7 @@ return [
     'savings.committed_charges' => '{count, plural, one {# already due under its notice} other {# already due under its notice}}',
     'savings.row_run_rate' => '{amount} a year',
     'savings.note' => 'What offers and discounts took off the normal price, and what cancelled subscriptions would have cost since — counted for up to {months} months after each was cancelled, and never a charge its notice period had already committed. A fixed term that ran its course is not a saving.',
-    'savings.saved_on_row' => 'Saved {amount} through offers',
+    'savings.saved_on_row' => 'Saved through offers:',
     'savings.see_all' => 'See where it came from',
     'stats.no_previous_year' =>
         'Nothing recorded for the year before last, so there is nothing to compare against. {amount} in '
