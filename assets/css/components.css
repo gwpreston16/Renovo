@@ -1707,6 +1707,24 @@ input[type='checkbox'].toggle:checked::before {
     transform: translate(1rem, -50%);
 }
 
+/*
+ * A switch that cannot be changed — locked by the environment, or waiting on
+ * another switch — reads as off-limits rather than live: dimmed, with the
+ * not-allowed cursor, as a disabled filter chip is. Its label dims with it.
+ */
+input[type='checkbox'].toggle:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.choice.toggle-row:has(.toggle:disabled) {
+    cursor: not-allowed;
+}
+
+.choice.toggle-row:has(.toggle:disabled) .choice-title {
+    color: var(--muted);
+}
+
 @media (forced-colors: active) {
     input[type='checkbox'].toggle::before {
         background: CanvasText;

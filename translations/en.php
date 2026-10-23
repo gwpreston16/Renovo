@@ -2714,7 +2714,8 @@ return [
     'flash.updates_up_to_date' => 'Checked. This is the latest release.',
     'settings.status_version' => 'Version',
     'settings.update_banner' => 'Show a banner on the dashboard when an update is available',
-    'settings.update_banner_hint' => 'Instance administrators only. Each can dismiss it until the next release.',
+    'settings.update_banner_hint' =>
+        'Instance administrators only, once update checks are on. Each can dismiss it until the next release.',
     'settings.update_check' => 'Check for new versions',
     'settings.update_check_hint' =>
         'Once a day, Renovo asks GitHub for its latest release. GitHub sees your server\'s IP address. '

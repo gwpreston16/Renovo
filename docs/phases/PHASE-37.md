@@ -182,6 +182,12 @@ Found while starting it:
   it. Fixed here, with `InstanceSettingsServiceTest`; recorded under *Fixed*.
 - **`/hotfix` writes `VERSION` too** (found in the merge review), as `/release`
   does, so a patch release reports its own number.
+- **Two of the merge review's follow-ups are fixed here** (K95, K102): a
+  disabled switch is dimmed with a not-allowed cursor, so a locked Updates
+  switch reads as greyed out as §E says, and the README's six desktop
+  screenshots are retaken with the version at the foot of the rail. The
+  phone-width picture is unchanged: there the version is inside the closed
+  More sheet. The rest are recorded as K96–K101 and K103–K105.
 
 ## Status
 
