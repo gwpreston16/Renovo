@@ -470,6 +470,19 @@ Since v1, each phase has shipped as a minor release (see
   the token revocation; its version is unchanged. Two migrations encrypt the
   existing rows. See
   [Rotating the encryption key](operations.md#rotating-the-encryption-key).
+- **Phase 39 — backups off the server, and proof they restore — complete
+  (1.10.0).** Every verified instance backup can now be sent to S3-compatible
+  storage, a WebDAV folder or a mounted directory, each added in **Settings →
+  Instance → Destinations** with **Test connection** and its own retention.
+  The encrypted file is what leaves, checked on arrival; a failed upload is
+  retried on the next passes and never fails the local backup, and **Back up
+  now** sends after the page has returned. `backup:rehearse` downloads the
+  newest copy from a destination, verifies it and, given a scratch database,
+  restores and checks it; `backup:fetch` brings one copy back. Instance
+  administrators are alerted when backups fail, go stale off the server or
+  fail a rehearsal, and the backup history shows where each run was sent.
+  No API changes. Five migrations. See
+  [Sending backups off the server](operations.md#sending-backups-off-the-server).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says

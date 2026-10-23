@@ -176,9 +176,9 @@ uses it, and a deployment from the published image never installs it. See
 ## What's new
 
 Release notes are in [CHANGELOG.md](CHANGELOG.md), and what each phase built is
-in [docs/history.md](docs/history.md). The latest phase is **Phase 40, secrets
-at rest, and rotating the key that guards them**
-([brief](docs/phases/PHASE-40.md)); the [roadmap](ROADMAP.md) shows what is in
+in [docs/history.md](docs/history.md). The latest phase is **Phase 39, backups
+off the server, and proof they restore**
+([brief](docs/phases/PHASE-39.md)); the [roadmap](ROADMAP.md) shows what is in
 progress and what is planned.
 
 ## Contributing
