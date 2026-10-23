@@ -38,6 +38,7 @@ use App\Repository\UserRepository;
 use App\Service\MetricsService;
 use App\Repository\NotificationLogRepository;
 use App\Security\CsrfTokenManager;
+use App\Security\KeyRing;
 use App\Security\SecretCipher;
 use App\Security\Session;
 use App\Security\SessionInterface;
@@ -304,19 +305,17 @@ return static function (ContainerBuilder $builder, array $settings): void {
 
         CsrfTokenManager::class => autowire()->constructorParameter('session', get(SessionInterface::class)),
 
-        // Two-factor secrets have to be stored recoverably, so they are stored
-        // encrypted. The key defaults to SESSION_KEY rather than adding a
-        // required variable: an instance already cannot run without one, and an
-        // operator who wants the two separated can set TOTP_ENCRYPTION_KEY.
-        SecretCipher::class => static function (ContainerInterface $c): SecretCipher {
-            $settings = $c->get('settings');
+        // Secrets that have to be stored recoverably are stored encrypted.
+        // KeyRing resolves the keys (SECRETS_KEY, then TOTP_ENCRYPTION_KEY,
+        // then SESSION_KEY, plus the previous keys); this cipher is the
+        // two-factor one, and the channel and rate-key ciphers are built from
+        // the same ring with their own purposes.
+        KeyRing::class => static fn (ContainerInterface $c): KeyRing => KeyRing::fromSettings($c->get('settings')),
 
-            return new SecretCipher(
-                $settings['auth']['totp_encryption_key'] !== ''
-                    ? $settings['auth']['totp_encryption_key']
-                    : $settings['session']['key'],
-            );
-        },
+        SecretCipher::class => static fn (ContainerInterface $c): SecretCipher => new SecretCipher(
+            $c->get(KeyRing::class),
+            SecretCipher::PURPOSE_TOTP,
+        ),
 
         // The relying party is this deployment. Both values come from
         // configuration: the name is what the authenticator shows the user, and

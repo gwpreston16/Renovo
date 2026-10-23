@@ -13,6 +13,7 @@ use App\Repository\WebAuthnCredentialRepository;
 use App\Security\RequestContext;
 use App\Security\RequestContextHolder;
 use App\Security\PasswordHasher;
+use App\Security\KeyRing;
 use App\Security\SecretCipher;
 use App\Service\AuditLogService;
 use App\Service\Auth\RecoveryCodeService;
@@ -78,7 +79,7 @@ final class WebAuthnCredentialTest extends DatabaseTestCase
                 $totpRepository,
                 $this->recoveryCodes,
                 $this->credentials,
-                new SecretCipher('test-instance-secret-for-totp'),
+                new SecretCipher(new KeyRing('test-instance-secret-for-totp')),
                 $hasher,
                 $audit,
                 $this->clock,

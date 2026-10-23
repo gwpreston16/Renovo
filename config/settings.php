@@ -146,6 +146,17 @@ return [
         'totp_encryption_key' => $env('TOTP_ENCRYPTION_KEY', ''),
     ],
 
+    // The key stored secrets are encrypted under — two-factor seeds, channel
+    // config, the rate provider key. Optional: it falls back to
+    // TOTP_ENCRYPTION_KEY, then SESSION_KEY (App\Security\KeyRing). Set it so
+    // the session key can be rotated without touching stored secrets.
+    // SECRETS_PREVIOUS_KEYS (comma-separated) still decrypt, and
+    // `secrets:rotate` re-encrypts under the current key.
+    'secrets' => [
+        'key' => $env('SECRETS_KEY', ''),
+        'previous_keys' => $env('SECRETS_PREVIOUS_KEYS', ''),
+    ],
+
     'uploads' => [
         'logo_directory' => dirname(__DIR__) . '/public/assets/logos',
         // Icons as fetched, one file per domain, shared by every household on
