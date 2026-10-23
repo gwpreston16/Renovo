@@ -283,12 +283,12 @@ Found while building it:
       columns and route copy for instance admins
 - [x] Destinations, rehearsal and history on Settings → Instance → Backups;
       metrics
-- [ ] `docs/operations.md` and `docs/configuration.md`: destinations,
+- [x] `docs/operations.md` and `docs/configuration.md`: destinations,
       least-privilege keys, object lock, rehearsal database
-- [ ] Known issues K19, K25, K65, K111, K112, K113
-- [ ] Migrations on both engines
-- [ ] New strings in every catalogue in `translations/`
-- [ ] `composer check`, `i18n:check`, offline guard green on both engines
+- [x] Known issues K19, K25, K65, K111, K112, K113
+- [x] Migrations on both engines
+- [x] New strings in every catalogue in `translations/`
+- [x] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done
 
