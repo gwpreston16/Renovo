@@ -404,6 +404,21 @@ Since v1, each phase has shipped as a minor release (see
   history — and `DocsLinkTest` fails on any broken link, anchor or image.
   Nothing in the application changed. No migrations. See
   [the documentation index](README.md#renovo-documentation).
+- **Phase 35 — contracts, fixed terms and bills that vary — complete
+  (1.6.0).** A subscription can record when its contract ends: a **Contract
+  ending** alert arrives at your lead times, the date sits beside cancel-by
+  deadlines, and afterwards the analytics show **Out of contract**.
+  **Payments end on** gives a fixed term its last charge; nothing after it is
+  forecast, the subscription ends itself the day after, and its cost page
+  shows **Payment N of M**. **The amount varies** turns the price into an
+  estimate drawn "≈" everywhere it is totalled, with the average of the last
+  bills offered as the new estimate and a warning when it looks off. Budgets,
+  billing-day clamping, impossible dates and the edit-form catch-up were
+  fixed along the way (K2, K11, K48, K72, K73). The API gains
+  `contract_ends_on`, `payments_end_on` and `amount_varies`, and its catch-up
+  can now end a finished term; the OpenAPI document is version 1.5.0. Import,
+  export and backup carry the three fields. Five migrations. See
+  [Contracts, fixed terms and bills that vary](features/tracking.md#contracts-fixed-terms-and-bills-that-vary).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says

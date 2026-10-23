@@ -170,8 +170,8 @@ uses it, and a deployment from the published image never installs it. See
 ## What's new
 
 Release notes are in [CHANGELOG.md](CHANGELOG.md), and what each phase built is
-in [docs/history.md](docs/history.md). The latest phase is **Phase 44, the
-README and the docs** ([brief](docs/phases/PHASE-44.md)); the
+in [docs/history.md](docs/history.md). The latest phase is **Phase 35, contracts,
+fixed terms and bills that vary** ([brief](docs/phases/PHASE-35.md)); the
 [roadmap](ROADMAP.md) shows what is in progress and what is planned.
 
 ## Contributing
