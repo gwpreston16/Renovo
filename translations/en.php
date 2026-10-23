@@ -985,6 +985,7 @@ return [
     'audit_action.passkey.revoked' => 'Passkey revoked',
     'audit_action.password.changed' => 'Password changed',
     'audit_action.password.reset_requested' => 'Password reset requested',
+    'audit_action.secrets.rotated' => 'Stored secrets re-encrypted',
     'audit_action.session.revoked' => 'Session revoked',
     'audit_action.session.revoked_all' => 'All other sessions revoked',
     'audit_action.totp.disabled' => 'Authenticator app disabled',
