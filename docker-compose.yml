@@ -62,6 +62,11 @@ services:
       # dashboard, and the scheduler daily, so both need the operator's say.
       UPDATE_CHECK: ${UPDATE_CHECK:-true}
       UPDATE_CHECK_REPOSITORY: ${UPDATE_CHECK_REPOSITORY:-gwpreston16/Renovo}
+      # Instance backups (Phase 38). The app takes them when an administrator
+      # presses Back up now and serves the downloads; the scheduler takes the
+      # scheduled ones. Both need the same key and directory.
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:-}
+      BACKUP_DIRECTORY: ${BACKUP_DIRECTORY:-}
     # The web root comes from the image, and the `web` container is built from
     # the same one, so the two agree about every asset's name and age without
     # either of them reading the host. Development replaces both with the
@@ -188,18 +193,28 @@ services:
       # dashboard, and the scheduler daily, so both need the operator's say.
       UPDATE_CHECK: ${UPDATE_CHECK:-true}
       UPDATE_CHECK_REPOSITORY: ${UPDATE_CHECK_REPOSITORY:-gwpreston16/Renovo}
+      # Instance backups (Phase 38). The app takes them when an administrator
+      # presses Back up now and serves the downloads; the scheduler takes the
+      # scheduled ones. Both need the same key and directory.
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:-}
+      BACKUP_DIRECTORY: ${BACKUP_DIRECTORY:-}
     # The same var/ volume as the app. `maintenance:prune` clears staged
     # imports that were uploaded and never finished, and those files are written
     # by the app container — without this the scheduler would be tidying its own
     # empty directory and the real ones would accumulate for ever.
+    #
+    # The logos too, read-only: an instance backup carries every subscription's
+    # logo, and the scheduler is what takes the scheduled ones.
     volumes:
       - appvar:/var/www/html/var
+      - logos:/var/www/html/public/assets/logos:ro
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         while true; do
           php bin/console reminders:run || true
           php bin/console maintenance:prune || true
+          php bin/console backup:run || true
           sleep 86400
         done
 

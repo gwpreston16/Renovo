@@ -24,6 +24,10 @@ use App\Repository\AuditLogRepository;
 use App\Repository\AuthAttemptRepository;
 use App\Repository\NotificationLogRepository;
 use App\Repository\TokenRepository;
+use App\Service\Backup\BackupException;
+use App\Service\Backup\BackupOutcome;
+use App\Service\Backup\InstanceBackupService;
+use App\Service\Backup\InstanceRestoreService;
 use App\Service\DemoSeedService;
 use App\Service\ExchangeRate\RateProviderException;
 use App\Service\ExchangeRateService;
@@ -246,6 +250,135 @@ switch ($command) {
         }
         exit($failed ? 2 : 0);
 
+    case 'backup:run':
+        // The scheduler's instance backup: taken if one is due by the schedule
+        // set in Settings → Instance, or now with --force. Quiet and successful
+        // when backups are off, since the scheduler asks every day.
+        $force = false;
+        foreach (array_slice($argv, 2) as $argument) {
+            if ($argument === '--force') {
+                $force = true;
+            } else {
+                fwrite(STDERR, sprintf("Unknown option \"%s\". Usage: backup:run [--force]\n", $argument));
+                exit(1);
+            }
+        }
+
+        try {
+            $outcome = $container->get(InstanceBackupService::class)->runScheduled($force);
+        } catch (BackupException $exception) {
+            fwrite(STDERR, $exception->getMessage() . PHP_EOL);
+            exit(1);
+        }
+
+        switch ($outcome->result) {
+            case BackupOutcome::OFF:
+                $out('Scheduled instance backups are off. Turn them on in Settings → Instance, or use --force.');
+                exit(0);
+            case BackupOutcome::NOT_DUE:
+                $out('No instance backup is due yet.');
+                exit(0);
+            case BackupOutcome::BUSY:
+                $out('Another instance backup is running. Nothing was started.');
+                exit(0);
+            case BackupOutcome::FAILED:
+                fwrite(STDERR, 'The instance backup failed: ' . $outcome->message . PHP_EOL);
+                exit(1);
+        }
+
+        $run = $outcome->run;
+        $out(sprintf(
+            'Backed up and verified: %s (%s bytes, key %s); %d warning(s); %d old backup(s) pruned.',
+            $run?->file,
+            number_format((int) $run?->sizeBytes),
+            $run?->keyFingerprint,
+            count($run?->warnings ?? []),
+            $outcome->pruned,
+        ));
+        exit(0);
+
+    case 'backup:verify':
+        // Any instance backup, from this server or not: decrypt it and check
+        // every entry against its manifest.
+        $file = $argv[2] ?? '';
+        if ($file === '' || !is_file($file)) {
+            fwrite(STDERR, "Usage: backup:verify <file>\n");
+            exit(1);
+        }
+
+        try {
+            $manifest = $container->get(InstanceBackupService::class)->verifyFile($file);
+        } catch (BackupException $exception) {
+            fwrite(STDERR, 'FAIL ' . $exception->getMessage() . PHP_EOL);
+            exit(1);
+        }
+
+        $out(sprintf(
+            'OK   %s verifies: %d table(s), %d row(s), %d file(s). Taken %s on %s by Renovo %s,'
+            . ' at migration %s.',
+            basename($file),
+            count($manifest['tables']),
+            array_sum($manifest['tables']),
+            count($manifest['entries']) - count($manifest['tables']),
+            $manifest['created_at'],
+            $manifest['engine'],
+            $manifest['renovo_version'],
+            $manifest['migration_version'],
+        ));
+        exit(0);
+
+    case 'backup:decrypt':
+        // So an operator can open a backup with ordinary tools and the key,
+        // without Renovo's database. The output is plaintext: every password
+        // hash and invoice. Keep it no longer than it is needed.
+        $file = $argv[2] ?? '';
+        $destination = $argv[3] ?? '';
+        if ($file === '' || $destination === '' || !is_file($file)) {
+            fwrite(STDERR, "Usage: backup:decrypt <file> <out.zip>\n");
+            exit(1);
+        }
+        if (file_exists($destination)) {
+            fwrite(STDERR, sprintf("%s already exists. Choose a new file name.\n", $destination));
+            exit(1);
+        }
+
+        try {
+            $container->get(InstanceBackupService::class)->decryptFile($file, $destination);
+        } catch (BackupException $exception) {
+            @unlink($destination);
+            fwrite(STDERR, 'FAIL ' . $exception->getMessage() . PHP_EOL);
+            exit(1);
+        }
+
+        $out(sprintf('Decrypted to %s. It is not encrypted: delete it when you are done.', $destination));
+        exit(0);
+
+    case 'backup:restore':
+        // Disaster recovery, into an empty database at the backup's migration
+        // version. Refuses — changing nothing — otherwise. See docs/operations.md.
+        $file = $argv[2] ?? '';
+        if ($file === '' || !is_file($file)) {
+            fwrite(STDERR, "Usage: backup:restore <file>\n");
+            exit(1);
+        }
+
+        try {
+            $summary = $container->get(InstanceRestoreService::class)->restore($file);
+        } catch (BackupException $exception) {
+            fwrite(STDERR, $exception->getMessage() . PHP_EOL);
+            exit(1);
+        }
+
+        $out(sprintf(
+            'Restored %d row(s) across %d table(s), and %d file(s), at migration %s.',
+            $summary['rows'],
+            $summary['tables'],
+            $summary['files'],
+            $summary['migration_version'],
+        ));
+        $out('Now run `vendor/bin/phinx migrate` to bring the schema up to this version of Renovo.');
+        exit(0);
+
     case 'demo:seed':
         // Builds the household a read-only demonstration shows. Safe to run
         // twice: it does nothing at all if the demo account already exists.
@@ -408,6 +541,10 @@ switch ($command) {
         $out('  coverage:check       Fail if a Clover report\'s line coverage is under the floor (default 85%)');
         $out('  ledger:backfill      Rebuild past charges into the payment ledger [--household=ID]');
         $out('  secrets:rotate       Re-encrypt every stored secret under the current key [--dry-run]');
+        $out('  backup:run           Take an instance backup if one is due [--force to take one now]');
+        $out('  backup:verify        Decrypt an instance backup and check every entry <file>');
+        $out('  backup:decrypt       Decrypt an instance backup into a plain ZIP <file> <out.zip>');
+        $out('  backup:restore       Restore an instance backup into an empty database <file>');
         $out('  demo:seed            Create the demonstration household and its subscriptions');
         exit(0);
 
