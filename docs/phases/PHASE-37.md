@@ -175,6 +175,13 @@ Found while starting it:
 - **The env vars are documented in `docs/configuration.md`**, not the README.
   *Changed 2026-10-23:* operator settings live there (`CLAUDE.md`), with
   `.env.example`; the feature itself on its operator page.
+- **Writing an instance setting before reading any no longer hides the rest**
+  (found while building it). `InstanceSettingsService::set()` wrote into an
+  unloaded cache, which then held only that key, so every other setting read
+  as its default for the rest of the request. Saving the Updates switches hit
+  it. Fixed here, with `InstanceSettingsServiceTest`; recorded under *Fixed*.
+- **`/hotfix` writes `VERSION` too** (found in the merge review), as `/release`
+  does, so a patch release reports its own number.
 
 ## Status
 
@@ -190,7 +197,7 @@ Found while starting it:
       `docs/configuration.md` and `.env.example`
 - [x] Migration on both engines
 - [x] New strings in `translations/en.php`
-- [ ] `composer check`, `i18n:check`, offline guard green on both engines
+- [x] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done
 
