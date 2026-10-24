@@ -135,20 +135,26 @@ final class LogoStorage
     }
 
     /**
+     * Whether a path is one `store()` or `storeFile()` could have returned.
+     *
+     * Anything else did not come from here — a path typed into a form, say —
+     * and is neither saved against a subscription nor deleted (K1).
+     */
+    public static function isStoredPath(?string $path): bool
+    {
+        return $path !== null && preg_match('~^assets/logos/[0-9a-f]{32}\.(png|jpg|gif|webp)$~D', $path) === 1;
+    }
+
+    /**
      * Remove a stored logo. Paths that did not come from `store()` are
      * ignored rather than trusted.
      */
     public function delete(?string $storedPath): void
     {
-        if ($storedPath === null || !str_starts_with($storedPath, 'assets/logos/')) {
+        if (!self::isStoredPath($storedPath)) {
             return;
         }
 
-        $name = basename($storedPath);
-        if (preg_match('/^[0-9a-f]{32}\.(png|jpg|gif|webp)$/', $name) !== 1) {
-            return;
-        }
-
-        @unlink(rtrim($this->directory, '/') . '/' . $name);
+        @unlink(rtrim($this->directory, '/') . '/' . basename((string) $storedPath));
     }
 }

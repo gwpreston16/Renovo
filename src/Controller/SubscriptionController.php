@@ -356,6 +356,12 @@ final class SubscriptionController extends Controller
         $scope = $this->scope($request);
         $body = $this->body($request);
 
+        // The logo is only ever the file uploaded with this request. A
+        // `logo_path` in the posted form is not one, whatever it names — a
+        // third-party URL, or a co-member's stored logo, which deleting this
+        // row would then delete (K1).
+        unset($body['logo_path']);
+
         try {
             $uploaded = $this->logos->store($this->uploadedLogo($request));
             if ($uploaded !== null) {
