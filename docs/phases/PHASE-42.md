@@ -217,10 +217,10 @@ ROADMAP candidate.
       count on Instance status
 - [x] `TokenRateLimiter`, `api_rate_windows`, 429 and headers; prune
 - [x] `api_token.auth_failed` audit with de-duplication; IP failure throttle
-- [ ] OpenAPI and `docs/api.md`; coverage tests extended
-- [ ] K40, K44, K107
+- [x] OpenAPI and `docs/api.md`; coverage tests extended
+- [x] K40, K44, K107
 - [ ] Migrations on both engines
-- [ ] `.env.example` and the README environment table
+- [x] `.env.example` and the README environment table
 - [ ] New strings in `translations/en.php`
 - [ ] `composer check`, `i18n:check`, offline guard green on both engines
 

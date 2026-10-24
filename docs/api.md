@@ -45,17 +45,19 @@ through.
 
 Issue one under **Settings → Data & integrations → API tokens**. A token looks like
 `rnv_<public id>_<secret>`; only a hash of the secret is stored, so it is shown
-once and cannot be recovered. Choose **read-only** unless something genuinely
-needs to make changes.
+once and cannot be recovered. Give it only the [scopes](#scopes) it needs —
+**Read everything** is the default — and let it expire: a new token lasts 90
+days unless you choose otherwise.
 
 Changing or resetting your password revokes every token you hold, calendar
 feed links included, so a token is never worth more than the password it was
 issued under. Issue new ones afterwards.
 
-A token narrows and never grants. The request runs under the household role of
-the account that issued it, so a Viewer's "read and write" token still cannot
-write — it fails the same permission check the browser would. A read-only token
-is refused any unsafe method outright, before a route runs.
+A token narrows and never grants. Its scopes say which resources it may reach,
+and the request still runs under the household role of the account that issued
+it, so a Viewer's `subscriptions:write` token still cannot write — it fails the
+same permission check the browser would. A token without the scope a route
+needs is refused before the route runs.
 
 ```bash
 curl -H "Authorization: Bearer rnv_..." http://localhost:9090/api/v1/subscriptions
@@ -153,20 +155,84 @@ session with no token gets `401`, and there is a test that says so.
 
 ### A token narrows; it never grants
 
-A token carries one of two abilities, `read` or `write` — two values rather
-than a permission list, deliberately. The request still runs under the
-household role of the account that issued the token, and the scope is built by
-the same `ScopeFactory` the browser uses. So:
+A token holds **scopes**, and each route names the one it needs (the Scope
+column of the [permission table](#permissions)). The request still runs under
+the household role of the account that issued the token, and the scope the
+data is read under is built by the same `ScopeFactory` the browser uses. So
+both checks run, in that order:
 
-- A **Viewer's write-capable token still cannot write.** It fails the same
-  permission check the browser would, with `403`.
-- A **read-only token is refused any unsafe method outright**, before any route
-  runs, with `403`. Safe methods are `GET`, `HEAD` and `OPTIONS`; everything
-  else is unsafe.
+- A **token without the route's scope gets `403`**, naming the scope, before
+  the route runs.
+- A **Viewer's `subscriptions:write` token still cannot write.** It passes the
+  scope check and fails the same permission check the browser would, with
+  `403`.
 
-What the ability adds is the power to issue a credential *weaker* than the
-account behind it — which is what makes one safe to paste into a calendar
-client or a cron script.
+What scopes add is the power to issue a credential *weaker* than the account
+behind it — which is what makes one safe to paste into a calendar client or a
+cron script.
+
+### Scopes
+
+| Scope | Reaches |
+| --- | --- |
+| `subscriptions:read` | `/subscriptions`, their attachments and payments (`/charges`), and `/savings` |
+| `subscriptions:write` | Creating, editing, cancelling and deleting those, their logos, attachments and payments |
+| `catalogue:read` | `/categories`, `/tags`, `/payment-methods` and their logos |
+| `catalogue:write` | Creating, renaming and deleting those, and changing payment-method logos |
+| `calendar:read` | The [calendar feed](#calendar-feed) |
+
+`:write` includes `:read` for the same resource and nothing else:
+`subscriptions:write` reads subscriptions but not categories. `GET /me` and
+`GET /instance` need only a valid token. The issue form offers presets —
+**Read everything** (every `:read` scope and the calendar), **Read and write
+everything**, **Calendar only** — or **Custom**, a switch per scope.
+
+Tokens issued before scopes kept what they could do: a read token reads
+everything, the calendar included; a write token holds every scope; the
+calendar screen's feed link holds `calendar:read` only.
+
+### Lifetimes
+
+A new token lasts **90 days** unless you choose 30 or 365 days, a date, or no
+expiry. An instance may set a maximum with `API_TOKEN_MAX_DAYS`: then **No
+expiry** is not offered and a later date is refused. Tokens issued before the
+maximum was set keep their expiry, and Settings → Instance → Instance status
+counts those that never expire. The calendar feed's link is exempt — it can
+only read the calendar, and replacing it breaks every subscribed calendar.
+
+A token within 14 days of its expiry is flagged in the token list. **Reissue**
+gives it a new secret and its lifetime again from that day, cut to the
+maximum if there is one; the old secret stops working at once. `GET /me`
+reports the token's `expires_at`, so a script can tell when it has to be
+replaced.
+
+### Rate limits
+
+| Limit | Default | Setting |
+| --- | --- | --- |
+| Requests per token, per minute | 120 | `API_RATE_LIMIT_PER_MINUTE` |
+| Requests per address with no valid token, per minute | 30 | `API_RATE_LIMIT_PER_IP_PER_MINUTE` |
+| Failed tokens per address before it is blocked, in five minutes | 10 | — |
+
+The windows are fixed: a minute starts on the minute. Every response the
+limiter has counted carries three headers:
+
+- `RateLimit-Limit` — the requests allowed in the window;
+- `RateLimit-Remaining` — how many are left;
+- `RateLimit-Reset` — seconds until the window resets.
+
+Over the limit, the answer is `429` with `Retry-After` in seconds; wait that
+long. The calendar feed shares its token's limit, far above how often a
+calendar polls. Ten tokens that do not match, have expired or have been revoked
+from one address within five minutes block token authentication from that
+address — a valid token included — until the five minutes are up. Each failure
+is recorded in the audit log as **API token refused**, once per address per
+five minutes with a count, never with the secret.
+
+The address is the connection's (`REMOTE_ADDR`), as for the sign-in throttle.
+Behind a reverse proxy that does not pass the client's address on, every
+client shares the proxy's — and one client's failures block the rest; see
+[Behind your own reverse proxy](security.md#behind-your-own-reverse-proxy).
 
 ### Isolation applies identically
 
@@ -180,47 +246,50 @@ the web interface uses.
 
 ## Permissions
 
-Each route names the permission it requires. These are the wire strings —
-the same values `GET /me` returns in its `permissions` array.
+Each route names the token scope and the permission it requires. The
+permissions are the wire strings — the same values `GET /me` returns in its
+`permissions` array; the scopes are those the token holds (see
+[Scopes](#scopes)). Every route but the two OpenAPI documents may also answer
+`429` (see [Rate limits](#rate-limits)).
 
-| Method | Path | Permission |
-| --- | --- | --- |
-| `GET` | `/openapi.yaml` | *public* |
-| `GET` | `/openapi.json` | *public* |
-| `GET` | `/me` | *any valid token* |
-| `GET` | `/instance` | *any valid token* |
-| `GET` | `/subscriptions` | `subscription.view` |
-| `POST` | `/subscriptions` | `subscription.create` |
-| `GET` | `/subscriptions/{id}` | `subscription.view` |
-| `PUT` | `/subscriptions/{id}` | `subscription.update` |
-| `DELETE` | `/subscriptions/{id}` | `subscription.delete` |
-| `POST` | `/subscriptions/{id}/cancel` | `subscription.update` |
-| `POST` | `/subscriptions/{id}/uncancel` | `subscription.update` |
-| `POST` | `/subscriptions/{id}/logo` | `subscription.update` |
-| `DELETE` | `/subscriptions/{id}/logo` | `subscription.update` |
-| `GET` | `/subscriptions/{id}/attachments` | `subscription.view` |
-| `POST` | `/subscriptions/{id}/attachments` | `attachment.manage` |
-| `GET` | `/subscriptions/{id}/attachments/{attachmentId}` | `subscription.view` |
-| `DELETE` | `/subscriptions/{id}/attachments/{attachmentId}` | `attachment.manage` |
-| `GET` | `/subscriptions/{id}/charges` | `subscription.view` |
-| `POST` | `/subscriptions/{id}/charges` | `charge.manage` |
-| `PATCH` | `/charges/{id}` | `charge.manage` |
-| `GET` | `/savings` | `subscription.view` |
-| `GET` | `/categories` | `subscription.view` |
-| `POST` | `/categories` | `category.manage` |
-| `PUT` | `/categories/{id}` | `category.manage` |
-| `DELETE` | `/categories/{id}` | `category.manage` |
-| `GET` | `/payment-methods` | `subscription.view` |
-| `POST` | `/payment-methods` | `category.manage` |
-| `PUT` | `/payment-methods/{id}` | `category.manage` |
-| `DELETE` | `/payment-methods/{id}` | `category.manage` |
-| `POST` | `/payment-methods/{id}/logo` | `category.manage` |
-| `DELETE` | `/payment-methods/{id}/logo` | `category.manage` |
-| `GET` | `/tags` | `subscription.view` |
-| `POST` | `/tags` | `tag.manage` |
-| `PUT` | `/tags/{id}` | `tag.manage` |
-| `DELETE` | `/tags/{id}` | `tag.manage` |
-| `GET` | `/calendar.ics` | `subscription.view` |
+| Method | Path | Scope | Permission |
+| --- | --- | --- | --- |
+| `GET` | `/openapi.yaml` | — | *public* |
+| `GET` | `/openapi.json` | — | *public* |
+| `GET` | `/me` | *any* | *any valid token* |
+| `GET` | `/instance` | *any* | *any valid token* |
+| `GET` | `/subscriptions` | `subscriptions:read` | `subscription.view` |
+| `POST` | `/subscriptions` | `subscriptions:write` | `subscription.create` |
+| `GET` | `/subscriptions/{id}` | `subscriptions:read` | `subscription.view` |
+| `PUT` | `/subscriptions/{id}` | `subscriptions:write` | `subscription.update` |
+| `DELETE` | `/subscriptions/{id}` | `subscriptions:write` | `subscription.delete` |
+| `POST` | `/subscriptions/{id}/cancel` | `subscriptions:write` | `subscription.update` |
+| `POST` | `/subscriptions/{id}/uncancel` | `subscriptions:write` | `subscription.update` |
+| `POST` | `/subscriptions/{id}/logo` | `subscriptions:write` | `subscription.update` |
+| `DELETE` | `/subscriptions/{id}/logo` | `subscriptions:write` | `subscription.update` |
+| `GET` | `/subscriptions/{id}/attachments` | `subscriptions:read` | `subscription.view` |
+| `POST` | `/subscriptions/{id}/attachments` | `subscriptions:write` | `attachment.manage` |
+| `GET` | `/subscriptions/{id}/attachments/{attachmentId}` | `subscriptions:read` | `subscription.view` |
+| `DELETE` | `/subscriptions/{id}/attachments/{attachmentId}` | `subscriptions:write` | `attachment.manage` |
+| `GET` | `/subscriptions/{id}/charges` | `subscriptions:read` | `subscription.view` |
+| `POST` | `/subscriptions/{id}/charges` | `subscriptions:write` | `charge.manage` |
+| `PATCH` | `/charges/{id}` | `subscriptions:write` | `charge.manage` |
+| `GET` | `/savings` | `subscriptions:read` | `subscription.view` |
+| `GET` | `/categories` | `catalogue:read` | `subscription.view` |
+| `POST` | `/categories` | `catalogue:write` | `category.manage` |
+| `PUT` | `/categories/{id}` | `catalogue:write` | `category.manage` |
+| `DELETE` | `/categories/{id}` | `catalogue:write` | `category.manage` |
+| `GET` | `/payment-methods` | `catalogue:read` | `subscription.view` |
+| `POST` | `/payment-methods` | `catalogue:write` | `category.manage` |
+| `PUT` | `/payment-methods/{id}` | `catalogue:write` | `category.manage` |
+| `DELETE` | `/payment-methods/{id}` | `catalogue:write` | `category.manage` |
+| `POST` | `/payment-methods/{id}/logo` | `catalogue:write` | `category.manage` |
+| `DELETE` | `/payment-methods/{id}/logo` | `catalogue:write` | `category.manage` |
+| `GET` | `/tags` | `catalogue:read` | `subscription.view` |
+| `POST` | `/tags` | `catalogue:write` | `tag.manage` |
+| `PUT` | `/tags/{id}` | `catalogue:write` | `tag.manage` |
+| `DELETE` | `/tags/{id}` | `catalogue:write` | `tag.manage` |
+| `GET` | `/calendar.ics` | `calendar:read` | `subscription.view` |
 
 Start with `GET /me`: it reports the role, the isolation mode and the resolved
 permission list for the token you are holding, so a client can ask what it is
@@ -264,9 +333,9 @@ Contributor *can* write, the scoping layer fences to rows they own — the
 permission says they may edit a subscription, and the repository decides whose.
 
 So a **Viewer holds exactly one permission**, `subscription.view`. That is what
-makes "a Viewer's write-capable token still cannot write" concrete: the token's
-ability permits the method, and then every mutating route fails its permission
-check anyway.
+makes "a Viewer's `subscriptions:write` token still cannot write" concrete: the
+token's scope permits the route, and then every mutating route fails its
+permission check anyway.
 
 Two rows do not follow the household role:
 
@@ -359,10 +428,11 @@ Every error is JSON, in one shape:
 | Status | When |
 | --- | --- |
 | `400` | The request was malformed — a bad multipart body, an unreadable upload. |
-| `401` | No token presented, or it is revoked, expired, malformed or unknown. The four are one answer. |
-| `403` | The token's role does not permit this, **or** a read-only token attempted an unsafe method, **or** a write-capable token was offered to the calendar feed. |
+| `401` | No token presented, or it is revoked, expired, malformed or unknown. The four are one answer. A write sent with no bearer token, or another scheme, is a `401` too. |
+| `403` | The token does not hold the scope the route needs (the message names it), **or** the role does not permit this, **or** a token that can write was offered to the calendar feed. |
 | `404` | No such row — **or** one the caller may not see. |
 | `422` | The body was understood but is not valid. |
+| `429` | Over a [rate limit](#rate-limits), or the address has failed token authentication ten times in five minutes. `Retry-After` says how many seconds to wait. |
 
 Two of these are deliberately uninformative:
 
@@ -388,8 +458,9 @@ in order to learn how to authenticate, and it contains no instance data.
 
 #### `GET /api/v1/me`
 
-The token's identity, role and effective permissions. Requires only a valid
-token; no permission gate.
+The token's identity, role and effective permissions, and the token itself:
+its scopes and when it expires. Requires only a valid token; no permission
+gate.
 
 ```bash
 curl -H "Authorization: Bearer rnv_..." \
@@ -424,10 +495,24 @@ curl -H "Authorization: Bearer rnv_..." \
       "household.view",
       "attachment.manage",
       "data.import"
-    ]
+    ],
+    "token": {
+      "id": 7,
+      "name": "Home Assistant",
+      "public_id": "0f3c2a9be81d44c7a1b2c3d4",
+      "scopes": ["subscriptions:read", "catalogue:read", "calendar:read"],
+      "abilities": "read",
+      "last_used_at": "2026-10-24T09:12:03+00:00",
+      "expires_at": "2027-01-22T23:59:59+00:00",
+      "revoked_at": null,
+      "created_at": "2026-10-24T09:10:41+00:00"
+    }
   }
 }
 ```
+
+`token.abilities` is what the token could do before scopes, `write` when it
+holds any write scope; it is kept for one release, so read `scopes` instead.
 
 `role` is one of `owner_admin`, `editor`, `contributor`, `viewer`, or `null` when
 the account
@@ -471,13 +556,13 @@ List subscriptions. Returns only what the token's role and the instance's
 isolation mode allow — the same rows the same user would see in the web
 interface.
 
-With a token that may write, the request first runs the catch-up the web pages
-run, in its order: scheduled prices that have reached their date take effect,
+With a `subscriptions:write` token, the request first runs the catch-up the
+web pages run, in its order: scheduled prices that have reached their date take effect,
 ended free trials convert, overdue payment dates move on, each passed
 billing date recorded as a payment, and a fixed term whose last payment has
 passed is cancelled as of the day after it. So a `price_minor`, a trial's or a
 fixed term's status, or a `next_payment_date` can differ from the last response
-without anybody editing the row. A read-only token changes nothing.
+without anybody editing the row. A token without that scope changes nothing.
 
 | Parameter | Type | Notes |
 | --- | --- | --- |
@@ -659,10 +744,10 @@ Contributor's `PATCH` or `POST` on another member's row.
 
 #### `GET /api/v1/subscriptions/{id}/charges`
 
-List the subscription's charges, newest first, a page at a time. With a token
-that may write, the request first runs the same catch-up as the subscription
-list, so every billing date that has passed is there; a read-only token reads
-what the last catch-up wrote. Paged with `page`
+List the subscription's charges, newest first, a page at a time. With a
+`subscriptions:write` token, the request first runs the same catch-up as the
+subscription list, so every billing date that has passed is there; a token
+without it reads what the last catch-up wrote. Paged with `page`
 (minimum 1) and `per_page` (1–100, default 25), with a `meta` block shaped like
 the subscription list's. A page past the last returns the last. Responses:
 `200`, `401`, `403`, `404`.
@@ -729,8 +814,8 @@ Every figure is `{totals, combined}`: each currency's `amount_minor`, and their
 sum in the base currency — `amount_minor` `null`, with the currencies that have
 no rate in `unconvertible`, when one does not convert. In ISOLATED mode the
 figures are the token holder's own, counting their share of a split bill as a
-member budget does. With a token that may write, the request first runs the
-catch-up. Responses: `200` with `Savings`, `401`, `403`.
+member budget does. With a `subscriptions:write` token, the request first runs
+the catch-up. Responses: `200` with `Savings`, `401`, `403`.
 
 ---
 
@@ -838,12 +923,14 @@ route cannot end up accepting URL credentials by being added in the wrong
 place. A calendar client fetches a URL on a timer for ever and cannot send an
 `Authorization` header; the feed pays for that in the only currency available:
 
-- It accepts **read-only tokens exclusively.**
-- A **write-capable token is refused with `403`, not downgraded.** A credential
-  that can change data does not belong in a subscription URL, and quietly
-  accepting one teaches the operator that it is fine to put it there.
+- It needs the **`calendar:read`** scope — the calendar screen's link holds
+  that and nothing else.
+- A **token holding any write scope is refused with `403`, not downgraded.** A
+  credential that can change data does not belong in a subscription URL, and
+  quietly accepting one teaches the operator that it is fine to put it there.
+- It shares the token's [rate limit](#rate-limits).
 
-Responses: `200` (`text/calendar`), `401`, `403`.
+Responses: `200` (`text/calendar`), `401`, `403`, `429`.
 
 ---
 
@@ -931,7 +1018,9 @@ Returned as `meta` on a list response.
 Returned by `GET /me`. Fields: `user` (`id`, `email`, `display_name`,
 `is_instance_admin`), `household_id` (nullable), `role` (`owner_admin`,
 `editor`, `viewer`, or null), `isolation_mode` (`shared`, `isolated`),
-`permissions` (array of strings).
+`permissions` (array of strings), `token` (`id`, `name`, `public_id`, `scopes`,
+`abilities` (deprecated), `last_used_at`, `expires_at`, `revoked_at`,
+`created_at`; never the secret).
 
 ### Instance
 

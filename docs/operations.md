@@ -15,8 +15,8 @@ php bin/console list
 php bin/console reminders:run       # send due reminders and budget alerts
 php bin/console rates:refresh       # fetch and cache exchange rates
 php bin/console updates:check       # ask GitHub for the latest release now (only with update checks on)
-php bin/console maintenance:prune   # expired sessions, tokens, throttle, notification and audit
-                                    # records, plus abandoned import uploads
+php bin/console maintenance:prune   # expired sessions, tokens, throttle, API rate-limit, notification
+                                    # and audit records, plus abandoned import uploads
 php bin/console i18n:check          # every locale against the base catalogue; non-zero on drift
 php bin/console assets:offline-check # non-zero if anything the browser loads names a third-party host
 php bin/console ledger:backfill     # after upgrading to the ledger (Phase 34) and again to savings (Phase 36): see upgrading.md [--household=ID]

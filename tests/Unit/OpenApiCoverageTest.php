@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Tests\Unit;
 
 use App\Application\Api\ApiPath;
+use App\Application\Api\ApiRouteScope;
 use App\Application\Api\OpenApiDocument;
+use App\Domain\TokenScope;
 use PHPUnit\Framework\TestCase;
 use Slim\Interfaces\RouteInterface;
 
@@ -88,6 +90,81 @@ final class OpenApiCoverageTest extends TestCase
         foreach (['status', 'title', 'message', 'errors'] as $key) {
             self::assertArrayHasKey($key, $properties, sprintf('The error envelope must describe "%s".', $key));
         }
+    }
+
+    public function testEveryOperationNamesTheTokenScopeItsRouteDeclares(): void
+    {
+        // Phase 42: the spec's `x-token-scope` is the route's declaration in
+        // config/routes.php, for every operation, in both directions.
+        $declared = $this->routeScopes();
+        $paths = $this->document()->toArray()['paths'];
+        $described = [];
+
+        foreach ($paths as $path => $methods) {
+            foreach ($methods as $method => $operation) {
+                if (!is_array($operation) || !in_array($method, ['get', 'post', 'put', 'patch', 'delete'], true)) {
+                    continue;
+                }
+
+                $key = strtoupper($method) . ' ' . $path;
+                // The two OpenAPI documents need no token. (The calendar feed
+                // has no security either — its token is in the query — but it
+                // has a scope, so it is checked like the rest.)
+                if (($operation['security'] ?? null) === [] && !isset($declared[$key])) {
+                    self::assertArrayNotHasKey('x-token-scope', $operation, $key . ' is public.');
+                    continue;
+                }
+
+                $described[$key] = $operation['x-token-scope'] ?? '(none)';
+                self::assertSame(
+                    '#/components/responses/TooManyRequests',
+                    $operation['responses']['429']['$ref'] ?? null,
+                    $key . ' does not describe its 429.',
+                );
+            }
+        }
+
+        ksort($described);
+        self::assertSame($declared, $described);
+    }
+
+    public function testTheScopesAreListedOnTheBearerScheme(): void
+    {
+        $listed = array_keys($this->document()->toArray()['components']['securitySchemes']['bearerToken']['x-scopes']);
+
+        self::assertSame(array_map(static fn (TokenScope $s): string => $s->value, TokenScope::cases()), $listed);
+    }
+
+    /**
+     * Every token-authenticated route's declared scope, as "METHOD /path" =>
+     * scope (or "any").
+     *
+     * @return array<string, string>
+     */
+    private function routeScopes(): array
+    {
+        $bootstrap = require dirname(__DIR__, 2) . '/config/bootstrap.php';
+        $app = $bootstrap(false);
+        $container = $app->getContainer();
+        self::assertNotNull($container);
+        $scopes = $container->get(ApiRouteScope::class);
+
+        $declared = [];
+        foreach ($app->getRouteCollector()->getRoutes() as $route) {
+            $needed = $scopes->of($route);
+            if ($needed === null) {
+                continue;
+            }
+
+            $pattern = (string) preg_replace('/\{([a-zA-Z_][a-zA-Z0-9_]*)(:[^}]+)?\}/', '{$1}', $route->getPattern());
+            foreach ($route->getMethods() as $method) {
+                $declared[strtoupper($method) . ' ' . $pattern] = $needed instanceof TokenScope ? $needed->value : $needed;
+            }
+        }
+
+        ksort($declared);
+
+        return $declared;
     }
 
     /**
