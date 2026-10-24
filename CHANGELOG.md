@@ -8,6 +8,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-10-24
+
 ### Added
 
 - **Security headers on every response**, set by the application rather than
@@ -544,7 +546,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.10.0...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.11.0...HEAD
+[1.11.0]: https://github.com/gwpreston16/Renovo/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/gwpreston16/Renovo/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/gwpreston16/Renovo/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/gwpreston16/Renovo/compare/v1.7.0...v1.8.0

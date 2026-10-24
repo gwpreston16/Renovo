@@ -483,6 +483,18 @@ Since v1, each phase has shipped as a minor release (see
   fail a rehearsal, and the backup history shows where each run was sent.
   No API changes. Five migrations. See
   [Sending backups off the server](operations.md#sending-backups-off-the-server).
+- **Phase 41 — security headers and a strict Content-Security-Policy —
+  complete (1.11.0).** Every response, error pages and the API included, now
+  carries a strict Content-Security-Policy with a fresh nonce, plus
+  Permissions-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Resource-Policy,
+  `nosniff` and Referrer-Policy, set by the application so they survive any
+  proxy in front of it. No page uses inline script, handler or style any more,
+  and a template that brings one back fails CI. Uploaded files are served
+  sandboxed, and a logo path posted with the form is ignored (K1).
+  `HSTS_ENABLED` and `HSTS_INCLUDE_SUBDOMAINS` turn on
+  Strict-Transport-Security over https. A custom reverse proxy must stop
+  adding these headers itself. No API changes. No migrations. See
+  [Security headers](security.md#security-headers).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
