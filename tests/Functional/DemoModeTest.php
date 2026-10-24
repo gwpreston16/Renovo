@@ -7,7 +7,7 @@ namespace App\Tests\Functional;
 use App\Application\Middleware\AuthenticationMiddleware;
 use App\Domain\IsolationMode;
 use App\Domain\Role;
-use App\Domain\TokenAbility;
+use App\Domain\TokenScopes;
 use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\SubscriptionRepository;
@@ -103,7 +103,7 @@ final class DemoModeTest extends DatabaseTestCase
             $users->findById($this->realUserId) ?? self::fail('The real account is missing.'),
             $this->householdId,
             'A write token',
-            TokenAbility::Write,
+            TokenScopes::everything(),
             null,
         );
 

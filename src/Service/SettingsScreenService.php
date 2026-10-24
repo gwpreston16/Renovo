@@ -36,6 +36,9 @@ use App\Domain\BackupRehearsalSchedule;
 use App\Domain\Entity\BackupCopy;
 use App\Service\ExchangeRate\ExchangeRateProviderRegistry;
 use DateTimeImmutable;
+use App\Domain\TokenScope;
+use App\Domain\TokenScopes;
+use App\Support\Clock;
 
 /**
  * The Settings page's three tabs: what each one shows, for whoever is looking.
@@ -80,6 +83,7 @@ final class SettingsScreenService
         private readonly OffsiteBackupService $offsite,
         private readonly BackupRehearsalService $rehearsals,
         private readonly BackupAlertService $backupAlerts,
+        private readonly Clock $clock,
         private readonly string $smtpHost = '',
         private readonly int $smtpPort = 0,
         private readonly string $smtpEncryption = 'none',
@@ -159,6 +163,8 @@ final class SettingsScreenService
      *
      * @return array{
      *     tokens: list<\App\Domain\Entity\ApiToken>,
+     *     token_form: array<string, mixed>,
+     *     token_now: DateTimeImmutable,
      *     backup_format_version: int,
      *     private_left_out: int,
      *     recent_activity: list<AuditEntry>
@@ -168,6 +174,10 @@ final class SettingsScreenService
     {
         return [
             'tokens' => $this->tokens->listFor($user),
+            'token_form' => $this->tokenForm(),
+            // The token list's "expired" and "expires soon" are read against
+            // the application's clock, not the server's.
+            'token_now' => $this->clock->now(),
             'backup_format_version' => BackupService::FORMAT_VERSION,
             'private_left_out' => $this->mayBackUp($scope) ? $this->backups->privateLeftOut($scope) : 0,
             // The head of the log the "full audit log" link opens: the same
@@ -202,7 +212,9 @@ final class SettingsScreenService
      *     update_check_enabled: bool,
      *     update_banner_enabled: bool,
      *     updates_unavailable: UpdateUnavailable|null,
-     *     backups: array<string, mixed>
+     *     backups: array<string, mixed>,
+     *     token_max_days: int|null,
+     *     tokens_without_expiry: int
      * }
      */
     public function instance(): array
@@ -235,6 +247,55 @@ final class SettingsScreenService
             'update_banner_enabled' => $this->settings->updateBannerEnabled(),
             'updates_unavailable' => $this->updates->unavailableReason(),
             'backups' => $this->instanceBackups(),
+            // Phase 42: a maximum lifetime binds only tokens issued after it,
+            // so the card says how many live tokens still never expire.
+            'token_max_days' => $this->tokens->maxDays(),
+            'tokens_without_expiry' => $this->tokens->countWithoutExpiry(),
+        ];
+    }
+
+    /**
+     * The issue form's choices (Phase 42): the scope presets and the scopes a
+     * custom token picks from, and the lifetimes — 90 days to start with, and
+     * no "No expiry" while the instance has a maximum.
+     *
+     * @return array{
+     *     presets: list<string>,
+     *     scopes: list<TokenScope>,
+     *     lifetimes: list<int>,
+     *     default_lifetime: int,
+     *     max_days: int|null,
+     *     min_date: string,
+     *     max_date: string|null
+     * }
+     */
+    private function tokenForm(): array
+    {
+        $max = $this->tokens->maxDays();
+
+        // Only the lifetimes the maximum allows, and the maximum itself as a
+        // choice when it is none of them, so the default is always a chip.
+        $lifetimes = array_values(array_filter(
+            ApiTokenService::LIFETIME_CHOICES,
+            static fn (int $days): bool => $max === null || $days <= $max,
+        ));
+        if ($max !== null && !in_array($max, $lifetimes, true)) {
+            $lifetimes[] = $max;
+            sort($lifetimes);
+        }
+
+        return [
+            'presets' => TokenScopes::PRESETS,
+            'scopes' => TokenScope::cases(),
+            'lifetimes' => $lifetimes,
+            'default_lifetime' => $this->tokens->defaultLifetimeDays(),
+            'max_days' => $max,
+            // The date field's bounds, so the picker offers only what issuing
+            // accepts: from tomorrow, to the maximum when there is one.
+            'min_date' => $this->clock->now()->modify('+1 day')->format('Y-m-d'),
+            'max_date' => $max === null
+                ? null
+                : $this->clock->now()->modify(sprintf('+%d days', $max))->format('Y-m-d'),
         ];
     }
 

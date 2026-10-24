@@ -14,7 +14,7 @@ use App\Repository\UserRepository;
 use App\Security\CsrfTokenManager;
 use App\Security\Scope;
 use App\Security\SessionInterface;
-use App\Domain\TokenAbility;
+use App\Domain\TokenScopes;
 use App\Service\ApiTokenService;
 use App\Service\ImportService;
 use App\Service\InstanceSettingsService;
@@ -160,7 +160,7 @@ final class InteroperabilityPagesTest extends DatabaseTestCase
         $user = (new UserRepository($this->db))->findById($this->ownerId);
         self::assertNotNull($user);
 
-        $original = $tokens->issue($user, $this->householdId, 'Rotating token', TokenAbility::Read);
+        $original = $tokens->issue($user, $this->householdId, 'Rotating token', TokenScopes::readEverything());
         $id = $tokens->listFor($user)[0]->id;
 
         $reissued = $tokens->reissue($user, $id);
@@ -170,11 +170,11 @@ final class InteroperabilityPagesTest extends DatabaseTestCase
         // The point of the whole feature: the previous credential stops
         // working. A reissue that left it live would mean every rotation
         // doubled the number of secrets that can reach the account.
-        self::assertNull($tokens->authenticate($original), 'The old token must stop authenticating.');
-        self::assertNotNull($tokens->authenticate($reissued), 'The new token must authenticate.');
+        self::assertFalse($tokens->authenticate($original)->isSuccessful(), 'The old token must stop authenticating.');
+        self::assertTrue($tokens->authenticate($reissued)->isSuccessful(), 'The new token must authenticate.');
     }
 
-    public function testAReissuedTokenKeepsItsNameAndAbilities(): void
+    public function testAReissuedTokenKeepsItsNameAndScopes(): void
     {
         $this->signIn($this->ownerId);
 
@@ -182,7 +182,7 @@ final class InteroperabilityPagesTest extends DatabaseTestCase
         $user = (new UserRepository($this->db))->findById($this->ownerId);
         self::assertNotNull($user);
 
-        $tokens->issue($user, $this->householdId, 'Rotating token', TokenAbility::Read);
+        $tokens->issue($user, $this->householdId, 'Rotating token', TokenScopes::readEverything());
         $tokens->reissue($user, $tokens->listFor($user)[0]->id);
 
         // Picked by the property that matters rather than by list order: both
@@ -196,7 +196,7 @@ final class InteroperabilityPagesTest extends DatabaseTestCase
 
         self::assertCount(1, $live, 'A rotation leaves exactly one usable token behind.');
         self::assertSame('Rotating token', $live[0]->name);
-        self::assertSame(TokenAbility::Read, $live[0]->abilities);
+        self::assertSame(TokenScopes::readEverything()->values(), $live[0]->scopes->values());
     }
 
     public function testARevokedTokenCannotBeReissued(): void
@@ -207,13 +207,12 @@ final class InteroperabilityPagesTest extends DatabaseTestCase
         $user = (new UserRepository($this->db))->findById($this->ownerId);
         self::assertNotNull($user);
 
-        $tokens->issue($user, $this->householdId, 'Doomed token', TokenAbility::Read);
+        $tokens->issue($user, $this->householdId, 'Doomed token', TokenScopes::readEverything());
         $id = $tokens->listFor($user)[0]->id;
         $tokens->revoke($user, $id);
 
-        // Reissue carries the old expiry over and issuing refuses a past date,
-        // so a dead token cannot be revived without quietly granting it a
-        // longer life than it had. Refusing is the honest answer.
+        // A revoked token stays revoked: reissuing it would bring back a
+        // credential somebody decided to stop trusting.
         $this->expectException(ValidationException::class);
         $tokens->reissue($user, $id);
     }
@@ -228,7 +227,7 @@ final class InteroperabilityPagesTest extends DatabaseTestCase
         self::assertNotNull($owner);
         self::assertNotNull($viewer);
 
-        $tokens->issue($owner, $this->householdId, 'The owner\'s token', TokenAbility::Read);
+        $tokens->issue($owner, $this->householdId, 'The owner\'s token', TokenScopes::readEverything());
         $ownersTokenId = $tokens->listFor($owner)[0]->id;
 
         // Scoped by user id in the statement itself, not checked afterwards.
@@ -242,7 +241,7 @@ final class InteroperabilityPagesTest extends DatabaseTestCase
 
         $response = $this->request('POST', '/settings/api-tokens', [
             'name' => 'A token',
-            'abilities' => 'read',
+            'preset' => 'read',
         ]);
 
         self::assertSame(302, $response->getStatusCode());
@@ -270,7 +269,7 @@ final class InteroperabilityPagesTest extends DatabaseTestCase
     {
         $this->signIn($this->ownerId);
 
-        $this->request('POST', '/settings/api-tokens', ['name' => 'Throwaway', 'abilities' => 'read']);
+        $this->request('POST', '/settings/api-tokens', ['name' => 'Throwaway', 'preset' => 'read']);
         $this->request('GET', '/settings/data');
 
         $id = (int) $this->db->fetchValue(

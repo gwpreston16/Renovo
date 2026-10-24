@@ -89,7 +89,10 @@ the reset may well have been prompted by somebody else having one.
 - Login, password reset and the **second-factor step** are throttled per account
   and per IP, so neither brute-forcing one account from many addresses nor
   spraying many accounts from one address gets far. The second factor has its own
-  budget rather than sharing the password's.
+  budget rather than sharing the password's. The IP is the connection's
+  (`REMOTE_ADDR`): behind a reverse proxy that does not pass the client's address
+  on, every client shares the proxy's, and one client's failures lock out the
+  rest. The API's limits below work from the same address.
 - A user who has proved their password but not their second factor is **not
   signed in**: the pending state lives under its own session key and expires, so
   no authenticated route can mistake it for a session.
@@ -129,17 +132,30 @@ the reset may well have been prompted by somebody else having one.
   nginx refuses to execute anything in the upload directory.
 - **API tokens are stored as hashes**, split into a public identifier and a
   secret so that verifying one is a single indexed read rather than a scan. They
-  can be given an expiry, revoked at any moment, and can only ever be weaker
-  than the account that issued them. **Changing or resetting the password ends
-  every one of them**, calendar feed links included: a token is a password by
-  another name.
+  can be revoked at any moment, and can only ever be weaker than the account
+  that issued them. **Changing or resetting the password ends every one of
+  them**, calendar feed links included: a token is a password by another name.
+- **API tokens are scoped and expire.** Each holds scopes per resource
+  (`subscriptions`, `catalogue`, each `:read` or `:write`, and `calendar:read`),
+  and a route refuses a token without the one it needs before the role is even
+  asked. A new token lasts 90 days unless its owner chooses otherwise, and
+  `API_TOKEN_MAX_DAYS` sets an instance maximum. See
+  [Scopes](api.md#scopes) and [Lifetimes](api.md#lifetimes).
+- **The API is rate-limited**: 120 requests a minute per token and 30 per
+  address without a valid token, counted in the database so the limit holds
+  across workers; over it is `429` with `Retry-After`. Ten failed tokens from
+  one address in five minutes block it, a valid token included, so token
+  secrets cannot be guessed at speed. Failures are audited once per address per
+  five minutes, with a count and never the secret. See
+  [Rate limits](api.md#rate-limits).
 - The **API refuses session cookies**. No ambient browser credential can
   authenticate an API request, which is what makes the CSRF exemption on those
   paths safe rather than a hole; the exemption itself additionally requires a
   bearer token to be present.
 - The **calendar feed** is the only endpoint that takes a credential from the
   URL, because a calendar client cannot send a header. It is wired to its own
-  middleware, is read-only, and refuses a write-capable token outright.
+  middleware, needs `calendar:read`, and refuses a token holding any write scope
+  outright.
 - **Invoices and receipts live outside the web root** and are streamed only
   through a permission-scoped route. Their type is read from the file's magic
   bytes rather than from its name or declared type, the stored name is chosen by

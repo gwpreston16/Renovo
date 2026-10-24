@@ -1,12 +1,16 @@
 {#
     API tokens: the reader's own, and never anybody else's.
 
-    Each with its name, what it may do (Read only / Read & write), when it was
-    last used and its state; reissue and revoke beside it. A new token's
-    secret is shown once, in the callout at the top of the tab, from a
-    one-shot flash — a reload does not bring it back.
+    Each with its name, what it may reach (a preset's name, or its scopes),
+    when it was last used and its state; reissue and revoke beneath it. A token
+    within fourteen days of its expiry is flagged, and Reissue gives it a fresh
+    lifetime. A new token's secret is shown once, in the callout at the top of
+    the tab, from a one-shot flash — a reload does not bring it back.
 
-    New token opens in place. How to use one — the bearer header and the API
+    New token opens in place: what it may reach as preset chips (Custom reveals
+    a switch per scope), and how long it lasts as chips (a date reveals the
+    date field). Both reveals are CSS `:has()` on the checked chip, as the
+    subscription form's are. How to use one — the bearer header and the API
     reference — is a disclosure beneath, where a reader who needs it will look
     and one who does not will not be made to scroll past it.
 #}
@@ -19,7 +23,8 @@
     {% else %}
         <ul class="account-rows">
             {% for token in tokens %}
-                {% set is_expired = token.expiresAt and token.expiresAt < date() %}
+                {% set is_expired = token.expiresAt and token.expiresAt <= token_now %}
+                {% set preset = token.scopes.presetName() %}
                 <li class="account-row">
                     <span class="account-row-icon" aria-hidden="true">{{ icon('key') }}</span>
                     <div class="account-row-text">
@@ -29,33 +34,41 @@
                                 <span class="badge badge-bad">{{ t('state.revoked') }}</span>
                             {% elseif is_expired %}
                                 <span class="badge">{{ t('state.expired') }}</span>
+                            {% elseif token.isExpiringSoon(token_now) %}
+                                <span class="badge badge-warn">{{ t('tokens.expiring_soon') }}</span>
                             {% endif %}
                         </span>
                         <span class="account-row-meta">
-                            {{ t(token.abilities.labelKey()) }} ·
+                            {% if preset != 'custom' -%}
+                                {{ t('token_preset.' ~ preset) }}
+                            {%- elseif token.scopes.isEmpty() -%}
+                                {{ t('tokens.no_scopes') }}
+                            {%- else -%}
+                                {{ token.scopes.all()|map(scope => t(scope.labelKey()))|join(', ') }}
+                            {%- endif %} ·
                             {% if token.lastUsedAt -%}
                                 {{ t('settings.token_last_used', {'when': token.lastUsedAt|local_date('d MMM y, HH:mm')}) }}
                             {%- else -%}
                                 {{ t('settings.token_never_used') }}
                             {%- endif %}
-                            {%- if token.expiresAt and not is_expired and not token.isRevoked() %} · {{ t('tokens.expires_on', {'date': token.expiresAt|local_date('d MMM y')}) }}{% endif %}
+                            {%- if token.expiresAt and not is_expired and not token.isRevoked() %} · {{ t('tokens.expires_on', {'date': token.expiresAt|local_date('d MMM y')}) }}
+                            {%- elseif not token.expiresAt and not token.isRevoked() %} · {{ t('tokens.never_expires') }}{% endif %}
                             · <code>{{ token.publicId }}</code>
                         </span>
                     </div>
                     <div class="account-row-actions token-actions">
                         {#
                             Reissue is offered only on a token that is neither
-                            revoked nor expired: a reissue carries the old
-                            token's expiry over, and issuing refuses a date
-                            already past. `ApiTokenService::reissue()`
-                            enforces this too — hiding the button is not the
-                            check.
+                            revoked nor expired, and gives it its lifetime again
+                            from today, within the instance's maximum.
+                            `ApiTokenService::reissue()` refuses the others too —
+                            hiding the button is not the check.
                         #}
                         {% if not token.isRevoked() and not is_expired %}
                             <form method="post" action="/settings/api-tokens/{{ token.id }}/reissue" class="inline"
                                   data-confirm="{{ t('confirm.reissue_token') }}">
                                 {{ csrf_field() }}
-                                <button type="submit" class="button button-quiet"
+                                <button type="submit" class="button {{ token.isExpiringSoon(token_now) ? 'button-outline' : 'button-quiet' }}"
                                         aria-label="{{ t('settings.reissue_named', {'name': token.name}) }}">{{ t('action.reissue') }}</button>
                             </form>
                         {% endif %}
@@ -77,23 +90,71 @@
         <details class="account-row-more">
             <summary class="button button-outline">{{ icon('add') }}{{ t('settings.new_token') }}</summary>
 
-            <form method="post" action="/settings/api-tokens" class="stack">
+            <form method="post" action="/settings/api-tokens" class="stack token-form">
                 {{ csrf_field() }}
 
                 <label for="token-name">{{ t('tokens.what_it_is_for') }}</label>
                 <input type="text" id="token-name" name="name" maxlength="100" required
                        placeholder="{{ t('tokens.name_placeholder') }}">
 
-                <label for="token-abilities">{{ t('tokens.what_it_may_do') }}</label>
-                <select id="token-abilities" name="abilities" aria-describedby="token-abilities-hint">
-                    {% for ability in abilities %}
-                        <option value="{{ ability.value }}">{{ t(ability.labelKey()) }}</option>
-                    {% endfor %}
-                </select>
-                <p class="hint" id="token-abilities-hint">{{ t('tokens.abilities_hint') }}</p>
+                <fieldset class="token-choice" aria-describedby="token-scopes-hint">
+                    <legend>{{ t('tokens.what_it_may_do') }}</legend>
+                    <div class="chip-choices">
+                        {% for preset in token_form.presets %}
+                            <label class="filter-chip">
+                                <input type="radio" name="preset" value="{{ preset }}" {{ loop.first ? 'checked' : '' }}>
+                                {{ t('token_preset.' ~ preset) }}
+                            </label>
+                        {% endfor %}
+                    </div>
+                    <div class="reveal reveal-token-scopes">
+                        {% for scope in token_form.scopes %}
+                            <label class="choice toggle-row">
+                                <span>
+                                    <span class="choice-title">{{ t(scope.labelKey()) }}</span>
+                                    <span class="choice-note"><code>{{ scope.value }}</code> · {{ t(scope.labelKey() ~ '_hint') }}</span>
+                                </span>
+                                <input type="checkbox" class="toggle" role="switch" name="scopes[]" value="{{ scope.value }}">
+                            </label>
+                        {% endfor %}
+                    </div>
+                    <p class="hint" id="token-scopes-hint">{{ t('tokens.scopes_hint') }}</p>
+                </fieldset>
 
-                <label for="token-expires">{{ t('tokens.expires_optional') }}</label>
-                <input type="date" id="token-expires" name="expires_at">
+                <fieldset class="token-choice" aria-describedby="token-lifetime-hint">
+                    <legend>{{ t('tokens.expires') }}</legend>
+                    <div class="chip-choices">
+                        {% for days in token_form.lifetimes %}
+                            <label class="filter-chip">
+                                <input type="radio" name="lifetime" value="{{ days }}"
+                                       {{ days == token_form.default_lifetime ? 'checked' : '' }}>
+                                {{ t('tokens.lifetime_days', {'count': days}) }}
+                            </label>
+                        {% endfor %}
+                        <label class="filter-chip">
+                            <input type="radio" name="lifetime" value="custom">
+                            {{ t('tokens.lifetime_custom') }}
+                        </label>
+                        {% if token_form.max_days is null %}
+                            <label class="filter-chip">
+                                <input type="radio" name="lifetime" value="none">
+                                {{ t('tokens.lifetime_none') }}
+                            </label>
+                        {% endif %}
+                    </div>
+                    <div class="reveal reveal-token-expiry">
+                        <label for="token-expires">{{ t('tokens.expires_on_date') }}</label>
+                        <input type="date" id="token-expires" name="expires_at" min="{{ token_form.min_date }}"
+                               {%- if token_form.max_date %} max="{{ token_form.max_date }}"{% endif %}>
+                    </div>
+                    <p class="hint" id="token-lifetime-hint">
+                        {% if token_form.max_days is null %}
+                            {{ t('tokens.lifetime_hint') }}
+                        {% else %}
+                            {{ t('tokens.lifetime_max_hint', {'count': token_form.max_days}) }}
+                        {% endif %}
+                    </p>
+                </fieldset>
 
                 <div class="form-actions">
                     <button type="submit" class="button">{{ t('tokens.create_token') }}</button>

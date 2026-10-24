@@ -183,6 +183,25 @@
                     {% endif %}
                 </dd>
 
+                {#
+                    API token lifetimes (Phase 42): the maximum, if there is
+                    one, and how many live tokens still never expire — a
+                    maximum binds only the tokens issued after it.
+                #}
+                <dt>{{ t('settings.status_api_tokens') }}</dt>
+                <dd>
+                    {% if token_max_days %}
+                        <span>{{ t('settings.status_api_tokens_max', {'count': token_max_days, 'variable': 'API_TOKEN_MAX_DAYS'}) }}</span>
+                    {% else %}
+                        <span class="muted">{{ t('settings.status_api_tokens_no_max') }}</span>
+                    {% endif %}
+                    <span class="muted block">
+                        {{ t('settings.status_api_tokens_without_expiry', {'count': tokens_without_expiry}) }}
+                        {%- if token_max_days and tokens_without_expiry > 0 %} {{ t('settings.status_api_tokens_outstanding') }}
+                        {%- elseif not token_max_days %} {{ t('settings.status_api_tokens_set_max', {'variable': 'API_TOKEN_MAX_DAYS'}) }}{% endif %}
+                    </span>
+                </dd>
+
                 <dt>{{ t('settings.status_scheduler') }}</dt>
                 <dd>
                     {% if scheduler_last_run_at %}

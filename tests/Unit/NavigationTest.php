@@ -12,6 +12,7 @@ use App\Security\PermissionService;
 use App\Security\Scope;
 use App\Service\NavigationService;
 use PHPUnit\Framework\TestCase;
+use App\Tests\Support\TestTranslator;
 
 /**
  * Which navigation item a page belongs to, and who can see which items.
@@ -28,7 +29,7 @@ final class NavigationTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->navigation = new NavigationService(new PermissionService());
+        $this->navigation = new NavigationService(new PermissionService(TestTranslator::create()));
     }
 
     /**

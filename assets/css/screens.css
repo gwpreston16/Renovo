@@ -1319,6 +1319,37 @@ tr.is-passed > td {
     flex-basis: 100%;
 }
 
+/*
+ * The new-token form (Phase 42): Custom reveals a switch per scope, and a
+ * date reveals the date field — the subscription form's `:has()` reveals.
+ */
+.token-form .token-choice {
+    display: grid;
+    gap: 0.5rem;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+/* Flat, as the role options are: a label over its chips, no box. */
+.token-form .token-choice > legend {
+    padding: 0;
+    margin-bottom: 0.4rem;
+    font-size: var(--size-label);
+    font-weight: var(--weight-semibold);
+}
+
+.token-form .reveal {
+    display: none;
+}
+
+.token-form:has(input[name='preset'][value='custom']:checked) .reveal-token-scopes,
+.token-form:has(input[name='lifetime'][value='custom']:checked) .reveal-token-expiry {
+    display: grid;
+    gap: 0.5rem;
+}
+
 .pending-email {
     margin: 0.5rem 0 0;
     font-size: var(--size-label);

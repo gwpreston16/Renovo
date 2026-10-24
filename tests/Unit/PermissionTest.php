@@ -10,6 +10,7 @@ use App\Domain\Role;
 use App\Security\PermissionService;
 use App\Security\Scope;
 use PHPUnit\Framework\TestCase;
+use App\Tests\Support\TestTranslator;
 
 /**
  * The role table, asserted directly. The matching functional test proves the
@@ -21,7 +22,7 @@ final class PermissionTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->permissions = new PermissionService();
+        $this->permissions = new PermissionService(TestTranslator::create());
     }
 
     public function testViewerMayReadButNotWriteAnything(): void

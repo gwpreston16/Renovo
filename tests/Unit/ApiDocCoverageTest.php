@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace App\Tests\Unit;
 
 use App\Application\Api\ApiPath;
+use App\Application\Api\ApiRouteScope;
 use App\Domain\IsolationMode;
 use App\Domain\Permission;
 use App\Domain\Role;
+use App\Domain\TokenScope;
 use App\Security\PermissionService;
 use App\Security\Scope;
 use PHPUnit\Framework\TestCase;
 use Slim\Interfaces\RouteInterface;
+use App\Tests\Support\TestTranslator;
 
 /**
  * `docs/api.md` still describes the API the application actually serves.
@@ -38,7 +41,7 @@ final class ApiDocCoverageTest extends TestCase
     /**
      * The header row of the per-endpoint table, used to find it.
      */
-    private const ENDPOINT_TABLE = '| Method | Path | Permission |';
+    private const ENDPOINT_TABLE = '| Method | Path | Scope | Permission |';
 
     /**
      * The header row of the role matrix.
@@ -61,9 +64,58 @@ final class ApiDocCoverageTest extends TestCase
         );
     }
 
+    public function testEveryDocumentedRouteNamesTheScopeItsRouteDeclares(): void
+    {
+        // Phase 42: the Scope column is the route's own declaration, read off
+        // the route table — a scope changed in config/routes.php and not
+        // here, or the other way round, fails the build.
+        /** @var callable(bool): \Slim\App<\Psr\Container\ContainerInterface|null> $bootstrap */
+        $bootstrap = require dirname(__DIR__, 2) . '/config/bootstrap.php';
+        $app = $bootstrap(false);
+        $container = $app->getContainer();
+        self::assertNotNull($container);
+        $scopes = $container->get(ApiRouteScope::class);
+
+        $declared = [];
+        foreach ($app->getRouteCollector()->getRoutes() as $route) {
+            $pattern = (string) preg_replace('/\{([a-zA-Z_][a-zA-Z0-9_]*)(:[^}]+)?\}/', '{$1}', $route->getPattern());
+            $needed = $scopes->of($route);
+            foreach ($route->getMethods() as $method) {
+                $declared[strtoupper($method) . ' ' . $pattern] = match (true) {
+                    $needed instanceof TokenScope => '`' . $needed->value . '`',
+                    $needed === ApiRouteScope::ANY_TOKEN => '*any*',
+                    default => '—',
+                };
+            }
+        }
+
+        foreach ($this->rows(self::ENDPOINT_TABLE) as $cells) {
+            $operation = strtoupper(trim($cells[0], '`')) . ' ' . ApiPath::PREFIX . trim($cells[1], '`');
+
+            self::assertSame(
+                $declared[$operation] ?? null,
+                $cells[2],
+                'docs/api.md names the wrong scope for ' . $operation,
+            );
+        }
+    }
+
+    public function testTheScopesTableListsEveryScope(): void
+    {
+        $listed = array_map(
+            static fn (array $cells): string => trim($cells[0], '`'),
+            $this->rows('| Scope | Reaches |'),
+        );
+
+        self::assertSame(
+            array_map(static fn (TokenScope $scope): string => $scope->value, TokenScope::cases()),
+            $listed,
+        );
+    }
+
     public function testTheRoleMatrixMatchesThePermissionService(): void
     {
-        $permissions = new PermissionService();
+        $permissions = new PermissionService(TestTranslator::create());
 
         $columns = [
             'Viewer' => Role::Viewer,

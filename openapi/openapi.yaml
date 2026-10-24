@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.7.0"
+  version: "1.8.0"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -21,9 +21,26 @@ info:
     tokens. Changing or resetting the issuing account's password revokes all of
     its tokens, calendar feed tokens included.
 
-    **A token narrows, it never grants.** The request runs under the household
-    role of the account that issued the token, so a Viewer's write token still
-    cannot write. A read-only token is refused any unsafe method outright.
+    **A token narrows, it never grants.** Each token holds scopes —
+    `subscriptions:read`, `subscriptions:write`, `catalogue:read`,
+    `catalogue:write`, `calendar:read` — and each operation names the one it
+    needs as `x-token-scope` (`any` for a valid token of any scope). `:write`
+    includes `:read` for the same resource. A token without the scope gets
+    `403`. The request still runs under the household role of the account that
+    issued the token, so a Viewer's `subscriptions:write` token still cannot
+    write.
+
+    **Rate limits.** 120 requests a minute per token, and 30 a minute per
+    address for requests with no valid token, by default; an instance may set
+    its own. Every response the limiter has counted carries `RateLimit-Limit`,
+    `RateLimit-Remaining` and `RateLimit-Reset` (seconds until the window
+    resets). Over the limit is `429` with `Retry-After`. Ten failed tokens from
+    one address in five minutes block that address, a valid token included,
+    until the five minutes are up.
+
+    **Tokens expire.** A new token lasts 90 days unless its owner chose
+    otherwise, and an instance may set a maximum. `GET /me` reports the token's
+    scopes and expiry.
 
     **Money is always an integer in minor units** (`price_minor: 1999` with
     `currency: GBP` is £19.99), never a decimal. JSON numbers are binary floats
@@ -89,6 +106,7 @@ paths:
 
   /api/v1/me:
     get:
+      x-token-scope: "any"
       tags: [Meta]
       summary: The token's identity, role and effective permissions.
       responses:
@@ -104,9 +122,12 @@ paths:
                     $ref: "#/components/schemas/Identity"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/instance:
     get:
+      x-token-scope: "any"
       tags: [Meta]
       summary: The release this instance runs.
       description: |
@@ -127,19 +148,22 @@ paths:
                     $ref: "#/components/schemas/Instance"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/subscriptions:
     get:
+      x-token-scope: "subscriptions:read"
       tags: [Subscriptions]
       summary: List subscriptions.
       description: |
         Returns only what the token's role and the instance's isolation mode
         allow — the same rows the same user would see in the web interface.
-        With a token that may write, it first runs the catch-up: due price
+        With a `subscriptions:write` token, it first runs the catch-up: due price
         changes take effect, ended trials convert, overdue payment dates
         move on, recording each passed date as a payment, and a fixed term
         whose last payment has passed is cancelled as of the day after it. A
-        read-only token changes nothing.
+        token without it changes nothing.
       parameters:
         - { name: q, in: query, schema: { type: string }, description: Search names and notes. }
         - { name: category, in: query, schema: { type: integer }, description: Category id. }
@@ -189,8 +213,11 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
     post:
+      x-token-scope: "subscriptions:write"
       tags: [Subscriptions]
       summary: Create a subscription.
       requestBody:
@@ -220,11 +247,14 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/subscriptions/{id}:
     parameters:
       - $ref: "#/components/parameters/SubscriptionId"
     get:
+      x-token-scope: "subscriptions:read"
       tags: [Subscriptions]
       summary: Fetch one subscription.
       responses:
@@ -244,8 +274,11 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
     put:
+      x-token-scope: "subscriptions:write"
       tags: [Subscriptions]
       summary: Replace a subscription.
       description: |
@@ -280,8 +313,11 @@ paths:
           $ref: "#/components/responses/NotFound"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
     delete:
+      x-token-scope: "subscriptions:write"
       tags: [Subscriptions]
       summary: Delete a subscription.
       responses:
@@ -293,11 +329,14 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/subscriptions/{id}/cancel:
     parameters:
       - $ref: "#/components/parameters/SubscriptionId"
     post:
+      x-token-scope: "subscriptions:write"
       tags: [Subscriptions]
       summary: Cancel the subscription.
       description: |
@@ -324,11 +363,14 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/subscriptions/{id}/uncancel:
     parameters:
       - $ref: "#/components/parameters/SubscriptionId"
     post:
+      x-token-scope: "subscriptions:write"
       tags: [Subscriptions]
       summary: Undo a cancellation.
       description: |
@@ -356,11 +398,14 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/subscriptions/{id}/logo:
     parameters:
       - $ref: "#/components/parameters/SubscriptionId"
     post:
+      x-token-scope: "subscriptions:write"
       tags: [Subscriptions]
       summary: Replace the subscription's logo.
       requestBody:
@@ -396,8 +441,11 @@ paths:
           $ref: "#/components/responses/NotFound"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
     delete:
+      x-token-scope: "subscriptions:write"
       tags: [Subscriptions]
       summary: Remove the subscription's logo.
       responses:
@@ -409,11 +457,14 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/subscriptions/{id}/attachments:
     parameters:
       - $ref: "#/components/parameters/SubscriptionId"
     get:
+      x-token-scope: "subscriptions:read"
       tags: [Attachments]
       summary: List the invoices and receipts filed against a subscription.
       responses:
@@ -433,8 +484,11 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
     post:
+      x-token-scope: "subscriptions:write"
       tags: [Attachments]
       summary: Attach an invoice or receipt.
       requestBody:
@@ -482,6 +536,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/subscriptions/{id}/attachments/{attachmentId}:
     parameters:
@@ -491,6 +547,7 @@ paths:
         required: true
         schema: { type: integer }
     get:
+      x-token-scope: "subscriptions:read"
       tags: [Attachments]
       summary: Download an attachment.
       responses:
@@ -510,8 +567,11 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
     delete:
+      x-token-scope: "subscriptions:write"
       tags: [Attachments]
       summary: Delete an attachment.
       responses:
@@ -523,17 +583,20 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/subscriptions/{id}/charges:
     parameters:
       - $ref: "#/components/parameters/SubscriptionId"
     get:
+      x-token-scope: "subscriptions:read"
       tags: [Payments]
       summary: List a subscription's charges, newest first.
       description: |
         The payment ledger: one charge for each billing date that has passed,
         at the price in force that day, plus any added by hand. Nothing here
-        is read from a bank. With a token that may write, the request first
+        is read from a bank. With a `subscriptions:write` token, the request first
         runs the same catch-up as the subscription list, so every passed date
         is there. Paged; a page past the last returns the last.
       parameters:
@@ -562,8 +625,11 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
     post:
+      x-token-scope: "subscriptions:write"
       tags: [Payments]
       summary: Add a charge that fell off the billing cycle.
       requestBody:
@@ -604,6 +670,8 @@ paths:
           $ref: "#/components/responses/NotFound"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/charges/{id}:
     parameters:
@@ -612,6 +680,7 @@ paths:
         required: true
         schema: { type: integer }
     patch:
+      x-token-scope: "subscriptions:write"
       tags: [Payments]
       summary: Record what a charge really was, skip it, or annotate it.
       description: |
@@ -659,9 +728,12 @@ paths:
           $ref: "#/components/responses/NotFound"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/savings:
     get:
+      x-token-scope: "subscriptions:read"
       tags: [Savings]
       summary: What offers and cancellations have saved.
       description: |
@@ -678,7 +750,7 @@ paths:
         `trials`, not valued. `run_rate` is the yearly cost removed by the
         last twelve months' cancellations, at the price on each cancellation
         date. In ISOLATED mode the figures are the token holder's own,
-        counting their share of a split bill. With a token that may write,
+        counting their share of a split bill. With a `subscriptions:write` token,
         the request first runs the catch-up.
       responses:
         "200":
@@ -695,9 +767,12 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/categories:
     get:
+      x-token-scope: "catalogue:read"
       tags: [Taxonomy]
       summary: List categories.
       responses:
@@ -717,8 +792,11 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
     post:
+      x-token-scope: "catalogue:write"
       tags: [Taxonomy]
       summary: Create a category.
       requestBody:
@@ -751,6 +829,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/categories/{id}:
     parameters:
@@ -759,6 +839,7 @@ paths:
         required: true
         schema: { type: integer }
     put:
+      x-token-scope: "catalogue:write"
       tags: [Taxonomy]
       summary: Rename or recolour a category.
       requestBody:
@@ -793,8 +874,11 @@ paths:
           $ref: "#/components/responses/NotFound"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
     delete:
+      x-token-scope: "catalogue:write"
       tags: [Taxonomy]
       summary: Delete a category.
       responses:
@@ -806,9 +890,12 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/payment-methods:
     get:
+      x-token-scope: "catalogue:read"
       tags: [Taxonomy]
       summary: List payment methods.
       description: |
@@ -832,8 +919,11 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
     post:
+      x-token-scope: "catalogue:write"
       tags: [Taxonomy]
       summary: Create a payment method.
       description: |
@@ -870,6 +960,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/payment-methods/{id}:
     parameters:
@@ -878,6 +970,7 @@ paths:
         required: true
         schema: { type: integer }
     put:
+      x-token-scope: "catalogue:write"
       tags: [Taxonomy]
       summary: Rename or recolour a payment method.
       requestBody:
@@ -913,8 +1006,11 @@ paths:
           $ref: "#/components/responses/NotFound"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
     delete:
+      x-token-scope: "catalogue:write"
       tags: [Taxonomy]
       summary: Delete a payment method.
       description: |
@@ -929,6 +1025,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/payment-methods/{id}/logo:
     parameters:
@@ -937,6 +1035,7 @@ paths:
         required: true
         schema: { type: integer }
     post:
+      x-token-scope: "catalogue:write"
       tags: [Taxonomy]
       summary: Replace the payment method's logo.
       requestBody:
@@ -972,8 +1071,11 @@ paths:
           $ref: "#/components/responses/NotFound"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
     delete:
+      x-token-scope: "catalogue:write"
       tags: [Taxonomy]
       summary: Remove the payment method's logo.
       responses:
@@ -985,9 +1087,12 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/tags:
     get:
+      x-token-scope: "catalogue:read"
       tags: [Taxonomy]
       summary: List tags.
       description: |
@@ -1011,8 +1116,11 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
     post:
+      x-token-scope: "catalogue:write"
       tags: [Taxonomy]
       summary: Create a tag.
       description: An existing name, in any case, is refused with `422`.
@@ -1045,6 +1153,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/tags/{id}:
     parameters:
@@ -1053,6 +1163,7 @@ paths:
         required: true
         schema: { type: integer }
     put:
+      x-token-scope: "catalogue:write"
       tags: [Taxonomy]
       summary: Rename a tag.
       description: |
@@ -1089,8 +1200,11 @@ paths:
           $ref: "#/components/responses/NotFound"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
     delete:
+      x-token-scope: "catalogue:write"
       tags: [Taxonomy]
       summary: Delete a tag.
       responses:
@@ -1102,9 +1216,12 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/calendar.ics:
     get:
+      x-token-scope: "calendar:read"
       tags: [Calendar]
       summary: Renewals, trial conversions and cancellation deadlines as iCalendar.
       description: |
@@ -1112,17 +1229,17 @@ paths:
         at its last payment, and no deadline is published after it. Because
         such a client cannot
         send an `Authorization` header, this endpoint — and only this endpoint —
-        takes its token in the `token` query parameter, and accepts read-only
-        tokens exclusively. A write-capable token is refused rather than
-        downgraded: a credential that can change data does not belong in a
-        subscription URL.
+        takes its token in the `token` query parameter. The token needs the
+        `calendar:read` scope, and one holding any write scope is refused
+        rather than downgraded: a credential that can change data does not
+        belong in a subscription URL. It shares the token's rate limit.
       security: []
       parameters:
         - name: token
           in: query
           required: true
           schema: { type: string }
-          description: A read-only API token.
+          description: A token with `calendar:read` and no write scope.
       responses:
         "200":
           description: An iCalendar document.
@@ -1133,18 +1250,31 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
-          description: The token is write-capable, and this endpoint takes read-only tokens.
+          description: The token lacks `calendar:read`, or holds a write scope, which this endpoint refuses.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
 components:
   securitySchemes:
     bearerToken:
       type: http
       scheme: bearer
-      description: An API token issued under Settings → API tokens.
+      description: |
+        An API token issued under Settings → API tokens. Its scopes narrow what
+        it may reach; each operation names the one it needs as
+        `x-token-scope`. Descriptive only: the token is a bearer credential,
+        not an OAuth grant, though the scope names are chosen so they could
+        become OAuth scopes.
+      x-scopes:
+        subscriptions:read: Subscriptions, their attachments, payments and savings.
+        subscriptions:write: Change subscriptions, their attachments and payments. Includes subscriptions:read.
+        catalogue:read: Categories, tags and payment methods.
+        catalogue:write: Change categories, tags and payment methods. Includes catalogue:read.
+        calendar:read: The iCalendar feed.
 
   parameters:
     SubscriptionId:
@@ -1167,7 +1297,9 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
     Forbidden:
-      description: The token's role does not permit this.
+      description: |
+        The token does not hold the scope the operation needs (the message
+        names it), or the role of the account behind it does not permit this.
       content:
         application/json:
           schema:
@@ -1187,6 +1319,42 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+    TooManyRequests:
+      description: |
+        The token, or the address for a request with no valid token, is over
+        its limit for the current window — or the address has failed token
+        authentication ten times in five minutes. Wait `Retry-After` seconds.
+      headers:
+        Retry-After:
+          $ref: "#/components/headers/Retry-After"
+        RateLimit-Limit:
+          $ref: "#/components/headers/RateLimit-Limit"
+        RateLimit-Remaining:
+          $ref: "#/components/headers/RateLimit-Remaining"
+        RateLimit-Reset:
+          $ref: "#/components/headers/RateLimit-Reset"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  headers:
+    Retry-After:
+      description: Seconds until the request may be made again.
+      schema: { type: integer }
+    RateLimit-Limit:
+      description: >
+        Requests allowed in the current window. Sent on every counted response.
+        On a 429 for failed token authentication it is the ten failures allowed
+        in five minutes, and RateLimit-Reset counts down to the end of those
+        five minutes.
+      schema: { type: integer }
+    RateLimit-Remaining:
+      description: Requests left in the current window. Sent on every counted response.
+      schema: { type: integer }
+    RateLimit-Reset:
+      description: Seconds until the current window resets. Sent on every counted response.
+      schema: { type: integer }
 
   schemas:
     Error:
@@ -1216,7 +1384,7 @@ components:
 
     Identity:
       type: object
-      required: [user, household_id, role, isolation_mode, permissions]
+      required: [user, household_id, role, isolation_mode, permissions, token]
       properties:
         user:
           type: object
@@ -1237,6 +1405,33 @@ components:
         permissions:
           type: array
           items: { type: string }
+        token:
+          $ref: "#/components/schemas/Token"
+
+    Token:
+      type: object
+      description: The token the request was made with. Never its secret.
+      required: [id, name, public_id, scopes, abilities, last_used_at, expires_at, revoked_at, created_at]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        public_id: { type: string, example: 0f3c2a9be81d44c7a1b2c3d4 }
+        scopes:
+          type: array
+          items:
+            type: string
+            enum: ["subscriptions:read", "subscriptions:write", "catalogue:read", "catalogue:write", "calendar:read"]
+        abilities:
+          type: string
+          enum: [read, write]
+          deprecated: true
+          description: >
+            What the token could do before scopes: `write` when it holds any
+            write scope. Kept for one release; read `scopes` instead.
+        last_used_at: { type: string, format: date-time, nullable: true }
+        expires_at: { type: string, format: date-time, nullable: true }
+        revoked_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
 
     Instance:
       type: object

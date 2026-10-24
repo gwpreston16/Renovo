@@ -165,6 +165,17 @@ return [
         'totp_encryption_key' => $env('TOTP_ENCRYPTION_KEY', ''),
     ],
 
+    // API tokens and the limits on what reaches /api/v1 (Phase 42). The
+    // maximum lifetime is unset by default: tokens issued after it is set
+    // must expire within it, and the calendar feed's token is exempt. The
+    // limits are requests per fixed minute — per token, and per IP for
+    // requests with no valid token.
+    'api' => [
+        'token_max_days' => (int) $env('API_TOKEN_MAX_DAYS', '0'),
+        'rate_limit_per_minute' => (int) $env('API_RATE_LIMIT_PER_MINUTE', '120'),
+        'rate_limit_per_ip_per_minute' => (int) $env('API_RATE_LIMIT_PER_IP_PER_MINUTE', '30'),
+    ],
+
     // The key stored secrets are encrypted under — two-factor seeds, channel
     // config, the rate provider key. Optional: it falls back to
     // TOTP_ENCRYPTION_KEY, then SESSION_KEY (App\Security\KeyRing). Set it so

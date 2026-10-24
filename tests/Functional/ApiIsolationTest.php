@@ -9,7 +9,7 @@ use App\Domain\Role;
 use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\UserRepository;
-use App\Domain\TokenAbility;
+use App\Domain\TokenScopes;
 use App\Service\ApiTokenService;
 use DateTimeImmutable;
 
@@ -104,7 +104,7 @@ final class ApiIsolationTest extends ApiTestCase
             (new UserRepository($this->db))->findById($this->editorId),
             $this->householdId,
             'Editor feed',
-            TokenAbility::Read,
+            TokenScopes::readEverything(),
         );
 
         $feed = (string) $this->api('GET', '/api/v1/calendar.ics?token=' . $readToken)->getBody();
@@ -129,7 +129,7 @@ final class ApiIsolationTest extends ApiTestCase
             $users->findById($id),
             $householdId,
             'Outsider token',
-            TokenAbility::Write,
+            TokenScopes::everything(),
         );
     }
 }

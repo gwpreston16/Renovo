@@ -13,6 +13,7 @@
 declare(strict_types=1);
 
 use App\Application\Api\ApiPath;
+use App\Application\Api\ApiRouteScope;
 use App\Application\Middleware\ApiAuthenticationMiddleware;
 use App\Application\Middleware\AuthenticationMiddleware;
 use App\Application\Middleware\FeedAuthenticationMiddleware;
@@ -65,11 +66,13 @@ use App\Controller\SubscriptionController;
 use App\Controller\SubscriptionChargeController;
 use App\Controller\SubscriptionMoneyController;
 use App\Domain\Permission;
+use App\Domain\TokenScope;
 // Imported by name: `App\Security\...` would resolve against the `Slim\App`
 // import below rather than the application's root namespace.
 use App\Security\PermissionService;
 use Psr\Container\ContainerInterface;
 use Slim\App;
+use Slim\Interfaces\RouteInterface;
 use Slim\Routing\RouteCollectorProxy;
 
 return static function (App $app): void {
@@ -80,6 +83,12 @@ return static function (App $app): void {
 
     $requires = static fn (Permission $permission): RequirePermissionMiddleware
         => new RequirePermissionMiddleware($container->get(PermissionService::class), $permission);
+
+    // Phase 42: the token scope an API route needs, kept against the route
+    // (App\Application\Api\ApiRouteScope).
+    $routeScopes = $container->get(ApiRouteScope::class);
+    $scoped = static fn (RouteInterface $route, TokenScope|string $scope): RouteInterface
+        => $routeScopes->declare($route, $scope);
 
     // ----------------------------------------------------------------------
     // First-run wizard (closed once the instance has an administrator)
@@ -767,118 +776,186 @@ return static function (App $app): void {
     // query string — a calendar client cannot send a header. It is a separate
     // middleware rather than a condition inside the shared one, so a route
     // cannot end up accepting URL credentials by being added in the wrong place.
-    $app->get(ApiPath::PREFIX . '/calendar.ics', [CalendarApiController::class, 'feed'])
-        ->setName('calendar-feed')
+    $scoped(
+        $app->get(ApiPath::PREFIX . '/calendar.ics', [CalendarApiController::class, 'feed']),
+        TokenScope::CalendarRead,
+    )->setName('calendar-feed')
         ->add($requires(Permission::ViewSubscriptions))
         ->add(FeedAuthenticationMiddleware::class);
 
-    $app->group(ApiPath::PREFIX, function (RouteCollectorProxy $group) use ($requires): void {
-        $group->get('/me', [MeApiController::class, 'show']);
+    // Every route below names the token scope it needs as well as the
+    // permission (Phase 42). The scope narrows what the token may reach; the
+    // permission is still the role's, and both have to pass. A route with no
+    // scope is refused, and a test fails the build for one.
+    $app->group(ApiPath::PREFIX, function (RouteCollectorProxy $group) use ($requires, $scoped): void {
+        $scoped($group->get('/me', [MeApiController::class, 'show']), ApiRouteScope::ANY_TOKEN);
 
         // Phase 37: the release, to any valid token and to nobody else.
-        $group->get('/instance', [InstanceApiController::class, 'show']);
+        $scoped($group->get('/instance', [InstanceApiController::class, 'show']), ApiRouteScope::ANY_TOKEN);
 
-        $group->get('/subscriptions', [SubscriptionApiController::class, 'index'])
-            ->add($requires(Permission::ViewSubscriptions));
+        $scoped(
+            $group->get('/subscriptions', [SubscriptionApiController::class, 'index']),
+            TokenScope::SubscriptionsRead,
+        )->add($requires(Permission::ViewSubscriptions));
 
-        $group->post('/subscriptions', [SubscriptionApiController::class, 'create'])
-            ->add($requires(Permission::CreateSubscription));
+        $scoped(
+            $group->post('/subscriptions', [SubscriptionApiController::class, 'create']),
+            TokenScope::SubscriptionsWrite,
+        )->add($requires(Permission::CreateSubscription));
 
-        $group->get('/subscriptions/{id:[0-9]+}', [SubscriptionApiController::class, 'show'])
-            ->add($requires(Permission::ViewSubscriptions));
+        $scoped(
+            $group->get('/subscriptions/{id:[0-9]+}', [SubscriptionApiController::class, 'show']),
+            TokenScope::SubscriptionsRead,
+        )->add($requires(Permission::ViewSubscriptions));
 
         // Full replace. There is no PATCH: the service's input is
         // absence-sensitive, so a partial body is the one shape that could
         // half-write a row. See SubscriptionPayload.
-        $group->put('/subscriptions/{id:[0-9]+}', [SubscriptionApiController::class, 'update'])
-            ->add($requires(Permission::UpdateSubscription));
+        $scoped(
+            $group->put('/subscriptions/{id:[0-9]+}', [SubscriptionApiController::class, 'update']),
+            TokenScope::SubscriptionsWrite,
+        )->add($requires(Permission::UpdateSubscription));
 
-        $group->delete('/subscriptions/{id:[0-9]+}', [SubscriptionApiController::class, 'delete'])
-            ->add($requires(Permission::DeleteSubscription));
+        $scoped(
+            $group->delete('/subscriptions/{id:[0-9]+}', [SubscriptionApiController::class, 'delete']),
+            TokenScope::SubscriptionsWrite,
+        )->add($requires(Permission::DeleteSubscription));
 
-        $group->post('/subscriptions/{id:[0-9]+}/cancel', [SubscriptionApiController::class, 'cancel'])
-            ->add($requires(Permission::UpdateSubscription));
+        $scoped(
+            $group->post('/subscriptions/{id:[0-9]+}/cancel', [SubscriptionApiController::class, 'cancel']),
+            TokenScope::SubscriptionsWrite,
+        )->add($requires(Permission::UpdateSubscription));
 
-        $group->post('/subscriptions/{id:[0-9]+}/uncancel', [SubscriptionApiController::class, 'uncancel'])
-            ->add($requires(Permission::UpdateSubscription));
+        $scoped(
+            $group->post('/subscriptions/{id:[0-9]+}/uncancel', [SubscriptionApiController::class, 'uncancel']),
+            TokenScope::SubscriptionsWrite,
+        )->add($requires(Permission::UpdateSubscription));
 
-        $group->post('/subscriptions/{id:[0-9]+}/logo', [SubscriptionApiController::class, 'uploadLogo'])
-            ->add($requires(Permission::UpdateSubscription));
+        $scoped(
+            $group->post('/subscriptions/{id:[0-9]+}/logo', [SubscriptionApiController::class, 'uploadLogo']),
+            TokenScope::SubscriptionsWrite,
+        )->add($requires(Permission::UpdateSubscription));
 
-        $group->delete('/subscriptions/{id:[0-9]+}/logo', [SubscriptionApiController::class, 'deleteLogo'])
-            ->add($requires(Permission::UpdateSubscription));
+        $scoped(
+            $group->delete('/subscriptions/{id:[0-9]+}/logo', [SubscriptionApiController::class, 'deleteLogo']),
+            TokenScope::SubscriptionsWrite,
+        )->add($requires(Permission::UpdateSubscription));
 
-        $group->get('/subscriptions/{id:[0-9]+}/attachments', [AttachmentApiController::class, 'index'])
-            ->add($requires(Permission::ViewSubscriptions));
-
-        $group->post('/subscriptions/{id:[0-9]+}/attachments', [AttachmentApiController::class, 'upload'])
-            ->add($requires(Permission::ManageAttachments));
-
-        $group->get(
-            '/subscriptions/{id:[0-9]+}/attachments/{attachmentId:[0-9]+}',
-            [AttachmentApiController::class, 'download'],
+        $scoped(
+            $group->get('/subscriptions/{id:[0-9]+}/attachments', [AttachmentApiController::class, 'index']),
+            TokenScope::SubscriptionsRead,
         )->add($requires(Permission::ViewSubscriptions));
 
-        $group->delete(
-            '/subscriptions/{id:[0-9]+}/attachments/{attachmentId:[0-9]+}',
-            [AttachmentApiController::class, 'delete'],
+        $scoped(
+            $group->post('/subscriptions/{id:[0-9]+}/attachments', [AttachmentApiController::class, 'upload']),
+            TokenScope::SubscriptionsWrite,
         )->add($requires(Permission::ManageAttachments));
 
-        // Phase 34: the payment ledger.
-        $group->get('/subscriptions/{id:[0-9]+}/charges', [ChargeApiController::class, 'index'])
+        $scoped(
+            $group->get(
+                '/subscriptions/{id:[0-9]+}/attachments/{attachmentId:[0-9]+}',
+                [AttachmentApiController::class, 'download'],
+            ),
+            TokenScope::SubscriptionsRead,
+        )->add($requires(Permission::ViewSubscriptions));
+
+        $scoped(
+            $group->delete(
+                '/subscriptions/{id:[0-9]+}/attachments/{attachmentId:[0-9]+}',
+                [AttachmentApiController::class, 'delete'],
+            ),
+            TokenScope::SubscriptionsWrite,
+        )->add($requires(Permission::ManageAttachments));
+
+        // Phase 34: the payment ledger, which belongs to the subscriptions.
+        $scoped(
+            $group->get('/subscriptions/{id:[0-9]+}/charges', [ChargeApiController::class, 'index']),
+            TokenScope::SubscriptionsRead,
+        )->add($requires(Permission::ViewSubscriptions));
+
+        $scoped(
+            $group->post('/subscriptions/{id:[0-9]+}/charges', [ChargeApiController::class, 'create']),
+            TokenScope::SubscriptionsWrite,
+        )->add($requires(Permission::ManageCharges));
+
+        $scoped(
+            $group->patch('/charges/{id:[0-9]+}', [ChargeApiController::class, 'update']),
+            TokenScope::SubscriptionsWrite,
+        )->add($requires(Permission::ManageCharges));
+
+        $scoped($group->get('/savings', [SavingsApiController::class, 'show']), TokenScope::SubscriptionsRead)
             ->add($requires(Permission::ViewSubscriptions));
 
-        $group->post('/subscriptions/{id:[0-9]+}/charges', [ChargeApiController::class, 'create'])
-            ->add($requires(Permission::ManageCharges));
-
-        $group->patch('/charges/{id:[0-9]+}', [ChargeApiController::class, 'update'])
-            ->add($requires(Permission::ManageCharges));
-
-        $group->get('/savings', [SavingsApiController::class, 'show'])
+        $scoped($group->get('/categories', [TaxonomyApiController::class, 'categories']), TokenScope::CatalogueRead)
             ->add($requires(Permission::ViewSubscriptions));
 
-        $group->get('/categories', [TaxonomyApiController::class, 'categories'])
-            ->add($requires(Permission::ViewSubscriptions));
+        $scoped(
+            $group->post('/categories', [TaxonomyApiController::class, 'createCategory']),
+            TokenScope::CatalogueWrite,
+        )->add($requires(Permission::ManageCategories));
 
-        $group->post('/categories', [TaxonomyApiController::class, 'createCategory'])
-            ->add($requires(Permission::ManageCategories));
+        $scoped(
+            $group->put('/categories/{id:[0-9]+}', [TaxonomyApiController::class, 'updateCategory']),
+            TokenScope::CatalogueWrite,
+        )->add($requires(Permission::ManageCategories));
 
-        $group->put('/categories/{id:[0-9]+}', [TaxonomyApiController::class, 'updateCategory'])
-            ->add($requires(Permission::ManageCategories));
+        $scoped(
+            $group->delete('/categories/{id:[0-9]+}', [TaxonomyApiController::class, 'deleteCategory']),
+            TokenScope::CatalogueWrite,
+        )->add($requires(Permission::ManageCategories));
 
-        $group->delete('/categories/{id:[0-9]+}', [TaxonomyApiController::class, 'deleteCategory'])
-            ->add($requires(Permission::ManageCategories));
+        $scoped(
+            $group->get('/payment-methods', [TaxonomyApiController::class, 'paymentMethods']),
+            TokenScope::CatalogueRead,
+        )->add($requires(Permission::ViewSubscriptions));
 
-        $group->get('/payment-methods', [TaxonomyApiController::class, 'paymentMethods'])
-            ->add($requires(Permission::ViewSubscriptions));
+        $scoped(
+            $group->post('/payment-methods', [TaxonomyApiController::class, 'createPaymentMethod']),
+            TokenScope::CatalogueWrite,
+        )->add($requires(Permission::ManageCategories));
 
-        $group->post('/payment-methods', [TaxonomyApiController::class, 'createPaymentMethod'])
-            ->add($requires(Permission::ManageCategories));
+        $scoped(
+            $group->put('/payment-methods/{id:[0-9]+}', [TaxonomyApiController::class, 'updatePaymentMethod']),
+            TokenScope::CatalogueWrite,
+        )->add($requires(Permission::ManageCategories));
 
-        $group->put('/payment-methods/{id:[0-9]+}', [TaxonomyApiController::class, 'updatePaymentMethod'])
-            ->add($requires(Permission::ManageCategories));
-
-        $group->delete('/payment-methods/{id:[0-9]+}', [TaxonomyApiController::class, 'deletePaymentMethod'])
-            ->add($requires(Permission::ManageCategories));
+        $scoped(
+            $group->delete('/payment-methods/{id:[0-9]+}', [TaxonomyApiController::class, 'deletePaymentMethod']),
+            TokenScope::CatalogueWrite,
+        )->add($requires(Permission::ManageCategories));
 
         // Phase 30: a file does not travel in the JSON body, so the logo has a
         // path of its own, as a subscription's does.
-        $group->post('/payment-methods/{id:[0-9]+}/logo', [TaxonomyApiController::class, 'uploadPaymentMethodLogo'])
-            ->add($requires(Permission::ManageCategories));
+        $scoped(
+            $group->post(
+                '/payment-methods/{id:[0-9]+}/logo',
+                [TaxonomyApiController::class, 'uploadPaymentMethodLogo'],
+            ),
+            TokenScope::CatalogueWrite,
+        )->add($requires(Permission::ManageCategories));
 
-        $group->delete('/payment-methods/{id:[0-9]+}/logo', [TaxonomyApiController::class, 'deletePaymentMethodLogo'])
-            ->add($requires(Permission::ManageCategories));
+        $scoped(
+            $group->delete(
+                '/payment-methods/{id:[0-9]+}/logo',
+                [TaxonomyApiController::class, 'deletePaymentMethodLogo'],
+            ),
+            TokenScope::CatalogueWrite,
+        )->add($requires(Permission::ManageCategories));
 
-        $group->get('/tags', [TaxonomyApiController::class, 'tags'])
+        $scoped($group->get('/tags', [TaxonomyApiController::class, 'tags']), TokenScope::CatalogueRead)
             ->add($requires(Permission::ViewSubscriptions));
 
-        $group->post('/tags', [TaxonomyApiController::class, 'createTag'])
+        $scoped($group->post('/tags', [TaxonomyApiController::class, 'createTag']), TokenScope::CatalogueWrite)
             ->add($requires(Permission::ManageTags));
 
-        $group->put('/tags/{id:[0-9]+}', [TaxonomyApiController::class, 'updateTag'])
-            ->add($requires(Permission::ManageTags));
+        $scoped(
+            $group->put('/tags/{id:[0-9]+}', [TaxonomyApiController::class, 'updateTag']),
+            TokenScope::CatalogueWrite,
+        )->add($requires(Permission::ManageTags));
 
-        $group->delete('/tags/{id:[0-9]+}', [TaxonomyApiController::class, 'deleteTag'])
-            ->add($requires(Permission::ManageTags));
+        $scoped(
+            $group->delete('/tags/{id:[0-9]+}', [TaxonomyApiController::class, 'deleteTag']),
+            TokenScope::CatalogueWrite,
+        )->add($requires(Permission::ManageTags));
     })->add(ApiAuthenticationMiddleware::class);
 };

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controller\Api;
 
 use App\Application\Middleware\AuthenticationMiddleware;
+use App\Application\Middleware\TokenAuthenticationMiddleware;
+use App\Domain\Entity\ApiToken;
 use App\Domain\Entity\User;
 use App\I18n\Translator;
 use App\Security\Scope;
@@ -66,6 +68,16 @@ abstract class ApiController
         $body = $request->getParsedBody();
 
         return is_array($body) ? $body : [];
+    }
+
+    protected function token(ServerRequestInterface $request): ApiToken
+    {
+        $token = $request->getAttribute(TokenAuthenticationMiddleware::ATTRIBUTE_TOKEN);
+        if (!$token instanceof ApiToken) {
+            throw new RuntimeException('This route requires token authentication middleware.');
+        }
+
+        return $token;
     }
 
     protected function scope(ServerRequestInterface $request): Scope

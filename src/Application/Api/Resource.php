@@ -252,7 +252,9 @@ final class Resource
             'id' => $token->id,
             'name' => $token->name,
             'public_id' => $token->publicId,
-            'abilities' => $token->abilities->value,
+            'scopes' => $token->scopes->values(),
+            // Deprecated with Phase 42's scopes; kept for one release.
+            'abilities' => $token->abilities()->value,
             'last_used_at' => self::timestamp($token->lastUsedAt),
             'expires_at' => self::timestamp($token->expiresAt),
             'revoked_at' => self::timestamp($token->revokedAt),

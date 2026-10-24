@@ -1464,14 +1464,19 @@ a.sidebar-version:hover {
 }
 
 /*
- * Two actions in one table cell. They wrap rather than force the row wide,
- * because this table already scrolls on a phone and a cell that refuses to
- * narrow is what makes it scroll sooner.
+ * A token's Reissue and Revoke go under its text rather than beside it: what
+ * a token may reach is a list of scopes (Phase 42), which beside two buttons
+ * in a half-width card had a few words' width to wrap in.
  */
 .token-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
+    grid-column: 2 / -1;
+}
+
+.account-row:has(.token-actions) .account-row-meta {
+    overflow-wrap: anywhere;
 }
 
 /* ------------------------------------------------------------- tag field */

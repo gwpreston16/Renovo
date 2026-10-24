@@ -13,6 +13,7 @@ use App\Security\PermissionService;
 use App\Security\RoleMatrix;
 use App\Security\Scope;
 use PHPUnit\Framework\TestCase;
+use App\Tests\Support\TestTranslator;
 
 /**
  * The members screen's "What each role can do", pinned.
@@ -32,7 +33,7 @@ final class RoleMatrixTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->permissions = new PermissionService();
+        $this->permissions = new PermissionService(TestTranslator::create());
         $this->matrix = new RoleMatrix($this->permissions);
     }
 

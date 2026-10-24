@@ -12,6 +12,7 @@ use App\Service\CatchUpService;
 use App\Service\SavingsService;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use App\Domain\TokenScope;
 
 /**
  * What offers and cancellations have saved: the Analytics card's two figures
@@ -36,7 +37,7 @@ final class SavingsApiController extends ApiController
         // The catch-up the charge list runs, for a token that may write, so
         // the offers' charges that have fallen due are counted.
         $token = $request->getAttribute(TokenAuthenticationMiddleware::ATTRIBUTE_TOKEN);
-        if ($token instanceof ApiToken && $token->abilities->allowsWrites()) {
+        if ($token instanceof ApiToken && $token->scopes->allows(TokenScope::SubscriptionsWrite)) {
             $this->catchUp->run($scope);
         }
 

@@ -5,13 +5,18 @@ declare(strict_types=1);
 namespace App\Application\Middleware;
 
 use App\Application\Api\ApiPath;
+use App\Application\Api\HttpTooManyRequestsException;
+use App\Application\Api\RateLimitStatus;
 use App\I18n\Translator;
 use App\Security\CsrfTokenManager;
+use App\Security\RequestContext;
+use App\Service\TokenRateLimiter;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Slim\Exception\HttpBadRequestException;
+use Slim\Exception\HttpUnauthorizedException;
 
 /**
  * Rejects state-changing requests that do not carry the session's CSRF token.
@@ -39,6 +44,8 @@ final class CsrfMiddleware implements MiddlewareInterface
     public function __construct(
         private readonly CsrfTokenManager $csrf,
         private readonly Translator $translator,
+        private readonly TokenRateLimiter $limiter,
+        private readonly RateLimitStatus $rateLimit,
     ) {
     }
 
@@ -61,6 +68,25 @@ final class CsrfMiddleware implements MiddlewareInterface
         $fromHeader = $request->getHeaderLine(CsrfTokenManager::HEADER_NAME);
 
         if (!$this->csrf->isValid($fromBody) && !$this->csrf->isValid($fromHeader === '' ? null : $fromHeader)) {
+            // An API write with no bearer token is still refused, so a route
+            // mounted under the API without token middleware keeps its CSRF
+            // protection — but refused as the API documents it, 401 for a
+            // missing token, not as a web form whose session ended (K40).
+            //
+            // Counted against the address like every other request with no
+            // token, so a write sent without one is limited the same way, and
+            // answered with the same RateLimit headers.
+            if (ApiPath::matches($request)) {
+                $decision = $this->limiter->hitAddress(RequestContext::fromRequest($request)->ipAddress);
+                $this->rateLimit->set($decision);
+
+                if (!$decision->allowed) {
+                    throw HttpTooManyRequestsException::for($request, $decision, $this->translator);
+                }
+
+                throw new HttpUnauthorizedException($request, $this->translator->trans('error.api.token_required'));
+            }
+
             // Titled for what it almost always is: a form left open until the
             // session behind it ended, rather than "400 Bad Request".
             throw (new HttpBadRequestException(

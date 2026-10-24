@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Application\Middleware\AuthenticationMiddleware;
+use Slim\Psr7\Factory\ServerRequestFactory;
 
 /**
  * The API enforces the same rules as the browser, and refuses the credential
@@ -181,15 +182,51 @@ final class ApiPermissionTest extends ApiTestCase
             'next_payment_date' => '2026-12-01',
         ]);
 
-        self::assertContains(
-            $response->getStatusCode(),
-            [400, 401],
-            'A cookie-only POST to the API must be refused.',
-        );
+        // 401, as the API documents a missing token — not the web's CSRF 400
+        // (K40).
+        self::assertSame(401, $response->getStatusCode(), 'A cookie-only POST to the API must be refused.');
 
         $after = $this->decode($this->api('GET', '/api/v1/subscriptions', $this->ownerToken))['meta']['total'];
 
         self::assertSame($before, $after, 'A cookie-only POST must not have created anything.');
+    }
+
+    public function testAWriteWithNoTokenOrAnotherSchemeIs401(): void
+    {
+        $request = (new ServerRequestFactory())
+            ->createServerRequest('DELETE', 'http://localhost/api/v1/tags/1', ['REMOTE_ADDR' => '127.0.0.1']);
+
+        foreach ([$request, $request->withHeader('Authorization', 'Token ' . $this->ownerToken)] as $attempt) {
+            $response = $this->app->handle($attempt);
+
+            self::assertSame(401, $response->getStatusCode());
+            self::assertSame(401, $this->decode($response)['error']['status']);
+        }
+    }
+
+    public function testTheRefusalsComeFromTheCatalogue(): void
+    {
+        // K44: these were literal English; now each is a catalogue message, so
+        // it follows the token holder's language like every other API error.
+        $refused = $this->api('POST', '/api/v1/tags', $this->viewerToken, ['name' => 'X']);
+        self::assertSame(
+            'Your role does not permit "tag.manage".',
+            $this->decode($refused)['error']['message'],
+        );
+
+        $id = $this->createSubscription();
+        $noPart = $this->api('POST', '/api/v1/subscriptions/' . $id . '/logo', $this->ownerToken);
+        self::assertSame(400, $noPart->getStatusCode());
+        self::assertSame(
+            'Send the image as multipart form data in a "logo" part.',
+            $this->decode($noPart)['error']['message'],
+        );
+
+        $noFile = $this->api('POST', '/api/v1/subscriptions/' . $id . '/attachments', $this->ownerToken);
+        self::assertSame(
+            'Send the file as multipart form data in a "file" part.',
+            $this->decode($noFile)['error']['message'],
+        );
     }
 
     public function testAnUnknownRevokedOrMalformedTokenIsAll401(): void

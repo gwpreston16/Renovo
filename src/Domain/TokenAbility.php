@@ -5,33 +5,16 @@ declare(strict_types=1);
 namespace App\Domain;
 
 /**
- * What an API token may be used for.
+ * What an API token could be used for before Phase 42: read, or write.
  *
- * Two values rather than a permission list, and that is the whole point: a
- * token narrows, it never grants. The scope a request runs under is still built
- * from the bearer's household membership, so a write token held by a Viewer
- * writes nothing — it simply fails the same permission check the browser would.
- * What the ability adds is the ability to issue a credential that is *weaker*
- * than the account it belongs to, which is what makes it safe to paste into a
- * calendar client or a read-only script.
+ * Superseded by `TokenScope`. It survives for one release only because the
+ * `api_tokens.abilities` column does, kept in step with each token's scopes so
+ * that rolling back to a version that reads only this column leaves every
+ * token able to do what it did. `GET /me` still reports it for the same
+ * release. Dropping both is a ROADMAP candidate.
  */
 enum TokenAbility: string
 {
     case Read = 'read';
     case Write = 'write';
-
-    public function allowsWrites(): bool
-    {
-        return $this === self::Write;
-    }
-
-    public function labelKey(): string
-    {
-        return 'token_ability.' . $this->value;
-    }
-
-    public static function fromString(string $value): self
-    {
-        return self::tryFrom(strtolower(trim($value))) ?? self::Read;
-    }
 }

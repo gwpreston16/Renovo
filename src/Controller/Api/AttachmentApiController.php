@@ -56,7 +56,7 @@ final class AttachmentApiController extends ApiController
         $file = $files['file'] ?? null;
 
         if (!$file instanceof UploadedFileInterface) {
-            throw new HttpBadRequestException($request, 'Send the file as multipart form data in a "file" part.');
+            throw new HttpBadRequestException($request, $this->translator->trans('error.api.file_part_missing'));
         }
 
         $body = $this->payload($request);

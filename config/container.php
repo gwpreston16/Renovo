@@ -127,6 +127,9 @@ use App\Support\AfterResponse;
 use App\Support\ShutdownAfterResponse;
 use App\Repository\ScratchDatabase;
 use App\Service\Backup\Destination\HttpExchange;
+use App\Service\ApiTokenService;
+use App\Service\TokenRateLimiter;
+use App\Repository\ApiRateWindowRepository;
 
 use function DI\autowire;
 use function DI\factory;
@@ -291,6 +294,25 @@ return static function (ContainerBuilder $builder, ?array $settings = null): voi
                 $c->get(Clock::class),
                 $limits['max_per_user_per_hour'],
                 $limits['max_per_subject_per_day'],
+            );
+        },
+
+        // Phase 42: the instance's maximum token lifetime, unset (0) by default.
+        ApiTokenService::class => autowire()->constructorParameter(
+            'maxDays',
+            factory(static fn (ContainerInterface $c): int => $c->get('settings')['api']['token_max_days']),
+        ),
+
+        // Phase 42: requests a minute per token, and per address without one.
+        TokenRateLimiter::class => static function (ContainerInterface $c): TokenRateLimiter {
+            $api = $c->get('settings')['api'];
+
+            return new TokenRateLimiter(
+                $c->get(ApiRateWindowRepository::class),
+                $c->get(AuditLogService::class),
+                $c->get(Clock::class),
+                $api['rate_limit_per_minute'],
+                $api['rate_limit_per_ip_per_minute'],
             );
         },
 

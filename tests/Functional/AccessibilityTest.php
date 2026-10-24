@@ -136,7 +136,7 @@ final class AccessibilityTest extends DatabaseTestCase
         $user = $users->findById($this->userId);
         self::assertNotNull($user);
         $container->get(\App\Service\ApiTokenService::class)
-            ->issue($user, $this->householdId, 'Calendar', \App\Domain\TokenAbility::Read);
+            ->issue($user, $this->householdId, 'Calendar', \App\Domain\TokenScopes::readEverything());
         $container->get(\App\Service\TrustedHostService::class)->add('gotify.lan', 'The LAN one', $user);
 
         // Phase 37: update checks on and a newer release found, so the

@@ -19,7 +19,10 @@ list. `.env` is never committed. The ones that matter most:
 | `SESSION_COOKIE_SECURE`     | Leave `true` unless you are serving plain HTTP on a trusted network. |
 | `HSTS_ENABLED`              | `false` by default. Set to `true` to send `Strict-Transport-Security` (one year), and only once the instance is on https for good: a browser that has seen it refuses plain http to this name for a year. Sent only when `APP_URL` is https. See [Security headers](security.md#security-headers). |
 | `HSTS_INCLUDE_SUBDOMAINS`   | `false` by default. With `HSTS_ENABLED`, also covers every subdomain of `APP_URL`'s host — only if all of them serve https. |
-| `AUTH_MAX_ATTEMPTS_PER_*`   | Login, reset and second-factor throttling, per account and per IP. |
+| `AUTH_MAX_ATTEMPTS_PER_*`   | Login, reset and second-factor throttling, per account and per IP. The IP is `REMOTE_ADDR`: behind a proxy that does not pass the client's address on, every client shares one. |
+| `API_TOKEN_MAX_DAYS`        | Unset by default. The longest an API token issued or reissued from now on may last, in days: **No expiry** is no longer offered and a later date is refused. Tokens issued before keep their expiry, and Instance status counts those that never expire. The calendar feed's link is exempt. See [Lifetimes](api.md#lifetimes). |
+| `API_RATE_LIMIT_PER_MINUTE` | Requests a minute per API token, calendar feed included. 120 by default. Over it is `429`. See [Rate limits](api.md#rate-limits). |
+| `API_RATE_LIMIT_PER_IP_PER_MINUTE` | Requests a minute per address to `/api/v1` with no valid token. 30 by default. Separately, ten failed tokens from one address in five minutes block it for the rest of the five minutes. |
 | `TOTP_ENCRYPTION_KEY`       | Superseded by `SECRETS_KEY`. Still the key when `SECRETS_KEY` is unset, and always tried when reading. |
 | `BACKUP_ENCRYPTION_KEY`     | Instance backups' key: `openssl rand -hex 32`. Unset, instance backups are unavailable. Never stored by Renovo; keep it, with the keys above, somewhere that is not this server. Settings shows its fingerprint. See [Instance backups](operations.md#instance-backups). |
 | `BACKUP_DIRECTORY`          | Where instance backups are written. `var/backups` (on the `appvar` volume) by default; the app and the scheduler must both see it. Add a destination to send each backup off the server too. |

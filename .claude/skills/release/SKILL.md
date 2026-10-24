@@ -121,7 +121,11 @@ printf 'X.Y.Z\n' > VERSION                 # what the running app reports
 
 Leave `openapi/openapi.yaml`'s `info.version` alone — it versions the API, not
 the app (it was 1.3.0 when the app was 1.4.0), and a phase bumps it when the
-API changes.
+API changes. A new endpoint, field, status code or header bumps the minor
+version; a change in behaviour alone (no change of shape, as when Phase 40
+made a password change revoke every token) bumps the patch version. Either
+way the phase's CHANGELOG entry names the new contract version, so a client
+keying on it can tell (K107). Check that each phase this release covers did.
 
 ## 7. Release notes
 

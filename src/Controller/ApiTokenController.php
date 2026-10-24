@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\I18n\Translator;
-use App\Domain\TokenAbility;
+use App\Domain\TokenScopes;
 use App\Service\ApiTokenService;
 use App\Service\ValidationException;
 use DateTimeImmutable;
@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
 use App\Security\SessionInterface;
+use App\Support\Clock;
 
 /**
  * Issuing and revoking the signed-in user's API tokens.
@@ -47,6 +48,7 @@ final class ApiTokenController extends Controller
         SessionInterface $session,
         Translator $translator,
         private readonly ApiTokenService $tokens,
+        private readonly Clock $clock,
     ) {
         parent::__construct($view, $session, $translator);
     }
@@ -71,7 +73,7 @@ final class ApiTokenController extends Controller
                 $this->user($request),
                 $scope->householdId,
                 is_scalar($body['name'] ?? null) ? (string) $body['name'] : '',
-                TokenAbility::fromString(is_scalar($body['abilities'] ?? null) ? (string) $body['abilities'] : ''),
+                $this->scopes($body),
                 $this->expiry($body),
             );
         } catch (ValidationException $exception) {
@@ -88,7 +90,7 @@ final class ApiTokenController extends Controller
 
     /**
      * Rotate a token: the old secret dies, a new one with the same name,
-     * abilities and expiry is shown once.
+     * scopes and lifetime is shown once.
      *
      * The new secret goes into the same one-shot flash a fresh issue uses, so
      * it is displayed exactly once and a refresh of this page does not bring it
@@ -130,19 +132,56 @@ final class ApiTokenController extends Controller
     }
 
     /**
+     * The scopes the form asked for: a preset's, or for Custom the switches
+     * that were on. A form with no preset at all gets the default, Read
+     * everything; an empty Custom is refused by the service.
+     *
      * @param array<string, mixed> $body
+     */
+    private function scopes(array $body): TokenScopes
+    {
+        $preset = is_scalar($body['preset'] ?? null) ? (string) $body['preset'] : TokenScopes::PRESET_READ;
+        if ($preset !== TokenScopes::PRESET_CUSTOM) {
+            return TokenScopes::preset($preset) ?? TokenScopes::readEverything();
+        }
+
+        $chosen = is_array($body['scopes'] ?? null) ? $body['scopes'] : [];
+
+        return TokenScopes::fromValues(array_values(array_filter($chosen, 'is_string')));
+    }
+
+    /**
+     * When the token expires: a number of days from today, a date, or never.
+     * A form that says nothing gets the default lifetime.
+     *
+     * @param array<string, mixed> $body
+     * @throws ValidationException
      */
     private function expiry(array $body): ?DateTimeImmutable
     {
-        $raw = is_scalar($body['expires_at'] ?? null) ? trim((string) $body['expires_at']) : '';
-        if ($raw === '') {
+        $lifetime = is_scalar($body['lifetime'] ?? null)
+            ? (string) $body['lifetime']
+            : (string) $this->tokens->defaultLifetimeDays();
+
+        if ($lifetime === 'none') {
             return null;
         }
 
-        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $raw);
+        if (ctype_digit($lifetime) && (int) $lifetime > 0) {
+            return $this->clock->now()->modify(sprintf('+%d days', (int) $lifetime))->setTime(23, 59, 59);
+        }
+
+        // On a date: the date field, which has to hold one. A blank or
+        // unreadable date is refused rather than read as No expiry — that is
+        // a chip of its own, and a forgotten field must not choose it.
+        $raw = is_scalar($body['expires_at'] ?? null) ? trim((string) $body['expires_at']) : '';
+        $date = $raw === '' ? false : DateTimeImmutable::createFromFormat('!Y-m-d', $raw);
+        if ($date === false || $date->format('Y-m-d') !== $raw) {
+            throw ValidationException::field('expires_at', 'error.token.expiry_date_required');
+        }
 
         // End of the chosen day: a token that said it expired on the 31st and
         // stopped working at midnight on the 30th would be a support ticket.
-        return $date === false ? null : $date->setTime(23, 59, 59);
+        return $date->setTime(23, 59, 59);
     }
 }

@@ -134,6 +134,18 @@ trail** for failed token authentication.
 - `OpenApiCoverageTest` and `ApiDocCoverageTest` assert the scope on every
   route in both places.
 
+### F. Known issues taken into this phase
+
+- **K40.** A request to `/api/v1` with no bearer token, or another scheme,
+  gets the documented **401** whatever its method, not the CSRF check's 400.
+- **K44.** The permission 403 and the multipart 400s from the logo and
+  attachment uploads are translated, in the token holder's language, as the
+  new scope 403 is.
+- **K107.** `info.version` goes to 1.8.0 and the CHANGELOG says so. The rule
+  for a behaviour-only change (no new endpoint, field or status code) is
+  written into the release skill beside its `info.version` note: it bumps the
+  patch version, and the CHANGELOG names it.
+
 ## Data-model changes
 
 Migrations, sequenced after the last existing one, each with an explicit
@@ -141,11 +153,14 @@ Migrations, sequenced after the last existing one, each with an explicit
 
 1. `add_scopes_to_api_tokens` — `scopes` string(255), nullable, space-separated.
 2. `backfill_api_token_scopes` — maps `abilities` to scopes as in A. `down()`
-   clears the column.
-3. `create_api_rate_windows` — `key` string(96), `window_start` timestamp,
-   `hits` integer, with a unique index on (`key`, `window_start`).
+   clears the column, first revoking any token the read/write ability cannot
+   describe (changed at the merge review: it would otherwise widen).
+3. `create_api_rate_windows` — `key` string(96), `window_start` datetime,
+   `hits` integer, primary key (`key`, `window_start`). A datetime because
+   MariaDB can make a `timestamp` update itself (changed at the merge review).
 
-`abilities` stays for one release so `down()` is lossless. Its removal is a
+`abilities` stays for one release, kept in step, so a rollback keeps every
+token the presets describe working. Its removal is a
 ROADMAP candidate.
 
 ## Explicitly out of scope (leave clean seams, do NOT stub)
@@ -164,34 +179,58 @@ ROADMAP candidate.
 
 ## Decisions & assumptions (confirm or correct before build)
 
-- **Two resource groups (subscriptions, catalogue) plus calendar.** A scope per
-  endpoint would be finer, and harder to choose between when issuing a token.
-  *Say if you want tags or payment methods split out.*
-- **The default lifetime is 90 days and the maximum is unset.** A self-hoster
-  scripting against their own instance should not be forced to rotate, but the
-  default nudges them to.
-- **The feed token is exempt from lifetimes.** It can only read the calendar,
-  and replacing it means re-subscribing every client.
-- **Fixed windows, not a token bucket.** They are simple, portable SQL, and good
-  enough at these rates.
-- **A 403 for a missing scope, not a 404.** The token holder can already see
-  that the route exists.
+- **Two resource groups (subscriptions, catalogue) plus calendar.** *Confirmed
+  2026-10-24.* A scope per endpoint would be finer, and harder to choose
+  between when issuing a token.
+- **The ledger and savings sit under subscriptions** (found while starting
+  it: the table in A predates Phases 34 and 36). *Confirmed 2026-10-24.*
+  `/subscriptions/{id}/charges` and `PATCH /charges/{id}` need
+  `subscriptions:read` / `:write`, and `/savings` needs `subscriptions:read`.
+  The catch-up `/savings` ran for a write token; it now runs for a
+  `subscriptions:write` token.
+- **The default lifetime is 90 days and the maximum is unset.** *Confirmed
+  2026-10-24.* A self-hoster scripting against their own instance should not
+  be forced to rotate, but the default nudges them to.
+- **The feed token is exempt from lifetimes.** *Confirmed 2026-10-24.* It can
+  only read the calendar, and replacing it means re-subscribing every client.
+- **Fixed windows, not a token bucket.** *Confirmed 2026-10-24.* They are
+  simple, portable SQL, and good enough at these rates.
+- **A 403 for a missing scope, not a 404.** *Confirmed 2026-10-24.* The token
+  holder can already see that the route exists.
+- **An IP blocked by the failure throttle gets 429** with `Retry-After`, the
+  same response as the rate limit (found while starting it). *Confirmed
+  2026-10-24.*
+- **The two OpenAPI documents are not rate-limited** (found while starting
+  it). *Confirmed 2026-10-24.* They are public, static and hold no instance
+  data.
+- **The per-IP limit has its own setting**, `API_RATE_LIMIT_PER_IP_PER_MINUTE`,
+  default 30 (found while starting it). *Confirmed 2026-10-24.*
+- **The `/api/v1` contract version goes to 1.8.0** for the scopes and the 429.
+  *Confirmed 2026-10-24* with K107 (section F).
+- **K40, K44 and K107 are taken into this phase** (section F). *Confirmed
+  2026-10-24.*
+- **Where the docs went** (settled while building it). The reverse-proxy note
+  sits beside the sign-in throttle's in `docs/security.md`, and the settings
+  in `docs/configuration.md`: Phase 44 moved both out of the README. The scope
+  list on the bearer scheme is `x-scopes`, because OpenAPI 3 allows `scopes`
+  only inside an `oauth2` flow.
 
 ## Status
 
-- [ ] `TokenScope`; a scope declared on every API route; middleware check; route
+- [x] `TokenScope`; a scope declared on every API route; middleware check; route
       coverage test
-- [ ] Issue form presets and custom scopes; scopes shown in the token list and
+- [x] Issue form presets and custom scopes; scopes shown in the token list and
       audit entries
-- [ ] Default lifetime; `API_TOKEN_MAX_DAYS`; expiring-soon flag; outstanding
+- [x] Default lifetime; `API_TOKEN_MAX_DAYS`; expiring-soon flag; outstanding
       count on Instance status
-- [ ] `TokenRateLimiter`, `api_rate_windows`, 429 and headers; prune
-- [ ] `api_token.auth_failed` audit with de-duplication; IP failure throttle
-- [ ] OpenAPI and `docs/api.md`; coverage tests extended
-- [ ] Migrations on both engines
-- [ ] `.env.example` and the README environment table
-- [ ] New strings in `translations/en.php`
-- [ ] `composer check`, `i18n:check`, offline guard green on both engines
+- [x] `TokenRateLimiter`, `api_rate_windows`, 429 and headers; prune
+- [x] `api_token.auth_failed` audit with de-duplication; IP failure throttle
+- [x] OpenAPI and `docs/api.md`; coverage tests extended
+- [x] K40, K44, K107
+- [x] Migrations on both engines
+- [x] `.env.example` and the environment table (`docs/configuration.md` since Phase 44)
+- [x] New strings in `translations/en.php`
+- [x] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done
 

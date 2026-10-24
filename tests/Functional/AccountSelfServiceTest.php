@@ -8,7 +8,7 @@ use App\Application\Middleware\AuthenticationMiddleware;
 use App\Domain\AuditAction;
 use App\Domain\IsolationMode;
 use App\Domain\Role;
-use App\Domain\TokenAbility;
+use App\Domain\TokenScopes;
 use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\UserRepository;
@@ -401,11 +401,11 @@ final class AccountSelfServiceTest extends DatabaseTestCase
         self::assertNotNull($container);
         $tokens = $container->get(ApiTokenService::class);
         $member = $this->reload($this->memberId);
-        $apiToken = $tokens->issue($member, $this->householdId, 'Script', TokenAbility::Read);
+        $apiToken = $tokens->issue($member, $this->householdId, 'Script', TokenScopes::readEverything());
         $feedToken = $tokens->replaceFeedToken($member, $this->householdId);
         self::assertSame(200, $this->feed($feedToken)->getStatusCode());
         $housemate = $this->reload($this->housemateId);
-        $housemates = $tokens->issue($housemate, $this->householdId, 'Theirs', TokenAbility::Read);
+        $housemates = $tokens->issue($housemate, $this->householdId, 'Theirs', TokenScopes::readEverything());
 
         self::assertSame(200, $this->api($apiToken)->getStatusCode());
 
