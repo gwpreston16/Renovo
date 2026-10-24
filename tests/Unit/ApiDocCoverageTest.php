@@ -92,15 +92,25 @@ final class ApiDocCoverageTest extends TestCase
         foreach ($this->rows(self::ENDPOINT_TABLE) as $cells) {
             $operation = strtoupper(trim($cells[0], '`')) . ' ' . ApiPath::PREFIX . trim($cells[1], '`');
 
-            self::assertSame($declared[$operation] ?? null, $cells[2], 'docs/api.md names the wrong scope for ' . $operation);
+            self::assertSame(
+                $declared[$operation] ?? null,
+                $cells[2],
+                'docs/api.md names the wrong scope for ' . $operation,
+            );
         }
     }
 
     public function testTheScopesTableListsEveryScope(): void
     {
-        $listed = array_map(static fn (array $cells): string => trim($cells[0], '`'), $this->rows('| Scope | Reaches |'));
+        $listed = array_map(
+            static fn (array $cells): string => trim($cells[0], '`'),
+            $this->rows('| Scope | Reaches |'),
+        );
 
-        self::assertSame(array_map(static fn (TokenScope $scope): string => $scope->value, TokenScope::cases()), $listed);
+        self::assertSame(
+            array_map(static fn (TokenScope $scope): string => $scope->value, TokenScope::cases()),
+            $listed,
+        );
     }
 
     public function testTheRoleMatrixMatchesThePermissionService(): void

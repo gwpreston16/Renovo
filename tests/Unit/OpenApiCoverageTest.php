@@ -158,7 +158,9 @@ final class OpenApiCoverageTest extends TestCase
 
             $pattern = (string) preg_replace('/\{([a-zA-Z_][a-zA-Z0-9_]*)(:[^}]+)?\}/', '{$1}', $route->getPattern());
             foreach ($route->getMethods() as $method) {
-                $declared[strtoupper($method) . ' ' . $pattern] = $needed instanceof TokenScope ? $needed->value : $needed;
+                $declared[strtoupper($method) . ' ' . $pattern] = $needed instanceof TokenScope
+                    ? $needed->value
+                    : $needed;
             }
         }
 
