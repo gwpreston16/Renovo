@@ -188,7 +188,7 @@ None.
 - [x] Attachment and API response policies
 - [x] Template guard test in CI; CLAUDE.md convention line
 - [x] K1: a posted `logo_path` is never saved; K64: attachments tested over HTTP
-- [ ] README: headers, HSTS, notes for custom proxies; `.env.example`
+- [x] README: headers, HSTS, notes for custom proxies; `.env.example`
 - [ ] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done

@@ -183,4 +183,52 @@ the reset may well have been prompted by somebody else having one.
   destination only ever receives the encrypted backup; its credentials are
   stored encrypted, never shown again and never logged. See
   [Sending backups off the server](operations.md#sending-backups-off-the-server).
-- Templates escape all output.
+- Templates escape all output, and a **Content-Security-Policy** stops the
+  browser running anything a missed escape let through. See
+  [Security headers](#security-headers).
+- An **uploaded file is served with a `sandbox` policy** (Phase 41), so an HTML
+  or SVG invoice opened in the browser runs no script and cannot act as
+  Renovo. A subscription's logo is only ever a file uploaded or fetched for it:
+  a path typed into the form is ignored.
+
+## Security headers
+
+Renovo sets these on every response PHP sends, error pages included (Phase 41).
+They are set by the application rather than only by the bundled nginx, so they
+arrive whatever proxy is in front of it.
+
+| Header | Value |
+|---|---|
+| `Content-Security-Policy` | Pages: `default-src 'self'; script-src 'self' 'nonce-…'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'`, with `upgrade-insecure-requests` when HSTS is on. JSON (the API): `default-src 'none'; frame-ancestors 'none'`. Uploaded files: `sandbox; default-src 'none'`. |
+| `X-Content-Type-Options` | `nosniff` |
+| `Referrer-Policy` | `same-origin` |
+| `Permissions-Policy` | Camera, microphone, geolocation, payment and USB off; passkeys (`publickey-credentials-get`, `-create`) allowed for this origin. |
+| `Cross-Origin-Opener-Policy` | `same-origin` |
+| `Cross-Origin-Resource-Policy` | `same-origin` |
+| `Strict-Transport-Security` | `max-age=31536000`, only with `HSTS_ENABLED=true` and an https `APP_URL`; `; includeSubDomains` with `HSTS_INCLUDE_SUBDOMAINS=true`. |
+
+The policy runs no inline script, no `eval`, no inline style and nothing from
+another host. The nonce is new on every response, and nearly nothing uses it:
+every script is a served file. `X-Frame-Options` is no longer sent;
+`frame-ancestors 'self'` does its job.
+
+**HSTS is off by default.** Many instances run over plain http on a LAN, and a
+browser that has seen HSTS for a name that later loses its certificate refuses
+to open it for a year. Turn it on once the instance is on https to stay. Renovo
+doesn't read `X-Forwarded-Proto`, so `APP_URL` is how it knows: HSTS is sent
+only when `APP_URL` starts with `https://`. HSTS preload isn't offered.
+
+### Behind your own reverse proxy
+
+Let these headers through and **don't add them again** at the proxy: a second
+`Content-Security-Policy` is enforced as well as the first rather than instead
+of it, and one without the page's nonce breaks it. The same goes for
+`X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, the two
+`Cross-Origin-*` headers and `Strict-Transport-Security` — set HSTS with
+`HSTS_ENABLED` instead. Remove an `X-Frame-Options` the proxy adds, or leave it:
+it agrees with `frame-ancestors 'self'`.
+
+The bundled nginx adds `nosniff`, `Referrer-Policy` and
+`Cross-Origin-Resource-Policy` only to the static files it serves itself
+(`/build/`, `/assets/`), and the sandbox policy to uploaded logos; it adds
+nothing to what PHP answers.
