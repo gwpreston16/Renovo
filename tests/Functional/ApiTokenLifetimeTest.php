@@ -169,6 +169,45 @@ class ApiTokenLifetimeTest extends ApiTestCase
         );
     }
 
+    public function testOnADateNeedsADate(): void
+    {
+        $this->signIn($this->ownerId);
+        $before = count($this->tokens()->listFor($this->user($this->ownerId)));
+
+        foreach (['', '2026-02-30', 'soon'] as $date) {
+            $this->web('POST', '/settings/api-tokens', [
+                'name' => 'Dated',
+                'lifetime' => 'custom',
+                'expires_at' => $date,
+            ]);
+        }
+
+        self::assertCount(
+            $before,
+            $this->tokens()->listFor($this->user($this->ownerId)),
+            'None is issued without a date.',
+        );
+        self::assertStringContainsString(
+            'Choose the date the token expires',
+            (string) $this->web('GET', '/settings/data')->getBody(),
+        );
+    }
+
+    /**
+     * One of the owner's tokens by name: the fixtures share a timestamp, so
+     * list order cannot tell them apart.
+     */
+    protected function named(string $name): ApiToken
+    {
+        foreach ($this->tokens()->listFor($this->user($this->ownerId)) as $token) {
+            if ($token->name === $name && !$token->isRevoked()) {
+                return $token;
+            }
+        }
+
+        self::fail('No live token named ' . $name);
+    }
+
     protected function tokens(): ApiTokenService
     {
         return $this->container()->get(ApiTokenService::class);

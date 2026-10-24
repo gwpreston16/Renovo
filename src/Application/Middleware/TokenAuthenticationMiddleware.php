@@ -142,14 +142,9 @@ abstract class TokenAuthenticationMiddleware implements MiddlewareInterface
 
     private function tooMany(ServerRequestInterface $request, RateLimitDecision $decision): never
     {
-        // The headers, Retry-After among them, are added on the way out by
-        // RateLimitHeadersMiddleware: an exception cannot carry them.
         $this->status->set($decision);
 
-        throw (new HttpTooManyRequestsException(
-            $request,
-            $this->translator->trans('error.api.rate_limited', ['seconds' => $decision->resetSeconds]),
-        ))->setTitle($this->translator->trans('error.page.rate_limited_title'));
+        throw HttpTooManyRequestsException::for($request, $decision, $this->translator);
     }
 
     /**

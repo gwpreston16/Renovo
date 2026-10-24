@@ -55,6 +55,12 @@ services:
       # it, and only when APP_URL is https. See docs/security.md.
       HSTS_ENABLED: ${HSTS_ENABLED:-false}
       HSTS_INCLUDE_SUBDOMAINS: ${HSTS_INCLUDE_SUBDOMAINS:-false}
+      # API tokens (Phase 42): the maximum lifetime of a new token (blank for
+      # none) and the per-minute limits on /api/v1. Only the app serves the
+      # API; the scheduler just prunes the counters.
+      API_TOKEN_MAX_DAYS: ${API_TOKEN_MAX_DAYS:-}
+      API_RATE_LIMIT_PER_MINUTE: ${API_RATE_LIMIT_PER_MINUTE:-120}
+      API_RATE_LIMIT_PER_IP_PER_MINUTE: ${API_RATE_LIMIT_PER_IP_PER_MINUTE:-30}
       SMTP_HOST: ${SMTP_HOST:-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_USER: ${SMTP_USER:-}

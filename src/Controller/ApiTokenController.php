@@ -155,6 +155,7 @@ final class ApiTokenController extends Controller
      * A form that says nothing gets the default lifetime.
      *
      * @param array<string, mixed> $body
+     * @throws ValidationException
      */
     private function expiry(array $body): ?DateTimeImmutable
     {
@@ -170,17 +171,17 @@ final class ApiTokenController extends Controller
             return $this->clock->now()->modify(sprintf('+%d days', (int) $lifetime))->setTime(23, 59, 59);
         }
 
-        // Custom: the date field. An empty or unreadable one is no expiry,
-        // which the service refuses while the instance has a maximum.
+        // On a date: the date field, which has to hold one. A blank or
+        // unreadable date is refused rather than read as No expiry — that is
+        // a chip of its own, and a forgotten field must not choose it.
         $raw = is_scalar($body['expires_at'] ?? null) ? trim((string) $body['expires_at']) : '';
-        if ($raw === '') {
-            return null;
+        $date = $raw === '' ? false : DateTimeImmutable::createFromFormat('!Y-m-d', $raw);
+        if ($date === false || $date->format('Y-m-d') !== $raw) {
+            throw ValidationException::field('expires_at', 'error.token.expiry_date_required');
         }
-
-        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $raw);
 
         // End of the chosen day: a token that said it expired on the 31st and
         // stopped working at midnight on the 30th would be a support ticket.
-        return $date === false ? null : $date->setTime(23, 59, 59);
+        return $date->setTime(23, 59, 59);
     }
 }

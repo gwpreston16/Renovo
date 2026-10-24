@@ -206,6 +206,11 @@ ROADMAP candidate.
   *Confirmed 2026-10-24* with K107 (section F).
 - **K40, K44 and K107 are taken into this phase** (section F). *Confirmed
   2026-10-24.*
+- **Where the docs went** (settled while building it). The reverse-proxy note
+  sits beside the sign-in throttle's in `docs/security.md`, and the settings
+  in `docs/configuration.md`: Phase 44 moved both out of the README. The scope
+  list on the bearer scheme is `x-scopes`, because OpenAPI 3 allows `scopes`
+  only inside an `oauth2` flow.
 
 ## Status
 
@@ -220,7 +225,7 @@ ROADMAP candidate.
 - [x] OpenAPI and `docs/api.md`; coverage tests extended
 - [x] K40, K44, K107
 - [x] Migrations on both engines
-- [x] `.env.example` and the README environment table
+- [x] `.env.example` and the environment table (`docs/configuration.md` since Phase 44)
 - [x] New strings in `translations/en.php`
 - [x] `composer check`, `i18n:check`, offline guard green on both engines
 

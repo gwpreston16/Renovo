@@ -137,12 +137,15 @@ among them, on every response PHP sends. Nothing to migrate; two things to check
 
 Back up first, then `vendor/bin/phinx migrate`: three migrations give tokens
 a `scopes` column, fill it from what each token could already do, and add the
-table the rate limits count in. No token gains or loses access:
+table the rate limits count in. No token gains access, and only the calendar
+feed link loses access it never needed:
 
 - **Existing tokens keep what they could do.** A read token reads everything,
   the calendar included; a write token holds every scope. The calendar screen's
   feed link now reaches the calendar feed and nothing else — it never needed
   more, but if you also used that token against the API, issue a token for that.
+  A read token you named "Calendar feed" yourself, with no expiry, is taken for
+  the feed link and narrowed the same way; reissue it as **Read everything**.
 - **A script making more than 120 requests a minute with one token now gets
   `429`.** Raise `API_RATE_LIMIT_PER_MINUTE` if one genuinely needs more, or
   have it honour `Retry-After`. See [Rate limits](api.md#rate-limits).
@@ -154,8 +157,11 @@ table the rate limits count in. No token gains or loses access:
   issued from then on; Settings → Instance → Instance status counts the older
   ones that never expire, to reissue or revoke.
 - **Going back.** `vendor/bin/phinx rollback -t 20270601000005` removes the
-  three; the old `abilities` column was kept in step throughout, so every token
-  works as it did.
+  three. Tokens from before the upgrade, and any issued since as **Read
+  everything** or **Read and write everything**, work as they did: the old
+  `abilities` column was kept in step. A token issued since with any other set
+  of scopes cannot be described by read or write alone, so the rollback
+  revokes it rather than widen it, and says how many; issue those again.
 
 ## After upgrading to the payment ledger (Phase 34)
 

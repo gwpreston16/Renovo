@@ -1327,6 +1327,17 @@ tr.is-passed > td {
     display: grid;
     gap: 0.5rem;
     min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+/* Flat, as the role options are: a label over its chips, no box. */
+.token-form .token-choice > legend {
+    padding: 0;
+    margin-bottom: 0.4rem;
+    font-size: var(--size-label);
+    font-weight: var(--weight-semibold);
 }
 
 .token-form .reveal {

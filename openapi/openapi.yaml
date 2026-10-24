@@ -1343,7 +1343,11 @@ components:
       description: Seconds until the request may be made again.
       schema: { type: integer }
     RateLimit-Limit:
-      description: Requests allowed in the current window. Sent on every counted response.
+      description: >
+        Requests allowed in the current window. Sent on every counted response.
+        On a 429 for failed token authentication it is the ten failures allowed
+        in five minutes, and RateLimit-Reset counts down to the end of those
+        five minutes.
       schema: { type: integer }
     RateLimit-Remaining:
       description: Requests left in the current window. Sent on every counted response.

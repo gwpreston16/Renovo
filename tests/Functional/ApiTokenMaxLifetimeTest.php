@@ -95,7 +95,7 @@ final class ApiTokenMaxLifetimeTest extends ApiTokenLifetimeTest
         $this->db->execute(
             "UPDATE api_tokens SET expires_at = '2027-10-24 10:00:00', created_at = '2026-10-24 10:00:00'",
         );
-        $id = $this->tokens()->listFor($this->user($this->ownerId))[0]->id;
+        $id = $this->named('Owner token')->id;
 
         $this->tokens()->reissue($this->user($this->ownerId), $id);
 
@@ -106,8 +106,8 @@ final class ApiTokenMaxLifetimeTest extends ApiTokenLifetimeTest
     {
         // With a maximum, a token that never expired gets the maximum.
         $user = $this->user($this->ownerId);
-        $id = $this->tokens()->listFor($user)[0]->id;
-        self::assertNull($this->tokens()->listFor($user)[0]->expiresAt, 'The fixture token predates the maximum.');
+        $id = $this->named('Owner token')->id;
+        self::assertNull($this->named('Owner token')->expiresAt, 'The fixture token predates the maximum.');
 
         $this->tokens()->reissue($user, $id);
 

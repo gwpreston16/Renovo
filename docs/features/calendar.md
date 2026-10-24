@@ -12,13 +12,18 @@ is a deadline, and seeing it a fortnight out is the whole point. A fixed term's
 renewals stop at its last payment, and so does its last day to cancel.
 
 Get the link from the **Calendar feed** card on the Calendar screen. **Create
-a link** issues a read-only token for it and shows the full address, with a
+a link** issues a token for it that can read the calendar and nothing else
+(the `calendar:read` scope) and shows the full address, with a
 Copy button, **once**: like every token, its secret is stored only as a hash,
 so the card afterwards says when the link was made and last fetched, and
 nothing more. **Create a new link** retires the old one immediately — every
 calendar subscribed to it stops updating — which is why it asks first. It
-replaces only the token that card issued; a read-only token you made yourself
-under **Settings → Data & integrations** works just as well and is left alone.
+replaces only the token that card issued; a token you made yourself under
+**Settings → Data & integrations** works just as well if it holds
+`calendar:read` and no write scope (**Calendar only** or **Read everything**),
+and is left alone. The card's link never expires — it is exempt from token
+lifetimes and any instance maximum — but it shares its token's
+[rate limit](../api.md#rate-limits), far above how often a calendar polls.
 Changing or resetting your password ends the link too, like every token. Create
 a new one afterwards.
 
@@ -27,9 +32,9 @@ and its identifier is stable, so a client that refetches on a timer recognises
 what it already has instead of duplicating it.
 
 This is the one endpoint that takes its credential in the URL, because a calendar
-client cannot send an `Authorization` header. It compensates by accepting
-**read-only tokens only**: a write-capable token is refused rather than quietly
-downgraded, because a credential that can change data does not belong in a URL
+client cannot send an `Authorization` header. It compensates by refusing a
+**token that can write anything**: one holding a write scope is refused rather
+than quietly downgraded, because a credential that can change data does not belong in a URL
 that will sit in a calendar application for years.
 
 ## Calendar

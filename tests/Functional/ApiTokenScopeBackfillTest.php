@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\TokenScopes;
 use App\Service\ApiTokenService;
 use PDOStatement;
 use Phinx\Db\Adapter\AdapterInterface;
@@ -84,6 +85,26 @@ final class ApiTokenScopeBackfillTest extends ApiTestCase
         self::assertSame(0, (int) $this->db->fetchValue('SELECT COUNT(*) FROM api_tokens WHERE scopes IS NOT NULL'));
         $ability = $this->db->fetchValue('SELECT abilities FROM api_tokens WHERE id = :id', ['id' => $id]);
         self::assertSame('read', $ability);
+    }
+
+    public function testRollingBackRevokesTokensReadOrWriteCannotDescribe(): void
+    {
+        $user = $this->owner();
+        $service = $this->container()->get(ApiTokenService::class);
+        $service->issue($user, $this->householdId, 'Catalogue writer', TokenScopes::fromString('catalogue:write'));
+        $service->issue($user, $this->householdId, 'Calendar', TokenScopes::calendarOnly());
+        $feed = $service->replaceFeedToken($user, $this->householdId);
+
+        $output = $this->migrate('down');
+
+        $live = $this->db->fetchAll('SELECT name FROM api_tokens WHERE revoked_at IS NULL ORDER BY name');
+        self::assertSame(
+            ['Calendar feed', 'Editor token', 'Owner token', 'Read-only token', 'Viewer token'],
+            array_column($live, 'name'),
+            'The two narrow tokens are revoked; the presets and the feed link are kept.',
+        );
+        self::assertStringContainsString('Revoked 2 API token(s)', $output);
+        self::assertNotSame('', $feed);
     }
 
     /**

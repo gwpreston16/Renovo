@@ -739,6 +739,7 @@ return [
         'This instance allows tokens for at most {days, plural, one {# day} other {# days}}. Choose when it expires.',
     'error.token.expiry_too_far' =>
         'This instance allows tokens for at most {days, plural, one {# day} other {# days}}. Choose an earlier date.',
+    'error.token.expiry_date_required' => 'Choose the date the token expires, or No expiry.',
 
     'error.attachment.type' => 'Upload a PDF, PNG, JPEG, WebP or GIF file.',
     'error.attachment.archive_type' => 'The archive contains a file of an unsupported type.',

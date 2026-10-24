@@ -264,7 +264,9 @@ final class SettingsScreenService
      *     scopes: list<TokenScope>,
      *     lifetimes: list<int>,
      *     default_lifetime: int,
-     *     max_days: int|null
+     *     max_days: int|null,
+     *     min_date: string,
+     *     max_date: string|null
      * }
      */
     private function tokenForm(): array
@@ -288,6 +290,12 @@ final class SettingsScreenService
             'lifetimes' => $lifetimes,
             'default_lifetime' => $this->tokens->defaultLifetimeDays(),
             'max_days' => $max,
+            // The date field's bounds, so the picker offers only what issuing
+            // accepts: from tomorrow, to the maximum when there is one.
+            'min_date' => $this->clock->now()->modify('+1 day')->format('Y-m-d'),
+            'max_date' => $max === null
+                ? null
+                : $this->clock->now()->modify(sprintf('+%d days', $max))->format('Y-m-d'),
         ];
     }
 

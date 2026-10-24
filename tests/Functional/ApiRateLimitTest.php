@@ -130,7 +130,10 @@ final class ApiRateLimitTest extends ApiTestCase
             self::assertSame((string) (30 - $i), $response->getHeaderLine('RateLimit-Remaining'));
         }
 
-        self::assertSame(429, $this->from('10.0.0.2', 'GET', '/api/v1/subscriptions')->getStatusCode());
+        $refused = $this->from('10.0.0.2', 'GET', '/api/v1/subscriptions');
+        self::assertSame(429, $refused->getStatusCode());
+        self::assertSame('50', $refused->getHeaderLine('Retry-After'));
+        self::assertSame(429, $this->decode($refused)['error']['status']);
 
         // Another address, and a valid token from the same one, are unaffected.
         self::assertSame(401, $this->from('10.0.0.3', 'GET', '/api/v1/subscriptions')->getStatusCode());
@@ -211,6 +214,91 @@ final class ApiRateLimitTest extends ApiTestCase
         $this->from('10.0.0.8', 'GET', '/api/v1/me', $this->ownerToken);
 
         self::assertSame('revoked', json_decode((string) $this->failures()[0]['context'], true)['reason']);
+    }
+
+    public function testAMalformedTokenAndADisabledAccountAreRecordedAsSuch(): void
+    {
+        $this->from('10.0.1.1', 'GET', '/api/v1/me', 'not-a-token');
+        $this->db->execute('UPDATE users SET disabled_at = :now WHERE id = :id', [
+            'now' => '2026-10-01 00:00:00',
+            'id' => $this->ownerId,
+        ]);
+        $this->from('10.0.1.2', 'GET', '/api/v1/me', $this->ownerToken);
+
+        $contexts = array_map(
+            static fn (array $row): array => json_decode((string) $row['context'], true),
+            $this->failures(),
+        );
+
+        self::assertSame('malformed', $contexts[0]['reason']);
+        self::assertNull($contexts[0]['public_id']);
+        self::assertSame('account_disabled', $contexts[1]['reason']);
+        self::assertSame(explode('_', $this->ownerToken)[1], $contexts[1]['public_id']);
+    }
+
+    public function testAWriteWithNoTokenIsCountedAgainstTheAddress(): void
+    {
+        // K40's 401 comes from the CSRF check, before the token middleware;
+        // it is still counted, and still carries the headers.
+        for ($i = 1; $i <= 30; $i++) {
+            $response = $this->from('10.0.1.3', 'POST', '/api/v1/tags', null, ['name' => 'X']);
+            self::assertSame(401, $response->getStatusCode(), 'Request ' . $i);
+            self::assertSame((string) (30 - $i), $response->getHeaderLine('RateLimit-Remaining'));
+        }
+
+        $refused = $this->from('10.0.1.3', 'POST', '/api/v1/tags', null, ['name' => 'X']);
+        self::assertSame(429, $refused->getStatusCode());
+        self::assertSame('50', $refused->getHeaderLine('Retry-After'));
+    }
+
+    public function testARouteThatDeclaresNoScopeIsRefused(): void
+    {
+        // The fail-closed path: a token-authenticated route somebody forgot to
+        // give a scope answers 403 even to a token that holds every scope.
+        $this->app->group('/api/v1', function ($group): void {
+            $group->get('/undeclared', static fn ($request, ResponseInterface $response): ResponseInterface
+                => $response);
+        })->add(\App\Application\Middleware\ApiAuthenticationMiddleware::class);
+
+        $response = $this->from('10.0.1.4', 'GET', '/api/v1/undeclared', $this->ownerToken);
+
+        self::assertSame(403, $response->getStatusCode());
+        self::assertStringContainsString(
+            'does not say which token scope',
+            $this->decode($response)['error']['message'],
+        );
+    }
+
+    public function testMaintenancePruneRemovesWindowsOlderThanAnHour(): void
+    {
+        // The command runs on the real clock, so the windows are placed
+        // against it rather than against this test's frozen one.
+        $windows = $this->container()->get(ApiRateWindowRepository::class);
+        $now = new DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        $old = $now->modify('-2 hours')->setTime((int) $now->modify('-2 hours')->format('H'), 0);
+        $recent = $now->modify('-10 minutes')->setTime(
+            (int) $now->modify('-10 minutes')->format('H'),
+            (int) $now->modify('-10 minutes')->format('i'),
+        );
+        $windows->hit('token:9', $old);
+        $windows->hit('token:9', $recent);
+
+        $process = proc_open(
+            [PHP_BINARY, dirname(__DIR__, 2) . '/bin/console', 'maintenance:prune'],
+            [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes,
+            dirname(__DIR__, 2),
+            getenv(),
+        );
+        self::assertIsResource($process);
+        $out = (string) stream_get_contents($pipes[1]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        self::assertSame(0, proc_close($process), $out);
+
+        self::assertStringContainsString('1 API rate window(s)', $out);
+        self::assertSame(0, $windows->hits('token:9', $old));
+        self::assertSame(1, $windows->hits('token:9', $recent));
     }
 
     public function testOldWindowsArePruned(): void

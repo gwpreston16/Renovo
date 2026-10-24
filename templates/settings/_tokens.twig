@@ -2,7 +2,7 @@
     API tokens: the reader's own, and never anybody else's.
 
     Each with its name, what it may reach (a preset's name, or its scopes),
-    when it was last used and its state; reissue and revoke beside it. A token
+    when it was last used and its state; reissue and revoke beneath it. A token
     within fourteen days of its expiry is flagged, and Reissue gives it a fresh
     lifetime. A new token's secret is shown once, in the callout at the top of
     the tab, from a one-shot flash — a reload does not bring it back.
@@ -144,7 +144,8 @@
                     </div>
                     <div class="reveal reveal-token-expiry">
                         <label for="token-expires">{{ t('tokens.expires_on_date') }}</label>
-                        <input type="date" id="token-expires" name="expires_at">
+                        <input type="date" id="token-expires" name="expires_at" min="{{ token_form.min_date }}"
+                               {%- if token_form.max_date %} max="{{ token_form.max_date }}"{% endif %}>
                     </div>
                     <p class="hint" id="token-lifetime-hint">
                         {% if token_form.max_days is null %}
