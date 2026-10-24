@@ -47,6 +47,15 @@ return [
         'locale' => $env('APP_LOCALE', 'en_GB'),
     ],
 
+    // Strict-Transport-Security (Phase 41). Opt-in, and sent only when
+    // APP_URL is https: many instances run over plain http on a LAN, and a
+    // browser that has seen HSTS for a name that later loses its certificate
+    // refuses to open it for a year.
+    'security' => [
+        'hsts' => $bool($env('HSTS_ENABLED', 'false')),
+        'hsts_include_subdomains' => $bool($env('HSTS_INCLUDE_SUBDOMAINS', 'false')),
+    ],
+
     'database' => [
         'driver' => $env('DB_DRIVER', 'pgsql'),
         'host' => $env('DB_HOST', 'database'),

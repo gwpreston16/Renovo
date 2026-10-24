@@ -22,6 +22,7 @@ use App\I18n\Translator;
 use App\Domain\Navigation;
 use App\Notification\NotifierRegistry;
 use App\Security\CsrfTokenManager;
+use App\Security\CspNonce;
 use App\Security\PermissionService;
 use App\Security\Scope;
 use App\Service\AuthService;
@@ -76,6 +77,7 @@ final class AppExtension extends AbstractExtension
         private readonly IconSprite $icons,
         private readonly RelativeTime $relativeTime,
         private readonly AppVersion $version,
+        private readonly CspNonce $cspNonce,
     ) {
     }
 
@@ -95,6 +97,10 @@ final class AppExtension extends AbstractExtension
             new TwigFunction('js_translations', $this->jsTranslations(...)),
             new TwigFunction('error_message', $this->errorMessage(...)),
             new TwigFunction('csrf_token', fn (): string => $this->csrf->token()),
+            // The nonce an inline <script> must carry to run under the
+            // Content-Security-Policy. Nearly nothing needs it: script lives
+            // in served files, and the template guard keeps it there.
+            new TwigFunction('csp_nonce', fn (): string => $this->cspNonce->value()),
             new TwigFunction('csrf_field', $this->csrfField(...), ['is_safe' => ['html']]),
             new TwigFunction('can', $this->can(...)),
             new TwigFunction('can_edit_row', $this->canEditRow(...)),

@@ -181,7 +181,7 @@ None.
 
 ## Status
 
-- [ ] `SecurityHeadersMiddleware`; `csp_nonce()`; HSTS env vars
+- [x] `SecurityHeadersMiddleware`; `csp_nonce()`; HSTS env vars
 - [ ] Inline scripts moved out or nonced; `data-confirm` replaces `onsubmit`
 - [ ] htmx config: `allowEval: false`, no indicator styles
 - [ ] Every `style=` attribute replaced

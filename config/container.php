@@ -11,6 +11,7 @@
 declare(strict_types=1);
 
 use App\Application\AppVersion;
+use App\Application\Middleware\SecurityHeadersMiddleware;
 use App\Application\Twig\AppExtension;
 use App\Service\Update\UpdateCheckConfig;
 use App\Service\Update\UpdateCheckService;
@@ -27,6 +28,7 @@ use App\I18n\LocaleContext;
 use App\I18n\Locales;
 use App\I18n\Translator;
 use App\Persistence\Database;
+use App\Security\CspNonce;
 use App\Persistence\PdoSessionHandler;
 use App\Persistence\Platform;
 use App\Persistence\PlatformFactory;
@@ -695,6 +697,14 @@ return static function (ContainerBuilder $builder, ?array $settings = null): voi
         CatalogLoader::class => static fn (ContainerInterface $c): CatalogLoader => new CatalogLoader(
             $c->get('settings')['paths']['translations'],
         ),
+
+        SecurityHeadersMiddleware::class => static fn (ContainerInterface $c): SecurityHeadersMiddleware
+            => new SecurityHeadersMiddleware(
+                $c->get(CspNonce::class),
+                $c->get('settings')['app']['url'],
+                $c->get('settings')['security']['hsts'],
+                $c->get('settings')['security']['hsts_include_subdomains'],
+            ),
 
         LocaleContext::class => static fn (ContainerInterface $c): LocaleContext => new LocaleContext(
             $c->get('settings')['app']['locale'],
