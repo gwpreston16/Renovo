@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Domain\Entity\ApiToken;
 use App\Domain\TokenAbility;
+use App\Domain\TokenScopes;
 use App\Persistence\Database;
 use App\Support\Clock;
 use DateTimeImmutable;
@@ -46,7 +47,7 @@ final class ApiTokenRepository extends AbstractRepository
         string $name,
         string $publicId,
         string $secretHash,
-        TokenAbility $abilities,
+        TokenScopes $scopes,
         ?DateTimeImmutable $expiresAt,
     ): int {
         return $this->db->insert('api_tokens', [
@@ -55,7 +56,10 @@ final class ApiTokenRepository extends AbstractRepository
             'name' => $name,
             'public_id' => $publicId,
             'token_hash' => $secretHash,
-            'abilities' => $abilities->value,
+            // Kept in step for one release, so rolling back to a version that
+            // reads only `abilities` leaves every token able to do what it did.
+            'abilities' => ($scopes->allowsAnyWrite() ? TokenAbility::Write : TokenAbility::Read)->value,
+            'scopes' => $scopes->toString(),
             'expires_at' => $expiresAt?->format('Y-m-d H:i:s'),
             'created_at' => $this->clock->now()->format('Y-m-d H:i:s'),
         ]);
@@ -161,6 +165,27 @@ final class ApiTokenRepository extends AbstractRepository
     }
 
     /**
+     * How many live tokens, across the instance, never expire — what is
+     * outstanding once an administrator sets a maximum lifetime, which only
+     * applies to tokens issued after it.
+     *
+     * The calendar feed's own tokens are left out: they are exempt from
+     * lifetimes, so counting them would report work there is nothing to do
+     * about.
+     */
+    public function countLiveWithoutExpiry(string $feedTokenName): int
+    {
+        return (int) $this->db->fetchValue(
+            'SELECT COUNT(*) FROM ' . $this->quote('api_tokens')
+            . ' WHERE ' . $this->quote('revoked_at') . ' IS NULL'
+            . ' AND ' . $this->quote('expires_at') . ' IS NULL'
+            . ' AND NOT (' . $this->quote('name') . ' = :feed'
+            . ' AND ' . $this->quote('scopes') . ' = :calendar)',
+            ['feed' => $feedTokenName, 'calendar' => TokenScopes::calendarOnly()->toString()],
+        );
+    }
+
+    /**
      * Stamp a token as used.
      *
      * Deliberately not an audit entry: this runs on every API request, and a
@@ -189,7 +214,7 @@ final class ApiTokenRepository extends AbstractRepository
             householdId: isset($row['household_id']) ? (int) $row['household_id'] : null,
             name: (string) $row['name'],
             publicId: (string) $row['public_id'],
-            abilities: TokenAbility::fromString((string) $row['abilities']),
+            scopes: TokenScopes::fromString(is_string($row['scopes'] ?? null) ? $row['scopes'] : null),
             lastUsedAt: $this->timestamp($row['last_used_at'] ?? null),
             expiresAt: $this->timestamp($row['expires_at'] ?? null),
             revokedAt: $this->timestamp($row['revoked_at'] ?? null),

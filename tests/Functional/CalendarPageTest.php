@@ -9,7 +9,7 @@ use App\Domain\ExchangeRate;
 use App\Domain\IsolationMode;
 use App\Domain\NoticePeriod;
 use App\Domain\Role;
-use App\Domain\TokenAbility;
+use App\Domain\TokenScopes;
 use App\Domain\Visibility;
 use App\Repository\ExchangeRateRepository;
 use App\Repository\HouseholdRepository;
@@ -488,7 +488,7 @@ final class CalendarPageTest extends DatabaseTestCase
             (new UserRepository($this->db))->findById($this->ownerId) ?? self::fail('No owner'),
             $this->householdId,
             'My calendar',
-            TokenAbility::Read,
+            TokenScopes::readEverything(),
         );
 
         $this->request('POST', '/calendar/feed-link');

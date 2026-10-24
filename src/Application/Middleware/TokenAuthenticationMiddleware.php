@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Application\Middleware;
 
+use App\Application\Api\ApiRouteScope;
 use App\Domain\Entity\ApiToken;
+use App\Domain\TokenScope;
 use App\I18n\LocaleContext;
 use App\I18n\Locales;
 use App\I18n\Translator;
-use App\Domain\Entity\User;
 use App\Security\ScopeFactory;
 use App\Service\ApiTokenService;
 use Psr\Http\Message\ResponseInterface;
@@ -17,6 +18,7 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Slim\Exception\HttpForbiddenException;
 use Slim\Exception\HttpUnauthorizedException;
+use Slim\Routing\RouteContext;
 
 /**
  * Authenticates a request from an API token, and from nothing else.
@@ -44,14 +46,13 @@ abstract class TokenAuthenticationMiddleware implements MiddlewareInterface
 {
     public const ATTRIBUTE_TOKEN = 'api_token';
 
-    private const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
-
     public function __construct(
         private readonly ApiTokenService $tokens,
         private readonly ScopeFactory $scopeFactory,
         private readonly LocaleContext $locale,
         private readonly Locales $locales,
         private readonly Translator $translator,
+        private readonly ApiRouteScope $routeScopes,
     ) {
     }
 
@@ -61,7 +62,7 @@ abstract class TokenAuthenticationMiddleware implements MiddlewareInterface
     abstract protected function credential(ServerRequestInterface $request): ?string;
 
     /**
-     * Whether a token presented this way may be used to write.
+     * Whether a token that may write anything may be presented this way.
      */
     abstract protected function acceptsWrites(): bool;
 
@@ -72,13 +73,14 @@ abstract class TokenAuthenticationMiddleware implements MiddlewareInterface
             throw new HttpUnauthorizedException($request, $this->translator->trans('error.api.token_required'));
         }
 
-        $resolved = $this->tokens->authenticate($presented);
-        if ($resolved === null) {
+        $result = $this->tokens->authenticate($presented);
+        if (!$result->isSuccessful()) {
             // Expired, revoked, malformed and never-existed are one answer.
             throw new HttpUnauthorizedException($request, $this->translator->trans('error.api.token_invalid'));
         }
 
-        [$token, $user] = $resolved;
+        $token = $result->token;
+        $user = $result->user;
 
         // The token's holder has a language too. Without this an API error and
         // an iCalendar feed would always answer in the instance's default,
@@ -98,20 +100,14 @@ abstract class TokenAuthenticationMiddleware implements MiddlewareInterface
     }
 
     /**
-     * A read-only token is refused a mutating request here, before any route
-     * runs. This narrows; it never widens — the role's own permission check
-     * still happens afterwards, so a write token held by a Viewer writes
+     * The token must hold the scope the route declares. This narrows; it
+     * never widens — the role's own permission check still happens
+     * afterwards, so a `subscriptions:write` token held by a Viewer writes
      * nothing.
      */
     private function assertMayProceed(ServerRequestInterface $request, ApiToken $token): void
     {
-        $isSafe = in_array(strtoupper($request->getMethod()), self::SAFE_METHODS, true);
-
-        if (!$isSafe && (!$this->acceptsWrites() || !$token->abilities->allowsWrites())) {
-            throw new HttpForbiddenException($request, $this->translator->trans('error.api.token_read_only'));
-        }
-
-        if (!$this->acceptsWrites() && $token->abilities->allowsWrites()) {
+        if (!$this->acceptsWrites() && $token->scopes->allowsAnyWrite()) {
             // A write-capable token offered where credentials travel in the URL.
             // Refused rather than downgraded: a token that can change data does
             // not belong in a calendar subscription URL, and quietly accepting
@@ -119,6 +115,26 @@ abstract class TokenAuthenticationMiddleware implements MiddlewareInterface
             throw new HttpForbiddenException(
                 $request,
                 $this->translator->trans('error.api.read_only_tokens_only'),
+            );
+        }
+
+        $route = RouteContext::fromRequest($request)->getRoute();
+        $needed = $route === null ? null : $this->routeScopes->of($route);
+
+        if ($needed === ApiRouteScope::ANY_TOKEN) {
+            return;
+        }
+
+        if (!$needed instanceof TokenScope) {
+            // A route behind token authentication that names no scope is
+            // wired up wrongly. Fail closed; a test fails the build for it.
+            throw new HttpForbiddenException($request, $this->translator->trans('error.api.token_scope_undeclared'));
+        }
+
+        if (!$token->scopes->allows($needed)) {
+            throw new HttpForbiddenException(
+                $request,
+                $this->translator->trans('error.api.token_scope', ['scope' => $needed->value]),
             );
         }
     }

@@ -22,6 +22,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\UploadedFileInterface;
 use Slim\Exception\HttpBadRequestException;
 use Slim\Exception\HttpNotFoundException;
+use App\Domain\TokenScope;
 
 /**
  * Subscriptions over HTTP as JSON.
@@ -324,7 +325,7 @@ final class SubscriptionApiController extends ApiController
     {
         $token = $request->getAttribute(TokenAuthenticationMiddleware::ATTRIBUTE_TOKEN);
 
-        if ($token instanceof ApiToken && $token->abilities->allowsWrites()) {
+        if ($token instanceof ApiToken && $token->scopes->allows(TokenScope::SubscriptionsWrite)) {
             $this->catchUp->run($scope);
         }
     }

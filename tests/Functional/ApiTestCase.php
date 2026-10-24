@@ -6,7 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Domain\IsolationMode;
 use App\Domain\Role;
-use App\Domain\TokenAbility;
+use App\Domain\TokenScopes;
 use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\UserRepository;
@@ -54,12 +54,7 @@ abstract class ApiTestCase extends DatabaseTestCase
         parent::setUp();
 
         $this->session = new ArraySession();
-
-        $bootstrap = require dirname(__DIR__, 2) . '/config/bootstrap.php';
-        $this->app = $bootstrap(true, [
-            SessionInterface::class => $this->session,
-            MailerInterface::class => new RecordingMailer(),
-        ] + $this->containerOverrides());
+        $this->boot();
 
         $settings = $this->container()->get(InstanceSettingsService::class);
         $settings->setIsolationMode($this->isolationMode());
@@ -85,26 +80,40 @@ abstract class ApiTestCase extends DatabaseTestCase
             $users->findById($this->ownerId),
             $this->householdId,
             'Owner token',
-            TokenAbility::Write,
+            TokenScopes::everything(),
         );
         $this->editorToken = $tokens->issue(
             $users->findById($this->editorId),
             $this->householdId,
             'Editor token',
-            TokenAbility::Write,
+            TokenScopes::everything(),
         );
         $this->viewerToken = $tokens->issue(
             $users->findById($this->viewerId),
             $this->householdId,
             'Viewer token',
-            TokenAbility::Write,
+            TokenScopes::everything(),
         );
         $this->readOnlyToken = $tokens->issue(
             $users->findById($this->ownerId),
             $this->householdId,
             'Read-only token',
-            TokenAbility::Read,
+            TokenScopes::readEverything(),
         );
+    }
+
+    /**
+     * Boot the application with this test's container overrides. Called again
+     * by a test that needs the fixtures made under one configuration and the
+     * requests answered under another; the database and session carry over.
+     */
+    protected function boot(): void
+    {
+        $bootstrap = require dirname(__DIR__, 2) . '/config/bootstrap.php';
+        $this->app = $bootstrap(true, [
+            SessionInterface::class => $this->session,
+            MailerInterface::class => new RecordingMailer(),
+        ] + $this->containerOverrides());
     }
 
     /**

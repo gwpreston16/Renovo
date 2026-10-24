@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Domain\Permission;
-use App\Domain\TokenAbility;
 use App\I18n\Translator;
 use App\Security\PermissionService;
 use App\Security\SessionInterface;
@@ -95,7 +94,6 @@ final class SettingsController extends Controller
         return $this->render($request, $response, 'settings/data.twig', [
             ...$this->screen->data($this->user($request), $this->scope($request)),
             'issued_token' => is_string($issued) ? $issued : null,
-            'abilities' => TokenAbility::cases(),
             'api_base' => rtrim((string) $request->getUri()->withPath('')->withQuery(''), '/') . '/api/v1',
         ]);
     }

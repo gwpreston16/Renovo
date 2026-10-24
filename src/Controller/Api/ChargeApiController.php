@@ -15,6 +15,7 @@ use App\Service\SubscriptionService;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Exception\HttpNotFoundException;
+use App\Domain\TokenScope;
 
 /**
  * The payment ledger over the API: a subscription's charges, a correction to
@@ -47,7 +48,7 @@ final class ChargeApiController extends ApiController
         // The catch-up the subscription list runs, for a token that may write,
         // so a client reading only this endpoint sees every passed date.
         $token = $request->getAttribute(TokenAuthenticationMiddleware::ATTRIBUTE_TOKEN);
-        if ($token instanceof ApiToken && $token->abilities->allowsWrites()) {
+        if ($token instanceof ApiToken && $token->scopes->allows(TokenScope::SubscriptionsWrite)) {
             $this->catchUp->run($scope);
         }
         if ($this->subscriptions->find($scope, (int) $id) === null) {

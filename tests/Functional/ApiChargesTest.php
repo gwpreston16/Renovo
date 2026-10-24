@@ -13,7 +13,7 @@ use App\Service\ApiTokenService;
 use App\Service\AttachmentStorage;
 use App\Service\CatchUpService;
 use App\Tests\Support\FakeUpload;
-use App\Domain\TokenAbility;
+use App\Domain\TokenScopes;
 use DateTimeImmutable;
 
 /**
@@ -147,7 +147,7 @@ final class ApiChargesTest extends ApiTestCase
             $user,
             $this->householdId,
             'Bram',
-            TokenAbility::Write,
+            TokenScopes::everything(),
         );
 
         // He reads it…
@@ -490,7 +490,7 @@ final class ApiChargesTest extends ApiTestCase
         $user = $users->findById($stranger);
         self::assertNotNull($user);
         $token = $this->container()->get(ApiTokenService::class)
-            ->issue($user, $elsewhere, 'Stranger', TokenAbility::Write);
+            ->issue($user, $elsewhere, 'Stranger', TokenScopes::everything());
 
         $charge = '/api/v1/charges/' . $this->chargeId;
         self::assertSame(404, $this->api('GET', $this->chargesPath(), $token)->getStatusCode());

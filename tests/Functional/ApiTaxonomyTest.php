@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\Role;
-use App\Domain\TokenAbility;
+use App\Domain\TokenScopes;
 use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\UserRepository;
@@ -110,7 +110,7 @@ final class ApiTaxonomyTest extends ApiTestCase
             $users->findById($id),
             $this->householdId,
             'Contributor token',
-            TokenAbility::Write,
+            TokenScopes::everything(),
         );
 
         $created = $this->api('POST', '/api/v1/tags', $this->ownerToken, ['name' => 'Shared']);
@@ -235,7 +235,7 @@ final class ApiTaxonomyTest extends ApiTestCase
             $users->findById($id),
             $householdId,
             'Outsider token',
-            TokenAbility::Write,
+            TokenScopes::everything(),
         );
     }
 }

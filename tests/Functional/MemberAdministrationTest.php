@@ -15,7 +15,7 @@ use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\SubscriptionRepository;
 use App\Repository\TokenRepository;
-use App\Domain\TokenAbility;
+use App\Domain\TokenScopes;
 use App\Repository\UserRepository;
 use App\Service\ApiTokenService;
 use App\Security\CsrfTokenManager;
@@ -1165,7 +1165,7 @@ final class MemberAdministrationTest extends DatabaseTestCase
             $editor,
             $this->householdId,
             'Test token',
-            TokenAbility::Read,
+            TokenScopes::readEverything(),
         );
     }
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
-use App\Domain\TokenAbility;
+use App\Domain\TokenScopes;
 use App\Domain\IsolationMode;
 use App\Domain\Role;
 use App\Security\Scope;
@@ -373,7 +373,7 @@ final class AuthFlowTest extends DatabaseTestCase
                 $name,
                 'pub' . strlen($name),
                 hash('sha256', $name),
-                TokenAbility::Read,
+                TokenScopes::readEverything(),
                 null,
             );
         }

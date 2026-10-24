@@ -732,6 +732,11 @@ return [
     'error.token.not_reissuable' =>
         'Only a token that still works can be reissued. This one has been revoked or has expired — '
         . 'create a new one instead.',
+    'error.token.scopes_required' => 'Choose at least one thing the token may reach.',
+    'error.token.expiry_required' =>
+        'This instance allows tokens for at most {days, plural, one {# day} other {# days}}. Choose when it expires.',
+    'error.token.expiry_too_far' =>
+        'This instance allows tokens for at most {days, plural, one {# day} other {# days}}. Choose an earlier date.',
 
     'error.attachment.type' => 'Upload a PDF, PNG, JPEG, WebP or GIF file.',
     'error.attachment.archive_type' => 'The archive contains a file of an unsupported type.',
@@ -2296,23 +2301,35 @@ return [
     'subscriptions_money.used_since' => 'Recorded {count, plural, one {# time} other {# times}} since {since}.',
 
     // tokens
-    'tokens.abilities_hint' =>
-        'Choose read-only unless something genuinely needs to make changes. The calendar feed accepts '
-        . 'read-only tokens only.',
     'tokens.as_json' => 'as JSON',
     'tokens.bearer_note' => 'Send the token as a bearer credential:',
     'tokens.create_token' => 'Create token',
+    'tokens.expires' => 'Expires',
+    'tokens.expires_on_date' => 'On',
     'tokens.expires_on' => 'Expires {date}',
-    'tokens.expires_optional' => 'Expires (optional)',
+    'tokens.expiring_soon' => 'Expires soon',
     'tokens.intro' =>
         'A token lets a script, a calendar app or another machine reach this instance without a '
         . 'password. It can never do more than you can: a token issued by a Viewer reads what a Viewer '
         . 'reads and writes nothing.',
+    'tokens.lifetime_custom' => 'On a date',
+    'tokens.lifetime_days' => '{count, plural, one {# day} other {# days}}',
+    'tokens.lifetime_hint' =>
+        'Reissue a token before it expires to give it the same lifetime again from that day.',
+    'tokens.lifetime_max_hint' =>
+        'This instance allows tokens for at most {count, plural, one {# day} other {# days}}. '
+        . 'Reissue one before it expires to give it the same lifetime again.',
+    'tokens.lifetime_none' => 'No expiry',
     'tokens.name_placeholder' => 'Home Assistant, my calendar, a backup script',
+    'tokens.never_expires' => 'Never expires',
     'tokens.new_token_note' =>
         'Copy it now. Only a hash of it is stored, so this is the one and only time it can be shown.',
+    'tokens.no_scopes' => 'Nothing but who it belongs to',
     'tokens.none_yet' => 'None yet.',
     'tokens.reference_is_at' => 'The full reference is at',
+    'tokens.scopes_hint' =>
+        'Give it only what it needs. Whatever it holds, it can never do more than your role allows. '
+        . 'The calendar feed refuses a token that can change anything.',
     'tokens.title' => 'API tokens',
     'tokens.using_them' => 'Using them',
     'tokens.what_it_is_for' => 'What it is for',
@@ -2474,7 +2491,8 @@ return [
     'error.api.subscription_unreadable' => 'The subscription could not be read back.',
     'error.api.tag_not_found' => 'No such tag.',
     'error.api.token_invalid' => 'That API token is not valid.',
-    'error.api.token_read_only' => 'This token is read-only.',
+    'error.api.token_scope' => 'This token does not have the "{scope}" scope this endpoint needs.',
+    'error.api.token_scope_undeclared' => 'This endpoint does not say which token scope it needs, so it is refused.',
     'error.api.token_required' => 'This endpoint requires an API token.',
     'error.auth.registration_closed' => 'Registration is closed on this instance.',
     'error.auth.throttled_short' => 'Too many attempts. Try again shortly.',
@@ -2593,9 +2611,23 @@ return [
     'payment_methods.default.app_store' => 'App Store',
     'payment_methods.default.google_play' => 'Google Play',
 
-    // token_ability
-    'token_ability.read' => 'Read-only',
-    'token_ability.write' => 'Read and write',
+    // token_preset, token_scope
+    'token_preset.calendar' => 'Calendar only',
+    'token_preset.custom' => 'Custom',
+    'token_preset.read' => 'Read everything',
+    'token_preset.write' => 'Read and write everything',
+    'token_scope.calendar_read' => 'Calendar feed',
+    'token_scope.calendar_read_hint' => 'Read the iCalendar feed of upcoming payments.',
+    'token_scope.catalogue_read' => 'Read categories, tags and payment methods',
+    'token_scope.catalogue_read_hint' => 'List them and their logos.',
+    'token_scope.catalogue_write' => 'Change categories, tags and payment methods',
+    'token_scope.catalogue_write_hint' => 'Add, rename, delete and change logos. Includes reading them.',
+    'token_scope.subscriptions_read' => 'Read subscriptions',
+    'token_scope.subscriptions_read_hint' => 'Subscriptions, their attachments, payments and savings.',
+    'token_scope.subscriptions_write' => 'Change subscriptions',
+    'token_scope.subscriptions_write_hint' =>
+        'Add, edit, cancel and delete them, their attachments and payments. Includes reading them.',
+
     'visibility.household' => 'Household',
     'visibility.payer' => 'Only me',
 
@@ -2690,6 +2722,13 @@ return [
     'settings.save_provider' => 'Save provider',
     'settings.set_by_instance_admin' => 'It is set by the instance administrator.',
     'settings.status_mail' => 'Mail relay',
+    'settings.status_api_tokens' => 'API token lifetime',
+    'settings.status_api_tokens_max' => 'At most {count, plural, one {# day} other {# days}}, set by {variable}',
+    'settings.status_api_tokens_no_max' => 'No maximum',
+    'settings.status_api_tokens_outstanding' => 'They were issued before the maximum was set: reissue or revoke them.',
+    'settings.status_api_tokens_set_max' => 'Set {variable} to make every new token expire.',
+    'settings.status_api_tokens_without_expiry' =>
+        '{count, plural, =0 {Every token expires.} one {# token never expires.} other {# tokens never expire.}}',
     'settings.status_mail_encryption' => 'Encryption: {encryption}',
     'settings.status_mail_no_sign_in' => 'no sign-in',
     'settings.status_mail_signs_in' => 'signs in',

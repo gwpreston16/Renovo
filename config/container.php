@@ -127,6 +127,7 @@ use App\Support\AfterResponse;
 use App\Support\ShutdownAfterResponse;
 use App\Repository\ScratchDatabase;
 use App\Service\Backup\Destination\HttpExchange;
+use App\Service\ApiTokenService;
 
 use function DI\autowire;
 use function DI\factory;
@@ -293,6 +294,12 @@ return static function (ContainerBuilder $builder, ?array $settings = null): voi
                 $limits['max_per_subject_per_day'],
             );
         },
+
+        // Phase 42: the instance's maximum token lifetime, unset (0) by default.
+        ApiTokenService::class => autowire()->constructorParameter(
+            'maxDays',
+            factory(static fn (ContainerInterface $c): int => $c->get('settings')['api']['token_max_days']),
+        ),
 
         NotificationDispatcher::class => autowire()->constructorParameter(
             'maxAttempts',

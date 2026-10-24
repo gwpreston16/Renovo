@@ -209,11 +209,11 @@ ROADMAP candidate.
 
 ## Status
 
-- [ ] `TokenScope`; a scope declared on every API route; middleware check; route
+- [x] `TokenScope`; a scope declared on every API route; middleware check; route
       coverage test
-- [ ] Issue form presets and custom scopes; scopes shown in the token list and
+- [x] Issue form presets and custom scopes; scopes shown in the token list and
       audit entries
-- [ ] Default lifetime; `API_TOKEN_MAX_DAYS`; expiring-soon flag; outstanding
+- [x] Default lifetime; `API_TOKEN_MAX_DAYS`; expiring-soon flag; outstanding
       count on Instance status
 - [ ] `TokenRateLimiter`, `api_rate_windows`, 429 and headers; prune
 - [ ] `api_token.auth_failed` audit with de-duplication; IP failure throttle
