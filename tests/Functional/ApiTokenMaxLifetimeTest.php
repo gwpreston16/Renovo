@@ -54,6 +54,8 @@ final class ApiTokenMaxLifetimeTest extends ApiTokenLifetimeTest
         self::assertStringNotContainsString('value="90"', $page);
         self::assertStringNotContainsString('value="none"', $page, 'No expiry is not offered under a maximum.');
         self::assertStringContainsString('at most 30 days', $page);
+        self::assertStringContainsString('min="2026-10-25"', $page);
+        self::assertStringContainsString('max="2026-11-23"', $page);
     }
 
     public function testTheFormTakesAPresetALifetimeAndNoExpiry(): void

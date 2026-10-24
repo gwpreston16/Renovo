@@ -43,7 +43,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   is deprecated and kept for one release. *Phase 42.*
 - **Existing tokens keep what they could do**: a read token now holds every
   read scope and the calendar, a write token every scope. The calendar
-  screen's feed link reaches the feed and nothing else. Reissuing a token
+  screen's feed link reaches the feed and nothing else, as does a read token
+  you named "Calendar feed" yourself with no expiry. Reissuing a token
   renews its lifetime from that day rather than keeping its old expiry date.
   Back up first; three migrations. See
   [Upgrading](docs/upgrading.md#after-upgrading-to-api-token-scopes-and-rate-limits-phase-42).

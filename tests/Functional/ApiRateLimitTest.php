@@ -208,7 +208,7 @@ final class ApiRateLimitTest extends ApiTestCase
         self::assertSame('expired', json_decode((string) $entries[0]['context'], true)['reason']);
     }
 
-    public function testRevokedAndDisabledAreRecordedAsSuch(): void
+    public function testARevokedTokenIsRecordedAsSuch(): void
     {
         $this->db->execute('UPDATE api_tokens SET revoked_at = :now', ['now' => '2026-01-01 00:00:00']);
         $this->from('10.0.0.8', 'GET', '/api/v1/me', $this->ownerToken);
@@ -218,12 +218,14 @@ final class ApiRateLimitTest extends ApiTestCase
 
     public function testAMalformedTokenAndADisabledAccountAreRecordedAsSuch(): void
     {
-        $this->from('10.0.1.1', 'GET', '/api/v1/me', 'not-a-token');
+        self::assertSame(401, $this->from('10.0.1.1', 'GET', '/api/v1/me', 'not-a-token')->getStatusCode());
+        // A public id that is not one is not repeated in the log.
+        $this->from('10.0.1.9', 'GET', '/api/v1/me', 'rnv_' . str_repeat('Z', 24) . '_x');
         $this->db->execute('UPDATE users SET disabled_at = :now WHERE id = :id', [
             'now' => '2026-10-01 00:00:00',
             'id' => $this->ownerId,
         ]);
-        $this->from('10.0.1.2', 'GET', '/api/v1/me', $this->ownerToken);
+        self::assertSame(401, $this->from('10.0.1.2', 'GET', '/api/v1/me', $this->ownerToken)->getStatusCode());
 
         $contexts = array_map(
             static fn (array $row): array => json_decode((string) $row['context'], true),
@@ -232,8 +234,10 @@ final class ApiRateLimitTest extends ApiTestCase
 
         self::assertSame('malformed', $contexts[0]['reason']);
         self::assertNull($contexts[0]['public_id']);
-        self::assertSame('account_disabled', $contexts[1]['reason']);
-        self::assertSame(explode('_', $this->ownerToken)[1], $contexts[1]['public_id']);
+        self::assertSame('malformed', $contexts[1]['reason']);
+        self::assertNull($contexts[1]['public_id']);
+        self::assertSame('account_disabled', $contexts[2]['reason']);
+        self::assertSame(explode('_', $this->ownerToken)[1], $contexts[2]['public_id']);
     }
 
     public function testAWriteWithNoTokenIsCountedAgainstTheAddress(): void

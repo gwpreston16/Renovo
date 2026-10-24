@@ -58,7 +58,8 @@ final class BackfillApiTokenScopes extends AbstractMigration
             'UPDATE api_tokens SET revoked_at = CURRENT_TIMESTAMP'
             . ' WHERE revoked_at IS NULL AND scopes IS NOT NULL'
             . " AND scopes NOT IN ('" . self::READ . "', '" . self::WRITE . "')"
-            . " AND NOT (scopes = '" . self::CALENDAR . "' AND name = '" . self::FEED_TOKEN_NAME . "')",
+            . " AND NOT (scopes = '" . self::CALENDAR . "' AND name = '" . self::FEED_TOKEN_NAME . "'"
+            . ' AND expires_at IS NULL)',
         );
 
         if ($revoked > 0) {

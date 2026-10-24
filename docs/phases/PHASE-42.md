@@ -153,11 +153,14 @@ Migrations, sequenced after the last existing one, each with an explicit
 
 1. `add_scopes_to_api_tokens` — `scopes` string(255), nullable, space-separated.
 2. `backfill_api_token_scopes` — maps `abilities` to scopes as in A. `down()`
-   clears the column.
-3. `create_api_rate_windows` — `key` string(96), `window_start` timestamp,
-   `hits` integer, with a unique index on (`key`, `window_start`).
+   clears the column, first revoking any token the read/write ability cannot
+   describe (changed at the merge review: it would otherwise widen).
+3. `create_api_rate_windows` — `key` string(96), `window_start` datetime,
+   `hits` integer, primary key (`key`, `window_start`). A datetime because
+   MariaDB can make a `timestamp` update itself (changed at the merge review).
 
-`abilities` stays for one release so `down()` is lossless. Its removal is a
+`abilities` stays for one release, kept in step, so a rollback keeps every
+token the presets describe working. Its removal is a
 ROADMAP candidate.
 
 ## Explicitly out of scope (leave clean seams, do NOT stub)
@@ -183,7 +186,7 @@ ROADMAP candidate.
   it: the table in A predates Phases 34 and 36). *Confirmed 2026-10-24.*
   `/subscriptions/{id}/charges` and `PATCH /charges/{id}` need
   `subscriptions:read` / `:write`, and `/savings` needs `subscriptions:read`.
-  The catch-up `/savings` runs for a write token runs for a
+  The catch-up `/savings` ran for a write token; it now runs for a
   `subscriptions:write` token.
 - **The default lifetime is 90 days and the maximum is unset.** *Confirmed
   2026-10-24.* A self-hoster scripting against their own instance should not

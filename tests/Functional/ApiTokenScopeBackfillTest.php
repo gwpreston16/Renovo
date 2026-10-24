@@ -59,6 +59,20 @@ final class ApiTokenScopeBackfillTest extends ApiTestCase
         self::assertSame(403, $this->api('GET', '/api/v1/calendar.ics?token=' . $this->ownerToken)->getStatusCode());
     }
 
+    public function testAReadTokenNamedLikeTheFeedButExpiringKeepsEverything(): void
+    {
+        $id = $this->legacy($this->readOnlyToken, 'read');
+        $this->db->execute(
+            "UPDATE api_tokens SET name = 'Calendar feed', expires_at = '2030-01-01 00:00:00' WHERE id = :id",
+            ['id' => $id],
+        );
+
+        $this->migrate('up');
+
+        self::assertSame('subscriptions:read catalogue:read calendar:read', $this->scopesOf($id));
+        self::assertSame(200, $this->api('GET', '/api/v1/subscriptions', $this->readOnlyToken)->getStatusCode());
+    }
+
     public function testTheFeedTokenStillReadsTheFeed(): void
     {
         $token = $this->container()->get(ApiTokenService::class)
@@ -91,9 +105,16 @@ final class ApiTokenScopeBackfillTest extends ApiTestCase
     {
         $user = $this->owner();
         $service = $this->container()->get(ApiTokenService::class);
+        $feed = $service->replaceFeedToken($user, $this->householdId);
         $service->issue($user, $this->householdId, 'Catalogue writer', TokenScopes::fromString('catalogue:write'));
         $service->issue($user, $this->householdId, 'Calendar', TokenScopes::calendarOnly());
-        $feed = $service->replaceFeedToken($user, $this->householdId);
+        $service->issue(
+            $user,
+            $this->householdId,
+            'Calendar feed',
+            TokenScopes::calendarOnly(),
+            new \DateTimeImmutable('+30 days'),
+        );
 
         $output = $this->migrate('down');
 
@@ -101,9 +122,9 @@ final class ApiTokenScopeBackfillTest extends ApiTestCase
         self::assertSame(
             ['Calendar feed', 'Editor token', 'Owner token', 'Read-only token', 'Viewer token'],
             array_column($live, 'name'),
-            'The two narrow tokens are revoked; the presets and the feed link are kept.',
+            'The narrow tokens, a self-named expiring "Calendar feed" among them, go; presets and the feed link stay.',
         );
-        self::assertStringContainsString('Revoked 2 API token(s)', $output);
+        self::assertStringContainsString('Revoked 3 API token(s)', $output);
         self::assertNotSame('', $feed);
     }
 

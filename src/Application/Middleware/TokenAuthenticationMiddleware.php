@@ -101,16 +101,17 @@ abstract class TokenAuthenticationMiddleware implements MiddlewareInterface
         $token = $result->token;
         $user = $result->user;
 
+        // The token's holder has a language too. Without this an API error and
+        // an iCalendar feed would always answer in the instance's default,
+        // whatever the account behind the token had chosen — the 429 below
+        // included.
+        $this->locale->set($this->locales->resolve($user->locale));
+
         $decision = $this->limiter->hitToken($token);
         $this->status->set($decision);
         if (!$decision->allowed) {
             $this->tooMany($request, $decision);
         }
-
-        // The token's holder has a language too. Without this an API error and
-        // an iCalendar feed would always answer in the instance's default,
-        // whatever the account behind the token had chosen.
-        $this->locale->set($this->locales->resolve($user->locale));
 
         $this->assertMayProceed($request, $token);
 

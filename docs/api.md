@@ -177,7 +177,7 @@ cron script.
 | --- | --- |
 | `subscriptions:read` | `/subscriptions`, their attachments and payments (`/charges`), and `/savings` |
 | `subscriptions:write` | Creating, editing, cancelling and deleting those, their logos, attachments and payments |
-| `catalogue:read` | `/categories`, `/tags`, `/payment-methods` and their logos |
+| `catalogue:read` | `/categories`, `/tags` and `/payment-methods` |
 | `catalogue:write` | Creating, renaming and deleting those, and changing payment-method logos |
 | `calendar:read` | The [calendar feed](#calendar-feed) |
 
@@ -223,9 +223,13 @@ limiter has counted carries three headers:
 
 Over the limit, the answer is `429` with `Retry-After` in seconds; wait that
 long. The calendar feed shares its token's limit, far above how often a
-calendar polls. Ten tokens that do not match, have expired or have been revoked
-from one address within five minutes block token authentication from that
-address — a valid token included — until the five minutes are up. Each failure
+calendar polls. Ten tokens that do not match, have expired, have been revoked
+or belong to a disabled account, from one address within five minutes, block
+token authentication from that address — a valid token included — until the
+five minutes are up. That `429` reports `RateLimit-Limit: 10`, and its
+`RateLimit-Reset` counts down to the end of the five minutes. A write sent to
+any `/api/v1` path with no bearer token counts against the address like any
+other request without one. Each failure
 is recorded in the audit log as **API token refused**, once per address per
 five minutes with a count, never with the secret.
 
