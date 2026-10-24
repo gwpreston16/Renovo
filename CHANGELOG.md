@@ -28,13 +28,14 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 - **Uploaded files are served sandboxed** (`Content-Security-Policy: sandbox`),
   so an HTML or SVG attachment opened in the browser cannot run as Renovo.
   *Phase 41.*
-- `X-Frame-Options` is no longer sent; `frame-ancestors 'self'` does its job.
+- **Behind your own reverse proxy, security headers now come from Renovo.**
+  `X-Frame-Options` is no longer sent; `frame-ancestors 'self'` does its job.
   The bundled nginx now adds its headers only to the static files it serves
-  itself. **Behind your own reverse proxy, don't add these headers again** — a
+  itself. **Don't add these headers again at your proxy** — a
   second Content-Security-Policy is enforced as well, and breaks the page. See
   [Security headers](docs/security.md#security-headers). *Phase 41.*
-- Confirmations, the scenario planner, charts and bars, swatches, avatars and
-  passkey sign-in no longer use inline script or style; a template that brings
+- **No inline script or style.** Confirmations, the scenario planner, charts
+  and bars, swatches, avatars and passkey sign-in no longer use either; a template that brings
   one back fails CI. *Phase 41.*
 
 ### Fixed

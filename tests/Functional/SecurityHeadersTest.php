@@ -21,6 +21,7 @@ use DateTimeImmutable;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Slim\App;
+use Slim\Views\Twig;
 use Slim\Psr7\Factory\ServerRequestFactory;
 use Symfony\Component\Mailer\MailerInterface;
 
@@ -169,7 +170,12 @@ final class SecurityHeadersTest extends DatabaseTestCase
 
         self::assertSame($container->get(CspNonce::class), $container->get(CspNonce::class));
         $nonce = $this->nonceOf($this->get('/login'));
-        self::assertSame($nonce, $container->get(CspNonce::class)->value());
+
+        // What a template prints, through the real Twig environment.
+        $printed = $container->get(Twig::class)->getEnvironment()
+            ->createTemplate('{{ csp_nonce() }}')
+            ->render([]);
+        self::assertSame($nonce, $printed);
     }
 
     private function assertPageHeaders(ResponseInterface $response): void

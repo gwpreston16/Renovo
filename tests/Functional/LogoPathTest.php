@@ -13,6 +13,8 @@ use App\Security\CsrfTokenManager;
 use App\Security\Scope;
 use App\Service\LogoStorage;
 use App\Service\SubscriptionService;
+use App\Tests\Support\FakeUpload;
+use Psr\Http\Message\UploadedFileInterface;
 use DateTimeImmutable;
 use Psr\Http\Message\ResponseInterface;
 use Slim\Psr7\Factory\ServerRequestFactory;
@@ -30,14 +32,65 @@ final class LogoPathTest extends ApiTestCase
     private const MEMBERS_LOGO = 'assets/logos/0123456789abcdef0123456789abcdef.png';
 
     private int $contributorId;
+    private string $logoDirectory;
 
     protected function setUp(): void
     {
+        $this->logoDirectory = sys_get_temp_dir() . '/renovo-logo-path-' . bin2hex(random_bytes(6));
+
         parent::setUp();
 
         $this->contributorId = (new UserRepository($this->db))
             ->create('contributor@example.test', 'Contributor', 'hash', false, new DateTimeImmutable());
         (new MembershipRepository($this->db))->create($this->householdId, $this->contributorId, Role::Contributor);
+    }
+
+    protected function tearDown(): void
+    {
+        ApiChargesTest::removeDirectory($this->logoDirectory);
+
+        parent::tearDown();
+    }
+
+    protected function containerOverrides(): array
+    {
+        return [LogoStorage::class => new LogoStorage($this->logoDirectory, 512 * 1024)];
+    }
+
+    /**
+     * The other half of K1: refusing posted paths must not refuse the real
+     * thing. A logo uploaded with the form is saved on create and on edit,
+     * and an edit's upload replaces the stored one.
+     */
+    public function testALogoUploadedWithTheFormIsStillSaved(): void
+    {
+        $this->signIn($this->editorId);
+
+        $create = $this->web('POST', '/subscriptions', $this->form([]), ['logo' => FakeUpload::png('one.png')]);
+        self::assertSame(302, $create->getStatusCode(), (string) $create->getBody());
+        $id = (int) $this->db->fetchValue('SELECT MAX(id) FROM subscriptions');
+        $first = (string) $this->logoOf($id);
+        self::assertMatchesRegularExpression('~^assets/logos/[0-9a-f]{32}\.png$~', $first);
+
+        $edit = $this->web('POST', '/subscriptions/' . $id, $this->form([
+            'logo_path' => '/attacker.example/p.png',
+        ]), ['logo' => FakeUpload::png('two.png')]);
+        self::assertSame(302, $edit->getStatusCode(), (string) $edit->getBody());
+        $second = (string) $this->logoOf($id);
+        self::assertMatchesRegularExpression('~^assets/logos/[0-9a-f]{32}\.png$~', $second);
+        self::assertNotSame($first, $second);
+    }
+
+    public function testEveryPathLogoStorageWritesCountsAsStored(): void
+    {
+        $storage = new LogoStorage($this->logoDirectory, 512 * 1024);
+
+        self::assertTrue(LogoStorage::isStoredPath($storage->store(FakeUpload::png())));
+
+        $source = (string) tempnam(sys_get_temp_dir(), 'renovo-logo');
+        file_put_contents($source, FakeUpload::pngBytes());
+        self::assertTrue(LogoStorage::isStoredPath($storage->storeFile($source)));
+        unlink($source);
     }
 
     /**
@@ -235,12 +288,14 @@ final class LogoPathTest extends ApiTestCase
 
     /**
      * @param array<string, string> $body
+     * @param array<string, UploadedFileInterface> $files
      */
-    private function web(string $method, string $path, array $body): ResponseInterface
+    private function web(string $method, string $path, array $body, array $files = []): ResponseInterface
     {
         $request = (new ServerRequestFactory())
             ->createServerRequest($method, 'http://localhost' . $path, ['REMOTE_ADDR' => '127.0.0.1'])
             ->withParsedBody($body)
+            ->withUploadedFiles($files)
             ->withHeader(CsrfTokenManager::HEADER_NAME, $this->container()->get(CsrfTokenManager::class)->token());
 
         return $this->app->handle($request);

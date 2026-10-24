@@ -224,8 +224,9 @@ Let these headers through and **don't add them again** at the proxy: a second
 `Content-Security-Policy` is enforced as well as the first rather than instead
 of it, and one without the page's nonce breaks it. The same goes for
 `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, the two
-`Cross-Origin-*` headers and `Strict-Transport-Security` — set HSTS with
-`HSTS_ENABLED` instead. Remove an `X-Frame-Options` the proxy adds, or leave it:
+`Cross-Origin-*` headers. HSTS is the one exception: leave the proxy's in
+place with `HSTS_ENABLED=false`, or move it to `HSTS_ENABLED=true`, but not
+both. Remove an `X-Frame-Options` the proxy adds, or leave it:
 it agrees with `frame-ancestors 'self'`.
 
 The bundled nginx adds `nosniff`, `Referrer-Policy` and

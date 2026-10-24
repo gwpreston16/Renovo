@@ -110,6 +110,12 @@ frame-ancestors 'self';
     through the CSSOM (`element.style.setProperty`), which CSP does not govern.
   - Where a stepped class will do, it becomes a utility class instead.
   - SVG `stop-color` and `stroke` become presentation attributes.
+    *Changed while building:* a presentation attribute can't name a custom
+    property, so the brand gradient's stops take a class each
+    (`.brand-stop-from` / `-to`, reading `--brand-from` / `--brand-to`), and
+    the spend trend's line colour, which is a token for its "other" series,
+    goes through `data-css-stroke` like every other server value. Without
+    script the line keeps the stylesheet's stroke.
   - Colours stay as tokens per CLAUDE.md.
 
 ### D. Responses that are not pages
