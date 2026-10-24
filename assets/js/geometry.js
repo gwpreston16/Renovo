@@ -30,6 +30,19 @@ const SELECTOR = Object.keys(PROPERTIES)
     .map((name) => '[data-' + name.replace(/[A-Z]/g, (letter) => '-' + letter.toLowerCase()) + ']')
     .join(',');
 
+/**
+ * Take the applied styles off before htmx snapshots the page for its history,
+ * and put them straight back. The snapshot is markup, and a `style=` in markup
+ * is exactly what the policy refuses when Back restores it; the restore puts
+ * them on again through `applyGeometry`. htmx copies the page synchronously
+ * after this event, so the microtask runs once the copy is taken and before
+ * anything is painted.
+ */
+export function stripGeometryForHistory() {
+    document.querySelectorAll(SELECTOR).forEach((element) => element.removeAttribute('style'));
+    queueMicrotask(() => applyGeometry(document));
+}
+
 export function applyGeometry(root = document) {
     root.querySelectorAll(SELECTOR).forEach((element) => {
         Object.entries(PROPERTIES).forEach(([name, [property, shape]]) => {

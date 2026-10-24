@@ -455,6 +455,7 @@ final class AccountSelfServiceTest extends DatabaseTestCase
         self::assertSame(200, $response->getStatusCode());
         self::assertSame('image/png', $response->getHeaderLine('Content-Type'));
         self::assertSame('nosniff', $response->getHeaderLine('X-Content-Type-Options'));
+        self::assertSame("sandbox; default-src 'none'", $response->getHeaderLine('Content-Security-Policy'));
 
         self::assertTrue($this->hasAudit(AuditAction::AvatarChanged));
     }

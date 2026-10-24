@@ -225,6 +225,21 @@ main:focus {
     }
 }
 
+/* ------------------------------------------------------- server geometry */
+
+/*
+ * A marker, tick or line placed by a `data-css-*` position is hidden until
+ * assets/js/geometry.js has placed it (it sets an inline style through the
+ * CSSOM), so nothing sits in the wrong place before the script runs or when
+ * it doesn't (Phase 41). Widths and heights need no rule: an unsized bar is
+ * an empty one.
+ */
+[data-css-left]:not([style]),
+[data-css-top]:not([style]),
+[data-css-bottom]:not([style]) {
+    visibility: hidden;
+}
+
 /* ------------------------------------------------------------ htmx indicators */
 
 /*

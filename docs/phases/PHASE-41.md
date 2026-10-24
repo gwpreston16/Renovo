@@ -55,7 +55,7 @@ carry the headers too. On every response:
 A header a controller has already set is not overwritten. That lets an attachment
 download keep its own stricter policy (D).
 
-The nginx `add_header` lines stay as a backstop for static files. The README says
+The nginx `add_header` lines stay as a backstop for static files. `docs/security.md` says
 which headers a custom reverse proxy should *not* duplicate.
 
 ### B. The policy
@@ -188,7 +188,7 @@ None.
 - [x] Attachment and API response policies
 - [x] Template guard test in CI; CLAUDE.md convention line
 - [x] K1: a posted `logo_path` is never saved; K64: attachments tested over HTTP
-- [x] README: headers, HSTS, notes for custom proxies; `.env.example`
+- [x] `docs/security.md` (not the README, per CLAUDE.md): headers, HSTS, notes for custom proxies; `.env.example`
 - [x] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done

@@ -31,7 +31,11 @@ final class InlineCodeScannerTest extends TestCase
             ...(array) glob($this->root . '/templates/*.twig'),
             ...(array) glob($this->root . '/templates/partials/*.twig'),
         ];
-        foreach ($files as $file) {
+        foreach ([...$files, $this->root . '/templates/notes.txt'] as $file) {
+            if (!is_file((string) $file)) {
+                continue;
+            }
+
             unlink((string) $file);
         }
         rmdir($this->root . '/templates/partials');
@@ -114,13 +118,30 @@ final class InlineCodeScannerTest extends TestCase
             <button hx-post="/x" hx-vals="js:{a: 1}"></button>
             <button hx-on:click="go()"></button>
             <form hx-get="/x" hx-trigger="change, renovo:typed delay:500ms"></form>
+            <button hx-post="/x" hx-vars="js:{a: 1}"></button>
+            <button data-hx-on:click="go()"></button>
+            <button hx-on::after-request="go()"></button>
             TWIG);
 
         self::assertSame([
             'templates/page.twig:1  an event filter in hx-trigger, which needs eval',
             'templates/page.twig:2  a js: value in hx-vals, which needs eval',
             'templates/page.twig:3  hx-on, which needs eval',
+            'templates/page.twig:5  a js: value in hx-vals, which needs eval',
+            'templates/page.twig:6  hx-on, which needs eval',
+            'templates/page.twig:7  hx-on, which needs eval',
         ], $this->scan());
+    }
+
+    public function testDataAttributesNamedLikeHandlersAndOtherFilesAreNotFlagged(): void
+    {
+        $this->write('page.twig', <<<'TWIG'
+            <form data-confirm="{{ t('confirm.delete') }}" data-onclick="x" data-style="y"></form>
+            <span data-css-width="{{ width }}" data-css-background="{{ colour }}"></span>
+            TWIG);
+        file_put_contents($this->root . '/templates/notes.txt', '<script>alert(1)</script>');
+
+        self::assertSame([], $this->scan());
     }
 
     public function testATwigCommentMayTalkAboutAScript(): void

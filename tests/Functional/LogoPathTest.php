@@ -8,7 +8,11 @@ use App\Application\Middleware\AuthenticationMiddleware;
 use App\Domain\Role;
 use App\Repository\MembershipRepository;
 use App\Repository\UserRepository;
+use App\Domain\IsolationMode;
 use App\Security\CsrfTokenManager;
+use App\Security\Scope;
+use App\Service\LogoStorage;
+use App\Service\SubscriptionService;
 use DateTimeImmutable;
 use Psr\Http\Message\ResponseInterface;
 use Slim\Psr7\Factory\ServerRequestFactory;
@@ -83,8 +87,10 @@ final class LogoPathTest extends ApiTestCase
     {
         $this->signIn($this->editorId);
 
-        $this->web('POST', '/subscriptions', $this->form(['logo_path' => self::MEMBERS_LOGO]));
+        $response = $this->web('POST', '/subscriptions', $this->form(['logo_path' => self::MEMBERS_LOGO]));
 
+        self::assertSame(302, $response->getStatusCode(), (string) $response->getBody());
+        self::assertSame(1, (int) $this->db->fetchValue('SELECT COUNT(*) FROM subscriptions'));
         self::assertNull($this->db->fetchValue('SELECT logo_path FROM subscriptions'));
     }
 
@@ -97,9 +103,94 @@ final class LogoPathTest extends ApiTestCase
         );
 
         $this->signIn($this->editorId);
-        $this->postEdit($subscriptionId, '/attacker.example/p.png');
+        $response = $this->postEdit($subscriptionId, '/attacker.example/p.png');
 
+        self::assertSame(302, $response->getStatusCode(), (string) $response->getBody());
         self::assertSame(self::MEMBERS_LOGO, $this->logoOf($subscriptionId));
+    }
+
+    /**
+     * @return array<string, array{0: string}>
+     */
+    public static function foreignPaths(): array
+    {
+        return array_diff_key(self::postedPaths(), ["a co-member's stored logo" => true]);
+    }
+
+    /**
+     * The service holds the line too, for any caller that hands it input
+     * without going through the form controller. (A real stored path is the
+     * one thing it must accept — it is what an upload hands it — so keeping a
+     * co-member's out is the controller's job, tested above.)
+     *
+     * @dataProvider foreignPaths
+     */
+    public function testTheServiceSavesNoPathLogoStorageCouldNotHaveWritten(string $posted): void
+    {
+        $service = $this->container()->get(SubscriptionService::class);
+        $scope = Scope::forMember($this->editorId, false, $this->householdId, Role::Editor, IsolationMode::Shared);
+        $input = [
+            'name' => 'Policy',
+            'price' => '10.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-12-01',
+            'logo_path' => $posted,
+        ];
+
+        $id = $service->create($scope, $input);
+        self::assertNull($this->logoOf($id));
+
+        $this->db->execute(
+            'UPDATE subscriptions SET logo_path = :path WHERE id = :id',
+            ['path' => self::MEMBERS_LOGO, 'id' => $id],
+        );
+        $service->update($scope, $id, $input);
+        self::assertSame(self::MEMBERS_LOGO, $this->logoOf($id));
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: bool}>
+     */
+    public static function storedPathShapes(): array
+    {
+        $hex = '0123456789abcdef0123456789abcdef';
+
+        return [
+            'a png it wrote' => ['assets/logos/' . $hex . '.png', true],
+            'a webp it wrote' => ['assets/logos/' . $hex . '.webp', true],
+            'climbing out' => ['assets/logos/../' . $hex . '.png', false],
+            'a subdirectory' => ['assets/logos/sub/' . $hex . '.png', false],
+            'upper-case hex' => ['assets/logos/' . strtoupper($hex) . '.png', false],
+            'a trailing newline' => ['assets/logos/' . $hex . ".png
+", false],
+            'an svg' => ['assets/logos/' . $hex . '.svg', false],
+            'a URL' => ['https://attacker.example/' . $hex . '.png', false],
+        ];
+    }
+
+    /**
+     * @dataProvider storedPathShapes
+     */
+    public function testOnlyAPathLogoStorageWritesCountsAsStored(string $path, bool $stored): void
+    {
+        self::assertSame($stored, LogoStorage::isStoredPath($path));
+    }
+
+    public function testDeleteLeavesAFileItWasNotGivenAStoredPathFor(): void
+    {
+        $directory = sys_get_temp_dir() . '/renovo-logos-' . bin2hex(random_bytes(6));
+        mkdir($directory . '/sub', 0o775, true);
+        $file = $directory . '/sub/0123456789abcdef0123456789abcdef.png';
+        file_put_contents($file, 'x');
+
+        (new LogoStorage($directory, 1024))->delete('assets/logos/sub/0123456789abcdef0123456789abcdef.png');
+
+        self::assertFileExists($file);
+        unlink($file);
+        rmdir($directory . '/sub');
+        rmdir($directory);
     }
 
     private function postEdit(int $subscriptionId, string $logoPath, ?int $ownerId = null): ResponseInterface

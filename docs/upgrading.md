@@ -117,6 +117,22 @@ alert everywhere): tick them in the routing grid on the Notifications page. Then
   started with in `var/cache`, and could fail after an upgrade until that
   directory was deleted. You no longer need to clear it.
 
+## After upgrading to security headers (Phase 41)
+
+Renovo now sets its own security headers, a strict Content-Security-Policy
+among them, on every response PHP sends. Nothing to migrate; two things to check:
+
+- **If your own reverse proxy adds security headers, stop it adding them.** A
+  second `Content-Security-Policy` is enforced as well as Renovo's, and one
+  without the page's nonce breaks every page. The same goes for
+  `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and the
+  `Cross-Origin-*` headers. A bare-metal install that copied the old
+  server-level `add_header` lines from `docker/nginx/default.conf` should
+  take the new file. See [Security headers](security.md#security-headers).
+- **HSTS is now a setting.** If the proxy sends `Strict-Transport-Security`,
+  you can leave it there, or remove it and set `HSTS_ENABLED=true` (with an
+  https `APP_URL`). See [Configuration](configuration.md).
+
 ## After upgrading to the payment ledger (Phase 34)
 
 From Phase 34 Renovo writes a ledger row for every billing date that passes.

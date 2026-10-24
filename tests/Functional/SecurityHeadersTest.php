@@ -10,8 +10,10 @@ use App\Domain\Role;
 use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\UserRepository;
+use App\Security\CspNonce;
 use App\Security\SessionInterface;
 use App\Service\InstanceSettingsService;
+use App\Support\Settings;
 use App\Tests\Integration\DatabaseTestCase;
 use App\Tests\Support\ArraySession;
 use App\Tests\Support\RecordingMailer;
@@ -124,6 +126,50 @@ final class SecurityHeadersTest extends DatabaseTestCase
     public function testHstsIsNotSentByDefault(): void
     {
         self::assertFalse($this->get('/login')->hasHeader('Strict-Transport-Security'));
+    }
+
+    public function testHstsIsSentWhenTheSettingsTurnItOnOverHttps(): void
+    {
+        $settings = Settings::load();
+        $settings['app']['url'] = 'https://renovo.example';
+        $settings['security'] = ['hsts' => true, 'hsts_include_subdomains' => false];
+
+        $bootstrap = require dirname(__DIR__, 2) . '/config/bootstrap.php';
+        $this->app = $bootstrap(true, [
+            'settings' => $settings,
+            SessionInterface::class => $this->session,
+            MailerInterface::class => new RecordingMailer(),
+        ]);
+
+        $response = $this->get('/login');
+
+        self::assertSame('max-age=31536000', $response->getHeaderLine('Strict-Transport-Security'));
+        self::assertStringEndsWith(
+            '; upgrade-insecure-requests',
+            $response->getHeaderLine('Content-Security-Policy'),
+        );
+    }
+
+    public function testThePageTurnsOffTheHtmxFeaturesThePolicyRefuses(): void
+    {
+        $html = (string) $this->get('/login')->getBody();
+
+        self::assertStringContainsString(
+            '<meta name="htmx-config" content=\'{"allowEval": false, "includeIndicatorStyles": false}\'>',
+            $html,
+        );
+        // Before htmx loads, or it never reads the config.
+        self::assertLessThan(strpos($html, 'htmx.min.js'), strpos($html, 'name="htmx-config"'));
+    }
+
+    public function testTheTemplatesAndTheHeaderShareOneNonce(): void
+    {
+        $container = $this->app->getContainer();
+        self::assertNotNull($container);
+
+        self::assertSame($container->get(CspNonce::class), $container->get(CspNonce::class));
+        $nonce = $this->nonceOf($this->get('/login'));
+        self::assertSame($nonce, $container->get(CspNonce::class)->value());
     }
 
     private function assertPageHeaders(ResponseInterface $response): void

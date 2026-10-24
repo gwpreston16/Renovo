@@ -29,7 +29,7 @@
                     {% if may_manage %}
                         <details class="setting-chip" {{ is_failed ? 'open' : '' }}>
                             <summary>
-                                <span class="swatch" data-css-background="{{ category.colour|default('#888888') }}" aria-hidden="true"></span>
+                                <span class="swatch" data-css-background="{{ category.colour|default('var(--s-other)') }}" aria-hidden="true"></span>
                                 <span class="setting-chip-name">{{ category.name }}</span>
                                 <span class="setting-chip-count num">{{ entry.count }}<span class="visually-hidden"> {{ t('settings.subscriptions_count', {'count': entry.count}) }}</span></span>
                                 {{ icon('edit', 'setting-chip-icon') }}
@@ -59,7 +59,7 @@
                         </details>
                     {% else %}
                         <span class="setting-chip is-static">
-                            <span class="swatch" data-css-background="{{ category.colour|default('#888888') }}" aria-hidden="true"></span>
+                            <span class="swatch" data-css-background="{{ category.colour|default('var(--s-other)') }}" aria-hidden="true"></span>
                             <span class="setting-chip-name">{{ category.name }}</span>
                             <span class="setting-chip-count num">{{ entry.count }}<span class="visually-hidden"> {{ t('settings.subscriptions_count', {'count': entry.count}) }}</span></span>
                         </span>

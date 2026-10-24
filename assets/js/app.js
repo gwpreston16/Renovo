@@ -28,7 +28,7 @@ import { enhanceCardLayouts } from './card-layout.js';
 import { onThemeChange, renderChart } from './charts.js';
 import { drawCategoryDonuts } from './category-donut.js';
 import { enhanceCopyFields } from './copy-field.js';
-import { applyGeometry } from './geometry.js';
+import { applyGeometry, stripGeometryForHistory } from './geometry.js';
 import { bindFormBehaviours } from './form-behaviours.js';
 import { icon } from './icons.js';
 import { enhancePaymentMethodFields } from './payment-method-field.js';
@@ -108,6 +108,10 @@ function enhanceArrived(event) {
 }
 
 document.addEventListener('htmx:afterSwap', enhanceArrived);
+// Back and Forward through an hx-push-url history: htmx restores the markup
+// itself and fires no afterSwap, so the sizes have to be applied again.
+document.addEventListener('htmx:historyRestore', () => applyGeometry(document));
+document.addEventListener('htmx:beforeHistorySave', stripGeometryForHistory);
 document.addEventListener('renovo:content-loaded', enhanceArrived);
 
 /*
