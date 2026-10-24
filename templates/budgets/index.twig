@@ -137,10 +137,10 @@
                                      : projected,
                                  'limit': limit,
                              }) }}">
-                            <span class="budget-bar-projected" style="width: {{ card.projected_width }}"></span>
-                            <span class="budget-bar-charged" style="width: {{ card.charged_width }}"></span>
+                            <span class="budget-bar-projected" data-css-width="{{ card.projected_width }}"></span>
+                            <span class="budget-bar-charged" data-css-width="{{ card.charged_width }}"></span>
                             {% if card.warn_left is not null %}
-                                <span class="budget-bar-warn" style="left: {{ card.warn_left }}"
+                                <span class="budget-bar-warn" data-css-left="{{ card.warn_left }}"
                                       title="{{ t('budgets.warn_tick', {'percent': budget.warnThresholdPercent}) }}"></span>
                             {% endif %}
                         </div>

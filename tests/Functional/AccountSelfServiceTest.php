@@ -455,6 +455,7 @@ final class AccountSelfServiceTest extends DatabaseTestCase
         self::assertSame(200, $response->getStatusCode());
         self::assertSame('image/png', $response->getHeaderLine('Content-Type'));
         self::assertSame('nosniff', $response->getHeaderLine('X-Content-Type-Options'));
+        self::assertSame("sandbox; default-src 'none'", $response->getHeaderLine('Content-Security-Policy'));
 
         self::assertTrue($this->hasAudit(AuditAction::AvatarChanged));
     }
@@ -536,7 +537,7 @@ final class AccountSelfServiceTest extends DatabaseTestCase
         // The placeholder is the first name's initial on the member's own tone.
         $tone = AvatarTone::of($this->memberId);
         self::assertMatchesRegularExpression(
-            '~<span class="avatar avatar-initials avatar-tone-' . $tone . '"[^>]*>M</span>~',
+            '~<span class="avatar avatar-size-\d+ avatar-initials avatar-tone-' . $tone . '"[^>]*>M</span>~',
             (string) $this->request('GET', '/profile')->getBody(),
         );
 

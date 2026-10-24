@@ -45,7 +45,7 @@
                         <div class="meter" role="img"
                              aria-label="{{ t('dashboard.share_of_spend', {'name': member.displayName, 'percent': percent}) }}">
                             {% set tone = avatar_tone(member.userId) %}
-                            <span class="meter-fill{{ tone ? ' avatar-tone-' ~ tone : '' }}" style="width: {{ min(percent, 100) }}%"></span>
+                            <span class="meter-fill{{ tone ? ' avatar-tone-' ~ tone : '' }}" data-css-width="{{ min(percent, 100) }}%"></span>
                         </div>
                     {% endif %}
 

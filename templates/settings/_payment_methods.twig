@@ -46,7 +46,7 @@
                     {% if may_manage %}
                         <details class="setting-chip" {{ is_failed ? 'open' : '' }}>
                             <summary>
-                                {% if method.colour %}<span class="swatch" style="background: {{ method.colour }}" aria-hidden="true"></span>{% endif %}
+                                {% if method.colour %}<span class="swatch" data-css-background="{{ method.colour }}" aria-hidden="true"></span>{% endif %}
                                 {{ payment_method.badge(method.name, method.icon, method.logoPath) }}
                                 {{ icon('edit', 'setting-chip-icon') }}
                             </summary>
@@ -80,7 +80,7 @@
                                     </form>
                                 {% endif %}
                                 <form method="post" action="/payment-methods/{{ method.id }}/delete" class="inline"
-                                      onsubmit="return confirm('{{ t('confirm.delete_payment_method', {'name': method.name})|e('js') }}')">
+                                      data-confirm="{{ t('confirm.delete_payment_method', {'name': method.name}) }}">
                                     {{ csrf_field() }}
                                     <button type="submit" class="button button-danger">
                                         {{ icon('delete') }}{{ t('settings.delete_named', {'name': method.name}) }}
@@ -90,7 +90,7 @@
                         </details>
                     {% else %}
                         <span class="setting-chip is-static">
-                            {% if method.colour %}<span class="swatch" style="background: {{ method.colour }}" aria-hidden="true"></span>{% endif %}
+                            {% if method.colour %}<span class="swatch" data-css-background="{{ method.colour }}" aria-hidden="true"></span>{% endif %}
                             {{ payment_method.badge(method.name, method.icon, method.logoPath) }}
                         </span>
                     {% endif %}

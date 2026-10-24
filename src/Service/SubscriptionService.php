@@ -1273,9 +1273,12 @@ final class SubscriptionService
      */
     private function logoPath(Scope $scope, array $input, ?int $existingId, ?string $website): ?string
     {
-        // An upload always wins: somebody who chose a file meant it.
+        // An upload always wins: somebody who chose a file meant it. Only a
+        // path LogoStorage could have written counts as one: a URL or
+        // somebody else's path that arrived in the input is not an upload,
+        // and the logo already stored stays (K1).
         $uploaded = $this->str($input, 'logo_path');
-        if ($uploaded !== '') {
+        if (LogoStorage::isStoredPath($uploaded)) {
             return $uploaded;
         }
 

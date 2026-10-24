@@ -12,7 +12,7 @@
     <form method="get" action="/audit" class="filters"
           hx-get="/audit" hx-target="#audit-entries" hx-push-url="true">
         <label for="action">{{ t('field.event') }}</label>
-        <select id="action" name="action" onchange="this.form.requestSubmit()">
+        <select id="action" name="action" data-autosubmit>
             <option value="">{{ t('audit.all_events') }}</option>
             {% for item in actions %}
                 <option value="{{ item.value }}" {{ selected_action == item.value ? 'selected' : '' }}>

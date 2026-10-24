@@ -53,7 +53,7 @@
                         #}
                         {% if not token.isRevoked() and not is_expired %}
                             <form method="post" action="/settings/api-tokens/{{ token.id }}/reissue" class="inline"
-                                  onsubmit="return confirm('{{ t('confirm.reissue_token')|e('js') }}')">
+                                  data-confirm="{{ t('confirm.reissue_token') }}">
                                 {{ csrf_field() }}
                                 <button type="submit" class="button button-quiet"
                                         aria-label="{{ t('settings.reissue_named', {'name': token.name}) }}">{{ t('action.reissue') }}</button>
@@ -61,7 +61,7 @@
                         {% endif %}
                         {% if not token.isRevoked() %}
                             <form method="post" action="/settings/api-tokens/{{ token.id }}/revoke" class="inline"
-                                  onsubmit="return confirm('{{ t('confirm.revoke_token')|e('js') }}')">
+                                  data-confirm="{{ t('confirm.revoke_token') }}">
                                 {{ csrf_field() }}
                                 <button type="submit" class="button button-danger"
                                         aria-label="{{ t('settings.revoke_named', {'name': token.name}) }}">{{ t('action.revoke') }}</button>

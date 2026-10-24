@@ -248,11 +248,11 @@ final class HouseholdDashboardTest extends DatabaseTestCase
         $card = $this->card($this->page($this->adaId), 'aria-labelledby="by-category-heading"');
 
         self::assertMatchesRegularExpression(
-            '/Streaming.*?class="meter-fill" style="width: \d+%; background: #aa3366"/s',
+            '/Streaming.*?class="meter-fill" data-css-width="\d+%" data-css-background="#aa3366"/s',
             $card,
         );
         // Uncategorised has no colour of its own, so it keeps the accent.
-        self::assertMatchesRegularExpression('/Uncategorised.*?class="meter-fill" style="width: \d+%"/s', $card);
+        self::assertMatchesRegularExpression('/Uncategorised.*?class="meter-fill" data-css-width="\d+%"/s', $card);
     }
 
     public function testWhoPaysDrawsEachMembersBarInTheirTone(): void

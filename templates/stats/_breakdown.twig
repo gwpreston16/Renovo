@@ -64,7 +64,7 @@
                                  'name': row_name,
                                  'percent': row.percent,
                              }) }}">
-                            <span class="meter-fill" style="width: {{ min(row.percent, 100) }}%"></span>
+                            <span class="meter-fill" data-css-width="{{ min(row.percent, 100) }}%"></span>
                         </div>
                     </li>
                 {% endfor %}
@@ -81,7 +81,7 @@
                                  'name': other_name,
                                  'percent': group.other.percent,
                              }) }}">
-                            <span class="meter-fill" style="width: {{ min(group.other.percent, 100) }}%"></span>
+                            <span class="meter-fill" data-css-width="{{ min(group.other.percent, 100) }}%"></span>
                         </div>
                     </li>
                 {% endif %}

@@ -607,6 +607,9 @@
 
 .meter-fill {
     display: block;
+    /* Empty until geometry.js sets the share from `data-css-width`: a meter
+       with no script must not read as the whole of the spend (Phase 41). */
+    width: 0;
     height: 100%;
     background: var(--accent);
 }

@@ -25,7 +25,7 @@
         <div class="spend-bars-body">
             <div class="spend-bars-plot">
                 {% if chart.budget_height is not null %}
-                    <div class="spend-bars-budget" style="bottom: {{ chart.budget_height }}"></div>
+                    <div class="spend-bars-budget" data-css-bottom="{{ chart.budget_height }}"></div>
                 {% endif %}
                 {% for bar in chart.bars %}
                     <div class="spend-bar is-{{ bar.kind }}{{ bar.is_busiest ? ' is-busiest' : '' }}"
@@ -37,10 +37,10 @@
                             <b class="spend-bar-peak num">{{ bar.total_display }}</b>
                         {% endif %}
                         {% if bar.due_minor > 0 %}
-                            <span class="spend-bar-due" style="height: {{ bar.due_height }}"></span>
+                            <span class="spend-bar-due" data-css-height="{{ bar.due_height }}"></span>
                         {% endif %}
                         {% if bar.charged_minor > 0 %}
-                            <span class="spend-bar-charged" style="height: {{ bar.charged_height }}"></span>
+                            <span class="spend-bar-charged" data-css-height="{{ bar.charged_height }}"></span>
                         {% endif %}
                     </div>
                 {% endfor %}

@@ -146,3 +146,7 @@ PHP's built-in server does not serve `public/build/` with cache headers. That
 costs nothing — the filenames are content-hashed, so there is nothing stale to
 serve — but a real deployment should copy the `location /build/` block from
 `docker/nginx/default.conf`.
+
+Renovo sets its own security headers — the Content-Security-Policy among
+them — on everything PHP answers, so a server or proxy in front of it should
+not add them again. See [Security headers](security.md#security-headers).

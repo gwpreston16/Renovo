@@ -15,6 +15,7 @@ use App\Application\Middleware\DemoModeMiddleware;
 use App\Application\Middleware\InstanceContextMiddleware;
 use App\Application\Middleware\LocaleMiddleware;
 use App\Application\Middleware\MetricsMiddleware;
+use App\Application\Middleware\SecurityHeadersMiddleware;
 use App\Application\Middleware\SessionMiddleware;
 use App\Application\Middleware\SetupGuardMiddleware;
 use App\I18n\Translator;
@@ -79,6 +80,10 @@ return static function (App $app, array $settings): void {
         $container->get(LoggerInterface::class),
         $container->get(SessionInterface::class),
     ));
+
+    // -½. Security headers, outside the error handler so a 404 or a 500 page
+    //     carries them too. Inside the counter, which only reads the status.
+    $app->add(SecurityHeadersMiddleware::class);
 
     // -1. Request counters, outside even the error handler — and only when an
     //     operator has configured metrics, so an instance nobody scrapes

@@ -38,7 +38,7 @@
                                 <form method="post"
                                       action="/subscriptions/{{ subscription.id }}/attachments/{{ attachment.id }}/delete"
                                       class="inline"
-                                      onsubmit="return confirm('{{ t('confirm.delete_attachment')|e('js') }}')">
+                                      data-confirm="{{ t('confirm.delete_attachment') }}">
                                     {{ csrf_field() }}
                                     <input type="hidden" name="return_to" value="{{ return_to }}">
                                     <button type="submit" class="button button-quiet">{{ t('action.delete') }}</button>

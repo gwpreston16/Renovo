@@ -168,7 +168,7 @@
                 </form>
 
                 <form method="post" action="/subscriptions/{{ subscription.id }}/usage/reset" class="inline"
-                      onsubmit="return confirm('{{ t('confirm.reset_usage')|e('js') }}')">
+                      data-confirm="{{ t('confirm.reset_usage') }}">
                     {{ csrf_field() }}
                     <button type="submit" class="button button-quiet">{{ t('subscriptions_money.reset_count') }}</button>
                 </form>

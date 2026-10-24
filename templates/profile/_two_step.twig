@@ -121,7 +121,12 @@
                        placeholder="{{ t('security.phone_yubikey_laptop') }}">
             </div>
             <div class="form-actions">
-                <button type="button" class="button button-outline" id="passkey-register">
+                <button type="button" class="button button-outline" id="passkey-register"
+                        data-passkey="register" data-container="passkey-add"
+                        data-error="passkey-register-error" data-name-input="passkey-name"
+                        data-options-url="/profile/two-step/passkeys/options"
+                        data-register-url="/profile/two-step/passkeys"
+                        data-csrf="{{ csrf_token() }}">
                     {{ icon('add') }}{{ t('security.add_a_passkey') }}
                 </button>
             </div>
@@ -155,15 +160,4 @@
     </div>
 
     <script src="{{ asset('/assets/webauthn.js') }}" defer></script>
-    <script type="module">
-        window.renovoWebAuthn.bindRegistration({
-            container: document.getElementById('passkey-add'),
-            button: document.getElementById('passkey-register'),
-            error: document.getElementById('passkey-register-error'),
-            nameInput: document.getElementById('passkey-name'),
-            optionsUrl: '/profile/two-step/passkeys/options',
-            registerUrl: '/profile/two-step/passkeys',
-            csrf: '{{ csrf_token() }}',
-        });
-    </script>
 </section>

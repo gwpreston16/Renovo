@@ -55,7 +55,7 @@ carry the headers too. On every response:
 A header a controller has already set is not overwritten. That lets an attachment
 download keep its own stricter policy (D).
 
-The nginx `add_header` lines stay as a backstop for static files. The README says
+The nginx `add_header` lines stay as a backstop for static files. `docs/security.md` says
 which headers a custom reverse proxy should *not* duplicate.
 
 ### B. The policy
@@ -110,6 +110,12 @@ frame-ancestors 'self';
     through the CSSOM (`element.style.setProperty`), which CSP does not govern.
   - Where a stepped class will do, it becomes a utility class instead.
   - SVG `stop-color` and `stroke` become presentation attributes.
+    *Changed while building:* a presentation attribute can't name a custom
+    property, so the brand gradient's stops take a class each
+    (`.brand-stop-from` / `-to`, reading `--brand-from` / `--brand-to`), and
+    the spend trend's line colour, which is a token for its "other" series,
+    goes through `data-css-stroke` like every other server value. Without
+    script the line keeps the stylesheet's stroke.
   - Colours stay as tokens per CLAUDE.md.
 
 ### D. Responses that are not pages
@@ -119,6 +125,25 @@ frame-ancestors 'self';
     or SVG file cannot run as Renovo.
   - `Content-Disposition` stays as it is today.
 - **JSON API responses:** `default-src 'none'; frame-ancestors 'none'`.
+- Found while starting it: an attachment download is sent as
+  `Content-Disposition: attachment`, not inline. The images Renovo streams
+  inline (`AttachmentResponse::streamImage` — avatars, payment-method logos)
+  take the same sandbox policy, and so does the download.
+
+### F. Known issues taken into this phase (K1, K64)
+
+- **K1.** A web create or edit no longer takes `logo_path` from the posted
+  form: the controller drops it from the body and sets it only from an upload
+  `LogoStorage` stored in that request. The service also refuses to save a
+  path `LogoStorage` could not have written (`assets/logos/<32 hex>.<png|jpg|gif|webp>`)
+  and keeps the stored one instead, so no other caller can reintroduce it. A
+  test posts `logo_path=/attacker.example/p.png` and a co-member's real logo
+  path, as an Editor and as a Contributor, and sees neither saved. The CSP's
+  `img-src 'self'` is the browser-side backstop.
+- **K64.** Attachment upload, download and delete run over HTTP in tests: the
+  download's 404 when the attachment belongs to another subscription than the
+  URL names, and its headers (`nosniff`, `attachment` disposition, filename
+  escaping, and this phase's sandbox policy).
 
 ### E. Guards
 
@@ -146,29 +171,31 @@ None.
 
 ## Decisions & assumptions (confirm or correct before build)
 
-- **`style-src 'self'` with no `'unsafe-inline'`.** This is what makes C's
+- **`style-src 'self'` with no `'unsafe-inline'`.** *Confirmed 2026-10-24.* This is what makes C's
   `style=` refactor necessary. If that refactor proves too large for one phase,
   the fallback is `style-src-attr 'unsafe-inline'` for one release with a
   ROADMAP entry. Script stays strict regardless, because that is where the risk
   is.
-- **HSTS is opt-in.** Many instances run on a LAN over plain http, and HSTS on a
+- **HSTS is opt-in.** *Confirmed 2026-10-24.* Many instances run on a LAN over plain http, and HSTS on a
   name that later loses its certificate locks users out.
 - **Headers are set in PHP**, not only in nginx, so they survive any proxy in
-  front.
-- **Enforcing, not report-only.** The template guard and the tests are the
+  front. *Settled by section A.*
+- **Enforcing, not report-only.** *Confirmed 2026-10-24.* The template guard and the tests are the
   rollout check. There is no report-only period, because there is nowhere to
   report to (see out of scope).
+- **K1 and K64 are taken into this phase** (section F). *Confirmed 2026-10-24.*
 
 ## Status
 
-- [ ] `SecurityHeadersMiddleware`; `csp_nonce()`; HSTS env vars
-- [ ] Inline scripts moved out or nonced; `data-confirm` replaces `onsubmit`
-- [ ] htmx config: `allowEval: false`, no indicator styles
-- [ ] Every `style=` attribute replaced
-- [ ] Attachment and API response policies
-- [ ] Template guard test in CI; CLAUDE.md convention line
-- [ ] README: headers, HSTS, notes for custom proxies; `.env.example`
-- [ ] `composer check`, `i18n:check`, offline guard green on both engines
+- [x] `SecurityHeadersMiddleware`; `csp_nonce()`; HSTS env vars
+- [x] Inline scripts moved out or nonced; `data-confirm` replaces `onsubmit`
+- [x] htmx config: `allowEval: false`, no indicator styles
+- [x] Every `style=` attribute replaced
+- [x] Attachment and API response policies
+- [x] Template guard test in CI; CLAUDE.md convention line
+- [x] K1: a posted `logo_path` is never saved; K64: attachments tested over HTTP
+- [x] `docs/security.md` (not the README, per CLAUDE.md): headers, HSTS, notes for custom proxies; `.env.example`
+- [x] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done
 

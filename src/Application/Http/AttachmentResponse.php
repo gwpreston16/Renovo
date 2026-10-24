@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Http;
 
 use App\Domain\Entity\Attachment;
+use App\Security\ContentSecurityPolicy;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 
@@ -24,6 +25,10 @@ use Psr\Http\Message\StreamFactoryInterface;
  *    RFC 5987 `filename*` for everything else, because an invoice called
  *    "facture-août.pdf" should arrive with its name intact.
  *  - `private, no-store` keeps a receipt out of shared caches.
+ *  - A `sandbox` Content-Security-Policy (Phase 41), so an HTML or SVG file a
+ *    browser decides to open anyway runs no script and has no access to this
+ *    origin. Set here, and SecurityHeadersMiddleware leaves a policy a
+ *    response already has alone, so the page policy never replaces it.
  */
 final class AttachmentResponse
 {
@@ -53,6 +58,7 @@ final class AttachmentResponse
             ->withHeader('Content-Type', $mimeType)
             ->withHeader('Content-Length', (string) (filesize($absolutePath) ?: 0))
             ->withHeader('X-Content-Type-Options', 'nosniff')
+            ->withHeader('Content-Security-Policy', ContentSecurityPolicy::upload())
             ->withHeader('Cache-Control', 'private, no-cache')
             ->withHeader('Content-Disposition', 'inline');
     }
@@ -71,6 +77,7 @@ final class AttachmentResponse
             ->withHeader('Content-Type', $attachment->mimeType)
             ->withHeader('Content-Length', (string) $attachment->sizeBytes)
             ->withHeader('X-Content-Type-Options', 'nosniff')
+            ->withHeader('Content-Security-Policy', ContentSecurityPolicy::upload())
             ->withHeader('Cache-Control', 'private, no-store')
             ->withHeader('Content-Disposition', sprintf(
                 'attachment; filename="%s"; filename*=UTF-8\'\'%s',

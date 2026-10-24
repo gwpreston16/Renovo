@@ -38,15 +38,15 @@
             <div class="yoy-bars-plot">
                 {% for month in chart.months %}
                     <div class="yoy-month is-{{ month.kind }}">
-                        <span class="yoy-bar yoy-bar-previous" style="height: {{ month.previous_height }}"
+                        <span class="yoy-bar yoy-bar-previous" data-css-height="{{ month.previous_height }}"
                               title="{{ month.long_label }} {{ chart.previous_year }} · {{ month.previous_display }}"></span>
                         <span class="yoy-bar yoy-bar-current"
                               title="{{ month.long_label }} {{ chart.year }} · {{ month.current_display }}">
                             {% if month.due_minor > 0 %}
-                                <span class="spend-bar-due" style="height: {{ month.due_height }}"></span>
+                                <span class="spend-bar-due" data-css-height="{{ month.due_height }}"></span>
                             {% endif %}
                             {% if month.charged_minor > 0 %}
-                                <span class="yoy-bar-charged" style="height: {{ month.charged_height }}"></span>
+                                <span class="yoy-bar-charged" data-css-height="{{ month.charged_height }}"></span>
                             {% endif %}
                         </span>
                     </div>

@@ -40,7 +40,7 @@
         <form class="card scenario-rows" id="scenario-form" method="get" action="/forecast/scenario"
               aria-labelledby="scenario-rows-heading"
               hx-get="/forecast/scenario" hx-target="#scenario-results" hx-swap="outerHTML"
-              hx-trigger="change, input[target.type=='text'||target.type=='number'] changed delay:500ms"
+              hx-trigger="change, renovo:typed delay:500ms" data-typed-trigger
               hx-sync="this:replace">
             <header class="card-header">
                 <div>

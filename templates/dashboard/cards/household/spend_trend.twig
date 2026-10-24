@@ -60,13 +60,13 @@
                 {% endfor %}
                 {% for series in trend.series %}
                     <path class="trend-line{{ series.tone ? ' avatar-tone-' ~ series.tone : '' }}"
-                          d="{{ series.path }}"{% if series.colour %} style="stroke: {{ series.colour }}"{% endif %}></path>
+                          d="{{ series.path }}"{% if series.colour %} data-css-stroke="{{ series.colour }}"{% endif %}></path>
                 {% endfor %}
             </svg>
             <ul class="plain trend-axis">
                 {# The floor's label would sit on the lines running along it. #}
                 {% for tick in trend.ticks|filter(tick => tick.value > 0) %}
-                    <li class="num" style="top: {{ (tick.y * 100 / trend.height)|round(2) }}%">{{ tick.label }}</li>
+                    <li class="num" data-css-top="{{ (tick.y * 100 / trend.height)|round(2) }}%">{{ tick.label }}</li>
                 {% endfor %}
             </ul>
         </div>
@@ -79,7 +79,7 @@
         <ul class="plain trend-legend" aria-hidden="true">
             {% for series in trend.series %}
                 <li>
-                    <span class="trend-key{{ series.tone ? ' avatar-tone-' ~ series.tone : '' }}"{% if series.colour %} style="background: {{ series.colour }}"{% endif %}></span>
+                    <span class="trend-key{{ series.tone ? ' avatar-tone-' ~ series.tone : '' }}"{% if series.colour %} data-css-background="{{ series.colour }}"{% endif %}></span>
                     <span class="trend-legend-name">{{ trend_card.series_name(series) }}</span>
                     <span class="num">{{ series.latest_minor|money(trend.currency) }}</span>
                 </li>

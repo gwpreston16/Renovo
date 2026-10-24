@@ -17,6 +17,8 @@ list. `.env` is never committed. The ones that matter most:
 | `APP_URL`                   | Used to build links in emails — set it to the real URL.       |
 | `SESSION_BROWSER_LIFETIME_SECONDS` | How long a sign-in with **Keep me signed in** unticked survives unused. 12 hours by default; a ticked one lasts `SESSION_LIFETIME_SECONDS` (14 days). |
 | `SESSION_COOKIE_SECURE`     | Leave `true` unless you are serving plain HTTP on a trusted network. |
+| `HSTS_ENABLED`              | `false` by default. Set to `true` to send `Strict-Transport-Security` (one year), and only once the instance is on https for good: a browser that has seen it refuses plain http to this name for a year. Sent only when `APP_URL` is https. See [Security headers](security.md#security-headers). |
+| `HSTS_INCLUDE_SUBDOMAINS`   | `false` by default. With `HSTS_ENABLED`, also covers every subdomain of `APP_URL`'s host — only if all of them serve https. |
 | `AUTH_MAX_ATTEMPTS_PER_*`   | Login, reset and second-factor throttling, per account and per IP. |
 | `TOTP_ENCRYPTION_KEY`       | Superseded by `SECRETS_KEY`. Still the key when `SECRETS_KEY` is unset, and always tried when reading. |
 | `BACKUP_ENCRYPTION_KEY`     | Instance backups' key: `openssl rand -hex 32`. Unset, instance backups are unavailable. Never stored by Renovo; keep it, with the keys above, somewhere that is not this server. Settings shows its fingerprint. See [Instance backups](operations.md#instance-backups). |

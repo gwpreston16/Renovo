@@ -27,7 +27,7 @@
             </p>
             <div class="budget-bar" role="img"
                  aria-label="{{ t('payments.term_count', {'paid': term.paid, 'total': term.total}) }}">
-                <span class="budget-bar-charged" style="width: {{ term.width }}"></span>
+                <span class="budget-bar-charged" data-css-width="{{ term.width }}"></span>
             </div>
         </div>
     {% endif %}
@@ -140,7 +140,7 @@
                                         {% if charge.isAdjusted or charge.isManual %}
                                             <form method="post" class="inline"
                                                   action="/subscriptions/{{ subscription.id }}/charges/{{ charge.id }}/undo"
-                                                  {% if charge.isManual %}onsubmit="return confirm('{{ t('confirm.remove_payment')|e('js') }}')"{% endif %}>
+                                                  {% if charge.isManual %}data-confirm="{{ t('confirm.remove_payment') }}"{% endif %}>
                                                 {{ csrf_field() }}
                                                 <button type="submit" class="button button-quiet">
                                                     {{ charge.isManual ? t('payments.remove') : t('payments.undo') }}

@@ -39,7 +39,7 @@
                                 {% if is_failed and errors.name is defined %}<p class="field-error">{{ error_message(errors.name) }}</p>{% endif %}
 
                                 <form method="post" action="/tags/{{ tag.id }}/delete" class="inline"
-                                      onsubmit="return confirm('{{ t('confirm.delete_tag', {'name': tag.name})|e('js') }}')">
+                                      data-confirm="{{ t('confirm.delete_tag', {'name': tag.name}) }}">
                                     {{ csrf_field() }}
                                     <button type="submit" class="button button-danger">
                                         {{ icon('delete') }}{{ t('settings.delete_named', {'name': tag.name}) }}

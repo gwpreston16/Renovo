@@ -196,6 +196,11 @@ reference and locale completeness. Don't merge red CI.
   it. Never add a `<script>` or `<link>` pointing at a CDN — not even
   temporarily. A large library goes behind a dynamic `import()` so it becomes a
   chunk of its own rather than weight on every page; see `assets/js/charts.js`.
+- **No inline script, handler or style** (the Content-Security-Policy refuses
+  them): script goes in a served file, a handler becomes a data attribute
+  (`data-confirm`, `data-autosubmit`; `assets/js/form-behaviours.js`), and a
+  size or colour the server works out goes in a `data-css-*` attribute
+  (`assets/js/geometry.js`). `InlineCodeScannerTest` fails CI otherwise.
 - **New icon:** add it to the map in `assets/theme/icons.json` and draw it with
   `icon('name')` in Twig. Only the icons listed are built into the sprite.
 - **New colour:** add it to `assets/theme/tokens.json` (base, or every

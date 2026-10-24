@@ -28,6 +28,8 @@ import { enhanceCardLayouts } from './card-layout.js';
 import { onThemeChange, renderChart } from './charts.js';
 import { drawCategoryDonuts } from './category-donut.js';
 import { enhanceCopyFields } from './copy-field.js';
+import { applyGeometry, stripGeometryForHistory } from './geometry.js';
+import { bindFormBehaviours } from './form-behaviours.js';
 import { icon } from './icons.js';
 import { enhancePaymentMethodFields } from './payment-method-field.js';
 import { enhanceSubscriptionForms } from './subscription-form.js';
@@ -64,6 +66,8 @@ function drawCharts(root = document) {
  * is a module fetched from cache faster than the parser.
  */
 function hydrate() {
+    applyGeometry(document);
+    bindFormBehaviours();
     enhanceAuthForms(document);
     enhanceTagFields(document);
     enhancePaymentMethodFields(document);
@@ -88,6 +92,10 @@ if (document.readyState === 'loading') {
 function enhanceArrived(event) {
     const root = event.target instanceof Element ? event.target : document;
 
+    // The whole document, for the same reason as the list below: an outerHTML
+    // swap's target is the element it replaced, no longer in the page.
+    applyGeometry(document);
+
     enhanceTagFields(root);
     enhancePaymentMethodFields(root);
     enhanceSubscriptionForms(root);
@@ -100,6 +108,10 @@ function enhanceArrived(event) {
 }
 
 document.addEventListener('htmx:afterSwap', enhanceArrived);
+// Back and Forward through an hx-push-url history: htmx restores the markup
+// itself and fires no afterSwap, so the sizes have to be applied again.
+document.addEventListener('htmx:historyRestore', () => applyGeometry(document));
+document.addEventListener('htmx:beforeHistorySave', stripGeometryForHistory);
 document.addEventListener('renovo:content-loaded', enhanceArrived);
 
 /*

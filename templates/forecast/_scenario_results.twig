@@ -168,7 +168,7 @@
                             {% if can(scope, 'subscription.update') and can_edit_row(scope, subscription) %}
                                 {% set cancel_label = subscription.isTrial ? t('subscriptions_list.cancel_trial') : t('subscriptions_list.cancel') %}
                                 <form method="post" action="/subscriptions/{{ subscription.id }}/cancel" class="inline"
-                                      onsubmit="return confirm('{{ t('confirm.cancel_subscription', {'name': subscription.name})|e('js') }}')">
+                                      data-confirm="{{ t('confirm.cancel_subscription', {'name': subscription.name}) }}">
                                     {{ csrf_field() }}
                                     <input type="hidden" name="return_to" value="/forecast/scenario{{ query ? '?' ~ query : '' }}">
                                     <button type="submit" class="button button-quiet"
@@ -205,9 +205,9 @@
                     <div class="yoy-bars-plot">
                         {% for bar in r.months.bars %}
                             <div class="yoy-month{{ bar.differs ? ' is-changed' : '' }}">
-                                <span class="yoy-bar yoy-bar-previous" style="height: {{ bar.current_height }}"
+                                <span class="yoy-bar yoy-bar-previous" data-css-height="{{ bar.current_height }}"
                                       title="{{ bar.long_label }} · {{ bar.current_display }}"></span>
-                                <span class="yoy-bar yoy-bar-scenario" style="height: {{ bar.scenario_height }}"
+                                <span class="yoy-bar yoy-bar-scenario" data-css-height="{{ bar.scenario_height }}"
                                       title="{{ bar.long_label }} · {{ bar.scenario_display }}"></span>
                             </div>
                         {% endfor %}

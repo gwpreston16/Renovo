@@ -8,6 +8,42 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Added
+
+- **Security headers on every response**, set by the application rather than
+  only by the bundled nginx, so they survive whatever proxy is in front of it:
+  a strict **Content-Security-Policy** (no inline script, no `eval`, no inline
+  style, nothing from another host, a fresh nonce per response),
+  `Permissions-Policy` (camera, microphone, geolocation, payment and USB off;
+  passkeys allowed), `Cross-Origin-Opener-Policy`,
+  `Cross-Origin-Resource-Policy`, `nosniff` and `Referrer-Policy`, error pages
+  and the API included. A missed escape no longer means script runs. *Phase 41.*
+- **HSTS, opt-in.** `HSTS_ENABLED=true` sends `Strict-Transport-Security` for a
+  year, only when `APP_URL` is https; `HSTS_INCLUDE_SUBDOMAINS=true` widens it.
+  Off by default, because many instances run over plain http on a LAN.
+  *Phase 41.*
+
+### Changed
+
+- **Uploaded files are served sandboxed** (`Content-Security-Policy: sandbox`),
+  so an HTML or SVG attachment opened in the browser cannot run as Renovo.
+  *Phase 41.*
+- **Behind your own reverse proxy, security headers now come from Renovo.**
+  `X-Frame-Options` is no longer sent; `frame-ancestors 'self'` does its job.
+  The bundled nginx now adds its headers only to the static files it serves
+  itself. **Don't add these headers again at your proxy** — a
+  second Content-Security-Policy is enforced as well, and breaks the page. See
+  [Security headers](docs/security.md#security-headers). *Phase 41.*
+- **No inline script or style.** Confirmations, the scenario planner, charts
+  and bars, swatches, avatars and passkey sign-in no longer use either; a template that brings
+  one back fails CI. *Phase 41.*
+
+### Fixed
+
+- A logo path posted with the subscription form is ignored: it could point
+  every household page at a third-party image, or let a member delete a
+  co-member's logo file (K1). *Phase 41.*
+
 ## [1.10.0] - 2026-10-23
 
 ### Added

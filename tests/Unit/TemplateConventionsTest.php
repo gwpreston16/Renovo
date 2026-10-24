@@ -36,7 +36,7 @@ use function substr_count;
  *     also invisible in review, because it looks exactly like the right
  *     answer.
  *   - **Every question a destructive control asks comes from the catalogue.**
- *     A `confirm('Delete this?')` is a user-visible string that no translator
+ *     A `data-confirm="Delete this?"` is a user-visible string that no translator
  *     will ever see and the completeness check cannot count.
  *   - **Every table can scroll.** A table is the one element that refuses to
  *     be laid out narrower than its content, so one without a wrapper does not
@@ -59,7 +59,19 @@ final class TemplateConventionsTest extends TestCase
      * anything a reader is shown: a `1.5rem` or a `0 0 460 427` is not a
      * number the locale has an opinion about.
      */
-    private const GEOMETRY_ATTRIBUTES = ['style', 'viewBox', 'd', 'width', 'height', 'stroke-width', 'pattern'];
+    private const GEOMETRY_ATTRIBUTES = [
+        'data-css-width',
+        'data-css-height',
+        'data-css-left',
+        'data-css-top',
+        'data-css-bottom',
+        'viewBox',
+        'd',
+        'width',
+        'height',
+        'stroke-width',
+        'pattern',
+    ];
 
     /**
      * @return iterable<string, array{0: string}>
@@ -152,7 +164,9 @@ final class TemplateConventionsTest extends TestCase
     public function testEveryConfirmationQuestionComesFromTheCatalogue(string $path): void
     {
         $matches = [];
-        preg_match_all('/confirm\(\s*([^)]*)/', $this->source($path), $matches);
+        // A question is asked from `data-confirm` (assets/js/form-behaviours.js) since
+        // Phase 41; a `confirm(` call is still caught if one comes back.
+        preg_match_all('/(?:confirm\(\s*|data-confirm="\s*)([^)"]*)/', $this->source($path), $matches);
 
         $written = [];
 

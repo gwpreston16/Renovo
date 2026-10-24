@@ -65,8 +65,14 @@ final class DesignTokensTest extends TestCase
         self::assertSame('#0daa9c', $this->token(':root', '--brand-from'), 'The teal-green stop moved.');
         self::assertSame('#1069bb', $this->token(':root', '--brand-to'), 'The blue stop moved.');
 
+        // The stops name a class each, and the stylesheet gives the class the
+        // token: an inline style on the <stop> is refused by the CSP.
         $sprite = (string) file_get_contents(dirname(__DIR__, 2) . '/templates/partials/brand_sprite.twig');
-        self::assertStringContainsString('var(--brand-from)', $sprite, 'The mark must draw with the stop tokens.');
+        self::assertStringContainsString('class="brand-stop-from"', $sprite, 'The mark must draw with the stops.');
+        self::assertStringContainsString('class="brand-stop-to"', $sprite, 'The mark must draw with the stops.');
+
+        self::assertStringContainsString('.brand-stop-from{stop-color:var(--brand-from)}', $this->css);
+        self::assertStringContainsString('.brand-stop-to{stop-color:var(--brand-to)}', $this->css);
     }
 
     /**
@@ -76,8 +82,15 @@ final class DesignTokensTest extends TestCase
      */
     public function testNoInterfaceElementWearsTheLogoGradient(): void
     {
-        self::assertStringNotContainsString('var(--brand-from)', $this->css);
-        self::assertStringNotContainsString('var(--brand-to)', $this->css);
+        // The mark's own two stops are the one place the tokens are drawn.
+        $css = str_replace(
+            ['.brand-stop-from{stop-color:var(--brand-from)}', '.brand-stop-to{stop-color:var(--brand-to)}'],
+            '',
+            $this->css,
+        );
+
+        self::assertStringNotContainsString('var(--brand-from)', $css);
+        self::assertStringNotContainsString('var(--brand-to)', $css);
     }
 
     /**
