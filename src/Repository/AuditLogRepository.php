@@ -159,6 +159,48 @@ final class AuditLogRepository extends AbstractScopedRepository
     }
 
     /**
+     * The newest entry of an action from one address since a moment, for an
+     * event recorded once per window (Phase 42's failed token
+     * authentication).
+     */
+    public function latestIdFrom(AuditAction $action, string $ipAddress, DateTimeImmutable $since): ?int
+    {
+        $id = $this->db->fetchValue(
+            'SELECT MAX(' . $this->quote('id') . ') FROM ' . $this->quote('audit_log')
+            . ' WHERE ' . $this->quote('action') . ' = :action'
+            . ' AND ' . $this->quote('ip_address') . ' = :ip'
+            . ' AND ' . $this->quote('occurred_at') . ' >= :since',
+            ['action' => $action->value, 'ip' => $ipAddress, 'since' => $since->format('Y-m-d H:i:s')],
+        );
+
+        return $id === null ? null : (int) $id;
+    }
+
+    /**
+     * Set one value in an entry's context, keeping the rest — the count on a
+     * repeated event. The only change an entry ever takes after it is
+     * written, and only to say how many times the same thing happened.
+     */
+    public function setContextValue(int $id, string $key, int|string $value): void
+    {
+        $raw = $this->db->fetchValue(
+            'SELECT ' . $this->quote('context') . ' FROM ' . $this->quote('audit_log')
+            . ' WHERE ' . $this->quote('id') . ' = :id',
+            ['id' => $id],
+        );
+
+        $context = is_string($raw) ? json_decode($raw, true) : [];
+        $context = is_array($context) ? $context : [];
+        $context[$key] = $value;
+
+        $this->db->execute(
+            'UPDATE ' . $this->quote('audit_log') . ' SET ' . $this->quote('context') . ' = :context'
+            . ' WHERE ' . $this->quote('id') . ' = :id',
+            ['context' => json_encode($context, JSON_THROW_ON_ERROR), 'id' => $id],
+        );
+    }
+
+    /**
      * Housekeeping: the log is evidence, not an archive, and an instance that
      * has run for years should not be carrying every sign-in since it started.
      */

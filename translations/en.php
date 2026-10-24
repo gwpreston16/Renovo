@@ -598,6 +598,7 @@ return [
     'error.page.forbidden_title' => 'Not allowed',
     'error.page.forbidden_message' => 'Your role does not permit that action.',
     'error.page.method_title' => 'Method not allowed',
+    'error.page.rate_limited_title' => 'Too many requests',
     'error.page.method_message' => 'That address does not accept this kind of request.',
 
     // -----------------------------------------------------------------------
@@ -974,6 +975,7 @@ return [
     // audit_action
     'audit_action.api_token.issued' => 'API token issued',
     'audit_action.api_token.revoked' => 'API token revoked',
+    'audit_action.api_token.auth_failed' => 'API token refused',
     'audit_action.attachment.deleted' => 'Attachment deleted',
     'audit_action.attachment.uploaded' => 'Attachment uploaded',
     'audit_action.backup.exported' => 'Backup exported',
@@ -2485,6 +2487,8 @@ return [
     'error.api.attachment_unreadable' => 'The attachment could not be read back.',
     'error.api.category_not_found' => 'No such category.',
     'error.api.payment_method_not_found' => 'No such payment method.',
+    'error.api.rate_limited' =>
+        'Too many requests. Try again in {seconds, plural, one {# second} other {# seconds}}.',
     'error.api.read_only_tokens_only' => 'This endpoint accepts read-only tokens only.',
     'error.api.subscription_not_found' => 'No such subscription.',
     'error.api.charge_not_found' => 'No such charge.',

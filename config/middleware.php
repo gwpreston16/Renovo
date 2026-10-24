@@ -15,6 +15,7 @@ use App\Application\Middleware\DemoModeMiddleware;
 use App\Application\Middleware\InstanceContextMiddleware;
 use App\Application\Middleware\LocaleMiddleware;
 use App\Application\Middleware\MetricsMiddleware;
+use App\Application\Middleware\RateLimitHeadersMiddleware;
 use App\Application\Middleware\SecurityHeadersMiddleware;
 use App\Application\Middleware\SessionMiddleware;
 use App\Application\Middleware\SetupGuardMiddleware;
@@ -84,6 +85,11 @@ return static function (App $app, array $settings): void {
     // -½. Security headers, outside the error handler so a 404 or a 500 page
     //     carries them too. Inside the counter, which only reads the status.
     $app->add(SecurityHeadersMiddleware::class);
+
+    // -½. The API's RateLimit-* headers (Phase 42), outside the error handler
+    //     for the same reason: most API responses, the 429 among them, are
+    //     built by it from an exception that carries no headers.
+    $app->add(RateLimitHeadersMiddleware::class);
 
     // -1. Request counters, outside even the error handler — and only when an
     //     operator has configured metrics, so an instance nobody scrapes

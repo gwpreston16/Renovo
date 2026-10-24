@@ -98,6 +98,44 @@ final class AuditLogService
     }
 
     /**
+     * Record an anonymous event at most once per address per window: the
+     * first occurrence writes the entry, and each later one raises its
+     * `count` (Phase 42). What a scan of an endpoint needs to leave in the
+     * log is that it happened and how often, not a row per attempt.
+     *
+     * @param array<string, mixed> $context
+     * @param int $count Occurrences in this window so far, this one included.
+     */
+    public function recordRepeated(
+        AuditAction $action,
+        string $attemptedIdentifier,
+        array $context,
+        DateTimeImmutable $windowStart,
+        int $count,
+    ): void {
+        if ($count > 1) {
+            try {
+                $id = $this->repository->latestIdFrom($action, $this->requestContext->get()->ipAddress, $windowStart);
+                if ($id !== null) {
+                    $this->repository->setContextValue($id, 'count', $count);
+
+                    return;
+                }
+            } catch (Throwable $exception) {
+                $this->logger->error('Could not update an audit entry', [
+                    'action' => $action->value,
+                    'exception' => $exception->getMessage(),
+                ]);
+
+                return;
+            }
+        }
+
+        // The first in the window — or the entry it would raise went missing.
+        $this->recordAnonymous($action, $attemptedIdentifier, null, $context + ['count' => $count]);
+    }
+
+    /**
      * @param list<AuditAction> $actions
      * @return list<AuditEntry>
      */

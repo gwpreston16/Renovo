@@ -72,6 +72,10 @@ enum AuditAction: string
     // would write a row on every API call and drown the log it belongs to.
     case ApiTokenIssued = 'api_token.issued';
     case ApiTokenRevoked = 'api_token.revoked';
+    // Phase 42: a bearer token that did not match, had expired or had been
+    // revoked. One entry per address per five minutes, with a count, so a
+    // scan cannot fill the log.
+    case ApiTokenAuthFailed = 'api_token.auth_failed';
 
     case DataImported = 'data.imported';
     case BackupExported = 'backup.exported';
@@ -127,7 +131,13 @@ enum AuditAction: string
     {
         return in_array(
             $this,
-            [self::LoginFailed, self::LoginBlocked, self::TwoFactorFailed, self::InstanceBackupFailed],
+            [
+                self::LoginFailed,
+                self::LoginBlocked,
+                self::TwoFactorFailed,
+                self::InstanceBackupFailed,
+                self::ApiTokenAuthFailed,
+            ],
             true,
         );
     }

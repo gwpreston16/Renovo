@@ -5,13 +5,18 @@ declare(strict_types=1);
 namespace App\Application\Middleware;
 
 use App\Application\Api\ApiRouteScope;
+use App\Application\Api\HttpTooManyRequestsException;
+use App\Application\Api\RateLimitStatus;
 use App\Domain\Entity\ApiToken;
 use App\Domain\TokenScope;
 use App\I18n\LocaleContext;
 use App\I18n\Locales;
 use App\I18n\Translator;
+use App\Security\RequestContext;
 use App\Security\ScopeFactory;
 use App\Service\ApiTokenService;
+use App\Service\RateLimitDecision;
+use App\Service\TokenRateLimiter;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -53,6 +58,8 @@ abstract class TokenAuthenticationMiddleware implements MiddlewareInterface
         private readonly Locales $locales,
         private readonly Translator $translator,
         private readonly ApiRouteScope $routeScopes,
+        private readonly TokenRateLimiter $limiter,
+        private readonly RateLimitStatus $status,
     ) {
     }
 
@@ -68,19 +75,37 @@ abstract class TokenAuthenticationMiddleware implements MiddlewareInterface
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
+        $address = RequestContext::fromRequest($request)->ipAddress;
+
+        // An address that has failed too often is refused before its token is
+        // looked at, a valid one included: otherwise the block would only
+        // slow down guesses that were going to fail anyway.
+        $blocked = $this->limiter->blockedAfterFailures($address);
+        if ($blocked !== null) {
+            $this->tooMany($request, $blocked);
+        }
+
         $presented = $this->credential($request);
         if ($presented === null || $presented === '') {
-            throw new HttpUnauthorizedException($request, $this->translator->trans('error.api.token_required'));
+            $this->refuse($request, $address, 'error.api.token_required');
         }
 
         $result = $this->tokens->authenticate($presented);
         if (!$result->isSuccessful()) {
-            // Expired, revoked, malformed and never-existed are one answer.
-            throw new HttpUnauthorizedException($request, $this->translator->trans('error.api.token_invalid'));
+            // Expired, revoked, malformed and never-existed are one answer to
+            // the client. The audit entry says which.
+            $this->limiter->recordFailure($address, $result);
+            $this->refuse($request, $address, 'error.api.token_invalid');
         }
 
         $token = $result->token;
         $user = $result->user;
+
+        $decision = $this->limiter->hitToken($token);
+        $this->status->set($decision);
+        if (!$decision->allowed) {
+            $this->tooMany($request, $decision);
+        }
 
         // The token's holder has a language too. Without this an API error and
         // an iCalendar feed would always answer in the instance's default,
@@ -97,6 +122,34 @@ abstract class TokenAuthenticationMiddleware implements MiddlewareInterface
                 ->withAttribute(AuthenticationMiddleware::ATTRIBUTE_SCOPE, $scope)
                 ->withAttribute(self::ATTRIBUTE_TOKEN, $token),
         );
+    }
+
+    /**
+     * A request with no valid token: counted against its address, and 401 —
+     * or 429 once the address is over its limit.
+     */
+    private function refuse(ServerRequestInterface $request, string $address, string $messageKey): never
+    {
+        $decision = $this->limiter->hitAddress($address);
+        $this->status->set($decision);
+
+        if (!$decision->allowed) {
+            $this->tooMany($request, $decision);
+        }
+
+        throw new HttpUnauthorizedException($request, $this->translator->trans($messageKey));
+    }
+
+    private function tooMany(ServerRequestInterface $request, RateLimitDecision $decision): never
+    {
+        // The headers, Retry-After among them, are added on the way out by
+        // RateLimitHeadersMiddleware: an exception cannot carry them.
+        $this->status->set($decision);
+
+        throw (new HttpTooManyRequestsException(
+            $request,
+            $this->translator->trans('error.api.rate_limited', ['seconds' => $decision->resetSeconds]),
+        ))->setTitle($this->translator->trans('error.page.rate_limited_title'));
     }
 
     /**

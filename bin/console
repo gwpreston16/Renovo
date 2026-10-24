@@ -20,6 +20,7 @@ declare(strict_types=1);
 use App\I18n\CatalogChecker;
 use App\I18n\Translator;
 use App\Persistence\PdoSessionHandler;
+use App\Repository\ApiRateWindowRepository;
 use App\Repository\AuditLogRepository;
 use App\Repository\AuthAttemptRepository;
 use App\Repository\NotificationLogRepository;
@@ -169,6 +170,11 @@ switch ($command) {
         $auditEntries = $container->get(AuditLogRepository::class)
             ->purgeOlderThan($clock->now()->modify(sprintf('-%d days', max(1, $auditRetention))));
 
+        // The API's rate-limit counters (Phase 42). The longest window is five
+        // minutes, so anything older than an hour is spent.
+        $rateWindows = $container->get(ApiRateWindowRepository::class)
+            ->purgeOlderThan($clock->now()->modify('-1 hour'));
+
         // An import that was uploaded and never finished leaves a file in the
         // staging directory. The importer clears its own on commit or cancel;
         // this catches the ones nobody came back for.
@@ -176,12 +182,13 @@ switch ($command) {
 
         $out(sprintf(
             'Pruned %d expired session(s), %d expired token(s), %d old auth attempt(s), '
-            . '%d notification record(s), %d audit entr(ies), %d abandoned import(s).',
+            . '%d notification record(s), %d audit entr(ies), %d API rate window(s), %d abandoned import(s).',
             is_int($sessions) ? $sessions : 0,
             $tokens,
             $attempts,
             $notifications,
             $auditEntries,
+            $rateWindows,
             $imports,
         ));
         exit(0);
@@ -641,7 +648,7 @@ switch ($command) {
         $out('  reminders:run        Send due reminders, trial, cancel-by and budget alerts');
         $out('  rates:refresh        Fetch and cache exchange rates from the configured provider');
         $out('  updates:check        Ask GitHub for the latest release now (only when update checks are on)');
-        $out('  maintenance:prune    Delete expired sessions, tokens, throttle, notification and audit records');
+        $out('  maintenance:prune    Delete expired sessions, tokens, throttle, rate-limit, notification and audit records');
         $out('  i18n:check           Compare every locale with the base catalogue and report any drift');
         $out('  assets:offline-check Fail if any template or built asset references a third-party host');
         $out('  coverage:check       Fail if a Clover report\'s line coverage is under the floor (default 85%)');

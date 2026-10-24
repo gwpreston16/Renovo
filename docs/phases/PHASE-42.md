@@ -215,8 +215,8 @@ ROADMAP candidate.
       audit entries
 - [x] Default lifetime; `API_TOKEN_MAX_DAYS`; expiring-soon flag; outstanding
       count on Instance status
-- [ ] `TokenRateLimiter`, `api_rate_windows`, 429 and headers; prune
-- [ ] `api_token.auth_failed` audit with de-duplication; IP failure throttle
+- [x] `TokenRateLimiter`, `api_rate_windows`, 429 and headers; prune
+- [x] `api_token.auth_failed` audit with de-duplication; IP failure throttle
 - [ ] OpenAPI and `docs/api.md`; coverage tests extended
 - [ ] K40, K44, K107
 - [ ] Migrations on both engines

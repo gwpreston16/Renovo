@@ -75,8 +75,9 @@ class BackupDumper
     /**
      * Tables an instance backup leaves out, each for a reason:
      *
-     *  - `sessions`, `auth_attempts`, `http_metrics` — ephemeral; a restored
-     *    instance starts with nobody signed in, no throttle and fresh counts;
+     *  - `sessions`, `auth_attempts`, `http_metrics`, `api_rate_windows` —
+     *    ephemeral; a restored instance starts with nobody signed in, no
+     *    throttle or API rate-limit counts, and fresh metrics;
      *  - `logo_cache` — rows describing files in `var/logo-cache`, a download
      *    cache that is not backed up and refills itself;
      *  - `backup_runs` — the history of backups on *this* server. Restored,
@@ -93,6 +94,7 @@ class BackupDumper
         'sessions',
         'auth_attempts',
         'http_metrics',
+        'api_rate_windows',
         'logo_cache',
         'backup_runs',
         'backup_copies',

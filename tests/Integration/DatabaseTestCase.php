@@ -166,6 +166,7 @@ abstract class DatabaseTestCase extends TestCase
             'payment_methods',
             'auth_tokens',
             'auth_attempts',
+            'api_rate_windows',
             'sessions',
             'household_memberships',
             'households',
