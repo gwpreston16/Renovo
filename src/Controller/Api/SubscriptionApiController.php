@@ -257,7 +257,7 @@ final class SubscriptionApiController extends ApiController
 
         $file = $request->getUploadedFiles()['logo'] ?? null;
         if (!$file instanceof UploadedFileInterface) {
-            throw new HttpBadRequestException($request, 'Send the image as multipart form data in a "logo" part.');
+            throw new HttpBadRequestException($request, $this->translator->trans('error.api.logo_part_missing'));
         }
 
         $stored = $this->logos->store($file);

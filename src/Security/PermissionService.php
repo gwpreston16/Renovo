@@ -7,6 +7,7 @@ namespace App\Security;
 use App\Domain\Permission;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Exception\HttpForbiddenException;
+use App\I18n\Translator;
 
 /**
  * The only place roles are turned into yes/no answers.
@@ -18,6 +19,14 @@ use Slim\Exception\HttpForbiddenException;
  */
 final class PermissionService
 {
+    /**
+     * The translator is for `assert()`'s refusal only, which reaches an API
+     * client as its error message — in the token holder's language (K44).
+     */
+    public function __construct(private readonly Translator $translator)
+    {
+    }
+
     public function allows(Scope $scope, Permission $permission): bool
     {
         return match ($permission) {
@@ -83,7 +92,7 @@ final class PermissionService
 
         throw new HttpForbiddenException(
             $request,
-            sprintf('Your role does not permit "%s".', $permission->value),
+            $this->translator->trans('error.permission.denied', ['permission' => $permission->value]),
         );
     }
 }

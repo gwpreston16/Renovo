@@ -15,6 +15,7 @@ use App\Repository\UserRepository;
 use App\Security\PermissionService;
 use App\Security\Scope;
 use App\Security\ScopeViolationException;
+use App\Tests\Support\TestTranslator;
 
 /**
  * The Contributor: sees the whole household, changes only their own part of it.
@@ -60,7 +61,7 @@ final class ContributorRoleTest extends DatabaseTestCase
         $memberships->create($this->household, $this->bram, Role::Contributor);
 
         $this->subscriptions = new SubscriptionRepository($this->db);
-        $this->permissions = new PermissionService();
+        $this->permissions = new PermissionService(TestTranslator::create());
 
         $this->adasRow = $this->subscriptions->create($this->scopeFor($this->ada, Role::OwnerAdmin), [
             'name' => 'Ada streaming',

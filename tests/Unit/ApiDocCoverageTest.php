@@ -12,6 +12,7 @@ use App\Security\PermissionService;
 use App\Security\Scope;
 use PHPUnit\Framework\TestCase;
 use Slim\Interfaces\RouteInterface;
+use App\Tests\Support\TestTranslator;
 
 /**
  * `docs/api.md` still describes the API the application actually serves.
@@ -63,7 +64,7 @@ final class ApiDocCoverageTest extends TestCase
 
     public function testTheRoleMatrixMatchesThePermissionService(): void
     {
-        $permissions = new PermissionService();
+        $permissions = new PermissionService(TestTranslator::create());
 
         $columns = [
             'Viewer' => Role::Viewer,
