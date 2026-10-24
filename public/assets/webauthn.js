@@ -272,5 +272,63 @@
         });
     }
 
+    /**
+     * Bind every passkey button the page renders, from its data attributes.
+     *
+     * The pages used to call the binders from an inline module; the
+     * Content-Security-Policy runs no inline script (Phase 41), so the button
+     * now says what it needs and this file reads it. Ids name the elements
+     * around it: `data-reveal`, `data-error`, `data-container`,
+     * `data-name-input`, and `data-remember` for the "Keep me signed in" box
+     * whose state is added to the verify URL at the moment of the click.
+     */
+    function element(button, name) {
+        const id = button.dataset[name];
+
+        return id ? document.getElementById(id) : null;
+    }
+
+    function bindFromMarkup() {
+        document.querySelectorAll('[data-passkey="sign-in"]').forEach((button) => {
+            const remember = element(button, 'remember');
+
+            bindAuthentication({
+                button,
+                error: element(button, 'error'),
+                reveal: element(button, 'reveal'),
+                optionsUrl: button.dataset.optionsUrl,
+                verifyUrl: () => {
+                    if (!remember) {
+                        return button.dataset.verifyUrl;
+                    }
+
+                    const url = new URL(button.dataset.verifyUrl, window.location.href);
+                    url.searchParams.set('remember', remember.checked ? '1' : '0');
+
+                    return url.pathname + url.search;
+                },
+                csrf: button.dataset.csrf,
+            });
+        });
+
+        document.querySelectorAll('[data-passkey="register"]').forEach((button) => {
+            bindRegistration({
+                container: element(button, 'container'),
+                button,
+                error: element(button, 'error'),
+                nameInput: element(button, 'nameInput'),
+                optionsUrl: button.dataset.optionsUrl,
+                registerUrl: button.dataset.registerUrl,
+                csrf: button.dataset.csrf,
+            });
+        });
+    }
+
     window.renovoWebAuthn = { bindAuthentication, bindRegistration };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bindFromMarkup);
+    } else {
+        bindFromMarkup();
+    }
 })();

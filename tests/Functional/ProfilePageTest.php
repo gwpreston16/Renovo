@@ -350,7 +350,7 @@ final class ProfilePageTest extends DatabaseTestCase
         $body = (string) $this->request('GET', '/profile')->getBody();
 
         self::assertStringContainsString('<div class="stack" id="passkey-add" hidden>', $body);
-        self::assertStringContainsString("optionsUrl: '/profile/two-step/passkeys/options'", $body);
+        self::assertStringContainsString('data-options-url="/profile/two-step/passkeys/options"', $body);
     }
 
     /**

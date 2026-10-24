@@ -28,10 +28,10 @@
                      'charged': month.charged.combined.amount_minor|money(month.charged.combined.currency),
                      'due': month.due.combined.amount_minor|money(month.due.combined.currency),
                  }) }}">
-                <span class="month-bar-due" style="width: {{ month.bar.total_width }}"></span>
-                <span class="month-bar-charged" style="width: {{ month.bar.charged_width }}"></span>
+                <span class="month-bar-due" data-css-width="{{ month.bar.total_width }}"></span>
+                <span class="month-bar-charged" data-css-width="{{ month.bar.charged_width }}"></span>
                 {% if month.bar.budget_position %}
-                    <span class="month-bar-budget" style="left: {{ month.bar.budget_position }}"></span>
+                    <span class="month-bar-budget" data-css-left="{{ month.bar.budget_position }}"></span>
                 {% endif %}
             </div>
 

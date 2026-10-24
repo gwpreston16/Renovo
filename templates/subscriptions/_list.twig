@@ -426,7 +426,7 @@
                 </form>
                 {% set cancel_label = subscription.isTrial ? t('subscriptions_list.cancel_trial') : t('subscriptions_list.cancel') %}
                 <form method="post" action="/subscriptions/{{ subscription.id }}/cancel" class="inline"
-                      onsubmit="return confirm('{{ t('confirm.cancel_subscription', {'name': subscription.name})|e('js') }}')">
+                      data-confirm="{{ t('confirm.cancel_subscription', {'name': subscription.name}) }}">
                     {{ csrf_field() }}
                     <button type="submit" class="icon-action" title="{{ cancel_label }}"
                             aria-label="{{ t('subscriptions_list.cancel_name', {'name': subscription.name}) }}">
@@ -437,7 +437,7 @@
         {% endif %}
         {% if row.can_delete %}
             <form method="post" action="/subscriptions/{{ subscription.id }}/delete" class="inline"
-                  onsubmit="return confirm('{{ t('confirm.delete_subscription', {'name': subscription.name})|e('js') }}')">
+                  data-confirm="{{ t('confirm.delete_subscription', {'name': subscription.name}) }}">
                 {{ csrf_field() }}
                 <button type="submit" class="icon-action icon-action-danger" title="{{ t('action.delete') }}"
                         aria-label="{{ t('subscriptions_list.delete_name', {'name': subscription.name}) }}">

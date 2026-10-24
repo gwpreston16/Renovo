@@ -43,8 +43,8 @@
                                  'charged': row.charged_percent,
                                  'projected': row.projected_percent,
                              }) }}">
-                            <span class="budget-track-projected" style="width: {{ min(row.projected_percent ?? 0, 100) }}%"></span>
-                            <span class="budget-track-charged" style="width: {{ min(row.charged_percent ?? 0, 100) }}%"></span>
+                            <span class="budget-track-projected" data-css-width="{{ min(row.projected_percent ?? 0, 100) }}%"></span>
+                            <span class="budget-track-charged" data-css-width="{{ min(row.charged_percent ?? 0, 100) }}%"></span>
                         </div>
                         <p class="budget-row-note">
                             {% if row.is_over %}

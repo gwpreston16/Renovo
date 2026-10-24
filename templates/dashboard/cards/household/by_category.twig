@@ -32,7 +32,7 @@
                         <span class="distribution-amount num">{{ row.amount_minor|money(group.currency) }}</span>
                         <div class="meter" role="img"
                              aria-label="{{ t('dashboard.share_of_spend', {'name': row.name, 'percent': row.percent}) }}">
-                            <span class="meter-fill" style="width: {{ min(row.percent, 100) }}%{{ row.colour ? '; background: ' ~ row.colour : '' }}"></span>
+                            <span class="meter-fill" data-css-width="{{ min(row.percent, 100) }}%"{% if row.colour %} data-css-background="{{ row.colour }}"{% endif %}></span>
                         </div>
                     </li>
                 {% endfor %}
@@ -43,7 +43,7 @@
                         <span class="distribution-amount num">{{ group.other.amount_minor|money(group.currency) }}</span>
                         <div class="meter" role="img"
                              aria-label="{{ t('dashboard.share_of_spend', {'name': other_name, 'percent': group.other.percent}) }}">
-                            <span class="meter-fill" style="width: {{ min(group.other.percent, 100) }}%"></span>
+                            <span class="meter-fill" data-css-width="{{ min(group.other.percent, 100) }}%"></span>
                         </div>
                     </li>
                 {% endif %}

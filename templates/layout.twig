@@ -47,6 +47,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     {#
+        Read by htmx when it loads, so it must come before htmx's script.
+        The Content-Security-Policy runs no eval and no inline style, so htmx
+        is told not to need either: no `hx-on`, no `js:` values, no event
+        filters in `hx-trigger`, and its indicator rules come from the
+        stylesheet (base.css) instead of an injected <style>.
+    #}
+    <meta name="htmx-config" content='{"allowEval": false, "includeIndicatorStyles": false}'>
+    {#
         One page name, in one place. `heading` is what the top bar puts in the
         <h1> and what this derives the tab's title from, so the two cannot drift
         apart and a page cannot end up titled one thing and headed another. A
@@ -77,6 +85,8 @@
         the build if that stops being true.
     #}
     <link rel="stylesheet" href="{{ bundle('app.css') }}">
+    {# First: every script after it reads its strings through window.renovoI18n. #}
+    <script src="{{ asset('/assets/i18n.js') }}" defer></script>
     <script src="{{ asset('/assets/htmx.min.js') }}" defer></script>
     <script src="{{ asset('/assets/app.js') }}" defer></script>
     {# A module, so it is deferred already; `defer` on one is ignored. #}
@@ -107,34 +117,9 @@
     server reads — see AppExtension::jsTranslations(). Rendered as JSON in a
     non-executing script tag rather than assigned in code, so a message
     containing a quote or a bracket cannot end up being parsed as JavaScript.
+    /assets/i18n.js reads it into window.renovoI18n.
 #}
 <script id="renovo-messages" type="application/json">{{ js_translations()|raw }}</script>
-<script>
-    window.renovoI18n = (function () {
-        var messages = {};
-
-        try {
-            messages = JSON.parse(document.getElementById('renovo-messages').textContent);
-        } catch (error) {
-            messages = {};
-        }
-
-        return {
-            /* Named arguments only: the browser-side strings take no plurals. */
-            t: function (key, params) {
-                var message = messages[key] || key;
-
-                if (params) {
-                    Object.keys(params).forEach(function (name) {
-                        message = message.split('{' + name + '}').join(params[name]);
-                    });
-                }
-
-                return message;
-            }
-        };
-    }());
-</script>
 
 <a class="skip-link" href="#main">{{ t('nav.skip_to_content') }}</a>
 

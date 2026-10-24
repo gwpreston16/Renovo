@@ -67,7 +67,7 @@
                     <p class="hint">{{ t('backup.restore_is_additive') }} {{ t('backup.restore_matching') }}</p>
 
                     <form method="post" action="/settings/backup/restore" enctype="multipart/form-data" class="stack"
-                          onsubmit="return confirm('{{ t('confirm.restore_backup')|e('js') }}')">
+                          data-confirm="{{ t('confirm.restore_backup') }}">
                         {{ csrf_field() }}
 
                         <label for="restore-archive">{{ t('backup.archive_label', {'version': backup_format_version}) }}</label>

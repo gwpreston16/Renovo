@@ -536,7 +536,7 @@ final class AccountSelfServiceTest extends DatabaseTestCase
         // The placeholder is the first name's initial on the member's own tone.
         $tone = AvatarTone::of($this->memberId);
         self::assertMatchesRegularExpression(
-            '~<span class="avatar avatar-initials avatar-tone-' . $tone . '"[^>]*>M</span>~',
+            '~<span class="avatar avatar-size-\d+ avatar-initials avatar-tone-' . $tone . '"[^>]*>M</span>~',
             (string) $this->request('GET', '/profile')->getBody(),
         );
 

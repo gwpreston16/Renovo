@@ -472,6 +472,19 @@ a.rates-chip:hover {
 /* ------------------------------------------------------------- the brand */
 
 /*
+ * The gradient's two ends, from the tokens. In the stylesheet rather than as
+ * inline `style=` on each <stop>, which the Content-Security-Policy refuses;
+ * a `stop-color` presentation attribute can't name a custom property.
+ */
+.brand-stop-from {
+    stop-color: var(--brand-from);
+}
+
+.brand-stop-to {
+    stop-color: var(--brand-to);
+}
+
+/*
  * The mark, from `partials/brand_sprite.twig`. It is the supplied logo traced
  * to one outline and filled with the brand gradient — the one place the
  * gradient appears — so it carries no wordmark navy onto a dark rail.
@@ -2374,8 +2387,8 @@ kbd {
  * The two forms — a photograph and a pair of initials — share one custom
  * property for their size, because they appear in the same places and any
  * disagreement between them shows up as a list of circles that do not line up.
- * The property is set inline by the macro; this is the fallback for anything
- * that forgets.
+ * The property is set by the macro's `avatar-size-N` class; this is the
+ * fallback for anything that forgets.
  */
 .avatar {
     --avatar-size: 2rem;
@@ -2386,6 +2399,20 @@ kbd {
     object-fit: cover;
     flex: 0 0 auto;
 }
+
+/*
+ * Every size `partials/avatar.twig` is called with, in pixels. Classes rather
+ * than an inline custom property, which the Content-Security-Policy refuses
+ * (Phase 41). A new size needs a line here; without one it draws at 32px.
+ * After `.avatar`, which they override at the same specificity.
+ */
+.avatar-size-22 { --avatar-size: 22px; }
+.avatar-size-24 { --avatar-size: 24px; }
+.avatar-size-32 { --avatar-size: 32px; }
+.avatar-size-34 { --avatar-size: 34px; }
+.avatar-size-36 { --avatar-size: 36px; }
+.avatar-size-40 { --avatar-size: 40px; }
+.avatar-size-72 { --avatar-size: 72px; }
 
 /*
  * The fallback. A tinted disc with one or two letters, sized from the same

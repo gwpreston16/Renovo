@@ -67,7 +67,11 @@
     #}
     <div class="auth-passkey" id="passkey-block" hidden>
         <p class="auth-divider"><span>{{ t('auth.or') }}</span></p>
-        <button type="button" class="button auth-submit" id="passkey-button">
+        <button type="button" class="button auth-submit" id="passkey-button"
+                data-passkey="sign-in" data-reveal="passkey-block" data-error="passkey-error"
+                data-options-url="/login/passkey/options"
+                data-verify-url="/login/passkey?next={{ next|url_encode }}" data-remember="remember"
+                data-csrf="{{ csrf_token() }}">
             {{ icon('key') }}
             <span>{{ t('auth_login.passkey') }}</span>
         </button>
@@ -84,16 +88,4 @@
     {% endif %}
 
     <script src="{{ asset('/assets/webauthn.js') }}" defer></script>
-    <script type="module">
-        const remember = document.getElementById('remember');
-
-        window.renovoWebAuthn.bindAuthentication({
-            button: document.getElementById('passkey-button'),
-            error: document.getElementById('passkey-error'),
-            reveal: document.getElementById('passkey-block'),
-            optionsUrl: '/login/passkey/options',
-            verifyUrl: () => '/login/passkey?next={{ next|url_encode }}&remember=' + (remember.checked ? '1' : '0'),
-            csrf: '{{ csrf_token() }}',
-        });
-    </script>
 {% endblock %}

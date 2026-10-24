@@ -142,7 +142,7 @@
 
         {% if is_edit %}
             <form method="post" action="/budgets/{{ budget_id }}/delete" id="budget-delete-form"
-                  onsubmit="return confirm('{{ t('confirm.delete_budget')|e('js') }}')">
+                  data-confirm="{{ t('confirm.delete_budget') }}">
                 {{ csrf_field() }}
             </form>
         {% endif %}

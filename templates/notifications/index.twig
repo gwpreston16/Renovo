@@ -106,7 +106,7 @@
                                         <button type="submit" class="button button-quiet">{{ icon('send') }}{{ t('action.send_test') }}</button>
                                     </form>
                                     <form method="post" action="/settings/notifications/channels/{{ channel.id }}/delete" class="inline"
-                                          onsubmit="return confirm('{{ t('confirm.delete_channel', {'name': channel.label})|e('js') }}')">
+                                          data-confirm="{{ t('confirm.delete_channel', {'name': channel.label}) }}">
                                         {{ csrf_field() }}
                                         <button type="submit" class="button button-danger">{{ t('action.remove') }}</button>
                                     </form>

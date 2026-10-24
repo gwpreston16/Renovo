@@ -23,18 +23,20 @@
     caller passes `has_avatar` rather than this asking: a broken image is worse
     than initials, and the page already knows the answer.
 
-    The size arrives as a custom property rather than a width class, because
-    the two forms have to agree on it — an image sized by attributes and a
-    circle of text sized by a class drift the moment either changes.
+    The size arrives as one `avatar-size-N` class that sets a custom property
+    both forms read, because the two have to agree on it — an image sized by
+    attributes and a circle of text sized by a class drift the moment either
+    changes. A class rather than an inline style, which the
+    Content-Security-Policy refuses: the sizes in use are listed in
+    components.css, and one that isn't falls back to the 32px default.
 #}
 {% macro face(id, name, has_avatar, size = 32) %}
     {%- if has_avatar -%}
-        <img class="avatar" src="/avatars/{{ id }}" alt=""
-             width="{{ size }}" height="{{ size }}" loading="lazy"
-             style="--avatar-size: {{ size }}px">
+        <img class="avatar avatar-size-{{ size }}" src="/avatars/{{ id }}" alt=""
+             width="{{ size }}" height="{{ size }}" loading="lazy">
     {%- else -%}
         {%- set tone = avatar_tone(id) -%}
-        <span class="avatar avatar-initials{{ tone ? ' avatar-tone-' ~ tone : '' }}" aria-hidden="true"
-              style="--avatar-size: {{ size }}px">{{ name|first_initial }}</span>
+        <span class="avatar avatar-size-{{ size }} avatar-initials{{ tone ? ' avatar-tone-' ~ tone : '' }}"
+              aria-hidden="true">{{ name|first_initial }}</span>
     {%- endif -%}
 {% endmacro %}

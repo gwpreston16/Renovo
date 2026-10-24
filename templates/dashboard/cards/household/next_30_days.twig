@@ -30,13 +30,13 @@
         <div class="timeline" aria-hidden="true">
             <div class="timeline-line"></div>
             {% for tick in timeline.ticks %}
-                <span class="timeline-tick{{ loop.first ? ' is-start' : '' }}{{ loop.last ? ' is-end' : '' }}" style="left: {{ tick.position }}">
+                <span class="timeline-tick{{ loop.first ? ' is-start' : '' }}{{ loop.last ? ' is-end' : '' }}" data-css-left="{{ tick.position }}">
                     {{ tick.days == 0 ? t('dashboard.today') : tick.date|local_date('d MMM') }}
                 </span>
             {% endfor %}
             {% for marker in timeline.markers %}
                 <span class="timeline-marker lane-{{ marker.lane }}{{ marker.reason == 'trial_conversion' ? ' is-trial' : '' }}"
-                      style="left: {{ marker.position }}"
+                      data-css-left="{{ marker.position }}"
                       title="{{ marker.subscription.name }} · {{ marker.date|local_date('d MMM') }} · {{ marker.amount.amountMinor|money(marker.amount.currency) }}">
                     {{ marker.subscription.name|initials }}
                 </span>

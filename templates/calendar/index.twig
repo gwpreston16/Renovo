@@ -8,7 +8,7 @@
         <input type="hidden" name="month" value="{{ calendar.month|date('Y-m') }}">
         <label class="choice">
             <input type="checkbox" name="mine" value="1" {{ mine_only ? 'checked' : '' }}
-                   onchange="this.form.submit()">
+                   data-autosubmit>
             <span>{{ t('calendar.just_mine') }}</span>
         </label>
     </form>

@@ -492,7 +492,7 @@
                                     </button>
                                 </form>
                                 <form method="post" action="/settings/backups/destinations/{{ destination.id }}/delete" class="inline"
-                                      onsubmit="return confirm('{{ t('backup.destination.remove_confirm', {'name': destination.name})|e('js') }}')">
+                                      data-confirm="{{ t('backup.destination.remove_confirm', {'name': destination.name}) }}">
                                     {{ csrf_field() }}
                                     <button type="submit" class="button button-danger"
                                             aria-label="{{ t('backup.destination.remove_named', {'name': destination.name}) }}">{{ t('backup.destination.remove') }}</button>

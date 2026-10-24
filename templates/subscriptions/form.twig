@@ -863,7 +863,7 @@
                         </form>
                     {% else %}
                         <form method="post" action="/subscriptions/{{ subscription.id }}/cancel" class="inline"
-                              onsubmit="return confirm('{{ t('confirm.cancel_subscription', {'name': subscription.name})|e('js') }}')">
+                              data-confirm="{{ t('confirm.cancel_subscription', {'name': subscription.name}) }}">
                             {{ csrf_field() }}
                             <input type="hidden" name="return_to" value="{{ return_to }}">
                             <button type="submit" class="button">
@@ -873,7 +873,7 @@
                     {% endif %}
                     {% if can(scope, 'subscription.delete') %}
                         <form method="post" action="/subscriptions/{{ subscription.id }}/delete" class="inline"
-                              onsubmit="return confirm('{{ t('confirm.delete_subscription', {'name': subscription.name})|e('js') }}')">
+                              data-confirm="{{ t('confirm.delete_subscription', {'name': subscription.name}) }}">
                             {{ csrf_field() }}
                             <button type="submit" class="button button-danger">{{ t('action.delete') }}</button>
                         </form>

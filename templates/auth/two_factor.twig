@@ -54,7 +54,11 @@
     {% if methods.passkey %}
         <div class="auth-passkey" id="passkey-block" hidden>
             {% if methods.totp %}<p class="auth-divider"><span>{{ t('auth.or') }}</span></p>{% endif %}
-            <button type="button" class="button auth-submit" id="passkey-button">
+            <button type="button" class="button auth-submit" id="passkey-button"
+                    data-passkey="sign-in" data-reveal="passkey-block" data-error="passkey-error"
+                    data-options-url="/login/two-factor/passkey/options"
+                    data-verify-url="/login/two-factor/passkey"
+                    data-csrf="{{ csrf_token() }}">
                 {{ icon('key') }}
                 <span>{{ t('auth_two_factor.passkey') }}</span>
             </button>
@@ -95,17 +99,5 @@
 
     {% if methods.passkey %}
         <script src="{{ asset('/assets/webauthn.js') }}" defer></script>
-        <script type="module">
-            document.addEventListener('DOMContentLoaded', () => {
-                window.renovoWebAuthn.bindAuthentication({
-                    button: document.getElementById('passkey-button'),
-                    error: document.getElementById('passkey-error'),
-                    reveal: document.getElementById('passkey-block'),
-                    optionsUrl: '/login/two-factor/passkey/options',
-                    verifyUrl: '/login/two-factor/passkey',
-                    csrf: '{{ csrf_token() }}',
-                });
-            });
-        </script>
     {% endif %}
 {% endblock %}

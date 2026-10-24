@@ -29,7 +29,7 @@
                     {% if may_manage %}
                         <details class="setting-chip" {{ is_failed ? 'open' : '' }}>
                             <summary>
-                                <span class="swatch" style="background: {{ category.colour|default('#888888') }}" aria-hidden="true"></span>
+                                <span class="swatch" data-css-background="{{ category.colour|default('#888888') }}" aria-hidden="true"></span>
                                 <span class="setting-chip-name">{{ category.name }}</span>
                                 <span class="setting-chip-count num">{{ entry.count }}<span class="visually-hidden"> {{ t('settings.subscriptions_count', {'count': entry.count}) }}</span></span>
                                 {{ icon('edit', 'setting-chip-icon') }}
@@ -49,7 +49,7 @@
                                 {% if is_failed and errors.colour is defined %}<p class="field-error">{{ error_message(errors.colour) }}</p>{% endif %}
 
                                 <form method="post" action="/categories/{{ category.id }}/delete" class="inline"
-                                      onsubmit="return confirm('{{ t('confirm.delete_category', {'name': category.name})|e('js') }}')">
+                                      data-confirm="{{ t('confirm.delete_category', {'name': category.name}) }}">
                                     {{ csrf_field() }}
                                     <button type="submit" class="button button-danger">
                                         {{ icon('delete') }}{{ t('settings.delete_named', {'name': category.name}) }}
@@ -59,7 +59,7 @@
                         </details>
                     {% else %}
                         <span class="setting-chip is-static">
-                            <span class="swatch" style="background: {{ category.colour|default('#888888') }}" aria-hidden="true"></span>
+                            <span class="swatch" data-css-background="{{ category.colour|default('#888888') }}" aria-hidden="true"></span>
                             <span class="setting-chip-name">{{ category.name }}</span>
                             <span class="setting-chip-count num">{{ entry.count }}<span class="visually-hidden"> {{ t('settings.subscriptions_count', {'count': entry.count}) }}</span></span>
                         </span>

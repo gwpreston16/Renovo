@@ -50,10 +50,10 @@
                                 <b class="spend-bar-peak num">{{ bar.estimate ? t('subscriptions_list.approximately', {'amount': bar.total_display}) : bar.total_display }}</b>
                             {% endif %}
                             {% if bar.long_minor > 0 %}
-                                <span class="spend-bar-long" style="height: {{ bar.long_height }}"></span>
+                                <span class="spend-bar-long" data-css-height="{{ bar.long_height }}"></span>
                             {% endif %}
                             {% if bar.regular_minor > 0 %}
-                                <span class="spend-bar-regular" style="height: {{ bar.regular_height }}"></span>
+                                <span class="spend-bar-regular" data-css-height="{{ bar.regular_height }}"></span>
                             {% endif %}
                         </a>
                     {% endfor %}

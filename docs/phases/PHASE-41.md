@@ -182,9 +182,9 @@ None.
 ## Status
 
 - [x] `SecurityHeadersMiddleware`; `csp_nonce()`; HSTS env vars
-- [ ] Inline scripts moved out or nonced; `data-confirm` replaces `onsubmit`
-- [ ] htmx config: `allowEval: false`, no indicator styles
-- [ ] Every `style=` attribute replaced
+- [x] Inline scripts moved out or nonced; `data-confirm` replaces `onsubmit`
+- [x] htmx config: `allowEval: false`, no indicator styles
+- [x] Every `style=` attribute replaced
 - [ ] Attachment and API response policies
 - [ ] Template guard test in CI; CLAUDE.md convention line
 - [ ] K1: a posted `logo_path` is never saved; K64: attachments tested over HTTP

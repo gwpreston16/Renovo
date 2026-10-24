@@ -224,3 +224,21 @@ main:focus {
         outline: 2px solid currentColor;
     }
 }
+
+/* ------------------------------------------------------------ htmx indicators */
+
+/*
+ * The rules htmx would otherwise inject as a <style> element, which the
+ * Content-Security-Policy refuses (Phase 41). The layout's htmx-config turns
+ * the injection off; these keep `.htmx-indicator` working the way htmx
+ * documents it.
+ */
+.htmx-indicator {
+    opacity: 0;
+}
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+    opacity: 1;
+    transition: opacity 200ms ease-in;
+}
