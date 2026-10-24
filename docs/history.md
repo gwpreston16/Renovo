@@ -495,6 +495,19 @@ Since v1, each phase has shipped as a minor release (see
   Strict-Transport-Security over https. A custom reverse proxy must stop
   adding these headers itself. No API changes. No migrations. See
   [Security headers](security.md#security-headers).
+- **Phase 42 — API tokens: scopes, lifetimes and rate limits — complete
+  (1.12.0).** An API token now holds only the scopes it needs —
+  `subscriptions`, `catalogue` (categories, tags, payment methods) and
+  `calendar`, each read or write — chosen when it is issued as Read
+  everything, Read and write everything, Calendar only or Custom. Tokens
+  expire after 90 days unless another lifetime is chosen,
+  `API_TOKEN_MAX_DAYS` caps new ones, and **Reissue** renews one. The API and
+  the calendar feed are rate-limited per token and per address, answer `429`
+  with `Retry-After`, and block an address after repeated failed tokens, which
+  are audited. An API write with no token is a `401`. The OpenAPI document is
+  version 1.8.0; `GET /me` describes the token and `token.abilities` is
+  deprecated. Three migrations; existing tokens keep what they could do. See
+  [Scopes](api.md#scopes).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
