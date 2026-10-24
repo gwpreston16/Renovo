@@ -8,6 +8,57 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Added
+
+- **API tokens are scoped per resource.** A token holds `subscriptions:read`
+  or `:write`, `catalogue:read` or `:write` (categories, tags, payment
+  methods) and `calendar:read`; every route names the one it needs, and a
+  token without it gets `403` naming the scope. The role still applies on
+  top. The issue form offers **Read everything** (the default), **Read and
+  write everything**, **Calendar only** or **Custom**, a switch per scope, and
+  the token list and `GET /me` show each token's scopes. See
+  [Scopes](docs/api.md#scopes). *Phase 42.*
+- **Tokens expire by default.** A new token lasts 90 days unless you choose
+  30 or 365 days, a date or no expiry. `API_TOKEN_MAX_DAYS` sets an instance
+  maximum for tokens issued from then on; Instance status counts the older
+  ones that never expire. A token within 14 days of expiring is flagged, and
+  **Reissue** gives it its lifetime again. The calendar feed's link is exempt.
+  See [Lifetimes](docs/api.md#lifetimes). *Phase 42.*
+- **Rate limits on the API and the calendar feed**: 120 requests a minute per
+  token (`API_RATE_LIMIT_PER_MINUTE`) and 30 per address without a valid token
+  (`API_RATE_LIMIT_PER_IP_PER_MINUTE`). Over the limit is `429` with
+  `Retry-After`, and every counted response carries `RateLimit-Limit`,
+  `RateLimit-Remaining` and `RateLimit-Reset`. Ten failed tokens from one
+  address in five minutes block it, a valid token included. See
+  [Rate limits](docs/api.md#rate-limits). *Phase 42.*
+- **Failed token authentication is audited** as *API token refused*, once per
+  address per five minutes with a count, and never with the secret.
+  *Phase 42.*
+
+### Changed
+
+- **The API contract is version 1.8.0**: each operation names its
+  `x-token-scope`, every token operation describes its `429`, and `GET /me`
+  describes the token (`token.scopes`, `token.expires_at`). `token.abilities`
+  is deprecated and kept for one release. *Phase 42.*
+- **Existing tokens keep what they could do**: a read token now holds every
+  read scope and the calendar, a write token every scope. The calendar
+  screen's feed link reaches the feed and nothing else. Reissuing a token
+  renews its lifetime from that day rather than keeping its old expiry date.
+  Back up first; three migrations. See
+  [Upgrading](docs/upgrading.md#after-upgrading-to-api-token-scopes-and-rate-limits-phase-42).
+  *Phase 42.*
+
+### Fixed
+
+- A write to `/api/v1` with no bearer token, or another scheme, is a `401`
+  rather than the web's "Session expired" `400` (K40). *Phase 42.*
+- The API's "your role does not permit" `403` and its missing-upload-part
+  `400`s are in the token holder's language, like every other API error
+  (K44). *Phase 42.*
+- When the API contract version moves is now written down: minor for a new
+  shape, patch for behaviour alone (K107). *Phase 42.*
+
 ## [1.11.0] - 2026-10-24
 
 ### Added

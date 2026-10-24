@@ -219,10 +219,10 @@ ROADMAP candidate.
 - [x] `api_token.auth_failed` audit with de-duplication; IP failure throttle
 - [x] OpenAPI and `docs/api.md`; coverage tests extended
 - [x] K40, K44, K107
-- [ ] Migrations on both engines
+- [x] Migrations on both engines
 - [x] `.env.example` and the README environment table
-- [ ] New strings in `translations/en.php`
-- [ ] `composer check`, `i18n:check`, offline guard green on both engines
+- [x] New strings in `translations/en.php`
+- [x] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done
 
