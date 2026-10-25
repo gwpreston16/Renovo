@@ -8,6 +8,27 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.13.1] - 2026-10-25
+
+### Changed
+
+- **Dependencies and build tooling updated.** Vite 8, Lucide 1.61, Twig 3.30,
+  Monolog 3.12.1, PHPStan 2.3, PHP_CodeSniffer 4, and the `node:26-alpine`
+  build stage of both images; the CI actions (`checkout`, `setup-node`,
+  `setup-buildx-action`, `build-push-action`, `composer-install`) moved to
+  their current majors. No behaviour changes; the stylesheet, icon sprite and
+  scripts are rebuilt by the new toolchain. *Phase 43.1.*
+
+### Fixed
+
+- **The built stylesheet no longer carries Tailwind's banner comment.** Vite 8
+  keeps `/*!` comments, and the banner's tailwindcss.com link tripped
+  `assets:offline-check` although nothing is loaded from it. The build now
+  removes it. *Phase 43.1.*
+- **Static analysis passes on PHPStan 2.3.** Methods the tests call twice for
+  their side effects are marked `@phpstan-impure`, with no suppression or
+  baseline. Test code and docblocks only. *Phase 43.1.*
+
 ## [1.13.0] - 2026-10-25
 
 ### Added
@@ -648,7 +669,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.13.0...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.13.1...HEAD
+[1.13.1]: https://github.com/gwpreston16/Renovo/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/gwpreston16/Renovo/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/gwpreston16/Renovo/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/gwpreston16/Renovo/compare/v1.10.0...v1.11.0
