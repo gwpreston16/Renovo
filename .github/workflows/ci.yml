@@ -18,7 +18,7 @@ jobs:
     name: Lint and static analysis
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -27,7 +27,7 @@ jobs:
           coverage: none
           tools: composer:v2
 
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@v4
 
       - name: PHP_CodeSniffer (PSR-12)
         run: vendor/bin/phpcs
@@ -77,7 +77,7 @@ jobs:
     name: Dependency audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -85,7 +85,7 @@ jobs:
           coverage: none
           tools: composer:v2
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
 
@@ -186,7 +186,7 @@ jobs:
     steps:
       # Full history, so the coverage step can diff this branch against the
       # one it is merging into.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -199,9 +199,9 @@ jobs:
           coverage: ${{ matrix.driver == 'pgsql' && 'pcov' || 'none' }}
           tools: composer:v2
 
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -277,9 +277,9 @@ jobs:
     name: Asset build and the offline rule
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -291,7 +291,7 @@ jobs:
           coverage: none
           tools: composer:v2
 
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@v4
 
       - name: Install JS dependencies
         run: npm ci
@@ -325,12 +325,12 @@ jobs:
     name: Docker image builds
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - name: The application image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/php/Dockerfile
@@ -361,7 +361,7 @@ jobs:
       # because those exist only inside the image. A stage that does not build
       # is a stack that serves no stylesheet.
       - name: The web image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/php/Dockerfile
