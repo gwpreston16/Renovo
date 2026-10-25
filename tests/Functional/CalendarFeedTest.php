@@ -235,17 +235,18 @@ final class CalendarFeedTest extends ApiTestCase
 
     public function testTheFeedTextIsUnchanged(): void
     {
-        $this->createSubscription(['name' => 'Streaming', 'next_payment_date' => '2026-12-01']);
+        $date = new DateTimeImmutable('first day of next month');
+        $this->createSubscription(['name' => 'Streaming', 'next_payment_date' => $date->format('Y-m-d')]);
 
         $lines = explode("\r\n", $this->unfold($this->feed()));
 
         self::assertSame('BEGIN:VCALENDAR', $lines[0]);
         self::assertMatchesRegularExpression(
-            '/^UID:renovo-\\d+-payment-20261201@renovo\\.local$/m',
+            '/^UID:renovo-\\d+-payment-' . $date->format('Ymd') . '@renovo\\.local$/m',
             implode("\n", $lines),
         );
-        self::assertContains('DTSTART;VALUE=DATE:20261201', $lines);
-        self::assertContains('DTEND;VALUE=DATE:20261202', $lines);
+        self::assertContains('DTSTART;VALUE=DATE:' . $date->format('Ymd'), $lines);
+        self::assertContains('DTEND;VALUE=DATE:' . $date->modify('+1 day')->format('Ymd'), $lines);
         self::assertContains('TRANSP:TRANSPARENT', $lines);
         self::assertSame('END:VCALENDAR', $lines[count($lines) - 2]);
         self::assertSame('', $lines[count($lines) - 1]);
@@ -265,7 +266,7 @@ final class CalendarFeedTest extends ApiTestCase
             $this->createSubscription([
                 'name' => 'Weekly ' . $i,
                 'billing_cycle' => 'weekly',
-                'next_payment_date' => '2026-12-01',
+                'next_payment_date' => (new DateTimeImmutable('first day of next month'))->format('Y-m-d'),
             ]);
         }
 
@@ -275,6 +276,18 @@ final class CalendarFeedTest extends ApiTestCase
 
         self::assertGreaterThan(4000, substr_count($feed, 'BEGIN:VEVENT'));
         self::assertLessThan(5.0, $elapsed);
+    }
+
+    public function testAFrequentSubscriptionIsCappedAtSixtyPayments(): void
+    {
+        $this->createSubscription([
+            'name' => 'Daily',
+            'billing_cycle' => 'custom_days',
+            'cycle_days' => 1,
+            'next_payment_date' => (new DateTimeImmutable('first day of next month'))->format('Y-m-d'),
+        ]);
+
+        self::assertSame(60, substr_count($this->unfold($this->feed()), 'SUMMARY:Daily'));
     }
 
     private function announce(int $subscriptionId, int $priceMinor, DateTimeImmutable $from): void
