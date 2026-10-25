@@ -508,6 +508,17 @@ Since v1, each phase has shipped as a minor release (see
   version 1.8.0; `GET /me` describes the token and `token.abilities` is
   deprecated. Three migrations; existing tokens keep what they could do. See
   [Scopes](api.md#scopes).
+- **Phase 43 — control over outbound requests, and checking what Renovo is
+  built from — complete (1.13.0).** `OUTBOUND_HTTP` is `open` (the default),
+  `allowlist` or `off`, enforced by the shared client before any connection or
+  lookup, so an instance with no route out stops waiting on timeouts. A
+  trusted host now has a kind: reach a private address over http, or be
+  contacted only. Refused requests are audited, once per host, reason and
+  feature per hour. CI runs `composer audit`, `npm audit` and a Trivy scan of
+  both images, Dependabot keeps dependencies current, `SECURITY.md` says how
+  to report a vulnerability, and the mail relay's certificate is checked by
+  default (`MAIL_VERIFY_PEER`). No API changes. One migration. See
+  [Outbound requests](operations.md#outbound-requests).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says

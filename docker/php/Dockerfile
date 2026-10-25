@@ -73,7 +73,7 @@ RUN composer install --no-dev --no-interaction --no-progress --no-scripts --pref
 # generate; a build without it would emit a stylesheet missing every utility
 # the application actually uses.
 # ---------------------------------------------------------------------------
-FROM node:22-alpine AS assets
+FROM node:26-alpine AS assets
 
 WORKDIR /app
 
