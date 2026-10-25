@@ -330,7 +330,7 @@ jobs:
       - uses: docker/setup-buildx-action@v4
 
       - name: The application image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/php/Dockerfile
@@ -361,7 +361,7 @@ jobs:
       # because those exist only inside the image. A stage that does not build
       # is a stack that serves no stylesheet.
       - name: The web image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/php/Dockerfile
