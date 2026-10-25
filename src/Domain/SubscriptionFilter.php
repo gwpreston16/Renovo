@@ -13,6 +13,9 @@ namespace App\Domain;
  */
 final class SubscriptionFilter
 {
+    /** The highest page a request can ask for; the same bound as `Criteria::MAX_PAGE`. */
+    public const MAX_PAGE = 1_000_000_000;
+
     public const SORTS = ['name', 'next_payment', 'price', 'created'];
 
     public const DEFAULT_PER_PAGE = 25;
@@ -87,7 +90,7 @@ final class SubscriptionFilter
             includeInactive: ($query['inactive'] ?? '') === '1',
             sort: $sort,
             direction: ($query['dir'] ?? 'asc') === 'desc' ? 'desc' : 'asc',
-            page: max(1, (int) ($query['page'] ?? 1)),
+            page: min(max(1, (int) ($query['page'] ?? 1)), self::MAX_PAGE),
             perPage: self::DEFAULT_PER_PAGE,
             status: SubscriptionStatus::tryFrom(is_string($query['status'] ?? null) ? $query['status'] : ''),
             mine: ($query['scope'] ?? '') === 'mine',

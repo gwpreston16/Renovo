@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\I18n\Translator;
 use App\Domain\AuditAction;
+use App\Persistence\Criteria;
 use App\Security\SessionInterface;
 use App\Service\AuditLogService;
 use Psr\Http\Message\ResponseInterface;
@@ -38,7 +39,7 @@ final class AuditLogController extends Controller
         $scope = $this->scope($request);
         $params = $request->getQueryParams();
 
-        $page = max(1, (int) ($params['page'] ?? 1));
+        $page = Criteria::clampPage((int) ($params['page'] ?? 1));
         $action = AuditAction::tryFrom(is_string($params['action'] ?? null) ? $params['action'] : '');
         $filter = $action === null ? [] : [$action];
         $selected = $action === null ? '' : $action->value;

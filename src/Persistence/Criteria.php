@@ -104,10 +104,22 @@ final class Criteria
         return $clone;
     }
 
+    /**
+     * The highest page a request can ask for. Past the last page of any real
+     * list the answer is an empty page, and this keeps the offset an integer
+     * however many digits a `?page=` carries.
+     */
+    public const MAX_PAGE = 1_000_000_000;
+
+    public static function clampPage(int $page): int
+    {
+        return min(max(1, $page), self::MAX_PAGE);
+    }
+
     public function paginate(int $page, int $perPage): self
     {
-        $page = max(1, $page);
-        $perPage = max(1, $perPage);
+        $perPage = min(max(1, $perPage), intdiv(PHP_INT_MAX, self::MAX_PAGE));
+        $page = self::clampPage($page);
 
         $clone = clone $this;
         $clone->limit = $perPage;
