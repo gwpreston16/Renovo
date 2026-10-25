@@ -24,6 +24,11 @@ final class FrankfurterProvider extends HttpRateProvider
 
     private const ENDPOINT = 'https://api.frankfurter.app/latest';
 
+    public function outboundHost(): string
+    {
+        return (string) parse_url(self::ENDPOINT, PHP_URL_HOST);
+    }
+
     public function key(): string
     {
         return self::KEY;

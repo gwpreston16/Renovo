@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Domain\AuditAction;
 use App\Domain\Entity\User;
+use App\Domain\TrustedHostKind;
 use App\Http\IpAddress;
 use App\Http\TrustedTargets;
 use App\Repository\TrustedHostRepository;
@@ -30,6 +31,9 @@ final class TrustedHostService implements TrustedTargets
     /** @var list<string>|null */
     private ?array $cache = null;
 
+    /** @var list<string>|null */
+    private ?array $allCache = null;
+
     public function __construct(
         private readonly TrustedHostRepository $repository,
         private readonly AuditLogService $audit,
@@ -37,13 +41,21 @@ final class TrustedHostService implements TrustedTargets
     ) {
     }
 
+    /**
+     * Only the entries that lift the private-address and plain-http checks.
+     */
     public function entries(): array
     {
-        return $this->cache ??= $this->repository->patterns();
+        return $this->cache ??= $this->repository->patterns(TrustedHostKind::Private);
+    }
+
+    public function allowlisted(): array
+    {
+        return $this->allCache ??= $this->repository->patterns(null);
     }
 
     /**
-     * @return list<array{id: int, pattern: string, note: string|null,
+     * @return list<array{id: int, pattern: string, kind: TrustedHostKind, note: string|null,
      *                    created_at: \DateTimeImmutable, created_by: string|null}>
      */
     public function all(): array
@@ -54,8 +66,12 @@ final class TrustedHostService implements TrustedTargets
     /**
      * @throws ValidationException
      */
-    public function add(string $pattern, ?string $note, ?User $actor): void
-    {
+    public function add(
+        string $pattern,
+        ?string $note,
+        ?User $actor,
+        TrustedHostKind $kind = TrustedHostKind::Private,
+    ): void {
         $pattern = strtolower(trim($pattern));
 
         if ($pattern === '') {
@@ -76,10 +92,11 @@ final class TrustedHostService implements TrustedTargets
 
         $note = $note === null || trim($note) === '' ? null : mb_substr(trim($note), 0, 255);
 
-        $this->repository->add($pattern, $note, $actor?->id);
+        $this->repository->add($pattern, $note, $actor?->id, $kind);
         $this->cache = null;
+        $this->allCache = null;
 
-        $this->audit->record(AuditAction::TrustedHostAdded, $actor, ['pattern' => $pattern]);
+        $this->audit->record(AuditAction::TrustedHostAdded, $actor, ['pattern' => $pattern, 'kind' => $kind->value]);
 
         // Logged because this widens what the server can be made to connect to.
         // The record of who opened it, and when, is the only thing that makes
@@ -94,6 +111,7 @@ final class TrustedHostService implements TrustedTargets
     {
         $this->repository->delete($id);
         $this->cache = null;
+        $this->allCache = null;
 
         $this->audit->record(AuditAction::TrustedHostRemoved, $actor, ['id' => $id]);
 

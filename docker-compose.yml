@@ -66,8 +66,11 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_ENCRYPTION: ${SMTP_ENCRYPTION:-none}
+      MAIL_VERIFY_PEER: ${MAIL_VERIFY_PEER:-true}
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-renovo@localhost}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Renovo}
+      # Phase 43: what the HTTP client may reach: open, allowlist or off.
+      OUTBOUND_HTTP: ${OUTBOUND_HTTP:-open}
       # The update check: the app asks lazily, from an administrator's
       # dashboard, and the scheduler daily, so both need the operator's say.
       UPDATE_CHECK: ${UPDATE_CHECK:-true}
@@ -207,8 +210,11 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_ENCRYPTION: ${SMTP_ENCRYPTION:-none}
+      MAIL_VERIFY_PEER: ${MAIL_VERIFY_PEER:-true}
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-renovo@localhost}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Renovo}
+      # Phase 43: what the HTTP client may reach: open, allowlist or off.
+      OUTBOUND_HTTP: ${OUTBOUND_HTTP:-open}
       # The update check: the app asks lazily, from an administrator's
       # dashboard, and the scheduler daily, so both need the operator's say.
       UPDATE_CHECK: ${UPDATE_CHECK:-true}

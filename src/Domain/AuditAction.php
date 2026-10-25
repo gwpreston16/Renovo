@@ -77,6 +77,12 @@ enum AuditAction: string
     // scan cannot fill the log.
     case ApiTokenAuthFailed = 'api_token.auth_failed';
 
+    // Phase 43: an outbound request the instance refused — a private or
+    // reserved address, a redirect somewhere not allowed, or the outbound
+    // mode. One entry per host, reason and feature per hour, with a count;
+    // the context holds the host and never the URL.
+    case OutboundRefused = 'outbound.refused';
+
     case DataImported = 'data.imported';
     case BackupExported = 'backup.exported';
     case BackupRestored = 'backup.restored';
@@ -137,6 +143,7 @@ enum AuditAction: string
                 self::TwoFactorFailed,
                 self::InstanceBackupFailed,
                 self::ApiTokenAuthFailed,
+                self::OutboundRefused,
             ],
             true,
         );

@@ -8,6 +8,52 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Added
+
+- **`OUTBOUND_HTTP` controls what Renovo may reach.** `open` (the default)
+  changes nothing; `allowlist` admits only trusted hosts, the configured
+  exchange-rate provider and, while update checks are on, GitHub; `off` sends
+  nothing over HTTP. It is enforced inside the shared client, before any
+  connection or lookup, and Settings → Instance → Instance status shows it. A
+  logo fetch, **Refresh now**, **Check now** and a channel's **Send test** say
+  when the instance refused rather than that something failed. Email is not
+  governed by it. See [Outbound requests](docs/operations.md#outbound-requests).
+  *Phase 43.*
+- **Trusted hosts have a kind.** **Reach a private address, over http** is what
+  every entry meant until now; **Be contacted only** lets a public host through
+  the allowlist without lifting any other check. Existing entries keep their
+  meaning. *Phase 43.*
+- **Refused outbound requests are audited** as *Outbound request refused*: a
+  private or reserved address, a disallowed redirect or the outbound mode. One
+  entry per host, reason and feature per hour, with a count, naming the user it
+  was for and never holding the URL. *Phase 43.*
+- **Dependency and image scanning in CI.** `composer audit`, `npm audit`, and a
+  Trivy scan of the `app` and `web` images that fails on a fixable high or
+  critical vulnerability, with Dependabot updating Composer, npm, GitHub
+  Actions and the Docker images weekly. *Phase 43.*
+- **A security policy.** [SECURITY.md](SECURITY.md) says which versions get
+  fixes and how to report a vulnerability privately. *Phase 43.*
+- **A guide to running with no route out**, with a compose override that puts
+  the app, scheduler and database on an internal network. *Phase 43.*
+
+### Changed
+
+- **The mail relay's certificate is checked.** `MAIL_VERIFY_PEER` is `true` by
+  default for every `SMTP_ENCRYPTION`; before, plain `smtp` never checked it.
+  A relay with a self-signed certificate needs `MAIL_VERIFY_PEER=false`; see
+  [Upgrading](docs/upgrading.md#after-upgrading-to-outbound-control-phase-43).
+  *Phase 43.*
+
+### Fixed
+
+- **A page in the base currency no longer fetches exchange rates**, and with no
+  route out a page view no longer waits on the connect timeout (K54).
+  *Phase 43.*
+- **Saving a subscription whose site does not answer** waits at most about six
+  seconds for its icon, not the sum of four timeouts (K55). *Phase 43.*
+- **`HTTP_TIMEOUT_SECONDS=0`** no longer removes the update check's own limit
+  (K97). *Phase 43.*
+
 ## [1.12.0] - 2026-10-24
 
 ### Added

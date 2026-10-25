@@ -7,6 +7,10 @@ namespace App\Service\Update;
 use App\Application\AppVersion;
 use App\Domain\Entity\User;
 use App\Domain\SemanticVersion;
+use App\Http\BlockedTargetException;
+use App\Http\OutboundContext;
+use App\Http\OutboundMode;
+use App\Http\OutboundRefusal;
 use App\Repository\UserRepository;
 use App\Service\InstanceSettingsService;
 use App\Support\Clock;
@@ -17,7 +21,9 @@ use JsonException;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
+use Throwable;
 
 /**
  * Whether a newer Renovo has been released, asked of GitHub at most once a
@@ -69,8 +75,16 @@ final class UpdateCheckService
         private readonly Clock $clock,
         private readonly LoggerInterface $logger,
         private readonly UpdateCheckConfig $config,
+        private readonly ?OutboundContext $outbound = null,
+        private readonly ?OutboundMode $outboundMode = null,
     ) {
     }
+
+    /** Why the last attempt failed, so a refusal by the instance can be told from GitHub being down. */
+    private ?Throwable $lastFailure = null;
+
+    /** The user who pressed Check now, for the audit entry of a refusal. */
+    private ?int $actorUserId = null;
 
     /**
      * True when checks are on in settings and the environment allows them.
@@ -96,6 +110,13 @@ final class UpdateCheckService
      */
     public function refreshIfDue(): bool
     {
+        // An instance that sends nothing makes no attempt of its own: the
+        // dashboard would only collect a refusal an hour. Check now still
+        // tries, and says why it cannot.
+        if ($this->outboundMode === OutboundMode::Off) {
+            return false;
+        }
+
         if (!$this->mayCheck() || !$this->isDue() || !$this->backOffHasLifted()) {
             return false;
         }
@@ -114,14 +135,15 @@ final class UpdateCheckService
             return CheckNowResult::Off;
         }
 
-        return $this->checkQuietly() ? CheckNowResult::Checked : CheckNowResult::Failed;
+        return $this->checkQuietly() ? CheckNowResult::Checked : $this->failedResult();
     }
 
     /**
      * The Instance status card's Check now: a check, held to one a minute.
      */
-    public function checkNow(): CheckNowResult
+    public function checkNow(?int $actorUserId = null): CheckNowResult
     {
+        $this->actorUserId = $actorUserId;
         if (!$this->mayCheck()) {
             return CheckNowResult::Off;
         }
@@ -134,7 +156,16 @@ final class UpdateCheckService
             return CheckNowResult::TooSoon;
         }
 
-        return $this->checkQuietly() ? CheckNowResult::Checked : CheckNowResult::Failed;
+        return $this->checkQuietly() ? CheckNowResult::Checked : $this->failedResult();
+    }
+
+    private function failedResult(): CheckNowResult
+    {
+        return match ($this->lastFailure === null ? null : OutboundRefusal::reasonOf($this->lastFailure)) {
+            BlockedTargetException::OUTBOUND_OFF => CheckNowResult::OutboundOff,
+            BlockedTargetException::OUTBOUND_NOT_ALLOWLISTED => CheckNowResult::OutboundNotAllowed,
+            default => CheckNowResult::Failed,
+        };
     }
 
     public function status(): UpdateStatus
@@ -273,11 +304,14 @@ final class UpdateCheckService
 
     private function checkQuietly(): bool
     {
+        $this->lastFailure = null;
+
         try {
             $this->fetch();
 
             return true;
         } catch (UpdateCheckException $exception) {
+            $this->lastFailure = $exception;
             $this->logger->warning('Update check failed.', ['reason' => $exception->getMessage()]);
 
             return false;
@@ -299,7 +333,10 @@ final class UpdateCheckService
             ->withHeader('User-Agent', 'Renovo/' . $this->version->current());
 
         try {
-            $response = $this->http->sendRequest($request);
+            $send = fn (): ResponseInterface => $this->http->sendRequest($request);
+            $response = $this->outbound === null
+                ? $send()
+                : $this->outbound->within(OutboundContext::UPDATES, $this->actorUserId, $send);
         } catch (ClientExceptionInterface $exception) {
             throw new UpdateCheckException($exception->getMessage(), 0, $exception);
         }

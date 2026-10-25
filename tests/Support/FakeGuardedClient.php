@@ -56,6 +56,15 @@ final class FakeGuardedClient implements GuardedClient
     }
 
     /**
+     * Refuses the way the client does when the instance's outbound mode says
+     * no (Phase 43).
+     */
+    public static function refusedByOutboundMode(string $reason = BlockedTargetException::OUTBOUND_OFF): self
+    {
+        return new self(0, '', BlockedTargetException::outbound($reason, 'example.com'));
+    }
+
+    /**
      * Fails the way the real client fails: with `HttpClientException`, whose
      * message quotes the URL that was being fetched.
      *

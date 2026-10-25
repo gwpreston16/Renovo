@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Middleware;
 
 use App\Domain\Theme;
+use App\Http\OutboundMode;
 use App\Service\InstanceSettingsService;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -40,6 +41,7 @@ final class InstanceContextMiddleware implements MiddlewareInterface
     public function __construct(
         private readonly Twig $view,
         private readonly InstanceSettingsService $settings,
+        private readonly OutboundMode $outboundMode = OutboundMode::Open,
     ) {
     }
 
@@ -54,6 +56,8 @@ final class InstanceContextMiddleware implements MiddlewareInterface
         // sign in to a demonstration is told it is one before they try to
         // change anything.
         $environment->addGlobal('demo_mode', $this->settings->isDemoMode());
+        // Phase 43: a form that fetches something says why it cannot.
+        $environment->addGlobal('outbound_mode', $this->outboundMode->value);
 
         return $handler->handle($request);
     }

@@ -62,6 +62,10 @@ rate provider under More options, and anyone to invite), then reminders (the mai
 relay and any other channels, each with a test). The account you create there
 is the instance administrator.
 
+To limit what the server may reach over HTTP, or to run it with no route out,
+set `OUTBOUND_HTTP`; see [Outbound requests](operations.md#outbound-requests).
+A mail relay with a self-signed certificate needs `MAIL_VERIFY_PEER=false`.
+
 The `migrate` container applies the schema and then exits — seeing it as
 `Exited (0)` in `docker compose ps` is correct, not a failure.
 

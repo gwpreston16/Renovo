@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Domain\TrustedHostKind;
 use App\Persistence\Database;
 use App\Support\Clock;
 use DateTimeImmutable;
@@ -31,24 +32,30 @@ final class TrustedHostRepository extends AbstractRepository
 
     protected function filterableColumns(): array
     {
-        return ['id', 'pattern'];
+        return ['id', 'pattern', 'kind'];
     }
 
     /**
+     * The patterns of one kind, or of every kind when none is given.
+     *
      * @return list<string>
      */
-    public function patterns(): array
+    public function patterns(?TrustedHostKind $kind = TrustedHostKind::Private): array
     {
-        $rows = $this->db->fetchAll(
-            'SELECT ' . $this->quote('pattern') . ' FROM ' . $this->quote($this->table()),
-        );
+        $rows = $kind === null
+            ? $this->db->fetchAll('SELECT ' . $this->quote('pattern') . ' FROM ' . $this->quote($this->table()))
+            : $this->db->fetchAll(
+                'SELECT ' . $this->quote('pattern') . ' FROM ' . $this->quote($this->table())
+                . ' WHERE ' . $this->quote('kind') . ' = :kind',
+                ['kind' => $kind->value],
+            );
 
         return array_map(static fn (array $row): string => (string) $row['pattern'], $rows);
     }
 
     /**
-     * @return list<array{id: int, pattern: string, note: string|null, created_at: DateTimeImmutable,
-     *                    created_by: string|null}>
+     * @return list<array{id: int, pattern: string, kind: TrustedHostKind, note: string|null,
+     *                    created_at: DateTimeImmutable, created_by: string|null}>
      */
     public function findAll(): array
     {
@@ -64,6 +71,7 @@ final class TrustedHostRepository extends AbstractRepository
         return array_map(static fn (array $row): array => [
             'id' => (int) $row['id'],
             'pattern' => (string) $row['pattern'],
+            'kind' => TrustedHostKind::tryFrom((string) ($row['kind'] ?? '')) ?? TrustedHostKind::Private,
             'note' => $row['note'] === null ? null : (string) $row['note'],
             'created_at' => new DateTimeImmutable((string) $row['created_at']),
             'created_by' => $row['created_by'] === null ? null : (string) $row['created_by'],
@@ -79,10 +87,15 @@ final class TrustedHostRepository extends AbstractRepository
         ) !== null;
     }
 
-    public function add(string $pattern, ?string $note, ?int $userId): int
-    {
+    public function add(
+        string $pattern,
+        ?string $note,
+        ?int $userId,
+        TrustedHostKind $kind = TrustedHostKind::Private,
+    ): int {
         return $this->db->insert($this->table(), [
             'pattern' => $pattern,
+            'kind' => $kind->value,
             'note' => $note,
             'created_by_user_id' => $userId,
             'created_at' => $this->clock->now()->format('Y-m-d H:i:s'),

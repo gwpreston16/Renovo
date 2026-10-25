@@ -10,6 +10,7 @@ use App\Http\HttpClient;
 use App\Http\HttpClientOptions;
 use App\Http\StaticTrustedTargets;
 use App\Http\UrlGuard;
+use App\Http\OutboundPolicy;
 use App\Service\Backup\Destination\BackupDestination;
 use App\Service\Backup\Destination\BackupDestinationFactory;
 use App\Service\Backup\Destination\DestinationException;
@@ -485,12 +486,13 @@ final class BackupDestinationsTest extends TestCase
         $resolver = new FakeDnsResolver($dns + ['nas.test' => ['127.0.0.1'], 'localhost' => ['127.0.0.1']]);
 
         return new HttpExchange(new GuardedTransferClient(
-            new HttpClient(new ResponseFactory(), new StreamFactory(), $options),
+            new HttpClient(new ResponseFactory(), new StreamFactory(), $options, OutboundPolicy::open()),
             new UrlGuard(
                 $resolver,
                 new StaticTrustedTargets([...$trusted, ...$this->literalTrust($trusted)]),
                 $options,
                 new NullLogger(),
+                OutboundPolicy::open(),
             ),
             $options->forTransfers(120, 5 * 1024 ** 3),
         ));

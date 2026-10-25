@@ -8,7 +8,9 @@ use App\I18n\Translator;
 use App\Domain\AlertType;
 use App\Domain\Entity\NotificationChannel;
 use App\Domain\Entity\User;
+use App\Http\OutboundContext;
 use App\Notification\Alert;
+use App\Notification\Notifier;
 use App\Notification\NotifierException;
 use App\Notification\NotifierRegistry;
 use App\Repository\NotificationChannelRepository;
@@ -55,7 +57,28 @@ final class NotificationDispatcher
         private readonly Clock $clock,
         private readonly Translator $translator,
         private readonly int $maxAttempts = 3,
+        private readonly ?OutboundContext $outbound = null,
     ) {
+    }
+
+    /**
+     * One delivery, run inside the outbound context (Phase 43) so a request
+     * the instance refuses is audited against this channel type and the user
+     * it was for.
+     */
+    private function send(Notifier $notifier, NotificationChannel $channel, Alert $alert, User $user): void
+    {
+        $deliver = static function () use ($notifier, $channel, $alert, $user): void {
+            $notifier->send($channel, $alert, $user);
+        };
+
+        if ($this->outbound === null) {
+            $deliver();
+
+            return;
+        }
+
+        $this->outbound->within($channel->type, $user->id, $deliver);
     }
 
     /**
@@ -157,7 +180,7 @@ final class NotificationDispatcher
         );
 
         try {
-            $notifier->send($channel, $alert, $user);
+            $this->send($notifier, $channel, $alert, $user);
         } catch (NotifierException $exception) {
             if ($logId !== null) {
                 $this->log->markFailed($logId, $exception->getMessage());
@@ -208,7 +231,7 @@ final class NotificationDispatcher
         }
 
         try {
-            $notifier->send($channel, $alert, $user);
+            $this->send($notifier, $channel, $alert, $user);
         } catch (NotifierException $exception) {
             $this->log->markFailed($logId, $exception->getMessage());
             $this->channels->recordResult($channel->id, $exception->getMessage());

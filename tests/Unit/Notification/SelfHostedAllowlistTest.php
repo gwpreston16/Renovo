@@ -7,6 +7,7 @@ namespace App\Tests\Unit\Notification;
 use App\Http\HttpClientOptions;
 use App\Http\StaticTrustedTargets;
 use App\Http\UrlGuard;
+use App\Http\OutboundPolicy;
 use App\Notification\Channel\DiscordNotifier;
 use App\Notification\Channel\MattermostNotifier;
 use App\Notification\Channel\NtfyNotifier;
@@ -51,6 +52,7 @@ final class SelfHostedAllowlistTest extends NotifierTestCase
             new StaticTrustedTargets($trusted),
             new HttpClientOptions(),
             new NullLogger(),
+            OutboundPolicy::open(),
         );
 
         return new GuardingFakeClient($guard, 200, $body);
@@ -189,6 +191,7 @@ final class SelfHostedAllowlistTest extends NotifierTestCase
             new StaticTrustedTargets(['ntfy.sh']),
             new HttpClientOptions(),
             new NullLogger(),
+            OutboundPolicy::open(),
         );
         $http = new GuardingFakeClient($guard);
 

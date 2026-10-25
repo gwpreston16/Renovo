@@ -1,0 +1,10 @@
+# Vulnerabilities the image scan is told to accept (Phase 43).
+#
+# One CVE id per line, with the comment above it saying why it does not apply
+# here and when to look at it again. An entry with no reason, or past its
+# review date, is a bug: the point of the scan is that nothing is waved
+# through without somebody having decided it.
+#
+# Format:
+#   # <reason it does not apply>. Review by YYYY-MM-DD.
+#   CVE-YYYY-NNNN

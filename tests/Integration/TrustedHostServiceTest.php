@@ -6,6 +6,7 @@ namespace App\Tests\Integration;
 
 use App\Http\HttpClientOptions;
 use App\Http\UrlGuard;
+use App\Http\OutboundPolicy;
 use App\Repository\AuditLogRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\TrustedHostRepository;
@@ -36,6 +37,7 @@ final class TrustedHostServiceTest extends DatabaseTestCase
             $hosts,
             new HttpClientOptions(),
             new NullLogger(),
+            OutboundPolicy::open(),
         );
         $uri = (new UriFactory())->createUri('http://nas.lan/dav/');
 

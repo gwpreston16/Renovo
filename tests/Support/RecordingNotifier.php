@@ -26,6 +26,9 @@ final class RecordingNotifier implements Notifier
 
     public int $failures = 0;
 
+    /** Called as each message is sent, for a test to look at what surrounds a delivery. */
+    public ?\Closure $onSend = null;
+
     public function __construct(
         private readonly string $key = 'recording',
         private bool $shouldFail = false,
@@ -68,6 +71,10 @@ final class RecordingNotifier implements Notifier
             $this->failures++;
 
             throw NotifierException::transport($this->label(), 'deliberately unavailable');
+        }
+
+        if ($this->onSend !== null) {
+            ($this->onSend)();
         }
 
         $this->sent[] = ['alert' => $alert, 'channel' => $channel, 'user' => $recipient];

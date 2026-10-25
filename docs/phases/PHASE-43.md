@@ -168,7 +168,7 @@ context column.
 ## Decisions & assumptions (confirm or correct before build)
 
 - **Default `open`.** Changing it would break every existing instance's
-  notifications on upgrade.
+  notifications on upgrade. *Confirmed 2026-10-25.*
 - **The allowlist is the trusted-host list, with a kind per entry.** Today a
   trusted entry also allows plain http and a private address. Adding a public
   webhook host just to *contact* it must not lift those checks — a name under
@@ -176,33 +176,45 @@ context column.
   entry gets a kind: **May contact** (allowlist mode only; every `UrlGuard`
   check still applies) or **May also reach a private address over http**
   (today's meaning). Existing entries keep today's meaning. One screen, two
-  kinds, rather than two lists. This adds one column (see Data-model changes).
+  kinds, rather than two lists. This adds one column (see Data-model changes). *Confirmed 2026-10-25.*
 - **Image scanner: Trivy**, as a GitHub Action, scanning the image CI already
-  builds. *Say if you prefer Grype or Docker Scout.*
+  builds. *Confirmed 2026-10-25.*
 - **Fail CI on a fixable high or critical vulnerability** in the image. An
   unfixable one is reported but does not fail the build, because otherwise a
   base-image advisory blocks every PR until upstream acts.
 - **`MAIL_VERIFY_PEER` defaults to true.** This is a behaviour change, so it
-  needs an upgrade note in the release that ships it.
+  needs an upgrade note in the release that ships it. *Confirmed 2026-10-25.*
 - **The full URL is never audited.** Only host, reason and feature are.
+- **Fail CI on fixable high/critical only** — *Confirmed 2026-10-25.*
+
+### Known issues taken by this phase (added 2026-10-25)
+
+- **K54** — rates are fetched inside page requests when the cache is stale; with
+  no route out one load an hour hangs. Under `OUTBOUND_HTTP=off`, and when only
+  the base currency is in use, a page view must not attempt a fetch.
+- **K55** — saving a subscription waits on logo fetching from an unresponsive
+  host; bound the fetch so a save is never held up.
+- **K97** — a configured `0` timeout leaves the update check unbounded; keep the
+  check's own 5 s / 3 s limits whatever the global setting says.
 
 ## Status
 
-- [ ] `OUTBOUND_HTTP` enforced in `HttpClient`; `FixedOutboundHosts` registry
+- [x] K54, K55, K97 fixed and marked *Fixed (Phase 43)*
+- [x] `OUTBOUND_HTTP` enforced in `HttpClient`; `FixedOutboundHosts` registry
       and coverage test
-- [ ] Outbound row on Instance status; specific refusal copy on logo, rates,
+- [x] Outbound row on Instance status; specific refusal copy on logo, rates,
       updates and Send test
-- [ ] `outbound.refused` audit with de-duplication; audit log filter
-- [ ] Trusted-host kind (`contact` / `private`), migration on both engines,
+- [x] `outbound.refused` audit with de-duplication; audit log filter
+- [x] Trusted-host kind (`contact` / `private`), migration on both engines,
       screen copy
-- [ ] README: outbound mode, running with no route out
-- [ ] CI: `composer audit`, `npm audit`, image scan; `dependabot.yml`; the
+- [x] README: outbound mode, running with no route out
+- [x] CI: `composer audit`, `npm audit`, image scan; `dependabot.yml`; the
       ignore-with-reason convention
-- [ ] `SECURITY.md`, linked from the README
-- [ ] `MAIL_VERIFY_PEER`; dev compose sets it false; upgrade note
-- [ ] `.env.example` and the README environment table
-- [ ] New strings in `translations/en.php`
-- [ ] `composer check`, `i18n:check`, offline guard green on both engines
+- [x] `SECURITY.md`, linked from the README
+- [x] `MAIL_VERIFY_PEER`; dev compose sets it false; upgrade note
+- [x] `.env.example` and the README environment table
+- [x] New strings in `translations/en.php`
+- [x] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done
 

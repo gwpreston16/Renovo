@@ -6,9 +6,14 @@ namespace App\Tests\Integration;
 
 use App\Domain\ExchangeRate;
 use App\Domain\Money;
+use App\Http\BlockedTargetException;
+use App\Http\OutboundMode;
+use App\Http\OutboundRefusal;
 use App\Repository\ExchangeRateRepository;
 use App\Repository\InstanceSettingsRepository;
 use App\Service\ExchangeRate\ExchangeRateProviderRegistry;
+use App\Service\ExchangeRate\ExchangeRateHostProvider;
+use App\Service\ExchangeRate\FixerProvider;
 use App\Service\ExchangeRate\FrankfurterProvider;
 use App\Service\ExchangeRate\RateProviderException;
 use App\Service\ExchangeRateService;
@@ -158,6 +163,74 @@ final class ExchangeRateServiceTest extends DatabaseTestCase
         $this->service(new FrankfurterProvider($http, new RequestFactory()))->refreshIfStale();
 
         self::assertCount(2, $http->requestedUrls);
+    }
+
+    public function testAPageInOnlyTheBaseCurrencyNeverFetchesRates(): void
+    {
+        // K54: with every amount in the base currency no rate is read, so a
+        // page view must not pay a connect timeout to refresh a table it will
+        // not use.
+        $http = FakeHttpClient::failing();
+        $service = $this->service(new FrankfurterProvider($http, new RequestFactory()));
+
+        $service->refreshIfStale(['GBP', 'gbp']);
+        self::assertSame([], $http->requestedUrls);
+
+        $service->refreshIfStale(['GBP', 'EUR']);
+        self::assertCount(1, $http->requestedUrls);
+    }
+
+    public function testAPageViewMakesNoAttemptWhileOutboundRequestsAreOff(): void
+    {
+        $http = FakeHttpClient::failing();
+        $service = new ExchangeRateService(
+            $this->rates,
+            new ExchangeRateProviderRegistry([new FrankfurterProvider($http, new RequestFactory())]),
+            $this->settings,
+            $this->clock,
+            new NullLogger(),
+            self::TTL_SECONDS,
+            self::RETRY_SECONDS,
+            '',
+            null,
+            OutboundMode::Off,
+        );
+
+        $service->refreshIfStale(['GBP', 'EUR']);
+        $service->refreshIfStale();
+
+        self::assertSame([], $http->requestedUrls);
+    }
+
+    public function testRefreshNowKeepsTheReasonTheInstanceRefused(): void
+    {
+        $service = $this->service(new FrankfurterProvider(
+            FakeHttpClient::throwing(
+                BlockedTargetException::outbound(BlockedTargetException::OUTBOUND_OFF, 'api.frankfurter.app'),
+            ),
+            new RequestFactory(),
+        ));
+
+        try {
+            $service->refreshNow();
+            self::fail('The refresh was not refused.');
+        } catch (RateProviderException $exception) {
+            self::assertSame(BlockedTargetException::OUTBOUND_OFF, OutboundRefusal::reasonOf($exception));
+        }
+    }
+
+    public function testEveryProviderNamesItsHostForTheAllowlist(): void
+    {
+        $registry = new ExchangeRateProviderRegistry([
+            new FrankfurterProvider(FakeHttpClient::failing(), new RequestFactory()),
+            new ExchangeRateHostProvider(FakeHttpClient::failing(), new RequestFactory()),
+            new FixerProvider(FakeHttpClient::failing(), new RequestFactory()),
+        ]);
+
+        self::assertSame(
+            ['api.frankfurter.app', 'api.exchangerate.host', 'data.fixer.io'],
+            array_map(static fn ($provider): string => $provider->outboundHost(), $registry->all()),
+        );
     }
 
     /**

@@ -38,12 +38,16 @@ final class LocalServer
         $this->requestLog = (string) tempnam(sys_get_temp_dir(), 'renovo-server-log-');
 
         $path = __DIR__ . '/servers/' . $router;
+        $null = PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null';
         $process = proc_open(
             [PHP_BINARY, '-S', '127.0.0.1:' . $this->port, $path],
-            [0 => ['pipe', 'r'], 1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']],
+            [0 => ['pipe', 'r'], 1 => ['file', $null, 'w'], 2 => ['file', $null, 'w']],
             $pipes,
             dirname($path),
-            ['REQUEST_LOG' => $this->requestLog, 'PATH' => (string) getenv('PATH')] + $environment,
+            ['REQUEST_LOG' => $this->requestLog, 'PATH' => (string) getenv('PATH')]
+                // Windows will not start a socket server without its system root.
+                + (PHP_OS_FAMILY === 'Windows' ? ['SystemRoot' => (string) getenv('SystemRoot')] : [])
+                + $environment,
         );
         if (!is_resource($process)) {
             throw new RuntimeException('Could not start the built-in server.');

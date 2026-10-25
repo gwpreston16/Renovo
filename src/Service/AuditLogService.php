@@ -136,6 +136,53 @@ final class AuditLogService
     }
 
     /**
+     * Record a refused outbound request (Phase 43): one entry per host,
+     * reason and feature per hour, its `count` raised by each repeat, so a
+     * channel the scheduler retries every run cannot fill the log.
+     *
+     * Only the host is kept, never the URL — a webhook's address can itself
+     * be the secret. Instance-wide: it carries no household, so only an
+     * instance administrator sees it.
+     */
+    public function recordOutboundRefusal(
+        string $host,
+        string $reason,
+        ?string $feature,
+        ?User $actor,
+    ): void {
+        $since = $this->clock->now()->modify('-1 hour');
+
+        try {
+            foreach ($this->repository->recentFor(AuditAction::OutboundRefused, $host, $since) as $entry) {
+                $context = $entry['context'];
+
+                if (($context['reason'] ?? null) === $reason && ($context['feature'] ?? null) === $feature) {
+                    $this->repository->setContextValue($entry['id'], 'count', (int) ($context['count'] ?? 1) + 1);
+
+                    return;
+                }
+            }
+        } catch (Throwable $exception) {
+            $this->logger->error('Could not update an audit entry', [
+                'action' => AuditAction::OutboundRefused->value,
+                'exception' => $exception->getMessage(),
+            ]);
+
+            return;
+        }
+
+        $this->write(
+            AuditAction::OutboundRefused,
+            $actor?->id,
+            $actor?->email,
+            null,
+            $host,
+            null,
+            ['host' => $host, 'reason' => $reason, 'feature' => $feature, 'count' => 1],
+        );
+    }
+
+    /**
      * @param list<AuditAction> $actions
      * @return list<AuditEntry>
      */

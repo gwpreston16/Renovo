@@ -38,6 +38,7 @@ use App\Service\ExchangeRate\ExchangeRateProviderRegistry;
 use DateTimeImmutable;
 use App\Domain\TokenScope;
 use App\Domain\TokenScopes;
+use App\Http\OutboundMode;
 use App\Support\Clock;
 
 /**
@@ -89,6 +90,7 @@ final class SettingsScreenService
         private readonly string $smtpEncryption = 'none',
         private readonly bool $smtpAuthenticates = false,
         private readonly bool $metricsEnabled = false,
+        private readonly OutboundMode $outboundMode = OutboundMode::Open,
     ) {
     }
 
@@ -204,6 +206,7 @@ final class SettingsScreenService
      *     trusted_hosts: list<array<string, mixed>>,
      *     smtp: array{host: string, port: int, encryption: string, authenticates: bool},
      *     metrics_enabled: bool,
+     *     outbound_mode: string,
      *     secrets_key_set: bool,
      *     scheduler_last_run_at: DateTimeImmutable|null,
      *     version: string,
@@ -232,6 +235,8 @@ final class SettingsScreenService
                 'authenticates' => $this->smtpAuthenticates,
             ],
             'metrics_enabled' => $this->metricsEnabled,
+            // Phase 43: what `OUTBOUND_HTTP` lets this instance reach.
+            'outbound_mode' => $this->outboundMode->value,
             // Without SECRETS_KEY, stored secrets are encrypted under
             // SESSION_KEY (or TOTP_ENCRYPTION_KEY), and rotating the session
             // key would make every channel and authenticator unreadable.

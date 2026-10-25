@@ -14,6 +14,7 @@ use App\Repository\StoredSecretRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\AuditLogRepository;
 use App\Domain\AlertType;
+use App\Http\OutboundContext;
 use App\Notification\Alert;
 use App\Notification\NotifierException;
 use App\Repository\NotificationLogRepository;
@@ -222,6 +223,35 @@ final class NotificationDispatchTest extends NotificationTestCase
         $this->expectException(NotifierException::class);
         $this->expectExceptionMessageMatches('/cannot be read/');
         $this->dispatcher->sendTest($this->user($this->alice), $channel);
+    }
+
+    public function testEachDeliveryRunsInsideTheOutboundContextOfItsChannelAndUser(): void
+    {
+        // Phase 43: a request the instance refuses is audited against the
+        // channel type and the user it was for, so the wrapper has to be there.
+        $context = new OutboundContext();
+        $seen = [];
+        $this->notifier->onSend = static function () use ($context, &$seen): void {
+            $seen[] = [$context->feature(), $context->actorId()];
+        };
+        $dispatcher = new NotificationDispatcher(
+            $this->notificationSettings,
+            $this->registry,
+            $this->log,
+            $this->channels,
+            new NotificationRateLimiter($this->log, $this->clock, 60, 20),
+            new NullLogger(),
+            $this->clock,
+            TestTranslator::create(),
+            3,
+            $context,
+        );
+        $this->addChannel($this->alice);
+
+        $dispatcher->dispatch($this->user($this->alice), [$this->alert()]);
+
+        self::assertSame([[$this->notifier->key(), $this->alice]], $seen);
+        self::assertNull($context->feature(), 'The context ends with the delivery.');
     }
 
     public function testAnInactiveChannelReceivesNothing(): void

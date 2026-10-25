@@ -40,6 +40,7 @@ final class GuardedHttpClient implements ClientInterface, GuardedClient
         private readonly RedirectPolicy $redirects,
         private readonly StreamFactoryInterface $streams,
         private readonly HttpClientOptions $options,
+        private readonly OutboundPolicy $policy,
     ) {
     }
 
@@ -73,7 +74,11 @@ final class GuardedHttpClient implements ClientInterface, GuardedClient
             }
             $remaining--;
 
-            $next = $this->redirects->next($request->getUri(), $response->getHeaderLine('Location'));
+            try {
+                $next = $this->redirects->next($request->getUri(), $response->getHeaderLine('Location'));
+            } catch (BlockedTargetException $refusal) {
+                throw $this->policy->record($request->getUri()->getHost(), $refusal);
+            }
 
             $request = $request->withUri($next);
 

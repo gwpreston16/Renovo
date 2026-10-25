@@ -740,7 +740,8 @@
                                value="{{ values.website_url|default('') }}"
                                placeholder="{{ t('subscriptions_form.website_placeholder') }}"
                                aria-describedby="website_url-hint{% if errors.website_url is defined %} website_url-error{% endif %}">
-                        <p class="hint" id="website_url-hint">{{ t('subscriptions_form.website_hint') }}</p>
+                        <p class="hint" id="website_url-hint">{{ t('subscriptions_form.website_hint') }}
+                            {%- if outbound_mode != 'open' %} {{ t('subscriptions_form.website_outbound_' ~ outbound_mode) }}{% endif %}</p>
                         {% if errors.website_url is defined %}
                             <p class="field-error" id="website_url-error">{{ error_message(errors.website_url) }}</p>
                         {% endif %}

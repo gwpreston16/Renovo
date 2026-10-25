@@ -50,6 +50,16 @@ final class HttpClientOptionsTest extends TestCase
         self::assertNull($options->proxyFor('https', 'host.test'));
     }
 
+    public function testAConfiguredZeroIsNoLimitSoANarrowingCallerKeepsItsOwn(): void
+    {
+        // HTTP_TIMEOUT_SECONDS=0 means "no limit" to curl. Narrowing must not
+        // take that as the tighter of the two (K97).
+        $narrowed = (new HttpClientOptions(timeoutSeconds: 0, connectTimeoutSeconds: 0))->narrowedTo(5, 3, 65536);
+
+        self::assertSame(5, $narrowed->timeoutSeconds);
+        self::assertSame(3, $narrowed->connectTimeoutSeconds);
+    }
+
     public function testNarrowingTakesTheSmallerLimitAndKeepsTheProxy(): void
     {
         $options = new HttpClientOptions(

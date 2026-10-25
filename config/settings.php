@@ -87,6 +87,9 @@ return [
         'user' => $env('SMTP_USER', ''),
         'password' => $env('SMTP_PASSWORD', ''),
         'encryption' => $env('SMTP_ENCRYPTION', 'none'),
+        // Whether the relay's certificate is checked, for every scheme. On by
+        // default; a local relay with a self-signed certificate sets it false.
+        'verify_peer' => $bool($env('MAIL_VERIFY_PEER', 'true')),
         'from_address' => $env('MAIL_FROM_ADDRESS', 'renovo@localhost'),
         'from_name' => $env('MAIL_FROM_NAME', 'Renovo'),
     ],

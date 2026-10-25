@@ -29,6 +29,13 @@ interface ExchangeRateProvider
     public function label(): string;
 
     /**
+     * The host this provider's endpoint is on. Under `OUTBOUND_HTTP=allowlist`
+     * it is admitted without the administrator listing it, while this is the
+     * configured provider (Phase 43).
+     */
+    public function outboundHost(): string;
+
+    /**
      * A sentence for the wizard and the settings page.
      */
     /**

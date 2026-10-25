@@ -38,8 +38,8 @@ final class HttpClientOptions
     public function narrowedTo(int $timeoutSeconds, int $connectTimeoutSeconds, int $maxResponseBytes): self
     {
         return new self(
-            timeoutSeconds: min($this->timeoutSeconds, $timeoutSeconds),
-            connectTimeoutSeconds: min($this->connectTimeoutSeconds, $connectTimeoutSeconds),
+            timeoutSeconds: self::narrower($this->timeoutSeconds, $timeoutSeconds),
+            connectTimeoutSeconds: self::narrower($this->connectTimeoutSeconds, $connectTimeoutSeconds),
             maxResponseBytes: min($this->maxResponseBytes, $maxResponseBytes),
             maxRedirects: $this->maxRedirects,
             userAgent: $this->userAgent,
@@ -47,6 +47,17 @@ final class HttpClientOptions
             httpsProxy: $this->httpsProxy,
             noProxy: $this->noProxy,
         );
+    }
+
+    /**
+     * The tighter of a configured time limit and one a caller asks for. A
+     * configured 0 means curl's "no limit"; it is not a limit tighter than the
+     * caller's, so the caller's wins (K97) — otherwise `HTTP_TIMEOUT_SECONDS=0`
+     * would lift the bound a dashboard's update check relies on.
+     */
+    private static function narrower(int $configured, int $asked): int
+    {
+        return $configured <= 0 ? $asked : min($configured, $asked);
     }
 
     /**

@@ -66,6 +66,41 @@ jobs:
           SESSION_KEY: ci-session-key-not-a-secret-0000000000000000
         run: vendor/bin/phpunit --no-coverage tests/Unit/ApiDocCoverageTest.php
 
+  # Whether anything Renovo ships has a known vulnerability (Phase 43). Reads
+  # the lock files, so nothing is installed. A Composer advisory fails the
+  # build whatever its severity, which is `composer audit`'s own default; npm
+  # fails on a high one in what ships, and on a critical one in the build
+  # tooling. A Composer advisory that does not apply is accepted with a reason
+  # and a review date in `composer.json` (`config.audit.ignore`); see
+  # "Accepting an advisory" in docs/development.md.
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: composer:v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Composer packages
+        run: composer audit --locked
+
+      # What reaches the build's output.
+      - name: npm packages that ship
+        run: npm audit --omit=dev --audit-level=high
+
+      # The tooling that builds the assets too: a compromised one writes into
+      # what ships.
+      - name: npm build tooling
+        run: npm audit --audit-level=critical
+
   # The full suite runs against both engines: portable SQL is only portable if
   # somebody checks.
   tests:
@@ -301,9 +336,26 @@ jobs:
           file: docker/php/Dockerfile
           target: app
           push: false
-          load: false
+          load: true
+          tags: renovo-app:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Known vulnerabilities in the image as shipped (Phase 43): the base
+      # image's packages and the Composer ones inside it. Fails on a HIGH or
+      # CRITICAL one that has a fix; one with no fix yet is reported in the
+      # log but does not fail the build, or a base-image advisory would block
+      # every pull request until upstream acts. One that does not apply is
+      # accepted in `.trivyignore`, with a reason and a review date.
+      - name: Scan the application image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: renovo-app:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          trivyignores: .trivyignore
+          format: table
 
       # The web image too: it carries the web root, compiled assets included,
       # because those exist only inside the image. A stage that does not build
@@ -315,6 +367,17 @@ jobs:
           file: docker/php/Dockerfile
           target: web
           push: false
-          load: false
+          load: true
+          tags: renovo-web:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Scan the web image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: renovo-web:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          trivyignores: .trivyignore
+          format: table

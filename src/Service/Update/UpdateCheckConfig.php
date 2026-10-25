@@ -23,6 +23,9 @@ final class UpdateCheckConfig
 {
     public const DEFAULT_REPOSITORY = 'gwpreston16/Renovo';
 
+    /** The one host a check talks to; declared here for `OUTBOUND_HTTP=allowlist`. */
+    public const API_HOST = 'api.github.com';
+
     private const REPOSITORY_PATTERN = '/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/';
 
     public function __construct(
@@ -65,6 +68,6 @@ final class UpdateCheckConfig
 
     public function latestReleaseUrl(): string
     {
-        return sprintf('https://api.github.com/repos/%s/releases/latest', $this->repository);
+        return sprintf('https://%s/repos/%s/releases/latest', self::API_HOST, $this->repository);
     }
 }

@@ -51,7 +51,7 @@ can be moved.
 | 40 | [Secrets at rest, and rotating the key that guards them](docs/phases/PHASE-40.md) | — | 2–3 migrations (backfill) | ✅ done |
 | 41 | [Security headers and a strict Content-Security-Policy](docs/phases/PHASE-41.md) | — | None | ✅ done |
 | 42 | [API tokens: scopes, lifetimes and rate limits](docs/phases/PHASE-42.md) | 40 | 1 table, 1 column | ✅ done |
-| 43 | [Control over outbound requests, and supply-chain checks](docs/phases/PHASE-43.md) | — | 1 column | 📋 planned |
+| 43 | [Control over outbound requests, and supply-chain checks](docs/phases/PHASE-43.md) | — | 1 column | ✅ done |
 | 44 | [The README and the docs, rebuilt for the first five minutes](docs/phases/PHASE-44.md) | — | None | ✅ done |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos

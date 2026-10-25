@@ -19,6 +19,11 @@ final class ExchangeRateHostProvider extends HttpRateProvider
 
     private const ENDPOINT = 'https://api.exchangerate.host/live';
 
+    public function outboundHost(): string
+    {
+        return (string) parse_url(self::ENDPOINT, PHP_URL_HOST);
+    }
+
     public function key(): string
     {
         return self::KEY;

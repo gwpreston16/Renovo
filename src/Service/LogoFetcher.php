@@ -6,6 +6,8 @@ namespace App\Service;
 
 use App\Http\BlockedTargetException;
 use App\Http\GuardedClient;
+use App\Http\OutboundContext;
+use App\Http\OutboundRefusal;
 use App\Repository\LogoCacheRepository;
 use App\Support\Clock;
 use Psr\Http\Message\RequestFactoryInterface;
@@ -51,6 +53,9 @@ final class LogoFetcher
 
     private const MAX_BYTES = 512 * 1024;
 
+    /** The most time the four icon paths may take between them, in seconds. */
+    private const BUDGET_SECONDS = 6;
+
     public function __construct(
         private readonly GuardedClient $http,
         private readonly RequestFactoryInterface $requests,
@@ -59,6 +64,7 @@ final class LogoFetcher
         private readonly Clock $clock,
         private readonly LoggerInterface $logger,
         private readonly string $cacheDirectory,
+        private readonly ?OutboundContext $context = null,
     ) {
     }
 
@@ -67,7 +73,16 @@ final class LogoFetcher
      * found. Never throws: a missing logo is a cosmetic disappointment, and a
      * subscription must save without one.
      */
-    public function fetchFor(?string $websiteUrl): ?string
+    public function fetchFor(?string $websiteUrl, ?int $actorUserId = null): ?string
+    {
+        $work = fn (): ?string => $this->fetchDomain($websiteUrl);
+
+        return $this->context === null
+            ? $work()
+            : $this->context->within(OutboundContext::LOGO, $actorUserId, $work);
+    }
+
+    private function fetchDomain(?string $websiteUrl): ?string
     {
         $domain = self::domainOf($websiteUrl);
         if ($domain === null) {
@@ -93,10 +108,16 @@ final class LogoFetcher
             }
         }
 
-        $cached = $this->download($domain);
+        $refusedByMode = false;
+        $cached = $this->download($domain, $refusedByMode);
 
         if ($cached === null) {
-            $this->cache->recordFailure($domain, $now);
+            // The instance's outbound mode said no: the site was never asked,
+            // so it is not a site with no icon. Remembering it as one would
+            // keep the logo away for a week after the mode is loosened.
+            if (!$refusedByMode) {
+                $this->cache->recordFailure($domain, $now);
+            }
 
             return null;
         }
@@ -144,10 +165,17 @@ final class LogoFetcher
      *
      * @return string|null The path of the cached file.
      */
-    private function download(string $domain): ?string
+    private function download(string $domain, bool &$refusedByMode): ?string
     {
+        // A site that does not answer must not hold a save for the sum of
+        // four timeouts (K55): once the budget is spent, the rest are skipped.
+        $deadline = microtime(true) + self::BUDGET_SECONDS;
         foreach (self::CANDIDATES as $path) {
-            $body = $this->get('https://' . $domain . $path);
+            if (microtime(true) >= $deadline || $refusedByMode) {
+                break;
+            }
+
+            $body = $this->get('https://' . $domain . $path, $refusedByMode);
 
             if ($body !== null && $this->looksLikeAnImage($body)) {
                 $stored = $this->writeToCache($domain, $body);
@@ -161,7 +189,7 @@ final class LogoFetcher
         return null;
     }
 
-    private function get(string $url): ?string
+    private function get(string $url, bool &$refusedByMode): ?string
     {
         try {
             $response = $this->http->send(
@@ -169,6 +197,12 @@ final class LogoFetcher
                 httpsOnly: true,
             );
         } catch (BlockedTargetException $exception) {
+            if (OutboundRefusal::reasonOf($exception) !== null) {
+                $refusedByMode = true;
+
+                return null;
+            }
+
             // Worth a line in the log: somebody's URL resolved somewhere this
             // server is not allowed to go, and that is not a routine miss.
             $this->logger->info('Logo fetch refused a destination', [

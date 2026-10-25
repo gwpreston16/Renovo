@@ -14,4 +14,8 @@ enum CheckNowResult: string
     case TooSoon = 'too_soon';
     case Checked = 'checked';
     case Failed = 'failed';
+    /** Refused by the instance: `OUTBOUND_HTTP=off` (Phase 43). */
+    case OutboundOff = 'outbound_off';
+    /** Refused by the instance: GitHub is not on the allowed list (Phase 43). */
+    case OutboundNotAllowed = 'outbound_not_allowed';
 }

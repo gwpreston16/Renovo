@@ -105,7 +105,7 @@ abstract class HttpNotifier
             // Covers both a refused destination and a dead one. The user sees
             // the reason against the channel; neither case is worth taking the
             // rest of the run down for.
-            throw NotifierException::transport($this->label(), $this->redact($exception->getMessage()));
+            throw NotifierException::transport($this->label(), $this->redact($exception->getMessage()), $exception);
         }
     }
 

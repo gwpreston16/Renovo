@@ -161,6 +161,16 @@
                     </span>
                 </dd>
 
+                {#
+                    Outbound requests (Phase 43): what OUTBOUND_HTTP lets this
+                    instance reach. SMTP is not HTTP and is not governed by it.
+                #}
+                <dt>{{ t('settings.status_outbound') }}</dt>
+                <dd>
+                    <span class="badge {{ outbound_mode == 'open' ? 'badge-ok' : 'badge-warn' }}">{{ t('settings.outbound_' ~ outbound_mode) }}</span>
+                    <span class="muted block">{{ t('settings.outbound_' ~ outbound_mode ~ '_hint', {'variable': 'OUTBOUND_HTTP'}) }}</span>
+                </dd>
+
                 <dt>{{ t('settings.status_metrics') }}</dt>
                 <dd>
                     {% if metrics_enabled %}
@@ -677,6 +687,7 @@
                     <thead>
                     <tr>
                         <th scope="col">{{ t('settings.host_or_range') }}</th>
+                        <th scope="col">{{ t('settings.trusted_kind') }}</th>
                         <th scope="col">{{ t('field.note') }}</th>
                         <th scope="col">{{ t('field.added') }}</th>
                         <th scope="col"><span class="visually-hidden">{{ t('field.actions') }}</span></th>
@@ -686,6 +697,7 @@
                     {% for host in trusted_hosts %}
                         <tr>
                             <td><code>{{ host.pattern }}</code></td>
+                            <td>{{ t('settings.trusted_kind_' ~ host.kind.value) }}</td>
                             <td>{{ host.note }}</td>
                             <td class="num">
                                 {{ host.created_at|local_date('d MMM y') }}
@@ -711,6 +723,13 @@
             <label for="trusted_pattern">{{ t('settings.host_address_or_range') }}</label>
             <input type="text" id="trusted_pattern" name="pattern"
                    placeholder="{{ t('settings.trusted_host_placeholder') }}" required>
+
+            <label for="trusted_kind">{{ t('settings.trusted_kind') }}</label>
+            <select id="trusted_kind" name="kind" aria-describedby="trusted_kind-hint">
+                <option value="private">{{ t('settings.trusted_kind_private') }}</option>
+                <option value="contact">{{ t('settings.trusted_kind_contact') }}</option>
+            </select>
+            <p class="muted note" id="trusted_kind-hint">{{ t('settings.trusted_kind_hint') }}</p>
 
             <label for="trusted_note">{{ t('field.note') }}</label>
             <input type="text" id="trusted_note" name="note" placeholder="{{ t('settings.trusted_host_note_placeholder') }}">

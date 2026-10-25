@@ -7,6 +7,7 @@ namespace App\Tests\Unit;
 use App\Http\HttpClient;
 use App\Http\HttpClientException;
 use App\Http\HttpClientOptions;
+use App\Http\OutboundPolicy;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
@@ -34,7 +35,12 @@ final class HttpClientSchemeTest extends TestCase
     #[DataProvider('refusedSchemeProvider')]
     public function testRefusesNonHttpSchemes(string $scheme): void
     {
-        $client = new HttpClient(new ResponseFactory(), new StreamFactory(), new HttpClientOptions());
+        $client = new HttpClient(
+            new ResponseFactory(),
+            new StreamFactory(),
+            new HttpClientOptions(),
+            OutboundPolicy::open(),
+        );
 
         $this->expectException(HttpClientException::class);
         $this->expectExceptionMessage(sprintf('Refusing to fetch scheme "%s"', $scheme));

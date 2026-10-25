@@ -13,6 +13,7 @@ use App\Http\HttpClientOptions;
 use App\Http\RedirectPolicy;
 use App\Http\StaticTrustedTargets;
 use App\Http\UrlGuard;
+use App\Http\OutboundPolicy;
 use App\Tests\Support\FakeDnsResolver;
 use App\Tests\Support\LocalServer;
 use PHPUnit\Framework\TestCase;
@@ -217,7 +218,12 @@ final class HttpTransportTest extends TestCase
         // A 5 GB transfer, but with no file to stream into this body would
         // be held in memory, and memory is held to the operator's 1000 bytes.
         $client = new GuardedTransferClient(
-            new HttpClient(new ResponseFactory(), new StreamFactory(), new HttpClientOptions(maxResponseBytes: 1000)),
+            new HttpClient(
+                new ResponseFactory(),
+                new StreamFactory(),
+                new HttpClientOptions(maxResponseBytes: 1000),
+                OutboundPolicy::open(),
+            ),
             $this->guard(new HttpClientOptions()),
             (new HttpClientOptions())->forTransfers(60, 5 * 1024 ** 3),
         );
@@ -266,11 +272,12 @@ final class HttpTransportTest extends TestCase
         $streams = new StreamFactory();
 
         return new GuardedHttpClient(
-            new HttpClient(new ResponseFactory(), $streams, $options),
+            new HttpClient(new ResponseFactory(), $streams, $options, OutboundPolicy::open()),
             $this->guard($options),
             new RedirectPolicy(new UriFactory()),
             $streams,
             $options,
+            OutboundPolicy::open(),
         );
     }
 
@@ -279,7 +286,7 @@ final class HttpTransportTest extends TestCase
         $options = new HttpClientOptions();
 
         return new GuardedTransferClient(
-            new HttpClient(new ResponseFactory(), new StreamFactory(), $options),
+            new HttpClient(new ResponseFactory(), new StreamFactory(), $options, OutboundPolicy::open()),
             $this->guard($options),
             $options->forTransfers(60, $maxBytes),
         );
@@ -287,7 +294,13 @@ final class HttpTransportTest extends TestCase
 
     private function guard(HttpClientOptions $options): UrlGuard
     {
-        return new UrlGuard($this->dns, new StaticTrustedTargets(['trusted.test']), $options, new NullLogger());
+        return new UrlGuard(
+            $this->dns,
+            new StaticTrustedTargets(['trusted.test']),
+            $options,
+            new NullLogger(),
+            OutboundPolicy::open(),
+        );
     }
 
     private function request(string $method, string $url): \Psr\Http\Message\RequestInterface

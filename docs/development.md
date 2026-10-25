@@ -62,6 +62,43 @@ DB_NAME=renovo_test CROSS_ENGINE_DB_DRIVER=mysql CROSS_ENGINE_DB_PORT=3317 \
   CROSS_ENGINE_DB_NAME=renovo_test vendor/bin/phpunit --filter OtherEngine
 ```
 
+## Dependency and image scanning
+
+CI runs three checks on every pull request, and Dependabot proposes updates
+weekly for Composer, npm, GitHub Actions and the Docker base images, with minor
+and patch updates grouped:
+
+- `composer audit --locked` — fails on any advisory.
+- `npm audit --omit=dev --audit-level=high` for what ships in the build, and
+  `npm audit --audit-level=critical` over the build tooling too.
+- A [Trivy](https://github.com/aquasecurity/trivy) scan of the built `app` and
+  `web` images, failing on a HIGH or CRITICAL vulnerability **that has a fix**.
+  One with no fix yet is listed in the log and does not fail the build, or a
+  base-image advisory would block every pull request until upstream acts.
+
+### Accepting an advisory
+
+When an advisory does not apply to Renovo, accept it where the tool reads its
+ignore list, and say why and when to look again:
+
+- **Composer:** `config.audit.ignore` in `composer.json`, as an object whose
+  value is the reason, ending in a review date:
+
+  ```json
+  "audit": {
+      "ignore": {
+          "PKSA-xxxx-xxxx": "Only reachable through the PDF upload, which Renovo does not have. Review by 2027-03-01."
+      }
+  }
+  ```
+
+- **Images:** the CVE id in `.trivyignore`, with the reason and the review date
+  in the comment above it.
+- **npm:** `npm audit` has no ignore list. Update the package, or drop the check
+  for that run in review and say why in the pull request.
+
+An entry with no reason, or past its review date, is a bug.
+
 ## How it fits together
 
 ```
