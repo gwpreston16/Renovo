@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–45
+## Planned — Phases 30–46
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -54,6 +54,7 @@ can be moved.
 | 43 | [Control over outbound requests, and supply-chain checks](docs/phases/PHASE-43.md) | — | 1 column | ✅ done |
 | 44 | [The README and the docs, rebuilt for the first five minutes](docs/phases/PHASE-44.md) | — | None | ✅ done |
 | 45 | [Calendar feed and API edge cases, from the known-issues log](docs/phases/PHASE-45.md) | — | None | 📋 planned |
+| 46 | [Sign-in and second-factor edge cases, from the known-issues log](docs/phases/PHASE-46.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -122,6 +123,11 @@ can be moved.
   (K45, K46, K52, K56): the calendar feed shows the price that will be taken and
   is built in linear time, a huge `?page=` is an empty page, and an API logo
   upload with no file is a 422.
+- **46 — Sign-in and second-factor edge cases.** A batch from the known-issues
+  log (K6, K28, K29, K30, K33, K106): a `next` target can't leave the site, the
+  setup wizard's sign-in is audited, the lockout lasts what it says, a TOTP
+  code is accepted once, a passkey can be re-saved unchanged on MySQL, and an
+  unreadable setup secret is a form error.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
