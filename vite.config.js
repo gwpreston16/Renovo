@@ -63,6 +63,28 @@ function vendorFontLicences() {
     };
 }
 
+/**
+ * Drop the `/*! tailwindcss vX | MIT License | https://tailwindcss.com *\/`
+ * banner from the compiled stylesheet.
+ *
+ * The earlier minifier discarded it; Vite 8's keeps every `/*!` comment. It is
+ * only a comment, but it is a URL in a file the offline check scans, and the
+ * licence text itself stays in node_modules where it belongs.
+ */
+function stripTailwindBanner() {
+    return {
+        name: 'renovo:strip-tailwind-banner',
+        enforce: 'post',
+        generateBundle(_options, bundle) {
+            for (const file of Object.values(bundle)) {
+                if (file.type === 'asset' && file.fileName.endsWith('.css')) {
+                    file.source = String(file.source).replace(/\/\*! tailwindcss [^*]*\*\/\n?/, '');
+                }
+            }
+        },
+    };
+}
+
 export default defineConfig({
     root,
     plugins: [
@@ -74,6 +96,7 @@ export default defineConfig({
         }),
         tailwindcss(),
         iconSprite({ source: resolve(root, 'assets/theme/icons.json') }),
+        stripTailwindBanner(),
         vendorFontLicences(),
     ],
 
