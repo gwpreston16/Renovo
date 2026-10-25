@@ -347,8 +347,8 @@ what is ruled out.
 
 ## Since v1
 
-Since v1, each phase has shipped as a minor release (see
-[`CHANGELOG.md`](../CHANGELOG.md)):
+Since v1, each phase has shipped as a minor release, and each hotfix as a
+patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
 
 - **Phase 30 — API catch-up: tags and payment-method logos — complete
   (1.1.0).** An API client can now do with tags and payment-method logos what
@@ -519,6 +519,12 @@ Since v1, each phase has shipped as a minor release (see
   to report a vulnerability, and the mail relay's certificate is checked by
   default (`MAIL_VERIFY_PEER`). No API changes. One migration. See
   [Outbound requests](operations.md#outbound-requests).
+- **Phase 43.1 — dependency updates after 1.13.0 — hotfix (1.13.1).**
+  Dependabot's first batch: Vite 8, Lucide 1.61, Twig, Monolog, PHPStan 2.3,
+  PHP_CodeSniffer 4, the Node 26 build stage and the CI actions. The Tailwind
+  banner is stripped from the built CSS so the offline check still passes, and
+  the tests that PHPStan 2.3 flagged are marked `@phpstan-impure`. No
+  behaviour changes. No migrations.
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
