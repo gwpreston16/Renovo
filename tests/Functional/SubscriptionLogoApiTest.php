@@ -45,7 +45,11 @@ final class SubscriptionLogoApiTest extends ApiTestCase
     private function upload(int $id, UploadedFile $file): ResponseInterface
     {
         $request = (new ServerRequestFactory())
-            ->createServerRequest('POST', 'http://localhost/api/v1/subscriptions/' . $id . '/logo', ['REMOTE_ADDR' => '127.0.0.1'])
+            ->createServerRequest(
+                'POST',
+                'http://localhost/api/v1/subscriptions/' . $id . '/logo',
+                ['REMOTE_ADDR' => '127.0.0.1'],
+            )
             ->withHeader('Authorization', 'Bearer ' . $this->ownerToken)
             ->withUploadedFiles(['logo' => $file]);
 

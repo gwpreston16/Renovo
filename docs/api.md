@@ -579,7 +579,7 @@ without anybody editing the row. A token without that scope changes nothing.
 | `status` | enum | `active`, `trial`, `paused`, `cancelled`. Only that state; takes precedence over `inactive`. |
 | `sort` | enum | `name`, `next_payment`, `price`, `created`. |
 | `dir` | enum | `asc`, `desc`. |
-| `page` | integer | Minimum 1. |
+| `page` | integer | Minimum 1. A page past the last is empty, however large the number. |
 | `per_page` | integer | 1–100, default 25. |
 
 Two things hold whatever `sort` and `dir` say, so that a page of results means
@@ -682,8 +682,10 @@ curl -X POST \
      https://your-instance.example/api/v1/subscriptions/12/logo
 ```
 
-Returns the updated subscription. Responses: `200`, `400`, `401`, `403`, `404`,
-`422`.
+Returns the updated subscription. A `logo` part that carries no file, or a file
+that is not one of those image types, is a `422` on `logo` and leaves the
+existing logo in place; removing a logo is what `DELETE` is for. Responses:
+`200`, `400`, `401`, `403`, `404`, `422`.
 
 When no logo has been uploaded, the icon is fetched from the domain in
 `website_url` — through the instance's guarded HTTP client, and cached per

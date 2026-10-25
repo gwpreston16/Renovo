@@ -190,7 +190,10 @@ paths:
             ones, and rows with no value in the sort column (a lifetime licence
             has no next payment date) after those that have one.
         - { name: dir, in: query, schema: { type: string, enum: [asc, desc] } }
-        - { name: page, in: query, schema: { type: integer, minimum: 1 } }
+        - name: page
+          in: query
+          description: A page past the last is empty, however large the number.
+          schema: { type: integer, minimum: 1 }
         - name: per_page
           in: query
           schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
@@ -312,7 +315,13 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "422":
-          $ref: "#/components/responses/ValidationFailed"
+          description: >-
+            The `logo` part carried no file, or the file is not a PNG, JPEG, GIF or WebP
+            image. The existing logo is left in place.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 

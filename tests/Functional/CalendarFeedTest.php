@@ -240,7 +240,10 @@ final class CalendarFeedTest extends ApiTestCase
         $lines = explode("\r\n", $this->unfold($this->feed()));
 
         self::assertSame('BEGIN:VCALENDAR', $lines[0]);
-        self::assertMatchesRegularExpression('/^UID:renovo-\\d+-payment-20261201@renovo\\.local$/m', implode("\n", $lines));
+        self::assertMatchesRegularExpression(
+            '/^UID:renovo-\\d+-payment-20261201@renovo\\.local$/m',
+            implode("\n", $lines),
+        );
         self::assertContains('DTSTART;VALUE=DATE:20261201', $lines);
         self::assertContains('DTEND;VALUE=DATE:20261202', $lines);
         self::assertContains('TRANSP:TRANSPARENT', $lines);

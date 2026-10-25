@@ -87,14 +87,14 @@ None.
 
 ## Status
 
-- [ ] K56: feed built in linear time
-- [ ] K52: feed payments carry the forecast's price
-- [ ] K46: huge `?page=` is an empty page on all three routes
-- [ ] K45: logo upload with no file is a 422 and keeps the logo
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 45 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K56: feed built in linear time
+- [x] K52: feed payments carry the forecast's price
+- [x] K46: huge `?page=` is an empty page on all three routes
+- [x] K45: logo upload with no file is a 422 and keeps the logo
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 45 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

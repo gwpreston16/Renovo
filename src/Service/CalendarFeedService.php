@@ -108,7 +108,12 @@ final class CalendarFeedService
      * calendar. The forecast reads through the same scope, so the feed is as
      * isolated as the list page.
      *
-     * @return array<int, list<array{subscription: Subscription, date: DateTimeImmutable, amount: Money, reason: string}>>
+     * @return array<int, list<array{
+     *     subscription: Subscription,
+     *     date: DateTimeImmutable,
+     *     amount: Money,
+     *     reason: string
+     * }>>
      */
     private function chargesBySubscription(Scope $scope): array
     {
