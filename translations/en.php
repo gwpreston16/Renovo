@@ -1863,7 +1863,7 @@ return [
     'settings.outbound_off_hint' =>
         'Nothing is sent over HTTP: no logos, live rates, update checks or webhook and chat channels. '
         . 'Set by {variable}. Email is not affected.',
-    'settings.trusted_kind' => 'May',
+    'settings.trusted_kind' => 'Access',
     'settings.trusted_kind_private' => 'Reach a private address, over http',
     'settings.trusted_kind_contact' => 'Be contacted only',
     'settings.trusted_kind_hint' =>

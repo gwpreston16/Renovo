@@ -725,11 +725,11 @@
                    placeholder="{{ t('settings.trusted_host_placeholder') }}" required>
 
             <label for="trusted_kind">{{ t('settings.trusted_kind') }}</label>
-            <select id="trusted_kind" name="kind">
+            <select id="trusted_kind" name="kind" aria-describedby="trusted_kind-hint">
                 <option value="private">{{ t('settings.trusted_kind_private') }}</option>
                 <option value="contact">{{ t('settings.trusted_kind_contact') }}</option>
             </select>
-            <p class="muted note">{{ t('settings.trusted_kind_hint') }}</p>
+            <p class="muted note" id="trusted_kind-hint">{{ t('settings.trusted_kind_hint') }}</p>
 
             <label for="trusted_note">{{ t('field.note') }}</label>
             <input type="text" id="trusted_note" name="note" placeholder="{{ t('settings.trusted_host_note_placeholder') }}">

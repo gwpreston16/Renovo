@@ -214,7 +214,7 @@ context column.
 - [x] `MAIL_VERIFY_PEER`; dev compose sets it false; upgrade note
 - [x] `.env.example` and the README environment table
 - [x] New strings in `translations/en.php`
-- [ ] `composer check`, `i18n:check`, offline guard green on both engines
+- [x] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done
 
