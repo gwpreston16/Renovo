@@ -4,6 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Money;
+use App\Domain\PriceChangeSource;
+use App\Domain\Role;
+use App\Repository\PriceHistoryRepository;
+use App\Security\Scope;
+use App\Service\CalendarFeedService;
+use DateTimeImmutable;
+
 /**
  * The iCalendar feed: what it contains, and who may fetch it.
  *
@@ -184,6 +192,130 @@ final class CalendarFeedTest extends ApiTestCase
         $body = $this->unfold($this->feed());
 
         self::assertStringContainsString('Books\\, papers\; and things', $body);
+    }
+
+    public function testPaymentsCarryTheScheduledPrice(): void
+    {
+        $first = new DateTimeImmutable('first day of next month');
+        $rise = $first->modify('+1 month');
+        $id = $this->createSubscription([
+            'name' => 'Streaming',
+            'price_minor' => 1000,
+            'next_payment_date' => $first->format('Y-m-d'),
+        ]);
+        $this->announce($id, 1500, $rise);
+
+        $body = $this->unfold($this->feed());
+
+        self::assertStringContainsString('10.00', $this->summaryOn($body, $first));
+        self::assertStringContainsString('15.00', $this->summaryOn($body, $rise));
+        self::assertStringContainsString('15.00', $this->summaryOn($body, $rise->modify('+1 month')));
+    }
+
+    public function testAnOfferEndShowsTheFullPrice(): void
+    {
+        $first = new DateTimeImmutable('first day of next month');
+        $ends = $first->modify('+2 months');
+        $id = $this->createSubscription([
+            'name' => 'Streaming',
+            'price_minor' => 300,
+            'next_payment_date' => $first->format('Y-m-d'),
+        ]);
+        $this->db->execute('UPDATE subscription_price_history SET is_promotional = :on WHERE subscription_id = :id', [
+            'on' => true,
+            'id' => $id,
+        ]);
+        $this->announce($id, 900, $ends);
+
+        $body = $this->unfold($this->feed());
+
+        self::assertStringContainsString('3.00', $this->summaryOn($body, $first->modify('+1 month')));
+        self::assertStringContainsString('9.00', $this->summaryOn($body, $ends));
+    }
+
+    public function testTheFeedTextIsUnchanged(): void
+    {
+        $date = new DateTimeImmutable('first day of next month');
+        $this->createSubscription(['name' => 'Streaming', 'next_payment_date' => $date->format('Y-m-d')]);
+
+        $lines = explode("\r\n", $this->unfold($this->feed()));
+
+        self::assertSame('BEGIN:VCALENDAR', $lines[0]);
+        self::assertMatchesRegularExpression(
+            '/^UID:renovo-\\d+-payment-' . $date->format('Ymd') . '@renovo\\.local$/m',
+            implode("\n", $lines),
+        );
+        self::assertContains('DTSTART;VALUE=DATE:' . $date->format('Ymd'), $lines);
+        self::assertContains('DTEND;VALUE=DATE:' . $date->modify('+1 day')->format('Ymd'), $lines);
+        self::assertContains('TRANSP:TRANSPARENT', $lines);
+        self::assertSame('END:VCALENDAR', $lines[count($lines) - 2]);
+        self::assertSame('', $lines[count($lines) - 1]);
+    }
+
+    public function testALargeFeedIsBuiltInLinearTime(): void
+    {
+        $service = $this->container()->get(CalendarFeedService::class);
+        $scope = Scope::forMember(
+            $this->ownerId,
+            false,
+            $this->householdId,
+            Role::OwnerAdmin,
+            $this->isolationMode(),
+        );
+        for ($i = 0; $i < 120; $i++) {
+            $this->createSubscription([
+                'name' => 'Weekly ' . $i,
+                'billing_cycle' => 'weekly',
+                'next_payment_date' => (new DateTimeImmutable('first day of next month'))->format('Y-m-d'),
+            ]);
+        }
+
+        $started = microtime(true);
+        $feed = $service->build($scope, 'Renovo');
+        $elapsed = microtime(true) - $started;
+
+        self::assertGreaterThan(4000, substr_count($feed, 'BEGIN:VEVENT'));
+        self::assertLessThan(5.0, $elapsed);
+    }
+
+    public function testAFrequentSubscriptionIsCappedAtSixtyPayments(): void
+    {
+        $this->createSubscription([
+            'name' => 'Daily',
+            'billing_cycle' => 'custom_days',
+            'cycle_days' => 1,
+            'next_payment_date' => (new DateTimeImmutable('first day of next month'))->format('Y-m-d'),
+        ]);
+
+        self::assertSame(60, substr_count($this->unfold($this->feed()), 'SUMMARY:Daily'));
+    }
+
+    private function announce(int $subscriptionId, int $priceMinor, DateTimeImmutable $from): void
+    {
+        $scope = Scope::forMember(
+            $this->ownerId,
+            false,
+            $this->householdId,
+            Role::OwnerAdmin,
+            $this->isolationMode(),
+        );
+        $this->container()->get(PriceHistoryRepository::class)->append(
+            $scope,
+            $subscriptionId,
+            Money::of($priceMinor, 'GBP'),
+            $from,
+            PriceChangeSource::Scheduled,
+        );
+    }
+
+    /**
+     * The summary of the payment event on a date, or '' when there is none.
+     */
+    private function summaryOn(string $unfolded, DateTimeImmutable $date): string
+    {
+        $pattern = '/DTSTART;VALUE=DATE:' . $date->format('Ymd') . '\r\n.*?SUMMARY:([^\r\n]*)/s';
+
+        return preg_match($pattern, $unfolded, $m) === 1 ? $m[1] : '';
     }
 
     private function feed(): string

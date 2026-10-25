@@ -10,6 +10,9 @@ day to cancel each subscription before its notice period makes that impossible.
 The third is the one a calendar is genuinely better at than a notification: it
 is a deadline, and seeing it a fortnight out is the whole point. A fixed term's
 renewals stop at its last payment, and so does its last day to cancel.
+Each payment carries the amount that will be taken on its day, so a price
+rise you have announced, or an introductory offer that ends, shows its new
+amount from the date it takes effect.
 
 Get the link from the **Calendar feed** card on the Calendar screen. **Create
 a link** issues a token for it that can read the calendar and nothing else

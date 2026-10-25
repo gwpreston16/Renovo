@@ -76,25 +76,25 @@ None.
 
 ## Decisions & assumptions (confirm or correct before build)
 
-- **K56** is a pure performance fix: the feed's text does not change.
+- **K56** is a pure performance fix: the feed's text does not change. *Confirmed 2026-10-25.*
 - **K52** makes the feed do what `docs/features/calendar.md` and the in-app
-  calendar already do: show the price that will actually be taken.
+  calendar already do: show the price that will actually be taken. *Confirmed 2026-10-25:* settled by the documented behaviour.
 - **K46** is clamped rather than refused, because every other page past the
-  end answers empty. The in-app lists never 404 on an out-of-range page.
-- **K45** follows the payment-method endpoint, the existing precedent.
+  end answers empty. The in-app lists never 404 on an out-of-range page. *Confirmed 2026-10-25:* settled by existing behaviour.
+- **K45** follows the payment-method endpoint, the existing precedent. *Confirmed 2026-10-25:* settled by that endpoint.
 - **How it ships.** *Decided 2026-10-25:* as its own patch release, 1.13.2,
   once merged. Not chosen: waiting for the next minor release.
 
 ## Status
 
-- [ ] K56: feed built in linear time
-- [ ] K52: feed payments carry the forecast's price
-- [ ] K46: huge `?page=` is an empty page on all three routes
-- [ ] K45: logo upload with no file is a 422 and keeps the logo
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 45 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K56: feed built in linear time
+- [x] K52: feed payments carry the forecast's price
+- [x] K46: huge `?page=` is an empty page on all three routes
+- [x] K45: logo upload with no file is a 422 and keeps the logo
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 45 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

@@ -8,6 +8,22 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **The calendar feed shows the price that will be taken.** Each payment in
+  `calendar.ics` takes its date and amount from the forecast, so an announced
+  rise or the end of an introductory offer shows its new amount from the day it
+  takes effect, as the in-app calendar does. Event UIDs are unchanged. *Phase 45.*
+- **The calendar feed is built in linear time.** A household with thousands of
+  events no longer pays for the quadratic merge. *Phase 45.*
+- **A huge `?page=` is an empty page.** On `/subscriptions`,
+  `/api/v1/subscriptions` and `/audit`, a page number too large for an integer
+  answered 500; it now answers an empty page. *Phase 45.*
+- **An API logo upload with no file is a 422.** `POST
+  /api/v1/subscriptions/{id}/logo` with an empty `logo` part deleted the
+  subscription's logo and answered 200; it now answers 422 on `logo` and keeps
+  the logo. *Phase 45.*
+
 ## [1.13.1] - 2026-10-25
 
 ### Changed

@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\I18n\Translator;
 use App\Domain\Entity\Subscription;
+use App\Domain\Money;
 use App\Security\Scope;
 use App\Support\Clock;
 use App\Support\MoneyFormatter;
@@ -46,6 +47,7 @@ final class CalendarFeedService
 
     public function __construct(
         private readonly SubscriptionService $subscriptions,
+        private readonly ForecastService $forecast,
         private readonly MoneyFormatter $money,
         private readonly Translator $translator,
         private readonly Clock $clock,
@@ -77,26 +79,61 @@ final class CalendarFeedService
             'X-WR-CALDESC:' . $this->escape($this->translator->trans('calendar.feed_description')),
         ];
 
+        $charges = $this->chargesBySubscription($scope);
+
+        // Lines are collected into one list per event and merged once at the
+        // end: merging into the accumulated list per event is quadratic.
+        $rendered = [$lines];
         foreach ($this->subscriptions->allForStats($scope, activeOnly: true) as $subscription) {
-            foreach ($this->eventsFor($subscription, $today, $horizon) as $event) {
-                $lines = array_merge($lines, $this->renderEvent($event, $stamp));
+            $events = $this->eventsFor($subscription, $today, $horizon, $charges[$subscription->id] ?? []);
+            foreach ($events as $event) {
+                $rendered[] = $this->renderEvent($event, $stamp);
             }
         }
-
-        $lines[] = 'END:VCALENDAR';
+        $rendered[] = ['END:VCALENDAR'];
 
         // RFC 5545 requires CRLF, and long lines folded. Clients are forgiving
         // about both right up until one is not.
+        $lines = array_merge(...$rendered);
+
         return implode("\r\n", array_merge(...array_map($this->fold(...), $lines))) . "\r\n";
     }
 
     /**
+     * The forecast's charges, grouped by subscription.
+     *
+     * Payments come from the forecast rather than a walk of billing dates at
+     * today's price, so a scheduled rise or the end of an offer shows its new
+     * amount on the day it takes effect, and the dates agree with the in-app
+     * calendar. The forecast reads through the same scope, so the feed is as
+     * isolated as the list page.
+     *
+     * @return array<int, list<array{
+     *     subscription: Subscription,
+     *     date: DateTimeImmutable,
+     *     amount: Money,
+     *     reason: string
+     * }>>
+     */
+    private function chargesBySubscription(Scope $scope): array
+    {
+        $grouped = [];
+        foreach ($this->forecast->charges($scope) as $charge) {
+            $grouped[$charge['subscription']->id][] = $charge;
+        }
+
+        return $grouped;
+    }
+
+    /**
+     * @param list<array{subscription: Subscription, date: DateTimeImmutable, amount: Money, reason: string}> $charges
      * @return list<array{uid: string, date: DateTimeImmutable, summary: string, description: string}>
      */
     private function eventsFor(
         Subscription $subscription,
         DateTimeImmutable $today,
         DateTimeImmutable $horizon,
+        array $charges,
     ): array {
         $events = [];
         $price = $this->money->format($subscription->price);
@@ -119,17 +156,18 @@ final class CalendarFeedService
             }
         }
 
-        foreach ($this->paymentDates($subscription, $today, $horizon) as $date) {
+        foreach ($this->payments($subscription, $today, $horizon, $charges) as $payment) {
+            $amount = $this->money->format($payment['amount']);
             $events[] = [
-                'uid' => $this->uid($subscription->id, 'payment', $date),
-                'date' => $date,
+                'uid' => $this->uid($subscription->id, 'payment', $payment['date']),
+                'date' => $payment['date'],
                 'summary' => $this->translator->trans('calendar.payment_summary', [
                     'name' => $subscription->name,
-                    'amount' => $price,
+                    'amount' => $amount,
                 ]),
                 'description' => $this->translator->trans('calendar.payment_description', [
                     'name' => $subscription->name,
-                    'amount' => $price,
+                    'amount' => $amount,
                 ]),
             ];
         }
@@ -159,56 +197,35 @@ final class CalendarFeedService
     }
 
     /**
-     * Every payment date between today and the horizon.
+     * Every payment between today and the horizon, at the amount that will be
+     * taken.
      *
      * A trial that has not converted yet contributes none: it has no payment
      * date, and inventing one would put a charge in somebody's diary that is
      * not going to happen. Its conversion is already an event of its own.
      *
-     * @return list<DateTimeImmutable>
+     * @param list<array{subscription: Subscription, date: DateTimeImmutable, amount: Money, reason: string}> $charges
+     * @return list<array{date: DateTimeImmutable, amount: Money}>
      */
-    private function paymentDates(
+    private function payments(
         Subscription $subscription,
         DateTimeImmutable $today,
         DateTimeImmutable $horizon,
+        array $charges,
     ): array {
-        $date = $subscription->nextPaymentDate;
-        if ($date === null || $subscription->isTrialActiveOn($today)) {
+        if ($subscription->isTrialActiveOn($today)) {
             return [];
         }
 
-        if (!$subscription->type->countsTowardsRecurringTotals() || $subscription->billingCycle === null) {
-            // A one-off purchase is a single dated event.
-            return $date >= $today && $date <= $horizon ? [$date] : [];
-        }
-
-        $dates = [];
-        $cycle = $subscription->billingCycle;
-
-        while ($date < $today) {
-            $date = $cycle->advance(
-                $date,
-                $subscription->cycleDays,
-                $subscription->anchorDay,
-                $subscription->cycleInterval,
-            );
-            if (count($dates) > self::MAX_OCCURRENCES) {
-                return [];
+        $payments = [];
+        foreach ($charges as $charge) {
+            if ($charge['date'] > $horizon || count($payments) >= self::MAX_OCCURRENCES) {
+                break;
             }
+            $payments[] = ['date' => $charge['date'], 'amount' => $charge['amount']];
         }
 
-        // A fixed term stops at its last payment (Phase 35).
-        while ($date <= $horizon && $subscription->chargesOn($date) && count($dates) < self::MAX_OCCURRENCES) {
-            $dates[] = $date;
-            $date = $cycle->advance(
-                $date,
-                $subscription->cycleDays,
-                $subscription->anchorDay,
-                $subscription->cycleInterval,
-            );
-        }
-
-        return $dates;
+        return $payments;
     }
 
     /**

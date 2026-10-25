@@ -16,6 +16,7 @@ use App\Service\CatchUpService;
 use App\Service\LogoStorage;
 use App\Service\PriceHistoryService;
 use App\Service\SubscriptionService;
+use App\Service\ValidationException;
 use App\Support\Clock;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -260,7 +261,10 @@ final class SubscriptionApiController extends ApiController
             throw new HttpBadRequestException($request, $this->translator->trans('error.api.logo_part_missing'));
         }
 
-        $stored = $this->logos->store($file);
+        // A part that arrived with no file in it: there is nothing to replace
+        // the logo with, and clearing it would be DELETE's job.
+        $stored = $this->logos->store($file)
+            ?? throw ValidationException::field('logo', 'error.logo.type');
         $this->subscriptions->setLogo($scope, $id, $stored);
 
         if ($existing->logoPath !== null && $existing->logoPath !== $stored) {
