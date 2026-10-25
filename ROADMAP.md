@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–48
+## Planned — Phases 30–49
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -57,6 +57,7 @@ can be moved.
 | 46 | [Sign-in and second-factor edge cases, from the known-issues log](docs/phases/PHASE-46.md) | — | None | 📋 planned |
 | 47 | [Money inputs and price history, from the known-issues log](docs/phases/PHASE-47.md) | — | None | 📋 planned |
 | 48 | [Update banner and dashboard polish, from the known-issues log](docs/phases/PHASE-48.md) | — | None | 📋 planned |
+| 49 | [Notification windows and test hardening, from the known-issues log](docs/phases/PHASE-49.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -139,6 +140,10 @@ can be moved.
   log (K61, K62, K96, K98, K99, K100): Dismiss hides the release that was shown,
   keeps focus and the live region, a locked banner switch is drawn off, and the
   version, the Free trials card and the figure cells follow the prototype.
+- **49 — Notification windows and test hardening.** A batch from the known-issues
+  log (K50, K51, K67, K105, K118, K124): a digest lists each renewal in one
+  issue, and the tests for dispatch limits, backup alert opt-outs, the update
+  check's environment, the prune command and the frozen clock can fail.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
