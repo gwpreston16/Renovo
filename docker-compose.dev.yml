@@ -52,7 +52,7 @@ services:
   # it, and this service exists only in this file, so `docker compose up` on a
   # host with no route to the npm registry never tries to reach it.
   assets:
-    image: node:22-alpine
+    image: node:26-alpine
     restart: unless-stopped
     working_dir: /app
     # node_modules lives in a volume rather than on the host: it is large, it
