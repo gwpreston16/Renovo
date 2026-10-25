@@ -27,7 +27,7 @@ jobs:
           coverage: none
           tools: composer:v2
 
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@v4
 
       - name: PHP_CodeSniffer (PSR-12)
         run: vendor/bin/phpcs
@@ -199,7 +199,7 @@ jobs:
           coverage: ${{ matrix.driver == 'pgsql' && 'pcov' || 'none' }}
           tools: composer:v2
 
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@v4
 
       - uses: actions/setup-node@v7
         with:
@@ -291,7 +291,7 @@ jobs:
           coverage: none
           tools: composer:v2
 
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@v4
 
       - name: Install JS dependencies
         run: npm ci
