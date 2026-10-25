@@ -76,12 +76,12 @@ None.
 
 ## Decisions & assumptions (confirm or correct before build)
 
-- **K56** is a pure performance fix: the feed's text does not change.
+- **K56** is a pure performance fix: the feed's text does not change. *Confirmed 2026-10-25.*
 - **K52** makes the feed do what `docs/features/calendar.md` and the in-app
-  calendar already do: show the price that will actually be taken.
+  calendar already do: show the price that will actually be taken. *Confirmed 2026-10-25:* settled by the documented behaviour.
 - **K46** is clamped rather than refused, because every other page past the
-  end answers empty. The in-app lists never 404 on an out-of-range page.
-- **K45** follows the payment-method endpoint, the existing precedent.
+  end answers empty. The in-app lists never 404 on an out-of-range page. *Confirmed 2026-10-25:* settled by existing behaviour.
+- **K45** follows the payment-method endpoint, the existing precedent. *Confirmed 2026-10-25:* settled by that endpoint.
 - **How it ships.** *Decided 2026-10-25:* as its own patch release, 1.13.2,
   once merged. Not chosen: waiting for the next minor release.
 

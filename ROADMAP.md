@@ -53,7 +53,7 @@ can be moved.
 | 42 | [API tokens: scopes, lifetimes and rate limits](docs/phases/PHASE-42.md) | 40 | 1 table, 1 column | ✅ done |
 | 43 | [Control over outbound requests, and supply-chain checks](docs/phases/PHASE-43.md) | — | 1 column | ✅ done |
 | 44 | [The README and the docs, rebuilt for the first five minutes](docs/phases/PHASE-44.md) | — | None | ✅ done |
-| 45 | [Calendar feed and API edge cases, from the known-issues log](docs/phases/PHASE-45.md) | — | None | 📋 planned |
+| 45 | [Calendar feed and API edge cases, from the known-issues log](docs/phases/PHASE-45.md) | — | None | 🚧 in progress |
 | 46 | [Sign-in and second-factor edge cases, from the known-issues log](docs/phases/PHASE-46.md) | — | None | 📋 planned |
 | 47 | [Money inputs and price history, from the known-issues log](docs/phases/PHASE-47.md) | — | None | 📋 planned |
 | 48 | [Update banner and dashboard polish, from the known-issues log](docs/phases/PHASE-48.md) | — | None | 📋 planned |
