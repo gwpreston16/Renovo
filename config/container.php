@@ -14,13 +14,25 @@ use App\Application\AppVersion;
 use App\Application\Middleware\SecurityHeadersMiddleware;
 use App\Application\Twig\AppExtension;
 use App\Service\Update\UpdateCheckConfig;
+use App\Service\Update\UpdateCheckEndpoint;
 use App\Service\Update\UpdateCheckService;
+use App\Service\AuditRefusalRecorder;
+use App\Service\ExchangeRate\RatesEndpoint;
+use App\Support\Environment;
+use App\Support\MailDsn;
 use App\Controller\SetupController;
 use App\Http\DnsResolver;
+use App\Http\FixedEndpoint;
+use App\Http\FixedOutboundHosts;
 use App\Http\GuardedClient;
 use App\Http\GuardedHttpClient;
 use App\Http\HttpClient;
 use App\Http\HttpClientOptions;
+use App\Http\OutboundContext;
+use App\Http\OutboundMode;
+use App\Http\OutboundPolicy;
+use App\Http\RedirectPolicy;
+use App\Http\RefusalRecorder;
 use App\Http\SystemDnsResolver;
 use App\Http\TrustedTargets;
 use App\I18n\CatalogLoader;
@@ -207,6 +219,24 @@ return static function (ContainerBuilder $builder, ?array $settings = null): voi
         // The allowlist the SSRF guard consults is the administrator's table.
         TrustedTargets::class => get(TrustedHostService::class),
 
+        // What this instance may reach at all (Phase 43). Read from the
+        // environment when built, like the update-check switch: a mode an
+        // operator tightened must not wait for a container cache to clear.
+        OutboundMode::class => static fn (): OutboundMode
+            => OutboundMode::fromSetting(Environment::get('OUTBOUND_HTTP')),
+
+        // The hosts of the features with a fixed endpoint, as factories: each
+        // depends on the client that depends on the policy that asks for them.
+        FixedOutboundHosts::class => static fn (ContainerInterface $c): FixedOutboundHosts
+            => new FixedOutboundHosts([
+                static fn (): FixedEndpoint => $c->get(RatesEndpoint::class),
+                static fn (): FixedEndpoint => $c->get(UpdateCheckEndpoint::class),
+            ]),
+
+        RefusalRecorder::class => get(AuditRefusalRecorder::class),
+
+        OutboundPolicy::class => autowire(),
+
         // Backup destinations (Phase 39): the same guard and client, with
         // bodies streamed from and to files and the transfer limits in place
         // of HTTP_*: a backup is far larger, and slower, than anything else.
@@ -246,6 +276,8 @@ return static function (ContainerBuilder $builder, ?array $settings = null): voi
                 $rates['ttl_seconds'],
                 $rates['retry_seconds'],
                 $rates['api_key'],
+                $c->get(OutboundContext::class),
+                $c->get(OutboundMode::class),
             );
         },
 
@@ -260,6 +292,7 @@ return static function (ContainerBuilder $builder, ?array $settings = null): voi
             $c->get(ResponseFactoryInterface::class),
             $c->get(StreamFactoryInterface::class),
             $c->get(HttpClientOptions::class)->narrowedTo(5, 3, 65536),
+            $c->get(OutboundPolicy::class),
         ),
 
         UpdateCheckConfig::class => static fn (): UpdateCheckConfig => UpdateCheckConfig::fromEnvironment(),
@@ -423,22 +456,7 @@ return static function (ContainerBuilder $builder, ?array $settings = null): voi
         MailerInterface::class => static function (ContainerInterface $c): MailerInterface {
             $mail = $c->get('settings')['mail'];
 
-            $scheme = match ($mail['encryption']) {
-                'tls', 'ssl' => 'smtps',
-                default => 'smtp',
-            };
-
-            $credentials = $mail['user'] !== ''
-                ? rawurlencode($mail['user']) . ':' . rawurlencode($mail['password']) . '@'
-                : '';
-
-            $dsn = sprintf('%s://%s%s:%d', $scheme, $credentials, $mail['host'], $mail['port']);
-            if ($scheme === 'smtp') {
-                // A local relay such as Mailpit does not offer STARTTLS.
-                $dsn .= '?verify_peer=0';
-            }
-
-            return new Mailer(Transport::fromDsn($dsn));
+            return new Mailer(Transport::fromDsn(MailDsn::fromSettings($mail)));
         },
 
         MailerService::class => static function (ContainerInterface $c): MailerService {
@@ -692,14 +710,27 @@ return static function (ContainerBuilder $builder, ?array $settings = null): voi
         LogoFetcher::class => static function (ContainerInterface $c): LogoFetcher {
             $settings = $c->get('settings');
 
+            // Its own tighter limits: a save waits on this, and a site that
+            // does not answer must cost seconds, not the global timeouts four
+            // times over (K55).
+            $options = $c->get(HttpClientOptions::class)->narrowedTo(3, 2, 512 * 1024);
+
             return new LogoFetcher(
-                $c->get(GuardedClient::class),
+                new GuardedHttpClient(
+                    $c->get(HttpClient::class),
+                    $c->get(UrlGuard::class),
+                    $c->get(RedirectPolicy::class),
+                    $c->get(StreamFactoryInterface::class),
+                    $options,
+                    $c->get(OutboundPolicy::class),
+                ),
                 $c->get(RequestFactoryInterface::class),
                 $c->get(LogoCacheRepository::class),
                 $c->get(LogoStorage::class),
                 $c->get(Clock::class),
                 $c->get(LoggerInterface::class),
                 $settings['uploads']['logo_cache_directory'],
+                $c->get(OutboundContext::class),
             );
         },
 

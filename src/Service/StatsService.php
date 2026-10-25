@@ -108,11 +108,15 @@ final class StatsService
         // window silently misses a subscription whose date is in the past.
         $this->catchUp->run($scope);
 
+        $all = $this->subscriptions->allForStats($scope);
+
         // Best-effort and never blocking: a provider being down means
         // per-currency subtotals today and a combined total again tomorrow.
-        $this->rates->refreshIfStale();
-
-        $all = $this->subscriptions->allForStats($scope);
+        // Only asked when some amount is not in the base currency (K54).
+        $this->rates->refreshIfStale(array_values(array_unique(array_map(
+            static fn (Subscription $subscription): string => $subscription->price->currency,
+            $all,
+        ))));
 
         $recurring = [];
         $oneOff = [];

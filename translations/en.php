@@ -913,6 +913,8 @@ return [
     'flash.instance_saved' => 'Instance settings saved.',
     'flash.trusted_host_added' => 'Trusted host added. Notifications may now reach it.',
     'flash.trusted_host_removed' => 'Trusted host removed.',
+    'flash.outbound_off' => 'Outbound requests are turned off on this instance.',
+    'flash.outbound_not_allowlisted' => 'That host is not on this instance\'s allowed list for outbound requests.',
 
     'flash.setup_channel_added' => 'Channel added. Send yourself a test message to confirm it arrives.',
     'flash.setup_test_email_off' => 'Turn Email on to send a test message.',
@@ -1007,6 +1009,7 @@ return [
     'audit_action.totp.enabled' => 'Authenticator app enabled',
     'audit_action.totp.recovery_code_used' => 'Recovery code used',
     'audit_action.totp.recovery_codes_regenerated' => 'Recovery codes regenerated',
+    'audit_action.outbound.refused' => 'Outbound request refused',
     'audit_action.trusted_host.added' => 'Trusted host added',
     'audit_action.trusted_host.removed' => 'Trusted host removed',
     'audit_action.two_factor.failed' => 'Second factor rejected',
@@ -1847,6 +1850,25 @@ return [
     'settings.trust_this_host' => 'Trust this host',
     'settings.trusted_host_note_placeholder' => 'What this is, for later',
     'settings.trusted_host_placeholder' => 'gotify.lan, .lan, 192.168.1.10 or 100.64.0.0/10',
+    'settings.status_outbound' => 'Outbound requests',
+    'settings.outbound_open' => 'Open',
+    'settings.outbound_open_hint' =>
+        'Any public host can be reached, and a private one only if it is a trusted host. Set {variable} '
+        . 'to restrict it. Email is not affected.',
+    'settings.outbound_allowlist' => 'Allowed list only',
+    'settings.outbound_allowlist_hint' =>
+        'Only trusted hosts and the services Renovo is set up to use can be reached: the exchange-rate '
+        . 'provider, and GitHub while update checks are on. Set by {variable}. Email is not affected.',
+    'settings.outbound_off' => 'Off',
+    'settings.outbound_off_hint' =>
+        'Nothing is sent over HTTP: no logos, live rates, update checks or webhook and chat channels. '
+        . 'Set by {variable}. Email is not affected.',
+    'settings.trusted_kind' => 'May',
+    'settings.trusted_kind_private' => 'Reach a private address, over http',
+    'settings.trusted_kind_contact' => 'Be contacted only',
+    'settings.trusted_kind_hint' =>
+        'Be contacted only is for a public host you want to allow while outbound requests are limited to '
+        . 'an allowed list. Every other check on the address still applies to it.',
     'settings.trusted_hosts' => 'Trusted hosts',
     'settings.trusted_hosts_empty' => 'Nothing is trusted. Only public addresses can be reached.',
     'settings.trusted_hosts_exception' =>
@@ -2191,6 +2213,10 @@ return [
     'subscriptions_form.visible_to' => 'Visible to',
     'subscriptions_form.website_hint' =>
         'Used for the link on this subscription, and to fetch its icon if you have not uploaded one.',
+    'subscriptions_form.website_outbound_allowlist' =>
+        'Outbound requests are limited to an allowed list on this instance, so an icon is only fetched for a site on it.',
+    'subscriptions_form.website_outbound_off' =>
+        'Outbound requests are turned off on this instance, so no icon is fetched: upload one instead.',
     'subscriptions_form.website_placeholder' => 'https://example.com',
 
     // subscriptions_list

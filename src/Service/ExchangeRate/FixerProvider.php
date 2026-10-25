@@ -27,6 +27,11 @@ final class FixerProvider extends HttpRateProvider
     /** The only base the free tier serves. */
     private const FREE_TIER_BASE = 'EUR';
 
+    public function outboundHost(): string
+    {
+        return (string) parse_url(self::ENDPOINT, PHP_URL_HOST);
+    }
+
     public function key(): string
     {
         return self::KEY;

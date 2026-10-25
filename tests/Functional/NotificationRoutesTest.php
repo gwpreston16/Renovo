@@ -406,6 +406,44 @@ final class NotificationRoutesTest extends DatabaseTestCase
         self::assertSame(['100.64.0.0/10'], $hosts->patterns());
     }
 
+    public function testAnInstanceAdministratorMayAddAHostThatMayOnlyBeContacted(): void
+    {
+        $this->signIn($this->adminId);
+
+        $this->request('POST', '/settings/trusted-hosts', [
+            'pattern' => 'hooks.example',
+            'kind' => 'contact',
+        ]);
+        $this->request('POST', '/settings/trusted-hosts', ['pattern' => 'nas.lan', 'kind' => 'something-else']);
+
+        $hosts = new TrustedHostRepository($this->db, new SystemClock(new DateTimeZone('UTC')));
+        // The kind that lifts the guard's checks is the one an unknown value
+        // falls back to only because it is the original meaning of an entry;
+        // a contact entry never appears in it.
+        self::assertSame(['nas.lan'], $hosts->patterns());
+        $all = $hosts->patterns(null);
+        sort($all);
+        self::assertSame(['hooks.example', 'nas.lan'], $all);
+
+        $page = (string) $this->request('GET', '/settings/instance')->getBody();
+        self::assertStringContainsString('Be contacted only', $page);
+        self::assertStringContainsString('name="kind"', $page);
+    }
+
+    public function testOnlyAnInstanceAdministratorMayAddAContactHost(): void
+    {
+        $this->signIn($this->viewerId);
+
+        self::assertSame(
+            403,
+            $this->request('POST', '/settings/trusted-hosts', ['pattern' => 'hooks.example', 'kind' => 'contact'])
+                ->getStatusCode(),
+        );
+
+        $hosts = new TrustedHostRepository($this->db, new SystemClock(new DateTimeZone('UTC')));
+        self::assertSame([], $hosts->patterns(null));
+    }
+
     public function testAMalformedTrustedHostIsRejected(): void
     {
         $this->signIn($this->adminId);

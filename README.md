@@ -111,7 +111,11 @@ for both accounts (an Owner/Admin and a Contributor) when it is ready.
 - Two-factor sign-in with an authenticator app, and passkeys and security keys.
 - Active sessions you can revoke, and an audit log.
 - Every outbound request goes through one guarded client, which refuses
-  private addresses unless an administrator allows them.
+  private addresses unless an administrator allows them. It can also be turned
+  off, or limited to a list of hosts, and each refusal is audited
+  ([outbound requests](docs/operations.md#outbound-requests)).
+- Dependencies and Docker images are scanned in CI. To report a vulnerability,
+  see [SECURITY.md](SECURITY.md).
 
 **Your data** ([docs](docs/operations.md))
 
@@ -185,7 +189,10 @@ progress and what is planned.
 
 See [docs/development.md](docs/development.md) for the quality gates, the tests
 and how the code fits together. [`CLAUDE.md`](CLAUDE.md) and
-[`SPEC.md`](SPEC.md) hold the conventions every change follows.
+[`SPEC.md`](SPEC.md) hold the conventions every change follows. CI audits
+dependencies and scans the images; an advisory that does not apply is accepted
+with a reason and a review date, as
+[Accepting an advisory](docs/development.md#accepting-an-advisory) describes.
 
 ## Licence
 

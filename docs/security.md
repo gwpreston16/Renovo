@@ -207,6 +207,29 @@ the reset may well have been prompted by somebody else having one.
   Renovo. A subscription's logo is only ever a file uploaded or fetched for it:
   a path typed into the form is ignored.
 
+## Reporting a vulnerability
+
+See [`SECURITY.md`](../SECURITY.md): report it privately through GitHub's
+**Report a vulnerability** on the repository's Security tab. It also says which
+versions get fixes and what is in scope.
+
+## Outbound requests
+
+Every request Renovo makes goes through one client, which refuses private,
+loopback and reserved addresses unless an administrator trusted the host, and
+pins the address it checked. `OUTBOUND_HTTP` goes further: it can turn every
+outbound HTTP request off, or limit them to a list. Each refusal is audited as
+**Outbound request refused**, once per host, reason and feature per hour, with
+the host and never the URL. See [Outbound requests](operations.md#outbound-requests).
+
+**Mail relays are certificate-checked** (`MAIL_VERIFY_PEER`, on by default),
+so SMTP credentials cannot be read by someone between Renovo and a remote
+relay.
+
+**Dependencies are audited** on every pull request — `composer audit` and
+`npm audit` — and the built Docker images are scanned for vulnerabilities that
+have a fix. See [Development](development.md#dependency-and-image-scanning).
+
 ## Security headers
 
 Renovo sets these on every response PHP sends, error pages included (Phase 41).

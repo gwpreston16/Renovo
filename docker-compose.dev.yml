@@ -26,6 +26,14 @@ services:
   app:
     volumes:
       - ./public:/var/www/html/public:ro
+    environment:
+      # The bundled Mailpit is a catcher on the compose network, not a relay
+      # with a certificate to check.
+      MAIL_VERIFY_PEER: "false"
+
+  scheduler:
+    environment:
+      MAIL_VERIFY_PEER: "false"
 
   web:
     volumes:

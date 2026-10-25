@@ -41,7 +41,7 @@ abstract class HttpRateProvider implements ExchangeRateProvider
         try {
             $response = $this->http->sendRequest($request);
         } catch (ClientExceptionInterface $exception) {
-            throw RateProviderException::transport($this->label(), $exception->getMessage());
+            throw RateProviderException::transport($this->label(), $exception->getMessage(), $exception);
         }
 
         $status = $response->getStatusCode();

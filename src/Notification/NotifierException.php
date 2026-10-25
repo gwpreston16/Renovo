@@ -16,9 +16,9 @@ use RuntimeException;
  */
 final class NotifierException extends RuntimeException
 {
-    public static function transport(string $channel, string $reason): self
+    public static function transport(string $channel, string $reason, ?\Throwable $previous = null): self
     {
-        return new self(sprintf('%s could not be reached: %s', $channel, $reason));
+        return new self(sprintf('%s could not be reached: %s', $channel, $reason), 0, $previous);
     }
 
     public static function rejected(string $channel, string $reason): self

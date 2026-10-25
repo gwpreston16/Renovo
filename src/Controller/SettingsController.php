@@ -14,6 +14,8 @@ use App\Service\HouseholdSettingsService;
 use App\Service\InstanceAdminService;
 use App\Service\SettingsScreenService;
 use App\Service\TrustedHostService;
+use App\Domain\TrustedHostKind;
+use App\Http\OutboundRefusal;
 use App\Service\Update\CheckNowResult;
 use App\Service\Update\UpdateCheckService;
 use App\Service\Update\UpdateState;
@@ -177,7 +179,7 @@ final class SettingsController extends Controller
     public function refreshRates(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         try {
-            $count = $this->rates->refreshNow();
+            $count = $this->rates->refreshNow($this->user($request)->id);
 
             if ($count === null) {
                 // Formatted as the page's own hint formats it, so the two
@@ -190,7 +192,13 @@ final class SettingsController extends Controller
                 $this->flash('success', 'flash.rates_refreshed', ['count' => $count]);
             }
         } catch (RateProviderException $exception) {
-            $this->flash('error', 'flash.rates_refresh_failed', ['reason' => $exception->getMessage()]);
+            $refusal = OutboundRefusal::reasonOf($exception);
+
+            if ($refusal !== null) {
+                $this->flash('error', OutboundRefusal::messageKey($refusal));
+            } else {
+                $this->flash('error', 'flash.rates_refresh_failed', ['reason' => $exception->getMessage()]);
+            }
         }
 
         return $this->redirectAfterWrite($request, $response, self::GENERAL . '#exchange-rates');
@@ -202,13 +210,15 @@ final class SettingsController extends Controller
      */
     public function checkForUpdates(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        $result = $this->updates->checkNow();
+        $result = $this->updates->checkNow($this->user($request)->id);
         $status = $this->updates->status();
 
         match ($result) {
             CheckNowResult::Off => $this->flash('error', 'flash.updates_off'),
             CheckNowResult::TooSoon => $this->flash('error', 'flash.updates_too_soon'),
             CheckNowResult::Failed => $this->flash('error', 'flash.updates_check_failed'),
+            CheckNowResult::OutboundOff => $this->flash('error', 'flash.outbound_off'),
+            CheckNowResult::OutboundNotAllowed => $this->flash('error', 'flash.outbound_not_allowlisted'),
             CheckNowResult::Checked => match ($status->state) {
                 UpdateState::Available => $this->flash('success', 'flash.updates_available', [
                     'version' => (string) $status->latestVersion,
@@ -272,6 +282,8 @@ final class SettingsController extends Controller
                 is_scalar($body['pattern'] ?? null) ? (string) $body['pattern'] : '',
                 is_scalar($body['note'] ?? null) ? (string) $body['note'] : null,
                 $this->user($request),
+                TrustedHostKind::fromInput(is_scalar($body['kind'] ?? null) ? (string) $body['kind'] : null)
+                    ?? TrustedHostKind::Private,
             );
             $this->flash('success', 'flash.trusted_host_added');
         } catch (ValidationException $exception) {

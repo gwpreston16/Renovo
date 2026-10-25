@@ -15,9 +15,9 @@ use RuntimeException;
  */
 final class RateProviderException extends RuntimeException
 {
-    public static function transport(string $provider, string $reason): self
+    public static function transport(string $provider, string $reason, ?\Throwable $previous = null): self
     {
-        return new self(sprintf('%s could not be reached: %s', $provider, $reason));
+        return new self(sprintf('%s could not be reached: %s', $provider, $reason), 0, $previous);
     }
 
     public static function http(string $provider, int $status): self

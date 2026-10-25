@@ -117,6 +117,35 @@ alert everywhere): tick them in the routing grid on the Notifications page. Then
   started with in `var/cache`, and could fail after an upgrade until that
   directory was deleted. You no longer need to clear it.
 
+## After upgrading to outbound control (Phase 43)
+
+Back up first, then `vendor/bin/phinx migrate`: one migration gives each
+trusted host a kind. Existing entries keep the meaning they had. Two things to
+check:
+
+- **Mail relays are now certificate-checked.** Before, plain `smtp`
+  (`SMTP_ENCRYPTION=none`) never checked the relay's certificate, so a STARTTLS
+  session to a remote relay was open to anyone in the middle and could expose
+  the SMTP password. `MAIL_VERIFY_PEER` is now `true` for every setting. A relay
+  on your own network with a **self-signed** certificate stops working until you
+  set `MAIL_VERIFY_PEER=false`; a relay with a certificate from a recognised
+  authority, or one that offers no TLS at all (the bundled Mailpit), needs
+  nothing. The development compose file sets it `false` for Mailpit.
+- **`OUTBOUND_HTTP` defaults to `open`,** which is how every instance behaved,
+  so nothing changes until you set it. To limit what Renovo may reach, or turn
+  it off, see [Outbound requests](operations.md#outbound-requests); add the hosts
+  your webhook channels use as **Be contacted only** trusted hosts first, or
+  those channels stop. Pass the variable on if your compose file lists the
+  environment by name: the shipped one does.
+
+Also from this release: fetching a site's icon on save is held to about six
+seconds in total, and the dashboard no longer fetches exchange rates when every
+amount is in the base currency.
+
+**Going back.** `vendor/bin/phinx rollback` removes the `kind` column. A
+**Be contacted only** entry has no meaning without it, so rolling back deletes
+those entries rather than turn them into private-address exceptions.
+
 ## After upgrading to security headers (Phase 41)
 
 Renovo now sets its own security headers, a strict Content-Security-Policy

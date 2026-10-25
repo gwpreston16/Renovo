@@ -51,6 +51,24 @@ final class LogoFetchTest extends DatabaseTestCase
         self::assertNotSame($first, $second, 'Each subscription still gets its own file to delete.');
     }
 
+    public function testASiteTheInstanceWillNotReachIsNotRememberedAsHavingNoIcon(): void
+    {
+        // Phase 43: with outbound requests off the site was never asked, so
+        // loosening the mode must bring the logo back at once, not after the
+        // seven days a genuine miss is remembered for.
+        $refused = FakeGuardedClient::refusedByOutboundMode();
+        $fetcher = TestLogoFetcher::with($refused, $this->db, $this->clock);
+
+        self::assertNull($fetcher->fetchFor('https://example.com'));
+        self::assertCount(1, $refused->requests, 'The first refusal ends the attempt; the rest would be refused too.');
+
+        $reachable = FakeGuardedClient::returning($this->pngBytes());
+        $later = TestLogoFetcher::with($reachable, $this->db, $this->clock);
+
+        self::assertNotNull($later->fetchFor('https://example.com'));
+        self::assertNotEmpty($reachable->requests);
+    }
+
     /**
      * The half that is easy to forget: a domain with no icon must not be asked
      * again on every save.

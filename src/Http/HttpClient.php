@@ -41,6 +41,7 @@ final class HttpClient implements ClientInterface
         private readonly ResponseFactoryInterface $responseFactory,
         private readonly StreamFactoryInterface $streamFactory,
         private readonly HttpClientOptions $options,
+        private readonly OutboundPolicy $policy,
     ) {
     }
 
@@ -79,6 +80,12 @@ final class HttpClient implements ClientInterface
             throw HttpClientException::unsupportedScheme($scheme);
         }
 
+        // The instance's outbound mode (Phase 43), before anything is opened.
+        // Here rather than in a caller so that the guarded and the plain
+        // paths obey it alike and no caller can leave it out; every hop of a
+        // guarded redirect comes back through this method.
+        $this->policy->check($uri);
+
         $handle = curl_init();
         if (!$handle instanceof CurlHandle) {
             throw HttpClientException::transport($request, 'could not initialise curl');
@@ -107,7 +114,10 @@ final class HttpClient implements ClientInterface
         }
 
         $requestBody = $transfer?->uploadFrom !== null ? '' : (string) $request->getBody();
-        $follow = $followRedirects ?? true;
+        // curl would follow a redirect to a host nothing has checked against
+        // the mode. When the mode restricts, a redirect is returned to the
+        // caller as the response it is, and the destination is never chased.
+        $follow = ($followRedirects ?? true) && !$this->policy->mode->restricts();
 
         curl_setopt_array($handle, [
             CURLOPT_URL => (string) $uri,

@@ -8,10 +8,13 @@ use App\Domain\Currency;
 use App\Domain\ExchangeRate;
 use App\Domain\Money;
 use App\Domain\Rounding;
+use App\Http\OutboundContext;
+use App\Http\OutboundMode;
 use App\Repository\ExchangeRateRepository;
 use App\Service\ExchangeRate\ExchangeRateProvider;
 use App\Service\ExchangeRate\ExchangeRateProviderRegistry;
 use App\Service\ExchangeRate\RateProviderException;
+use App\Service\ExchangeRate\RateTable;
 use App\Support\Clock;
 use DateTimeImmutable;
 use Psr\Log\LoggerInterface;
@@ -52,6 +55,8 @@ final class ExchangeRateService
         private readonly int $ttlSeconds,
         private readonly int $retrySeconds,
         private readonly string $environmentApiKey,
+        private readonly ?OutboundContext $outbound = null,
+        private readonly ?OutboundMode $outboundMode = null,
     ) {
     }
 
@@ -154,9 +159,25 @@ final class ExchangeRateService
      * Called from the dashboard. It must never turn a provider outage into a
      * broken page, and it must not let a page view become a synchronous
      * network call more than once per retry window.
+     *
+     * @param list<string>|null $currenciesInUse The currencies the page is about
+     *        to convert; when none differs from the base there is nothing to fetch.
      */
-    public function refreshIfStale(): void
+    public function refreshIfStale(?array $currenciesInUse = null): void
     {
+        // Nothing to fetch for: with every amount in the base currency no rate
+        // is ever read, and a page view must not pay a connect timeout to
+        // refresh a table it will not use (K54).
+        if ($currenciesInUse !== null && !$this->needsRates($currenciesInUse)) {
+            return;
+        }
+
+        // The instance sends nothing: there is no attempt to make, and one
+        // would only be refused and written to the audit log on every page.
+        if ($this->outboundMode === OutboundMode::Off) {
+            return;
+        }
+
         if (!$this->isStale() || !$this->mayAttemptNow()) {
             return;
         }
@@ -184,13 +205,32 @@ final class ExchangeRateService
      * @return int|null Number of rates cached, or null when backing off.
      * @throws RateProviderException
      */
-    public function refreshNow(): ?int
+    public function refreshNow(?int $actorUserId = null): ?int
     {
         if ($this->retryAfter() !== null) {
             return null;
         }
 
-        return $this->refresh();
+        return $this->refresh($actorUserId);
+    }
+
+    /**
+     * Whether any of the currencies in use is not the base, which is the only
+     * case in which a conversion reads a rate.
+     *
+     * @param list<string> $currencies
+     */
+    private function needsRates(array $currencies): bool
+    {
+        $base = $this->settings->baseCurrency();
+
+        foreach ($currencies as $currency) {
+            if (Currency::normalise($currency) !== $base) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -222,14 +262,17 @@ final class ExchangeRateService
      * @return int Number of rates cached.
      * @throws RateProviderException
      */
-    public function refresh(): int
+    public function refresh(?int $actorUserId = null): int
     {
         $base = $this->settings->baseCurrency();
         $provider = $this->provider();
 
         $this->settings->markRatesAttempted($this->clock->now());
 
-        $table = $provider->fetch($base, $this->apiKey());
+        $fetch = fn (): RateTable => $provider->fetch($base, $this->apiKey());
+        $table = $this->outbound === null
+            ? $fetch()
+            : $this->outbound->within(OutboundContext::RATES, $actorUserId, $fetch);
 
         // A provider that could not serve the base we asked for answered in its
         // own; re-expressing it here is exactly why the table knows its base.

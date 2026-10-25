@@ -8,6 +8,7 @@ use App\Http\BlockedTargetException;
 use App\Http\HttpClientOptions;
 use App\Http\StaticTrustedTargets;
 use App\Http\UrlGuard;
+use App\Http\OutboundPolicy;
 use App\Tests\Support\FakeDnsResolver;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -37,6 +38,7 @@ final class UrlGuardTest extends TestCase
             new StaticTrustedTargets($trusted),
             $options ?? new HttpClientOptions(),
             new NullLogger(),
+            OutboundPolicy::open(),
         );
     }
 
@@ -208,6 +210,7 @@ final class UrlGuardTest extends TestCase
             new StaticTrustedTargets(),
             new HttpClientOptions(httpsProxy: 'http://proxy.internal:3128'),
             new NullLogger(),
+            OutboundPolicy::open(),
         );
 
         $target = $guard->inspect($this->uri('https://example.com/hook'));
@@ -224,6 +227,7 @@ final class UrlGuardTest extends TestCase
             new StaticTrustedTargets(),
             new HttpClientOptions(httpsProxy: 'http://proxy.internal:3128', noProxy: ['internal.example']),
             new NullLogger(),
+            OutboundPolicy::open(),
         );
 
         // NO_PROXY means we connect directly, so the address is ours to judge
@@ -239,6 +243,7 @@ final class UrlGuardTest extends TestCase
             new StaticTrustedTargets(),
             new HttpClientOptions(httpsProxy: 'http://proxy.internal:3128'),
             new NullLogger(),
+            OutboundPolicy::open(),
         );
 
         $this->expectException(BlockedTargetException::class);

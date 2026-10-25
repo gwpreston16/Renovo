@@ -48,6 +48,7 @@ final class UrlGuard
         private readonly TrustedTargets $trusted,
         private readonly HttpClientOptions $options,
         private readonly LoggerInterface $logger,
+        private readonly OutboundPolicy $policy,
     ) {
     }
 
@@ -58,6 +59,26 @@ final class UrlGuard
      * @throws BlockedTargetException
      */
     public function inspect(UriInterface $uri, bool $httpsOnly = false): ResolvedTarget
+    {
+        // The outbound mode first, before the name is resolved: a lookup is a
+        // request that leaves the server too.
+        $this->policy->check($uri);
+
+        try {
+            return $this->vet($uri, $httpsOnly);
+        } catch (BlockedTargetException $refusal) {
+            // A private or reserved address is the refusal an administrator
+            // needs to see; a malformed or http URL is a typing mistake the
+            // form already answers.
+            if ($refusal->reason === BlockedTargetException::PRIVATE_ADDRESS) {
+                $this->policy->record($uri->getHost(), $refusal);
+            }
+
+            throw $refusal;
+        }
+    }
+
+    private function vet(UriInterface $uri, bool $httpsOnly): ResolvedTarget
     {
         $scheme = strtolower($uri->getScheme());
         $host = IpAddress::unbracket($uri->getHost());
@@ -168,35 +189,6 @@ final class UrlGuard
      */
     private function isTrustedHost(string $host): bool
     {
-        $host = strtolower(rtrim(IpAddress::unbracket($host), '.'));
-
-        foreach ($this->trusted->entries() as $entry) {
-            $entry = strtolower(trim($entry));
-            if ($entry === '') {
-                continue;
-            }
-
-            if (str_starts_with($entry, '.')) {
-                $suffix = ltrim($entry, '.');
-                if ($host === $suffix || str_ends_with($host, '.' . $suffix)) {
-                    return true;
-                }
-                continue;
-            }
-
-            // An IP or CIDR entry is matched against addresses, not names.
-            if (IpAddress::isValidRange($entry)) {
-                if (IpAddress::isLiteral($host) && IpAddress::inRange($host, $entry)) {
-                    return true;
-                }
-                continue;
-            }
-
-            if ($host === $entry) {
-                return true;
-            }
-        }
-
-        return false;
+        return HostPatterns::matches($host, $this->trusted->entries());
     }
 }

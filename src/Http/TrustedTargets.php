@@ -23,4 +23,17 @@ interface TrustedTargets
      * @return list<string>
      */
     public function entries(): array;
+
+    /**
+     * Every entry that lets a host be *contacted* under
+     * `OUTBOUND_HTTP=allowlist` — the entries above, and those added only to
+     * name a host the instance may talk to (Phase 43).
+     *
+     * Kept apart from `entries()` on purpose: the guard reads that one to lift
+     * its private-address and plain-http checks, and an entry added merely to
+     * allow contact must never do that.
+     *
+     * @return list<string>
+     */
+    public function allowlisted(): array;
 }

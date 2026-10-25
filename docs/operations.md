@@ -536,6 +536,107 @@ With checks off — the switch, `UPDATE_CHECK=false`, or an
 `UPDATE_CHECK_REPOSITORY` that is not an `owner/name` — no request is made to
 GitHub at all. `UPDATE_CHECK=false` greys the switch out and says why.
 
+## Outbound requests
+
+Everything Renovo sends over HTTP goes through one client: logo fetches,
+exchange rates, the update check, webhook and chat channels, and backup
+destinations. `OUTBOUND_HTTP` decides what that client may reach at all. It is
+read when the process starts.
+
+| Value | What it allows |
+|---|---|
+| `open` (the default) | Any public host. A private address only if its host is on the [trusted-host list](#trusted-hosts). |
+| `allowlist` | Only the hosts on the trusted-host list (either kind), the **exchange-rate provider the instance is set to use**, and **GitHub's API while update checks are on**. Everything else is refused: logos for other sites, webhooks to unlisted hosts. |
+| `off` | Nothing. No request leaves the server over HTTP, and no name is looked up for one. |
+
+Anything else — `allow-list`, `disabled` — is read as `off`, because a typo
+meant to restrict the instance must not leave it open.
+
+The mode is enforced inside the client, before a connection or a lookup, so no
+feature can get round it. **Email is not HTTP and is not governed by it**;
+`SMTP_HOST` is reached as it always was. Under `allowlist` and `off` a redirect
+is not followed: the redirecting response is the answer.
+
+**Settings → Instance → Instance status** has an **Outbound requests** row
+showing the mode. A screen that cannot do its job because of it says so, not
+that something failed: **Refresh now** (rates), **Check now** (updates), a
+channel's **Send test**, and the dashboard's own attempts, which stop trying
+under `off` instead of collecting a refusal an hour. Under `off`, a logo is not
+fetched, and the miss is not remembered for a week as a site with no icon, so
+loosening the mode brings logos back.
+
+### Trusted hosts
+
+Under **Settings → Instance → Trusted hosts** each entry says what it allows:
+
+- **Reach a private address, over http** — what every entry meant before this
+  setting, and still what the entries already there mean. For a Gotify on your
+  LAN.
+- **Be contacted only** — for a public host you want to allow while
+  `OUTBOUND_HTTP=allowlist`. Every other check on a user-supplied URL still
+  applies to it: https, and a public address. A name someone else controls could
+  otherwise be made to resolve to an internal address.
+
+A range (`10.0.0.0/8`) matches a URL written as an address, not a name that
+resolves into it.
+
+### What is written down
+
+Every refusal is recorded as **Outbound request refused** in the
+[audit log](security.md), visible to instance administrators: a private or
+reserved address, a redirect somewhere not allowed, and a refusal by the mode.
+The entry holds the **host**, the reason and the feature (`logo`, `rates`,
+`updates`, a channel type), never the URL, which for a webhook can itself be
+the secret. One entry is kept per host, reason and feature per hour, with a
+`count`, so a channel the scheduler retries cannot fill the log. It names the
+user it was for — a channel's owner, the administrator who pressed Refresh now
+— or none when the scheduler asked. Pick **Outbound request refused** in the
+audit log's event filter.
+
+### Running with no route out
+
+`OUTBOUND_HTTP=off` stops Renovo sending. To make sure nothing can, take the
+route away at the network too. A `docker-compose.override.yml` next to
+`docker-compose.yml` puts everything but the web server on a network with no
+way out:
+
+```yaml
+services:
+  app:
+    networks: [internal]
+  migrate:
+    networks: [internal]
+  scheduler:
+    networks: [internal]
+  database:
+    networks: [internal]
+  mailpit:
+    networks: [internal]
+  web:
+    # Still published, so you can reach it; also on the internal network, to
+    # reach the app.
+    networks: [default, internal]
+
+networks:
+  internal:
+    internal: true
+```
+
+and in `.env`:
+
+```bash
+OUTBOUND_HTTP=off
+```
+
+The database's published port stops working on an internal network; use
+`docker compose exec`. What stops working: logos by fetch (upload one instead),
+live exchange rates (the cached table, and none at all on a fresh instance),
+update checks, every HTTP notification channel (webhooks, Telegram, Gotify and
+the rest), and off-server backup destinations. Email still goes where
+`SMTP_HOST` is, which works only if the mail relay is on the internal network
+too, as the bundled Mailpit is. The default compose file is unchanged: an
+instance that sends Telegram notifications needs a route out.
+
 ## Demonstration mode
 
 **Settings → Instance → Read-only demonstration** closes the whole instance to

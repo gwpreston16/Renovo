@@ -138,6 +138,16 @@ final class SettingsPageTest extends DatabaseTestCase
         self::assertStringContainsString('name="allow_registration"', $page);
     }
 
+    public function testInstanceStatusSaysWhatOutboundRequestsMayReach(): void
+    {
+        $this->signIn($this->adminId);
+        $page = $this->body($this->request('GET', '/settings/instance'));
+
+        self::assertStringContainsString('Outbound requests', $page);
+        self::assertStringContainsString('OUTBOUND_HTTP', $page);
+        self::assertStringContainsString('Any public host can be reached', $page);
+    }
+
     public function testInstanceStatusWarnsWhileSecretsShareTheSessionKey(): void
     {
         $page = $this->instancePageWith(new KeyRing('session-key', [], fromSecretsKey: false));

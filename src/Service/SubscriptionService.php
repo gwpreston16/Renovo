@@ -1291,7 +1291,7 @@ final class SubscriptionService
         // fetcher answers from its per-domain cache where it can, never throws,
         // and returns null when there is nothing to be had — so a save is never
         // held up by a site being slow to say no.
-        return $this->logoFetcher->fetchFor($website);
+        return $this->logoFetcher->fetchFor($website, $scope->userId);
     }
 
     /**

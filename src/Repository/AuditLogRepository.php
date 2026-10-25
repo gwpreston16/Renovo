@@ -177,6 +177,37 @@ final class AuditLogRepository extends AbstractScopedRepository
     }
 
     /**
+     * The entries of an action about one target label since a moment, newest
+     * first, with their decoded context: what a repeated event is matched
+     * against (Phase 43's outbound refusals). A host has a handful of
+     * distinct causes in an hour, so the match on the rest of the context is
+     * made in code, not in SQL that differs between the two engines.
+     *
+     * @return list<array{id: int, context: array<string, mixed>}>
+     */
+    public function recentFor(AuditAction $action, string $targetLabel, DateTimeImmutable $since): array
+    {
+        $rows = $this->db->fetchAll(
+            'SELECT ' . $this->quote('id') . ', ' . $this->quote('context') . ' FROM ' . $this->quote('audit_log')
+            . ' WHERE ' . $this->quote('action') . ' = :action'
+            . ' AND ' . $this->quote('target_label') . ' = :label'
+            . ' AND ' . $this->quote('occurred_at') . ' >= :since'
+            . ' ORDER BY ' . $this->quote('id') . ' DESC',
+            [
+                'action' => $action->value,
+                'label' => mb_substr($targetLabel, 0, 254),
+                'since' => $since->format('Y-m-d H:i:s'),
+            ],
+        );
+
+        return array_map(static function (array $row): array {
+            $context = is_string($row['context'] ?? null) ? json_decode((string) $row['context'], true) : [];
+
+            return ['id' => (int) $row['id'], 'context' => is_array($context) ? $context : []];
+        }, $rows);
+    }
+
+    /**
      * Set one value in an entry's context, keeping the rest — the count on a
      * repeated event. The only change an entry ever takes after it is
      * written, and only to say how many times the same thing happened.

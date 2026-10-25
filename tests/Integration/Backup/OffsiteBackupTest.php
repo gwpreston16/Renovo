@@ -20,6 +20,7 @@ use App\Http\HttpClient;
 use App\Http\HttpClientOptions;
 use App\Http\StaticTrustedTargets;
 use App\Http\UrlGuard;
+use App\Http\OutboundPolicy;
 use App\Support\FrozenClock;
 use App\Tests\Support\FakeDnsResolver;
 use App\Tests\Support\LocalServer;
@@ -339,12 +340,18 @@ final class OffsiteBackupTest extends DatabaseTestCase
             new BackupDestinationRepository($this->db, $this->clock, $this->keys()),
             new BackupDestinationFactory(
                 new HttpExchange(new GuardedTransferClient(
-                    new HttpClient(new ResponseFactory(), new StreamFactory(), new HttpClientOptions()),
+                    new HttpClient(
+                        new ResponseFactory(),
+                        new StreamFactory(),
+                        new HttpClientOptions(),
+                        OutboundPolicy::open(),
+                    ),
                     new UrlGuard(
                         new FakeDnsResolver(['nas.test' => ['127.0.0.1']]),
                         new StaticTrustedTargets($trusted),
                         new HttpClientOptions(),
                         new NullLogger(),
+                        OutboundPolicy::open(),
                     ),
                     (new HttpClientOptions())->forTransfers(60, 1024 * 1024 * 1024),
                 )),

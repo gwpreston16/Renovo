@@ -6,7 +6,9 @@ namespace App\Tests\Integration;
 
 use App\Application\AppVersion;
 use App\Domain\Entity\User;
+use App\Http\BlockedTargetException;
 use App\Http\HttpClientException;
+use App\Http\OutboundMode;
 use App\Repository\InstanceSettingsRepository;
 use App\Repository\UserRepository;
 use App\Service\InstanceSettingsService;
@@ -361,6 +363,42 @@ final class UpdateCheckServiceTest extends DatabaseTestCase
         $quoted = $this->service($this->release('v1.8.0', ['html_url' => 'https://github.com/x" onclick="y']));
         $quoted->check();
         self::assertNull($quoted->status()->releaseUrl);
+    }
+
+    public function testCheckNowSaysWhenTheInstanceRefusedToSendAndNotThatGitHubIsDown(): void
+    {
+        $cases = [
+            [BlockedTargetException::OUTBOUND_OFF, CheckNowResult::OutboundOff],
+            [BlockedTargetException::OUTBOUND_NOT_ALLOWLISTED, CheckNowResult::OutboundNotAllowed],
+        ];
+
+        foreach ($cases as [$reason, $expected]) {
+            $http = FakeHttpClient::throwing(BlockedTargetException::outbound($reason, 'api.github.com'));
+
+            self::assertSame($expected, $this->service($http)->check());
+            // A later, ordinary failure is a failure again: the reason is not remembered.
+            self::assertSame(CheckNowResult::Failed, $this->service(FakeHttpClient::failing())->check());
+        }
+    }
+
+    public function testTheLazyAndScheduledCheckMakeNoAttemptWhileOutboundRequestsAreOff(): void
+    {
+        $http = $this->release('v1.8.0');
+        $service = new UpdateCheckService(
+            $http,
+            new RequestFactory(),
+            $this->settings,
+            $this->users,
+            new AppVersion($this->versionFile),
+            $this->clock,
+            $this->logger,
+            new UpdateCheckConfig(),
+            null,
+            OutboundMode::Off,
+        );
+
+        self::assertFalse($service->refreshIfDue());
+        self::assertSame([], $http->requests);
     }
 
     /**

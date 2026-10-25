@@ -8,6 +8,7 @@ use App\I18n\Translator;
 use App\Domain\AlertType;
 use App\Domain\DigestMode;
 use App\Domain\Entity\NotificationPreferences;
+use App\Http\OutboundRefusal;
 use App\Notification\NotifierException;
 use App\Notification\NotifierRegistry;
 use App\Repository\NotificationLogRepository;
@@ -148,7 +149,16 @@ final class NotificationController extends Controller
             // A notifier's own words about why a delivery failed: the
             // channel knows what went wrong and this application does not, so
             // the sentence is passed through rather than reinvented as a key.
-            $this->flash('error', 'flash.raw', ['message' => $exception->getMessage()]);
+            //
+            // Unless the instance itself refused to send (Phase 43): then the
+            // channel is fine, and the sentence is the instance's.
+            $refusal = OutboundRefusal::reasonOf($exception);
+
+            if ($refusal !== null) {
+                $this->flash('error', OutboundRefusal::messageKey($refusal));
+            } else {
+                $this->flash('error', 'flash.raw', ['message' => $exception->getMessage()]);
+            }
         }
 
         return $this->redirectAfterWrite($request, $response, $this->returnTo($request));

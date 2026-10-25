@@ -199,21 +199,21 @@ context column.
 
 ## Status
 
-- [ ] K54, K55, K97 fixed and marked *Fixed (Phase 43)*
-- [ ] `OUTBOUND_HTTP` enforced in `HttpClient`; `FixedOutboundHosts` registry
+- [x] K54, K55, K97 fixed and marked *Fixed (Phase 43)*
+- [x] `OUTBOUND_HTTP` enforced in `HttpClient`; `FixedOutboundHosts` registry
       and coverage test
-- [ ] Outbound row on Instance status; specific refusal copy on logo, rates,
+- [x] Outbound row on Instance status; specific refusal copy on logo, rates,
       updates and Send test
-- [ ] `outbound.refused` audit with de-duplication; audit log filter
-- [ ] Trusted-host kind (`contact` / `private`), migration on both engines,
+- [x] `outbound.refused` audit with de-duplication; audit log filter
+- [x] Trusted-host kind (`contact` / `private`), migration on both engines,
       screen copy
-- [ ] README: outbound mode, running with no route out
-- [ ] CI: `composer audit`, `npm audit`, image scan; `dependabot.yml`; the
+- [x] README: outbound mode, running with no route out
+- [x] CI: `composer audit`, `npm audit`, image scan; `dependabot.yml`; the
       ignore-with-reason convention
-- [ ] `SECURITY.md`, linked from the README
-- [ ] `MAIL_VERIFY_PEER`; dev compose sets it false; upgrade note
-- [ ] `.env.example` and the README environment table
-- [ ] New strings in `translations/en.php`
+- [x] `SECURITY.md`, linked from the README
+- [x] `MAIL_VERIFY_PEER`; dev compose sets it false; upgrade note
+- [x] `.env.example` and the README environment table
+- [x] New strings in `translations/en.php`
 - [ ] `composer check`, `i18n:check`, offline guard green on both engines
 
 ## Definition of done
