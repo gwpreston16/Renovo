@@ -8,6 +8,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-10-25
+
 ### Added
 
 - **`OUTBOUND_HTTP` controls what Renovo may reach.** `open` (the default)
@@ -646,7 +648,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.12.0...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.13.0...HEAD
+[1.13.0]: https://github.com/gwpreston16/Renovo/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/gwpreston16/Renovo/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/gwpreston16/Renovo/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/gwpreston16/Renovo/compare/v1.9.0...v1.10.0
