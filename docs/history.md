@@ -525,6 +525,14 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   banner is stripped from the built CSS so the offline check still passes, and
   the tests that PHPStan 2.3 flagged are marked `@phpstan-impure`. No
   behaviour changes. No migrations.
+- **Phase 45 — calendar feed and API edge cases, from the known-issues log —
+  complete (1.14.0).** The calendar feed shows the price that will be taken:
+  an announced rise or the end of an introductory offer appears at its new
+  amount from the day it takes effect, as in the in-app calendar, and the feed
+  is built in linear time. A huge `?page=` is an empty page on
+  `/subscriptions`, `/api/v1/subscriptions` and `/audit` instead of a 500, and
+  an API logo upload with no file answers 422 and keeps the existing logo; the
+  OpenAPI document is version 1.8.1. No migrations. See [Calendar feed](features/calendar.md#calendar-feed).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says

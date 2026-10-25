@@ -8,6 +8,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-10-25
+
 ### Fixed
 
 - **The calendar feed shows the price that will be taken.** Each payment in
@@ -22,7 +24,7 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 - **An API logo upload with no file is a 422.** `POST
   /api/v1/subscriptions/{id}/logo` with an empty `logo` part deleted the
   subscription's logo and answered 200; it now answers 422 on `logo` and keeps
-  the logo. *Phase 45.*
+  the logo. The OpenAPI document is now version 1.8.1. *Phase 45.*
 
 ## [1.13.1] - 2026-10-25
 
@@ -685,7 +687,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.13.1...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.14.0...HEAD
+[1.14.0]: https://github.com/gwpreston16/Renovo/compare/v1.13.1...v1.14.0
 [1.13.1]: https://github.com/gwpreston16/Renovo/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/gwpreston16/Renovo/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/gwpreston16/Renovo/compare/v1.11.0...v1.12.0
