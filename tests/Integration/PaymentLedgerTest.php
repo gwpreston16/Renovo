@@ -2199,6 +2199,8 @@ final class PaymentLedgerTest extends DatabaseTestCase
 
     /**
      * @return list<array{string, int}> Newest first.
+     *
+     * @phpstan-impure
      */
     private function dueAndExpected(int $subscriptionId): array
     {

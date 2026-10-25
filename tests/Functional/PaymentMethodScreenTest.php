@@ -257,6 +257,8 @@ final class PaymentMethodScreenTest extends DatabaseTestCase
     /**
      * @param array<string, mixed> $body
      * @param array<string, UploadedFileInterface> $files
+     *
+     * @phpstan-impure
      */
     private function request(string $method, string $path, array $body = [], array $files = []): ResponseInterface
     {

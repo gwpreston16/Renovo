@@ -154,6 +154,8 @@ final class SetupWizardTest extends DatabaseTestCase
 
     /**
      * @param array<string, string> $body
+     *
+     * @phpstan-impure
      */
     private function request(string $method, string $path, array $body = []): ResponseInterface
     {

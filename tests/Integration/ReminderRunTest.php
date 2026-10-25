@@ -328,6 +328,9 @@ final class ReminderRunTest extends NotificationTestCase
         self::assertCount($before, $this->notifier->sent);
     }
 
+    /**
+     * @phpstan-impure
+     */
     private function budgetAlertCount(): int
     {
         return count(array_filter(

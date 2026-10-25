@@ -57,6 +57,8 @@ final class TrialService
      * today, and the advance is what rolls it forward if it is already behind.
      *
      * @return int Number of trials converted.
+     *
+     * @phpstan-impure
      */
     public function convertDueTrials(Scope $scope): int
     {

@@ -90,6 +90,8 @@ final class RecordingNotifier implements Notifier
 
     /**
      * @return list<string>
+     *
+     * @phpstan-impure
      */
     public function alertTypes(): array
     {
