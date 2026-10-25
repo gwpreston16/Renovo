@@ -102,7 +102,7 @@ final class BackupAlertTest extends NotificationTestCase
         $this->copy($run, $nas, BackupCopy::CONFIRMED, '2026-09-14 03:05:00');
 
         $this->alerts()->notify();
-        self::assertSame([], $this->notifier->sent, 'one day is not stale');
+        self::assertSame([], $this->notifier->alertTypes(), 'one day is not stale');
 
         $this->clock->advanceTo(new DateTimeImmutable('2026-09-16 04:00:00'));
         $this->alerts()->notify();
@@ -171,7 +171,7 @@ final class BackupAlertTest extends NotificationTestCase
 
         $this->alerts()->notify();
 
-        self::assertSame([], $this->notifier->sent);
+        self::assertSame([], $this->notifier->alertTypes());
         self::assertFalse((new NotificationPreferenceRepository($this->db, $this->clock))
             ->findForUser($this->admin)->backupFailedAlerts);
     }
@@ -181,12 +181,12 @@ final class BackupAlertTest extends NotificationTestCase
         $this->users->setDisabledAt($this->admin, $this->clock->now());
         $this->failedRun('2026-09-15 03:00:00');
         $this->alerts()->notify();
-        self::assertSame([], $this->notifier->sent);
+        self::assertSame([], $this->notifier->alertTypes());
 
         $this->users->setDisabledAt($this->admin, null);
         $this->clock->advanceTo(new DateTimeImmutable('2026-09-25 08:00:00'));
         $this->alerts()->notify();
-        self::assertSame([], $this->notifier->sent);
+        self::assertSame([], $this->notifier->alertTypes());
     }
 
     public function testTheUpgradeCopiesRenewalRoutesToTheBackupAlertsForAdministratorsOnly(): void

@@ -66,6 +66,8 @@ final class BackupAlertService
      * Send every open incident to every instance administrator who wants it.
      *
      * @return int Messages sent.
+     *
+     * @phpstan-impure
      */
     public function notify(): int
     {

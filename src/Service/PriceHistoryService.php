@@ -643,6 +643,8 @@ final class PriceHistoryService
      * from it would be wrong by exactly the increase the user scheduled.
      *
      * @return int Number of subscriptions whose price moved.
+     *
+     * @phpstan-impure
      */
     public function applyDueChanges(Scope $scope): int
     {
