@@ -348,7 +348,7 @@ jobs:
       # every pull request until upstream acts. One that does not apply is
       # accepted in `.trivyignore`, with a reason and a review date.
       - name: Scan the application image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.33.1
         with:
           image-ref: renovo-app:ci
           severity: HIGH,CRITICAL
@@ -373,7 +373,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Scan the web image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.33.1
         with:
           image-ref: renovo-web:ci
           severity: HIGH,CRITICAL
