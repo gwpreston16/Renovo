@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–46
+## Planned — Phases 30–47
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -55,6 +55,7 @@ can be moved.
 | 44 | [The README and the docs, rebuilt for the first five minutes](docs/phases/PHASE-44.md) | — | None | ✅ done |
 | 45 | [Calendar feed and API edge cases, from the known-issues log](docs/phases/PHASE-45.md) | — | None | 📋 planned |
 | 46 | [Sign-in and second-factor edge cases, from the known-issues log](docs/phases/PHASE-46.md) | — | None | 📋 planned |
+| 47 | [Money inputs and price history, from the known-issues log](docs/phases/PHASE-47.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -128,6 +129,11 @@ can be moved.
   setup wizard's sign-in is audited, the lockout lasts what it says, a TOTP
   code is accepted once, a passkey can be re-saved unchanged on MySQL, and an
   unreadable setup secret is a form error.
+- **47 — Money inputs and price history.** A batch from the known-issues log
+  (K8, K9, K10, K35, K38, K41): a fractional price or whole number is a 422
+  with errors under the API's field names, a price above a ceiling is refused
+  instead of breaking every total, a price edit before a subscription starts
+  survives its start date, and split shares add up to the charge.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
