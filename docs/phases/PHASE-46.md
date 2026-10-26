@@ -133,9 +133,9 @@ None.
 - [x] K6: `next` redirect check shared and strict
 - [x] K28: setup wizard signs in through `establish()`
 - [x] K29: the block lasts `AUTH_LOCKOUT_SECONDS`
-- [ ] K30: TOTP step recorded conditionally
+- [x] K30: TOTP step recorded conditionally
 - [ ] K33: passkey rename with an unchanged name succeeds on MySQL
-- [ ] K106: unreadable setup secret is a form error
+- [x] K106: unreadable setup secret is a form error
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed
 - [ ] ROADMAP: Phase 46 row marked ✅ done

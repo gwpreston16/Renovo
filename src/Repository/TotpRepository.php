@@ -87,13 +87,21 @@ final class TotpRepository extends AbstractRepository
         );
     }
 
-    public function recordUsedStep(int $userId, int $step): void
+    /**
+     * Spend a step, once. The update only applies while `last_used_step` is still
+     * below it, so of two requests carrying the same code at the same moment the
+     * database lets exactly one through, however the reads before it interleaved.
+     *
+     * @return bool Whether this call spent the step; false when it was already spent.
+     */
+    public function recordUsedStep(int $userId, int $step): bool
     {
-        $this->db->execute(
+        return $this->db->execute(
             'UPDATE ' . $this->quote('user_totp') . ' SET ' . $this->quote('last_used_step') . ' = :step'
-            . ' WHERE ' . $this->quote('user_id') . ' = :user',
-            ['step' => $step, 'user' => $userId],
-        );
+            . ' WHERE ' . $this->quote('user_id') . ' = :user'
+            . ' AND (' . $this->quote('last_used_step') . ' IS NULL OR ' . $this->quote('last_used_step') . ' < :step_floor)',
+            ['step' => $step, 'step_floor' => $step, 'user' => $userId],
+        ) > 0;
     }
 
     public function delete(int $userId): void

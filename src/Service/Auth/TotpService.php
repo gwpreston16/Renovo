@@ -97,11 +97,21 @@ final class TotpService
             throw ValidationException::field('code', 'error.totp.already_set_up');
         }
 
-        $step = Totp::verify(
-            $this->cipher->decrypt($enrolment['secret']),
-            $code,
-            $this->clock->now()->getTimestamp(),
-        );
+        try {
+            $secret = $this->cipher->decrypt($enrolment['secret']);
+        } catch (RuntimeException $exception) {
+            // The key changed between starting setup and confirming it. As in
+            // verify(), no code can be right: log it and fail closed, with the
+            // form and a way forward rather than a 500.
+            $this->logger->error('A pending two-factor secret could not be decrypted', [
+                'user_id' => $user->id,
+                'exception' => $exception->getMessage(),
+            ]);
+
+            throw ValidationException::field('code', 'error.totp.setup_unreadable');
+        }
+
+        $step = Totp::verify($secret, $code, $this->clock->now()->getTimestamp());
 
         if ($step === null) {
             throw ValidationException::field('code', 'error.totp.code_incorrect');
@@ -156,11 +166,11 @@ final class TotpService
             return false;
         }
 
-        // Recorded before the caller is told it succeeded, so the same code
-        // cannot be presented twice inside its validity window.
-        $this->totp->recordUsedStep($userId, $step);
-
-        return true;
+        // Spent before the caller is told it succeeded, so the same code cannot
+        // be presented twice inside its validity window. The write only lands if
+        // nobody spent the step since the read above: a second request carrying
+        // the same code at the same moment is refused here.
+        return $this->totp->recordUsedStep($userId, $step);
     }
 
     /**

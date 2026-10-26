@@ -164,6 +164,55 @@ final class TotpEnrolmentTest extends DatabaseTestCase
         self::assertTrue($this->totp->verify($this->user->id, $this->codeFor($secret)));
     }
 
+    public function testASpentStepCannotBeSpentAgain(): void
+    {
+        $this->enrol();
+        $step = Totp::stepAt($this->clock->now()->getTimestamp()) + 5;
+
+        // Two requests that both read the old last_used_step and then write:
+        // the database lets the first through and refuses the second, and a
+        // step at or below the one already spent never moves it back.
+        self::assertTrue($this->enrolments->recordUsedStep($this->user->id, $step));
+        self::assertFalse($this->enrolments->recordUsedStep($this->user->id, $step));
+        self::assertFalse($this->enrolments->recordUsedStep($this->user->id, $step - 1));
+        self::assertSame($step, $this->enrolments->find($this->user->id)['last_used_step'] ?? null);
+
+        self::assertTrue($this->enrolments->recordUsedStep($this->user->id, $step + 1));
+    }
+
+    public function testACodeWhoseStepWasSpentAfterItWasReadIsRefused(): void
+    {
+        $secret = $this->enrol();
+        $code = $this->codeFor($secret);
+
+        // What a concurrent request leaves behind between this one's read of
+        // last_used_step and its write: the same step, already spent.
+        $step = Totp::stepAt($this->clock->now()->getTimestamp());
+        self::assertTrue($this->enrolments->recordUsedStep($this->user->id, $step));
+
+        self::assertFalse($this->totp->verify($this->user->id, $code));
+    }
+
+    public function testAnUnreadableSetupSecretReturnsTheSetupFormError(): void
+    {
+        $otherKey = new SecretCipher(new KeyRing('a-key-that-is-no-longer-configured'));
+        $this->enrolments->startEnrolment(
+            $this->user->id,
+            $otherKey->encrypt(Totp::generateSecret()),
+            $this->clock->now(),
+        );
+
+        try {
+            $this->totp->confirmEnrolment($this->user, '123456');
+            self::fail('An unreadable secret must not confirm anything.');
+        } catch (ValidationException $exception) {
+            self::assertSame('error.totp.setup_unreadable', $exception->errors()['code']->key);
+        }
+
+        self::assertFalse($this->totp->isEnabled($this->user->id));
+        self::assertSame(0, $this->recoveryCodes->countUnused($this->user->id));
+    }
+
     public function testRecoveryCodesWorkOnceEach(): void
     {
         $this->totp->beginEnrolment($this->user, 'Renovo Test');
