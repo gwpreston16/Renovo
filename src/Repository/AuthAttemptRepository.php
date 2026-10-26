@@ -30,6 +30,9 @@ final class AuthAttemptRepository extends AbstractRepository
     // six-digit code than the code's own guessing odds assume.
     public const KIND_TWO_FACTOR = '2fa';
 
+    /** More than any limit needs to see; keeps a flood from an address cheap to read. */
+    public const FAILURE_HISTORY_CAP = 500;
+
     public function __construct(Database $db, private readonly Clock $clock)
     {
         parent::__construct($db);
@@ -88,6 +91,53 @@ final class AuthAttemptRepository extends AbstractRepository
                 'since' => $since->format('Y-m-d H:i:s'),
             ],
         );
+    }
+
+    /**
+     * When each failure for an account happened since a moment, oldest first.
+     * At most the most recent {@see self::FAILURE_HISTORY_CAP}.
+     *
+     * @return list<DateTimeImmutable>
+     */
+    public function failureTimesForAccount(string $kind, string $accountKey, DateTimeImmutable $since): array
+    {
+        return $this->failureTimes('account_key', $this->hashAccountKey($accountKey), $kind, $since);
+    }
+
+    /**
+     * When each failure from an address happened since a moment, oldest first.
+     * At most the most recent {@see self::FAILURE_HISTORY_CAP}.
+     *
+     * @return list<DateTimeImmutable>
+     */
+    public function failureTimesForIp(string $kind, string $ipAddress, DateTimeImmutable $since): array
+    {
+        return $this->failureTimes('ip_address', substr($ipAddress, 0, 45), $kind, $since);
+    }
+
+    /**
+     * @return list<DateTimeImmutable>
+     */
+    private function failureTimes(string $column, string $value, string $kind, DateTimeImmutable $since): array
+    {
+        $rows = $this->db->fetchAll(
+            'SELECT ' . $this->quote('attempted_at') . ' FROM ' . $this->quote('auth_attempts')
+            . ' WHERE ' . $this->quote('kind') . ' = :kind'
+            . ' AND ' . $this->quote($column) . ' = :value'
+            . ' AND ' . $this->quote('successful') . ' = :failed'
+            . ' AND ' . $this->quote('attempted_at') . ' >= :since'
+            . ' ORDER BY ' . $this->quote('attempted_at') . ' DESC, ' . $this->quote('id') . ' DESC'
+            . ' LIMIT ' . self::FAILURE_HISTORY_CAP,
+            ['kind' => $kind, 'value' => $value, 'failed' => false, 'since' => $since->format('Y-m-d H:i:s')],
+        );
+
+        $timezone = $this->clock->now()->getTimezone();
+        $times = [];
+        foreach (array_reverse($rows) as $row) {
+            $times[] = new DateTimeImmutable((string) $row['attempted_at'], $timezone);
+        }
+
+        return $times;
     }
 
     /**
