@@ -11,6 +11,7 @@ use App\Repository\MembershipRepository;
 use App\Repository\UserRepository;
 use App\Domain\TokenScopes;
 use App\Service\ApiTokenService;
+use App\Service\InstanceSettingsService;
 use DateTimeImmutable;
 
 /**
@@ -79,6 +80,35 @@ final class ApiIsolationTest extends ApiTestCase
             'Owner private',
             $this->decode($this->api('GET', '/api/v1/subscriptions/' . $id, $this->ownerToken))['data']['name'],
         );
+    }
+
+    public function testAnInstanceAdminWithoutAHouseholdSeesNothing(): void
+    {
+        $this->createSubscription(['name' => 'Owner private'], $this->ownerToken);
+
+        $users = new UserRepository($this->db);
+        $adminId = $users->create('admin@example.test', 'Admin', 'hash', true, new DateTimeImmutable());
+        $admin = $users->findById($adminId);
+        self::assertNotNull($admin);
+        $token = $this->container()->get(ApiTokenService::class)->issue(
+            $admin,
+            null,
+            'Admin token',
+            TokenScopes::everything(),
+        );
+
+        // In both modes: ISOLATED hides rows, SHARED hides nothing from a
+        // member, and neither shows an admin who has no household any of them.
+        // The role-less scope has no `subscription.view`, so the list is
+        // refused outright and carries no row.
+        foreach ([IsolationMode::Isolated, IsolationMode::Shared] as $mode) {
+            $this->container()->get(InstanceSettingsService::class)->setIsolationMode($mode);
+
+            $list = $this->api('GET', '/api/v1/subscriptions', $token);
+            self::assertSame(403, $list->getStatusCode(), $mode->value);
+            self::assertArrayNotHasKey('data', $this->decode($list), $mode->value);
+            self::assertStringNotContainsString('Owner private', (string) $list->getBody(), $mode->value);
+        }
     }
 
     public function testAnotherHouseholdIsInvisible(): void

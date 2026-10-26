@@ -254,6 +254,46 @@ final class ContractTermsScreensTest extends DatabaseTestCase
         self::assertStringNotContainsString('value="typed by hand"', $again);
     }
 
+    public function testARefusedPaymentDoesNotReopenOnAnotherSubscription(): void
+    {
+        $first = $this->create('Netflix', 1099);
+        $second = $this->create('Spotify', 999);
+        $this->signIn($this->ownerId);
+
+        $this->request('POST', '/subscriptions/' . $first . '/charges', [
+            'date' => $this->day('+5 days')->format('Y-m-d'),
+            'amount' => '12.34',
+            'note' => 'typed on the first',
+        ]);
+
+        // The other subscription's form is closed and empty: nothing typed on
+        // the first is in it.
+        $other = (string) $this->request('GET', '/subscriptions/' . $second . '/money')->getBody();
+        self::assertDoesNotMatchRegularExpression(
+            '~<details class="settings-disclosure" open>\\s*<summary[^>]*>.*?Add a payment~s',
+            $other,
+        );
+        self::assertStringNotContainsString('value="12.34"', $other);
+        self::assertStringNotContainsString('typed on the first', $other);
+
+        // And the refusal is spent, not parked for the first page to find later.
+        $afterwards = (string) $this->request('GET', '/subscriptions/' . $first . '/money')->getBody();
+        self::assertStringNotContainsString('typed on the first', $afterwards);
+
+        // A refusal on the first, read on the first, still reopens it once.
+        $this->request('POST', '/subscriptions/' . $first . '/charges', [
+            'date' => $this->day('+5 days')->format('Y-m-d'),
+            'amount' => '12.34',
+            'note' => 'typed again',
+        ]);
+        $own = (string) $this->request('GET', '/subscriptions/' . $first . '/money')->getBody();
+        self::assertStringContainsString('value="typed again"', $own);
+        self::assertStringNotContainsString(
+            'value="typed again"',
+            (string) $this->request('GET', '/subscriptions/' . $first . '/money')->getBody(),
+        );
+    }
+
     public function testARefusedAmountReopensItsChargesForm(): void
     {
         $id = $this->create('Netflix', 1099);
