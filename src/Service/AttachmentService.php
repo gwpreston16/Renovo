@@ -46,6 +46,27 @@ final class AttachmentService
     }
 
     /**
+     * Whether the subscription is visible to the scope: false for one that
+     * doesn't exist and for one the scoping layer hides, which are the same
+     * answer to the caller.
+     */
+    public function subscriptionVisible(Scope $scope, int $subscriptionId): bool
+    {
+        return $this->subscriptions->find($scope, $subscriptionId) !== null;
+    }
+
+    /**
+     * Whether files may be filed against the subscription: visible, and
+     * writable under the scope's fence (a split participant reads a row they
+     * cannot write).
+     */
+    public function subscriptionWritable(Scope $scope, int $subscriptionId): bool
+    {
+        return $this->subscriptionVisible($scope, $subscriptionId)
+            && $this->subscriptions->isWritable($scope, $subscriptionId);
+    }
+
+    /**
      * @return list<Attachment>
      */
     public function forSubscription(Scope $scope, int $subscriptionId): array

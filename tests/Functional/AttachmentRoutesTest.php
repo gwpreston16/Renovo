@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Application\Middleware\AuthenticationMiddleware;
-use App\Repository\AttachmentRepository;
+use App\Domain\Role;
+use App\Repository\MembershipRepository;
+use App\Repository\UserRepository;
 use App\Security\CsrfTokenManager;
 use App\Service\AttachmentStorage;
 use App\Tests\Support\FakeUpload;
+use DateTimeImmutable;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\UploadedFileInterface;
 use Slim\Psr7\Factory\ServerRequestFactory;
@@ -147,6 +150,55 @@ final class AttachmentRoutesTest extends ApiTestCase
         self::assertSame(403, $this->webUpload($subscriptionId, FakeUpload::pdf('second.pdf'))->getStatusCode());
         self::assertSame(403, $this->web('POST', $path . '/delete')->getStatusCode());
         self::assertCount(1, $this->attachmentsOf($subscriptionId));
+    }
+
+    public function testAContributorCannotTouchAnotherMembersAttachments(): void
+    {
+        $users = new UserRepository($this->db);
+        $contributorId = $users->create('contributor@example.test', 'Contributor', 'hash', false, new DateTimeImmutable());
+        (new MembershipRepository($this->db))->create($this->householdId, $contributorId, Role::Contributor);
+
+        $theirs = $this->createSubscription(['name' => 'Owner row']);
+        $this->signIn($this->ownerId);
+        $this->webUpload($theirs, FakeUpload::pdf());
+        $attachmentId = $this->onlyAttachmentOf($theirs);
+        $path = '/subscriptions/' . $theirs . '/attachments/' . $attachmentId;
+
+        // SHARED: they read the household's invoice…
+        $this->signIn($contributorId);
+        self::assertSame(200, $this->web('GET', $path)->getStatusCode());
+
+        // …and the fence refuses the write: an upload is sent back to the page
+        // with a flash message and stores nothing, a delete is a 404, neither
+        // a 403.
+        self::assertSame(302, $this->webUpload($theirs, FakeUpload::pdf('theirs.pdf'))->getStatusCode());
+        self::assertSame(404, $this->web('POST', $path . '/delete')->getStatusCode());
+        self::assertSame([$attachmentId], $this->attachmentsOf($theirs));
+
+        // On their own row the same routes work.
+        $this->signIn($this->ownerId);
+        $mine = $this->decode($this->api('POST', '/api/v1/subscriptions', $this->ownerToken, [
+            'name' => 'Placeholder',
+            'price_minor' => 100,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-12-01',
+        ]))['data']['id'];
+        $this->db->execute(
+            'UPDATE subscriptions SET owner_user_id = :owner WHERE id = :id',
+            ['owner' => $contributorId, 'id' => $mine],
+        );
+
+        $this->signIn($contributorId);
+        self::assertSame(302, $this->webUpload((int) $mine, FakeUpload::pdf('mine.pdf'))->getStatusCode());
+        $ownId = $this->onlyAttachmentOf((int) $mine);
+        self::assertSame(200, $this->web('GET', '/subscriptions/' . $mine . '/attachments/' . $ownId)->getStatusCode());
+        self::assertSame(
+            302,
+            $this->web('POST', '/subscriptions/' . $mine . '/attachments/' . $ownId . '/delete')->getStatusCode(),
+        );
+        self::assertSame([], $this->attachmentsOf((int) $mine));
     }
 
     private function signIn(int $userId): void
