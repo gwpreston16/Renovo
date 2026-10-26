@@ -8,6 +8,27 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **A fraction is not a price.** `price_minor: 19.99` (or `"19.99"`) was stored
+  as £0.19, and `cycle_days: 2.5` as 2. The API now refuses a price,
+  `cycle_days`, `notice_period_amount` or id that is not a whole number with a
+  422 on that field. *Phase 47.*
+- **A bad price is reported under the field you sent.** The 422 named `price`
+  and `converts_to_price`; it now names `price_minor` and
+  `converts_to_price_minor`. *Phase 47.*
+- **A price too large is refused, not saved.** Anything above 10^12 minor units
+  (10 billion in a two-decimal currency) is a validation error on the web form,
+  the API, a CSV import and a restore, instead of being clamped and then
+  breaking the dashboard, list summary and forecast with a 500. *Phase 47.*
+- **A price edited before a subscription starts is kept.** The edit was undone
+  on the start date; it is now dated at the start date and survives it.
+  *Phase 47.*
+- **A split's shares add up to the charge after a price change.** £10.00 split
+  3.34 / 3.33 / 3.33 and raised to £11.00 gave shares totalling £10.99; the
+  charge is now divided by the split's weights with the largest-remainder rule,
+  so they total exactly the charge. *Phase 47.*
+
 ## [1.15.0] - 2026-10-26
 
 ### Fixed

@@ -135,16 +135,16 @@ None.
 
 ## Status
 
-- [ ] K8: a fractional price or whole number is a 422
-- [ ] K41: price errors under `price_minor` and `converts_to_price_minor`
-- [ ] K9: a price above the ceiling is refused on every entry path
-- [ ] K10: a pre-start price edit survives the start date
-- [ ] K35: split shares sum to the charge
-- [ ] K38: same-date tie-break tested
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 47 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K8: a fractional price or whole number is a 422
+- [x] K41: price errors under `price_minor` and `converts_to_price_minor`
+- [x] K9: a price above the ceiling is refused on every entry path
+- [x] K10: a pre-start price edit survives the start date
+- [x] K35: split shares sum to the charge
+- [x] K38: same-date tie-break tested
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 47 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

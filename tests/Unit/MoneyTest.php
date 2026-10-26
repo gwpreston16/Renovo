@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit;
 
+use App\Domain\AmountTooLargeException;
 use App\Domain\Currency;
 use App\Domain\Money;
 use InvalidArgumentException;
@@ -80,6 +81,22 @@ final class MoneyTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         Money::fromUserInput('not a price', 'GBP');
+    }
+
+    public function testAPriceAboveTheCeilingIsRefused(): void
+    {
+        self::assertSame(Money::MAX_MINOR, Money::fromUserInput('10000000000.00', 'GBP')->amountMinor);
+        self::assertSame(-Money::MAX_MINOR, Money::fromUserInput('-10000000000', 'GBP')->amountMinor);
+        self::assertSame(Money::MAX_MINOR, Money::fromUserInput('0010000000000.004', 'GBP')->amountMinor);
+
+        foreach (['10000000000.01', '10000000000.005', '99999999999999999999', '1,000,000,000,000'] as $input) {
+            try {
+                Money::fromUserInput($input, 'GBP');
+                self::fail($input . ' should be too large.');
+            } catch (AmountTooLargeException) {
+                $this->addToAssertionCount(1);
+            }
+        }
     }
 
     public function testRoundTripsThroughDecimalString(): void

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Domain\AmountTooLargeException;
 use App\Domain\BillingCycle;
 use App\Domain\BudgetPeriod;
 use App\Domain\Currency;
@@ -399,6 +400,8 @@ final class BudgetService
             if ($amount->isNegative()) {
                 $errors['amount'] = 'error.amount.negative';
             }
+        } catch (AmountTooLargeException) {
+            $errors['amount'] = 'error.price.too_large';
         } catch (InvalidArgumentException) {
             $errors['amount'] = 'error.amount.invalid';
         }

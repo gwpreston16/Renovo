@@ -39,6 +39,16 @@ use Throwable;
  */
 final class HttpErrorHandler extends ErrorHandler
 {
+    /**
+     * The form's key for a field the API names differently. The service reports
+     * against the form's keys; an API client is told about the field it sent
+     * (K41).
+     */
+    private const API_FIELD_NAMES = [
+        'price' => 'price_minor',
+        'converts_to_price' => 'converts_to_price_minor',
+    ];
+
     public function __construct(
         \Slim\Interfaces\CallableResolverInterface $callableResolver,
         \Psr\Http\Message\ResponseFactoryInterface $responseFactory,
@@ -108,7 +118,12 @@ final class HttpErrorHandler extends ErrorHandler
         $response = $this->responseFactory->createResponse($status);
 
         if (ApiPath::matches($this->request)) {
-            return $this->respondWithJson($response, $status, $title, $message, $fieldErrors);
+            $renamed = [];
+            foreach ($fieldErrors as $field => $error) {
+                $renamed[self::API_FIELD_NAMES[$field] ?? $field] = $error;
+            }
+
+            return $this->respondWithJson($response, $status, $title, $message, $renamed);
         }
 
         // An htmx request gets a plain body: swapping a full error page into a

@@ -361,6 +361,10 @@ row in it.
 `price_minor: 1999` with `currency: "GBP"` is £19.99. Never a decimal: JSON
 numbers are binary floats in most clients, 19.99 is not representable as one,
 and that is most of the reason this application stores integers everywhere.
+A fraction is refused, not rounded: `price_minor: 19.99` and `"19.99"` are a
+`422` on `price_minor`, and so is `cycle_days: 2.5` on `cycle_days`. The
+largest price accepted is `1000000000000` minor units (10 billion in a
+two-decimal currency); more is a `422` too.
 
 **There is no `PATCH`. `PUT` replaces.** To change one field, `GET` the
 resource, edit the representation and `PUT` it back. A partial body would clear
@@ -421,13 +425,16 @@ Every error is JSON, in one shape:
     "title": "Unprocessable Entity",
     "message": "The subscription could not be saved.",
     "errors": {
+      "price_minor": "Enter a price, for example 9.99.",
       "next_payment_date": "A recurring subscription needs a next payment date."
     }
   }
 }
 ```
 
-`errors` maps a field name to a message and appears on a `422`.
+`errors` maps a field name to a message and appears on a `422`. The name is
+the field the client sent: a bad price is under `price_minor`, a bad
+`converts_to_price_minor` under that name.
 
 | Status | When |
 | --- | --- |

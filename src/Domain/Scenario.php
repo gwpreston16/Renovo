@@ -250,6 +250,8 @@ final class Scenario
             if ($price->isNegative()) {
                 $errors['price'] = 'error.price.negative';
             }
+        } catch (AmountTooLargeException) {
+            $errors['price'] = 'error.price.too_large';
         } catch (InvalidArgumentException) {
             $errors['price'] = 'error.price.invalid';
         }

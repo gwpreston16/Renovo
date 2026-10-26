@@ -125,16 +125,16 @@ final class SplitService
     /**
      * One member's part of a single charge, at whatever price it was made.
      *
-     * The share is the proportion a member bears **today**, applied to the
-     * charge — so a member paying a third still pays a third after an
-     * increase, and a charge reconstructed from last year is divided by
-     * today's arrangement, because splits keep no history. Expressed as a ratio
-     * rather than as a stored amount so that an increase is divided the same
-     * way the original was. If the current price is zero — a trial, or a £0
-     * intro month — there is no price to take a ratio of, so the charge is
-     * divided by the split's own weights instead: a third each of a £30
-     * conversion split three ways, not £30 each (K3). Unsplit, it is the
-     * owner's whole.
+     * The charge is divided the way the split divides the price: by the
+     * members' weights, with the largest-remainder rule, so a member paying a
+     * third still pays a third after an increase and the shares of a charge
+     * add up to exactly that charge (K35). Scaling each member's current share
+     * on its own could miss the charge by a minor unit each. A charge
+     * reconstructed from last year is divided by today's arrangement, because
+     * splits keep no history. At the current price this is the member's
+     * `shareFor()`, and a free trial or £0 intro month, which has no price to
+     * take a ratio of, divides its conversion charge the same way (K3).
+     * Unsplit, it is the owner's whole.
      *
      * Ask `bears()` first: this answers "how much", not "whether".
      *
@@ -142,19 +142,7 @@ final class SplitService
      */
     public function chargeShare(Money $charge, Subscription $subscription, array $participants, int $userId): Money
     {
-        $currentPrice = $subscription->price;
-        if ($currentPrice->isZero()) {
-            return $this->weightedShare($charge, $subscription, $participants, $userId);
-        }
-
-        return Money::of(
-            Rounding::multiplyDivide(
-                $charge->amountMinor,
-                $this->shareFor($subscription, $participants, $userId)->amountMinor,
-                $currentPrice->amountMinor,
-            ),
-            $charge->currency,
-        );
+        return $this->weightedShare($charge, $subscription, $participants, $userId);
     }
 
     /**

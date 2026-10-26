@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Domain\AmountTooLargeException;
 use App\Domain\Currency;
 use App\Domain\Entity\PriceChange;
 use App\Domain\Entity\Subscription;
@@ -436,6 +437,8 @@ final class PriceHistoryService
                 if ($then->isNegative()) {
                     $errors['offer_then_price'] = 'error.price.negative';
                 }
+            } catch (AmountTooLargeException) {
+                $errors['offer_then_price'] = 'error.price.too_large';
             } catch (InvalidArgumentException) {
                 $errors['offer_then_price'] = 'error.price.invalid';
             }
@@ -572,6 +575,8 @@ final class PriceHistoryService
             if ($price->isNegative()) {
                 $errors['price'] = 'error.price.negative';
             }
+        } catch (AmountTooLargeException) {
+            $errors['price'] = 'error.price.too_large';
         } catch (InvalidArgumentException) {
             $errors['price'] = 'error.price.invalid';
         }

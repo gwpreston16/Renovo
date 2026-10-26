@@ -618,6 +618,7 @@ return [
     'error.category.not_found' => 'That category does not exist.',
     'error.price.negative' => 'Enter a price of zero or more.',
     'error.price.invalid' => 'Enter a price, for example 9.99.',
+    'error.price.too_large' => 'Enter a smaller price.',
     'error.amount.negative' => 'Enter an amount of zero or more.',
     'error.amount.invalid' => 'Enter an amount, for example 150.00.',
     'error.email.invalid' => 'Enter a valid email address.',

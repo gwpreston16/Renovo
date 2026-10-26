@@ -16,6 +16,14 @@ use InvalidArgumentException;
  */
 final class Money
 {
+    /**
+     * The largest amount, in minor units, that user input is accepted at: 10
+     * billion in a two-decimal currency. Far above any real price, and low
+     * enough that a yearly figure, or a weekly price scaled to a year, and the
+     * sum of many of them, stay inside an integer.
+     */
+    public const MAX_MINOR = 1_000_000_000_000;
+
     private function __construct(
         public readonly int $amountMinor,
         public readonly string $currency,
@@ -114,6 +122,7 @@ final class Money
      *
      * Digits beyond the currency's exponent are rounded half away from zero.
      *
+     * @throws AmountTooLargeException when the amount is past `MAX_MINOR`.
      * @throws InvalidArgumentException when the input is not a number.
      */
     public static function fromUserInput(string $input, string $currency): self
@@ -193,9 +202,21 @@ final class Money
             $fraction = substr($fraction, 0, $exponent);
         }
 
-        $amount = (int) ($whole . str_pad($fraction, $exponent, '0'));
+        // Judged on the digits, before they become an integer: a cast clamps
+        // at PHP_INT_MAX, which would store a wrong price rather than refuse.
+        $digits = ltrim($whole . str_pad($fraction, $exponent, '0'), '0');
+        if (strlen($digits) > strlen((string) self::MAX_MINOR)) {
+            throw new AmountTooLargeException('Amount is too large.');
+        }
 
-        return $roundUp ? $amount + 1 : $amount;
+        $amount = (int) $digits;
+        $amount = $roundUp ? $amount + 1 : $amount;
+
+        if ($amount > self::MAX_MINOR) {
+            throw new AmountTooLargeException('Amount is too large.');
+        }
+
+        return $amount;
     }
 
     private function assertSameCurrency(self $other): void

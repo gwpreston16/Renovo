@@ -75,6 +75,67 @@ final class SplitChargeShareTest extends DatabaseTestCase
         self::assertSame(400, $this->splits->chargeShare(Money::of(1200, 'GBP'), $paid, $participants, 2)->amountMinor);
     }
 
+    public function testSharesSumToTheChargeAfterAPriceChange(): void
+    {
+        // £10.00 split 3.34 / 3.33 / 3.33, then raised to £11.00: scaling each
+        // share on its own gave 3.67 + 3.66 + 3.66 = £10.99 (K35).
+        $subscription = SubscriptionFactory::make(priceMinor: 1000, splitMode: SplitMode::Equal, ownerUserId: 1);
+        $participants = [$this->split(1, 1), $this->split(2, 1), $this->split(3, 1)];
+
+        $raised = Money::of(1100, 'GBP');
+        $shares = array_map(
+            fn (int $user): int => $this->splits
+                ->chargeShare($raised, $subscription, $participants, $user)->amountMinor,
+            [1, 2, 3],
+        );
+
+        self::assertSame(1100, array_sum($shares));
+        // At the current price a member's share is what it always was.
+        foreach ([1, 2, 3] as $index => $user) {
+            self::assertSame(
+                $this->splits->shareFor($subscription, $participants, $user)->amountMinor,
+                $this->splits->chargeShare(Money::of(1000, 'GBP'), $subscription, $participants, $user)->amountMinor,
+                'member ' . $index,
+            );
+        }
+    }
+
+    public function testSharesAlwaysSumToTheChargeAcrossPricesAndWeights(): void
+    {
+        foreach ([[1, 1, 1], [3, 2, 2], [1, 7], [5, 5, 3, 1], [2, 3, 5, 7, 11]] as $weights) {
+            $participants = [];
+            foreach ($weights as $index => $units) {
+                $participants[] = $this->split($index + 1, $units);
+            }
+
+            foreach ([1, 7, 999, 1000, 1099, 1100, 1999, 3333, 10001, 123457] as $price) {
+                $subscription = SubscriptionFactory::make(
+                    priceMinor: $price,
+                    splitMode: SplitMode::Custom,
+                    ownerUserId: 1,
+                );
+
+                foreach ([1, 2, 333, 1100, 5000, 98765] as $charge) {
+                    $sum = 0;
+                    foreach ($participants as $participant) {
+                        $sum += $this->splits->chargeShare(
+                            Money::of($charge, 'GBP'),
+                            $subscription,
+                            $participants,
+                            $participant->userId,
+                        )->amountMinor;
+                    }
+
+                    self::assertSame(
+                        $charge,
+                        $sum,
+                        sprintf('price %d, charge %d, weights %s', $price, $charge, implode('/', $weights)),
+                    );
+                }
+            }
+        }
+    }
+
     private function split(int $userId, int $units): SubscriptionSplit
     {
         return new SubscriptionSplit(0, 1, $userId, $units, null);
