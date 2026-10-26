@@ -121,7 +121,7 @@ None.
   chosen: refusing only what overflows an integer (weekly totals could still
   overflow); hardening the arithmetic to saturate (larger, touches `Money`,
   `BillingCycle` and `Rounding`). The exact constant is an assumption to
-  confirm or correct before build.
+  confirm or correct before build. *Confirmed 2026-10-26:* 10^12.
 - **K10, the fix.** *Decided 2026-10-25:* date the edit at the start date while
   the subscription hasn't started. Not chosen: rewriting the initial row in
   place (loses the record of the edit); making catch-up ignore rows older than
