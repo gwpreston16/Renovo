@@ -8,6 +8,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.19.0] - 2026-10-26
+
 ### Changed
 
 - **The attachment list and upload answer `404` for a subscription that isn't
@@ -792,7 +794,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.18.0...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.19.0...HEAD
+[1.19.0]: https://github.com/gwpreston16/Renovo/compare/v1.18.0...v1.19.0
 [1.18.0]: https://github.com/gwpreston16/Renovo/compare/v1.17.0...v1.18.0
 [1.17.0]: https://github.com/gwpreston16/Renovo/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/gwpreston16/Renovo/compare/v1.15.0...v1.16.0

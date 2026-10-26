@@ -568,6 +568,16 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   rate limit, the backup alert opt-outs, and tests that no longer depend on the
   machine. No API changes. No migrations. See
   [Notifications](features/notifications.md).
+- **Phase 50 — permission, isolation and filter tests, from the known-issues
+  log — complete (1.19.0).** The attachment list and upload over the API answer
+  `404` for a subscription that doesn't exist or isn't visible to the token,
+  as every other sub-resource does, instead of `200` with an empty list and
+  `422`. The rest is test coverage: a Contributor's write fence over the API
+  and the attachment routes, the Viewer's refusal of every mutating route read
+  from the route table, the list's filters on both databases, an instance admin
+  with no household, and a refused payment staying on its own subscription. The
+  OpenAPI document is version 1.9.1. No migrations. See
+  [API reference](api.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
