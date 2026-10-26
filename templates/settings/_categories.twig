@@ -41,7 +41,7 @@
                                     <input type="text" name="name" maxlength="60" required
                                            value="{{ is_failed ? values.name|default(category.name) : category.name }}"
                                            aria-label="{{ t('settings.rename_category', {'name': category.name}) }}">
-                                    <input type="color" name="colour" value="{{ category.colour|default('#888888') }}"
+                                    <input type="color" name="colour" value="{{ category.colour|default('#888888') }}" data-clears="colour_auto"
                                            aria-label="{{ t('categories.category_colour') }}">
                                     <label class="choice">
                                         <input type="checkbox" name="colour_auto" value="1"
@@ -83,7 +83,7 @@
             <input type="text" id="new_category" name="name" maxlength="60" required
                    placeholder="{{ t('categories.new_category') }}"
                    value="{{ new_failed ? values.name|default('') : '' }}">
-            <input type="color" name="colour" value="{{ new_failed ? values.colour|default('#4f7df0') : '#4f7df0' }}"
+            <input type="color" name="colour" value="{{ new_failed ? values.colour|default('#4f7df0') : '#4f7df0' }}" data-clears="colour_auto"
                    aria-label="{{ t('categories.colour') }}">
             <label class="choice">
                 <input type="checkbox" name="colour_auto" value="1"

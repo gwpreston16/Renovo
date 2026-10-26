@@ -29,10 +29,12 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 - **"Café" beside "Cafe" is the duplicate message on both databases.** On MySQL
   it was a server error and on PostgreSQL a separate name; a category, tag or
   payment method that differs only by accents or case is now refused the same
-  way on both, and two saves racing for one name get the message too. *Phase 51.*
+  way on both, and two saves racing for one name get the message too. Names
+  already saved are not merged; the check applies from now on. *Phase 51.*
 - **Renaming a category with no colour keeps it without one.** It saved as grey;
   the category forms in Settings now offer "Automatic colour" as payment methods
-  do, so a category can be made colourless again. *Phase 51.*
+  do, so a category can be made colourless again; picking a colour unticks the
+  box. *Phase 51.*
 
 ## [1.19.0] - 2026-10-26
 
