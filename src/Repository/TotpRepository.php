@@ -96,10 +96,12 @@ final class TotpRepository extends AbstractRepository
      */
     public function recordUsedStep(int $userId, int $step): bool
     {
+        $lastUsed = $this->quote('last_used_step');
+
         return $this->db->execute(
-            'UPDATE ' . $this->quote('user_totp') . ' SET ' . $this->quote('last_used_step') . ' = :step'
+            'UPDATE ' . $this->quote('user_totp') . ' SET ' . $lastUsed . ' = :step'
             . ' WHERE ' . $this->quote('user_id') . ' = :user'
-            . ' AND (' . $this->quote('last_used_step') . ' IS NULL OR ' . $this->quote('last_used_step') . ' < :step_floor)',
+            . ' AND (' . $lastUsed . ' IS NULL OR ' . $lastUsed . ' < :step_floor)',
             ['step' => $step, 'step_floor' => $step, 'user' => $userId],
         ) > 0;
     }

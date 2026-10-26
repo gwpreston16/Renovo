@@ -136,10 +136,10 @@ None.
 - [x] K30: TOTP step recorded conditionally
 - [x] K33: passkey rename with an unchanged name succeeds on MySQL
 - [x] K106: unreadable setup secret is a form error
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 46 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 46 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
