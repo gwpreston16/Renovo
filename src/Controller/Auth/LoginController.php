@@ -8,6 +8,7 @@ use App\I18n\Translator;
 use App\Application\Middleware\AuthenticationMiddleware;
 use App\Controller\Controller;
 use App\Domain\Entity\User;
+use App\Security\SafeRedirectTarget;
 use App\Security\SessionInterface;
 use App\Service\Auth\SignInService;
 use App\Service\Auth\TwoFactorService;
@@ -63,7 +64,7 @@ final class LoginController extends Controller
             ]);
         }
 
-        $next = $this->safeRedirectTarget($this->nextTarget($request));
+        $next = SafeRedirectTarget::orHome($this->nextTarget($request));
 
         // The form posts a hidden "0" ahead of the checkbox, so an unticked box
         // still names the setting. A post that does not name it at all — any
@@ -122,19 +123,5 @@ final class LoginController extends Controller
         }
 
         return '/';
-    }
-
-    /**
-     * Only same-site, path-only redirects are followed: an attacker must not
-     * be able to turn the login form into an open redirect by supplying
-     * ?next=https://elsewhere.example.
-     */
-    private function safeRedirectTarget(string $candidate): string
-    {
-        if ($candidate === '' || !str_starts_with($candidate, '/') || str_starts_with($candidate, '//')) {
-            return '/';
-        }
-
-        return $candidate;
     }
 }

@@ -8,6 +8,7 @@ use App\I18n\Translator;
 use App\Controller\Controller;
 use App\Domain\AuditAction;
 use App\Repository\AuthAttemptRepository;
+use App\Security\SafeRedirectTarget;
 use App\Security\SessionInterface;
 use App\Service\Auth\SignInService;
 use App\Service\Auth\WebAuthnService;
@@ -136,11 +137,7 @@ final class PasskeyLoginController extends Controller
         $params = $request->getQueryParams();
         $candidate = is_string($params['next'] ?? null) ? $params['next'] : '/';
 
-        if ($candidate === '' || !str_starts_with($candidate, '/') || str_starts_with($candidate, '//')) {
-            return '/';
-        }
-
-        return $candidate;
+        return SafeRedirectTarget::orHome($candidate);
     }
 
     /**

@@ -11,6 +11,7 @@ use App\Domain\Theme;
 use App\Domain\WeekStart;
 use App\I18n\Locales;
 use App\I18n\Translator;
+use App\Security\SafeRedirectTarget;
 use App\Security\SessionInterface;
 use App\Service\Auth\RecoveryCodeService;
 use App\Service\Auth\SessionDirectoryService;
@@ -209,23 +210,9 @@ final class ProfileController extends Controller
 
     /**
      * A path on this host, or null.
-     *
-     * One leading slash and not two: `//elsewhere.example/` is a URL on
-     * another host that happens to begin like a path, and so is `/\` to a
-     * browser that reads backslashes as slashes. Control characters are
-     * refused so that nothing can be smuggled into the Location header.
      */
     private function localPath(string $path): ?string
     {
-        if (
-            !str_starts_with($path, '/')
-            || str_starts_with($path, '//')
-            || str_starts_with($path, '/\\')
-            || preg_match('/[\x00-\x1f\x7f]/', $path) === 1
-        ) {
-            return null;
-        }
-
-        return $path;
+        return SafeRedirectTarget::path($path);
     }
 }

@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\I18n\Translator;
 use App\Repository\MembershipRepository;
+use App\Security\SafeRedirectTarget;
 use App\Security\SessionInterface;
 use App\Service\AttachmentService;
 use App\Service\CatchUpService;
@@ -194,13 +195,7 @@ final class SubscriptionMoneyController extends Controller
         $body = $this->body($request);
         $return = is_scalar($body['return_to'] ?? null) ? (string) $body['return_to'] : '';
 
-        // A leading double slash is a protocol-relative URL pointing somewhere
-        // else entirely, so a single leading slash is required and "//" is not.
-        if (str_starts_with($return, '/') && !str_starts_with($return, '//')) {
-            return $return;
-        }
-
-        return '/subscriptions/' . $id . '/money';
+        return SafeRedirectTarget::path($return) ?? '/subscriptions/' . $id . '/money';
     }
 
     /**
