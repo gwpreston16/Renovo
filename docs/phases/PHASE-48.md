@@ -104,8 +104,9 @@ None.
 
 - **K96** makes Dismiss do what the banner says: it dismisses the version
   shown. The version is untrusted input, so it is parsed and capped at the
-  stored latest.
+  stored latest. *Confirmed 2026-10-26.*
 - **K100** fixes the banner only; the same-kind rows of K18 stay out.
+  *Confirmed 2026-10-26.*
 - **K98.** *Decided 2026-10-25:* a locked switch is drawn off and disabled,
   like the check switch. Not chosen: drawing the stored preference dimmed (it
   still reads "on" when no banner can appear).
@@ -114,7 +115,8 @@ None.
 - **How it ships.** *Decided 2026-10-25:* as its own patch release, 1.13.4,
   once merged (after 1.13.2 for Phase 45 and 1.13.3 for Phase 46; Phase 47's
   brief also names 1.13.3, so the numbers are re-checked at release). Not
-  chosen: waiting for the next minor release.
+  chosen: waiting for the next minor release. *Confirmed 2026-10-26;* the
+  number is `/release`'s to pick.
 
 ## Status
 

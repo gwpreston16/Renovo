@@ -56,7 +56,7 @@ can be moved.
 | 45 | [Calendar feed and API edge cases, from the known-issues log](docs/phases/PHASE-45.md) | — | None | ✅ done |
 | 46 | [Sign-in and second-factor edge cases, from the known-issues log](docs/phases/PHASE-46.md) | — | None | ✅ done |
 | 47 | [Money inputs and price history, from the known-issues log](docs/phases/PHASE-47.md) | — | None | ✅ done |
-| 48 | [Update banner and dashboard polish, from the known-issues log](docs/phases/PHASE-48.md) | — | None | 📋 planned |
+| 48 | [Update banner and dashboard polish, from the known-issues log](docs/phases/PHASE-48.md) | — | None | 🚧 in progress |
 | 49 | [Notification windows and test hardening, from the known-issues log](docs/phases/PHASE-49.md) | — | None | 📋 planned |
 | 50 | [Permission, isolation and filter tests, from the known-issues log](docs/phases/PHASE-50.md) | — | None | 📋 planned |
 
