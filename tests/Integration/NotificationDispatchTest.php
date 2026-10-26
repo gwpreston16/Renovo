@@ -378,4 +378,68 @@ final class NotificationDispatchTest extends NotificationTestCase
 
         self::assertCount(1, $this->notifier->sent);
     }
+
+    public function testDispatchStopsAtTheOutboundRateLimit(): void
+    {
+        $limited = new NotificationDispatcher(
+            $this->notificationSettings,
+            $this->registry,
+            $this->log,
+            $this->channels,
+            new NotificationRateLimiter($this->log, $this->clock, 2, 20),
+            new NullLogger(),
+            $this->clock,
+            TestTranslator::create(),
+        );
+
+        $this->addChannel($this->alice, 'Phone');
+        $this->addChannel($this->alice, 'Desktop');
+        $this->addChannel($this->alice, 'Tablet');
+
+        // Three channels, room for two sends: the third is never attempted.
+        self::assertSame(2, $limited->dispatch($this->user($this->alice), [$this->alert()]));
+        self::assertCount(2, $this->notifier->sent);
+
+        // Nothing further goes out for another alert while the limit holds.
+        self::assertSame(0, $limited->dispatch($this->user($this->alice), [$this->alert('2026-11-05:7', 43)]));
+        self::assertCount(2, $this->notifier->sent);
+    }
+
+    public function testAThrowingChannelIsMarkedFailedAndTheRestAreTried(): void
+    {
+        $first = $this->addChannel($this->alice, 'Phone');
+        $second = $this->addChannel($this->alice, 'Desktop');
+
+        $calls = 0;
+        $this->notifier->onSend = static function () use (&$calls): void {
+            if (++$calls === 1) {
+                throw new \RuntimeException('driver exploded');
+            }
+        };
+
+        self::assertSame(1, $this->dispatcher->dispatch($this->user($this->alice), [$this->alert()]));
+
+        // The other channel was still tried, and delivered.
+        self::assertCount(1, $this->notifier->sent);
+
+        // Channels are tried in the repository's order, so whichever went
+        // first is the one that threw.
+        $deliveredId = $this->notifier->sent[0]['channel']->id;
+        $failedId = $deliveredId === $first ? $second : $first;
+
+        $statuses = array_column($this->log->findRecentForUser($this->alice), 'status');
+        sort($statuses);
+        self::assertSame(
+            [NotificationLogRepository::STATUS_FAILED, NotificationLogRepository::STATUS_SENT],
+            $statuses,
+        );
+
+        $failed = $this->channels->find($this->alice, $failedId);
+        self::assertNotNull($failed);
+        self::assertSame('driver exploded', $failed->lastError);
+
+        $healthy = $this->channels->find($this->alice, $deliveredId);
+        self::assertNotNull($healthy);
+        self::assertNull($healthy->lastError);
+    }
 }

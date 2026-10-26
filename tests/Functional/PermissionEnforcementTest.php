@@ -18,6 +18,8 @@ use App\Service\InstanceSettingsService;
 use App\Tests\Integration\DatabaseTestCase;
 use App\Tests\Support\ArraySession;
 use App\Tests\Support\RecordingMailer;
+use App\Support\Clock;
+use App\Support\FrozenClock;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Slim\App;
@@ -36,6 +38,7 @@ final class PermissionEnforcementTest extends DatabaseTestCase
     /** @var App<ContainerInterface> */
     private App $app;
     private ArraySession $session;
+    private FrozenClock $clock;
     private int $viewerId;
     private int $editorId;
     private int $householdId;
@@ -49,6 +52,8 @@ final class PermissionEnforcementTest extends DatabaseTestCase
         parent::setUp();
 
         $this->session = new ArraySession();
+        // Pinned, so "today" is a fact and not the machine's date or zone.
+        $this->clock = FrozenClock::at('2026-03-15 10:30:00');
 
         $bootstrap = require dirname(__DIR__, 2) . '/config/bootstrap.php';
         $this->app = $bootstrap(true, [
@@ -57,6 +62,7 @@ final class PermissionEnforcementTest extends DatabaseTestCase
             // are the production ones.
             SessionInterface::class => $this->session,
             MailerInterface::class => new RecordingMailer(),
+            Clock::class => $this->clock,
         ]);
 
         $container = $this->app->getContainer();
@@ -278,7 +284,7 @@ final class PermissionEnforcementTest extends DatabaseTestCase
             'An overdue payment date should roll forward for a user who can write.',
         );
         self::assertGreaterThanOrEqual(
-            date('Y-m-d'),
+            $this->clock->today()->format('Y-m-d'),
             $this->nextPaymentDate($this->overdueId),
         );
     }

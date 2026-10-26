@@ -177,7 +177,11 @@ final class ReminderRunner
         $preferences = $this->settings->preferences($user->id);
 
         $alerts = $isDigestDay
-            ? $this->scanner->alertsWithin($scope, $preferences->digestMode->horizonDays(), $preferences)
+            ? $this->scanner->alertsWithin(
+                $scope,
+                $preferences->digestMode->windowDays($this->clock->today(), $preferences->digestDay),
+                $preferences,
+            )
             : $this->scanner->dueAlerts($scope, $preferences);
 
         // Budgets are a state, not a date, so they are evaluated on every run
