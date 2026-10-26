@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–50
+## Planned — Phases 30–51
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -59,6 +59,7 @@ can be moved.
 | 48 | [Update banner and dashboard polish, from the known-issues log](docs/phases/PHASE-48.md) | — | None | ✅ done |
 | 49 | [Notification windows and test hardening, from the known-issues log](docs/phases/PHASE-49.md) | — | None | ✅ done |
 | 50 | [Permission, isolation and filter tests, from the known-issues log](docs/phases/PHASE-50.md) | — | None | ✅ done |
+| 51 | [Tag and category names, from the known-issues log](docs/phases/PHASE-51.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -150,6 +151,10 @@ can be moved.
   from the route table, the list filters, the admin-without-household list and
   the refused-payment form are tested over HTTP, and the API's attachment list
   answers 404 for a subscription that isn't there.
+- **51 — Tag and category names.** A batch from the known-issues log (K12, K34,
+  K43, K58): a tag or category is found by its whole name, ignoring case and
+  accents, so near-duplicates are refused instead of a 500; too many or too long
+  tags are refused with 422; and an uncoloured category stays uncoloured.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
