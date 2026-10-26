@@ -578,6 +578,16 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   with no household, and a refused payment staying on its own subscription. The
   OpenAPI document is version 1.9.1. No migrations. See
   [API reference](api.md).
+- **Phase 51 — tag and category names, from the known-issues log — complete
+  (1.20.0).** Tag and category names are matched whole, ignoring case and
+  accents, in the forms, the API, bulk add, CSV import and backup restore, so
+  "TV" beside "Apple TV" and "Café" beside "Cafe" give the duplicate message
+  on both databases instead of a server error or a second name. A subscription
+  with more than 25 tags, or a tag over 50 characters, is a `422` rather than
+  being cut silently. Renaming a category with no colour keeps it colourless,
+  and the category forms offer "Automatic colour". The OpenAPI document is
+  version 1.9.2. No migrations. See
+  [Tracking](features/tracking.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
