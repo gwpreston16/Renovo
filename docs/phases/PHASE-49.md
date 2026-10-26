@@ -105,22 +105,30 @@ None.
 - **K51, K118, K105, K124, K67** change tests only; no `src/` change is needed
   unless a new test finds a real bug, which is then recorded with
   `/issue-sweep`.
+- **Found while building (K67).** The new-subscription form prefilled its start
+  date from PHP's `date()` rather than the injected `Clock`, so the frozen-clock
+  test could not pass without it. One line in `SubscriptionController::createForm`,
+  fixed here rather than logged as a new row: a deviation from "tests only" for the owner to confirm or revert at review.
+- **K124 check.** A run with `DB_NAME` only in `$_SERVER` fails every test in
+  `ApiRateLimitTest`, before and after this change: the app container reads
+  `Environment`, which ignores `$_SERVER`. The prune child now takes the same
+  `DB_*` values `DatabaseTestCase` does; the wider limitation is left alone.
 - **How it ships.** *Decided 2026-10-25:* as its own patch release once merged
   (1.13.5, after 1.13.4 for Phase 48; the numbers are re-checked at release).
   Not chosen: waiting for the next minor release.
 
 ## Status
 
-- [ ] K50: digest windows end before the next issue
-- [ ] K51: dispatch rate-limit stop and channel failure tested
-- [ ] K118: backup alert opt-outs and per-administrator isolation tested
-- [ ] K105: update-check environment test passes with `UPDATE_CHECK` set
-- [ ] K124: prune test child uses the test database
-- [ ] K67: two tests read the frozen clock
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 49 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K50: digest windows end before the next issue
+- [x] K51: dispatch rate-limit stop and channel failure tested
+- [x] K118: backup alert opt-outs and per-administrator isolation tested
+- [x] K105: update-check environment test passes with `UPDATE_CHECK` set
+- [x] K124: prune test child uses the test database
+- [x] K67: two tests read the frozen clock
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 49 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

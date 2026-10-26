@@ -8,6 +8,15 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **A weekly or monthly digest lists each renewal once.** An issue now covers
+  today up to, but not including, the day of the next issue, so a payment due on
+  the next issue's day is no longer in both; a monthly issue follows the
+  calendar, so a short month's is shorter. *Phase 49.*
+- **The new-subscription form's start date follows the application's date,**
+  not the server's PHP time zone. *Phase 49.*
+
 ## [1.17.0] - 2026-10-26
 
 ### Fixed
