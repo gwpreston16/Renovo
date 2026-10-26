@@ -541,6 +541,15 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   same name on MySQL, and an unreadable authenticator setup is a form error
   rather than a 500. No API changes. No migrations. See
   [Security](security.md).
+- **Phase 47 — money inputs and price history, from the known-issues log —
+  complete (1.16.0).** The API refuses a price or whole number that is not
+  exact (`19.99`, `"2.5"`) with a 422 on the field instead of storing a
+  truncated value, and reports a bad price as `price_minor` and
+  `converts_to_price_minor`. A price above 10^12 minor units is a validation
+  error on the web form, the API, a CSV import and a restore. A price edited
+  before a subscription starts survives its start date, and a split's shares
+  total exactly the charge after a price change. The OpenAPI document is
+  version 1.9.0. No migrations. See [Money](features/money.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
