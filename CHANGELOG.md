@@ -8,6 +8,25 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Dismissing the update banner hides the release shown.** A release found
+  while the dashboard was open no longer disappears with it: Dismiss records
+  the version the banner named. *Phase 48.*
+- **Dismissing the banner with the keyboard keeps focus and tells a screen
+  reader.** Focus moves to the page heading and the banner's live region stays,
+  emptied. *Phase 48.*
+- **"Show a banner" is drawn off while update checks are off.** The switch is
+  disabled and unchecked, and the stored choice returns when checks are on.
+  *Phase 48.*
+- **Only the version number is set in the figures font** at the foot of the
+  navigation. *Phase 48.*
+- **The Free trials card shows each trial's logo,** like the Coming up card.
+  *Phase 48.*
+- **Dates, amounts and sizes are drawn as figures** on the cancellations, import
+  preview, attachments, stats and dashboard totals, and empty cells use the
+  shared dash. *Phase 48.*
+
 ## [1.16.0] - 2026-10-26
 
 ### Changed

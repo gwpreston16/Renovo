@@ -14,6 +14,10 @@
  *     fields fires `renovo:typed` on the form, for an `hx-trigger` to wait
  *     on. htmx's own event filters would need `eval`, which the policy
  *     refuses.
+ *   - `data-focus-after="#id"` on a form htmx sends: when its swap lands,
+ *     focus moves to that element. For a button that removes itself: without
+ *     this focus falls to the top of the page. The target needs
+ *     `tabindex="-1"` if it is not focusable already.
  */
 
 /*
@@ -56,6 +60,18 @@ function announceTyping(event) {
     }
 }
 
+function focusAfterSwap(event) {
+    const sender = event.detail && event.detail.requestConfig ? event.detail.requestConfig.elt : null;
+    if (!(sender instanceof Element) || !sender.hasAttribute('data-focus-after')) {
+        return;
+    }
+
+    const target = document.querySelector(sender.getAttribute('data-focus-after'));
+    if (target instanceof HTMLElement) {
+        target.focus();
+    }
+}
+
 let bound = false;
 
 export function bindFormBehaviours() {
@@ -67,4 +83,5 @@ export function bindFormBehaviours() {
     document.addEventListener('submit', confirmBeforeSending, true);
     document.addEventListener('change', submitOnChange);
     document.addEventListener('input', announceTyping);
+    document.addEventListener('htmx:afterSwap', focusAfterSwap);
 }

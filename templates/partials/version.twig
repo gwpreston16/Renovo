@@ -3,15 +3,21 @@
     of the narrow screen's sheet: "Renovo 1.7.0", or "Renovo 1.7.0 (a1b2c3d)"
     for an image built from a commit.
 
+    Only the number is set in the figures font: the catalogued string is
+    split around its placeholder so "Renovo" stays in the text font and the
+    number sits inside `.num`, whatever order a language puts them in.
+
     Signed-in pages only, and the shell is drawn on no other: an anonymous
     visitor is not told which release to look up known issues for. An
     instance administrator's links to the Instance status card, where the
     update check's state is; for everybody else it is text.
 #}
 {% if current_user %}
+    {% set parts = t('shell.version', {'version': "\x01"})|split("\x01") %}
+    {% set label %}{{ parts[0] }}<span class="num">{{ app_version() }}</span>{{ parts[1]|default('') }}{% endset %}
     {% if current_user.isInstanceAdmin %}
-        <a class="sidebar-version num" href="/settings/instance#instance-status">{{ t('shell.version', {'version': app_version()}) }}</a>
+        <a class="sidebar-version" href="/settings/instance#instance-status">{{ label }}</a>
     {% else %}
-        <p class="sidebar-version num">{{ t('shell.version', {'version': app_version()}) }}</p>
+        <p class="sidebar-version">{{ label }}</p>
     {% endif %}
 {% endif %}

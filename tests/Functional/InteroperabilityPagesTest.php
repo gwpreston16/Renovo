@@ -392,6 +392,9 @@ final class InteroperabilityPagesTest extends DatabaseTestCase
 
             $html = (string) $response->getBody();
             self::assertStringContainsString('<td>Every 6 months</td>', $html);
+            // K61: the price and the date are figures; an empty one is the symbol.
+            self::assertStringContainsString('<td class="num">180.00', $html);
+            self::assertStringContainsString('<td class="num">—</td>', $html);
             self::assertStringContainsString('<td>Fortnightly</td>', $html);
             self::assertStringContainsString('<td>Every 45 days</td>', $html);
             // The value nothing recognised, shown as the guess it became.

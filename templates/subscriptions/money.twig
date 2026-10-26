@@ -63,12 +63,12 @@
         <section class="card callout">
             <h2>{{ t('subscriptions_form.free_trial') }}</h2>
             <p>
-                {{ t('subscriptions_money.free_until') }} <strong>{{ subscription.trialEndDate|local_date('d MMM y') }}</strong>.
+                {{ t('subscriptions_money.free_until') }} <strong class="num">{{ subscription.trialEndDate|local_date('d MMM y') }}</strong>.
                 {{ t('subscriptions_money.trial_end_is_first_charge') }}
             </p>
             <p>
                 {{ t('subscriptions_money.it_converts_to') }}
-                <strong>{{ subscription.priceAfterConversion.amountMinor|money(
+                <strong class="num">{{ subscription.priceAfterConversion.amountMinor|money(
                     subscription.priceAfterConversion.currency) }}</strong>
                 {% if subscription.billingCycleAfterConversion %}
                     · {{ cycle_label(subscription.billingCycleAfterConversion.value,
@@ -106,7 +106,7 @@
                         <tbody>
                         {% for share in shares %}
                             <tr>
-                                <td>{{ share.user_name ?? '—' }}</td>
+                                <td>{{ share.user_name ?? t('common.none_symbol') }}</td>
                                 <td class="numeric num">{{ share.share_units }}</td>
                                 <td class="numeric num">{{ share.amount.amountMinor|money(share.amount.currency) }}</td>
                             </tr>

@@ -219,6 +219,9 @@ final class ContractTermsScreensTest extends DatabaseTestCase
         $cancellations = $this->page('/cancellations', $this->ownerId);
         self::assertStringContainsString('Sky Broadband', $cancellations);
         self::assertStringContainsString('Contract ended', $cancellations);
+        // K61: the deadline and the next charge are figures.
+        self::assertMatchesRegularExpression('~<strong class="num">[^<]+</strong>~', $cancellations);
+        self::assertStringContainsString('<td class="num">', $cancellations);
 
         $stats = $this->page('/stats', $this->ownerId);
         self::assertStringContainsString('Out of contract', $stats);

@@ -24,7 +24,7 @@
                     {% endif %}
                 </td>
                 <td class="muted">{{ entry.summary }}</td>
-                <td class="muted">{{ entry.ipAddress|default('—') }}</td>
+                <td class="muted">{{ entry.ipAddress|default(t('common.none_symbol')) }}</td>
             </tr>
         {% else %}
             <tr>

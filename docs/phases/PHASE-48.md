@@ -120,16 +120,16 @@ None.
 
 ## Status
 
-- [ ] K96: Dismiss records the version shown
-- [ ] K100: dismissing the banner keeps focus and the live region
-- [ ] K98: a locked banner switch is drawn off and disabled
-- [ ] K99: only the version number is in the figures font
-- [ ] K62: the Free trials card shows each trial's logo
-- [ ] K61: figures take `.num`, empty cells `none_symbol`
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 48 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K96: Dismiss records the version shown
+- [x] K100: dismissing the banner keeps focus and the live region
+- [x] K98: a locked banner switch is drawn off and disabled
+- [x] K99: only the version number is in the figures font
+- [x] K62: the Free trials card shows each trial's logo
+- [x] K61: figures take `.num`, empty cells `none_symbol`
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 48 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

@@ -87,15 +87,36 @@ final class UpdateScreensTest extends DatabaseTestCase
     {
         $this->signIn($this->ownerId);
         $page = $this->body($this->request('GET', '/'));
-        self::assertStringContainsString('<p class="sidebar-version num">Renovo ' . self::VERSION . '</p>', $page);
-        self::assertStringNotContainsString('class="sidebar-version num" href=', $page);
+        self::assertStringContainsString(
+            '<p class="sidebar-version">Renovo <span class="num">' . self::VERSION . '</span></p>',
+            $page,
+        );
+        self::assertStringNotContainsString('class="sidebar-version" href=', $page);
 
         $this->signIn($this->adminId);
         $page = $this->body($this->request('GET', '/'));
         self::assertStringContainsString(
-            '<a class="sidebar-version num" href="/settings/instance#instance-status">Renovo ' . self::VERSION . '</a>',
+            '<a class="sidebar-version" href="/settings/instance#instance-status">Renovo <span class="num">'
+                . self::VERSION . '</span></a>',
             $page,
         );
+    }
+
+    /** K99: "Renovo" is text; only the number is a figure. */
+    public function testOnlyTheNumberIsSetInFigures(): void
+    {
+        $this->signIn($this->adminId);
+        $page = $this->body($this->request('GET', '/'));
+
+        // The rail and the narrow-screen sheet each draw it.
+        self::assertSame(
+            2,
+            preg_match_all(
+                '~class="sidebar-version"[^>]*>Renovo <span class="num">' . self::VERSION . '</span>~',
+                $page,
+            ),
+        );
+        self::assertSame(0, preg_match('~class="sidebar-version[^"]*\bnum\b~', $page));
     }
 
     public function testAnImageBuiltFromACommitShowsItsBuild(): void
@@ -104,7 +125,7 @@ final class UpdateScreensTest extends DatabaseTestCase
         $this->signIn($this->adminId);
 
         self::assertStringContainsString(
-            'Renovo ' . self::VERSION . ' (a1b2c3d)',
+            'Renovo <span class="num">' . self::VERSION . ' (a1b2c3d)</span>',
             $this->body($this->request('GET', '/')),
         );
         self::assertStringContainsString(
@@ -226,16 +247,56 @@ final class UpdateScreensTest extends DatabaseTestCase
         self::assertStringContainsString('Renovo 9.10.0 is available', $this->body($this->request('GET', '/')));
     }
 
-    public function testDismissWithHtmxAnswersWithNothingToSwapIn(): void
+    /** K96: Dismiss records the version the banner showed, not whatever is latest by then. */
+    public function testDismissRecordsTheVersionShown(): void
+    {
+        $this->instance->setUpdateCheckEnabled(true);
+        $this->storeRelease('9.9.0');
+        $this->signIn($this->adminId);
+        self::assertStringContainsString('name="version" value="9.9.0"', $this->body($this->request('GET', '/')));
+
+        $this->storeRelease('9.10.0');
+        $this->request('POST', '/updates/dismiss', ['version' => '9.9.0']);
+
+        $admin = (new UserRepository($this->db))->findById($this->adminId);
+        self::assertSame('9.9.0', $admin?->dismissedUpdateVersion);
+        self::assertStringContainsString('Renovo 9.10.0 is available', $this->body($this->request('GET', '/')));
+    }
+
+    public function testDismissIgnoresAVersionThatIsNotOneOrIsNewerThanTheLatest(): void
+    {
+        $this->instance->setUpdateCheckEnabled(true);
+        $this->storeRelease(self::NEWER);
+        $this->signIn($this->adminId);
+        $users = new UserRepository($this->db);
+
+        foreach (['not-a-version', '99.0.0', '', ['9.9.0']] as $posted) {
+            $users->setDismissedUpdateVersion($this->adminId, '1.0.0');
+            $this->request('POST', '/updates/dismiss', ['version' => $posted]);
+            self::assertSame(self::NEWER, $users->findById($this->adminId)?->dismissedUpdateVersion);
+        }
+
+        $users->setDismissedUpdateVersion($this->adminId, '1.0.0');
+        $this->request('POST', '/updates/dismiss');
+        self::assertSame(self::NEWER, $users->findById($this->adminId)?->dismissedUpdateVersion);
+    }
+
+    /** K100: the live region stays, emptied, and focus goes to the page heading. */
+    public function testDismissingTheBannerLeavesAnEmptyStatusRegion(): void
     {
         $this->instance->setUpdateCheckEnabled(true);
         $this->storeRelease(self::NEWER);
         $this->signIn($this->adminId);
 
-        $response = $this->request('POST', '/updates/dismiss', [], ['HX-Request' => 'true']);
+        $page = $this->body($this->request('GET', '/'));
+        self::assertStringContainsString('hx-swap="outerHTML"', $page);
+        self::assertStringContainsString('data-focus-after="#page-heading"', $page);
+        self::assertMatchesRegularExpression('~<h1 class="topbar-title" id="page-heading" tabindex="-1">~', $page);
+
+        $response = $this->request('POST', '/updates/dismiss', ['version' => self::NEWER], ['HX-Request' => 'true']);
 
         self::assertSame(200, $response->getStatusCode());
-        self::assertSame('', $this->body($response));
+        self::assertSame('<div role="status" id="update-banner"></div>', $this->body($response));
         $admin = (new UserRepository($this->db))->findById($this->adminId);
         self::assertSame(self::NEWER, $admin?->dismissedUpdateVersion);
     }
@@ -366,10 +427,11 @@ final class UpdateScreensTest extends DatabaseTestCase
         self::assertStringContainsString('<legend>Updates</legend>', $page);
         self::assertStringContainsString('GitHub sees your server&#039;s IP address. Nothing else is sent.', $page);
         self::assertMatchesRegularExpression(
-            '~name="update_banner_enabled" value="1"\s+checked\s+disabled~',
+            '~name="update_banner_enabled" value="1"\s+disabled~',
             $page,
-            'The banner switch is on by default and disabled while checks are off.',
+            'The banner switch is drawn off and disabled while checks are off, whatever is stored.',
         );
+        self::assertDoesNotMatchRegularExpression('~name="update_banner_enabled" value="1"\s+checked~', $page);
 
         $this->request('POST', '/settings/instance', ['update_check_enabled' => '1']);
         self::assertTrue($this->instance->updateCheckEnabled());
@@ -378,6 +440,31 @@ final class UpdateScreensTest extends DatabaseTestCase
 
         $this->request('POST', '/settings/instance', ['update_check_enabled' => '1', 'update_banner_enabled' => '0']);
         self::assertFalse($this->instance->updateBannerEnabled());
+    }
+
+    /** K98 */
+    public function testALockedBannerSwitchIsOffAndDisabled(): void
+    {
+        $this->signIn($this->adminId);
+        $this->instance->setUpdateBannerEnabled(true);
+
+        self::assertDoesNotMatchRegularExpression(
+            '~name="update_banner_enabled" value="1"\s+checked~',
+            $this->instancePage(),
+        );
+        self::assertSame(true, $this->instance->updateBannerEnabled(), 'The stored choice is untouched.');
+
+        $this->instance->setUpdateCheckEnabled(true);
+        self::assertMatchesRegularExpression(
+            '~name="update_banner_enabled" value="1"\s+checked\s*>~',
+            $this->instancePage(),
+        );
+
+        $this->instance->setUpdateBannerEnabled(false);
+        self::assertDoesNotMatchRegularExpression(
+            '~name="update_banner_enabled" value="1"\s+checked~',
+            $this->instancePage(),
+        );
     }
 
     public function testSavingWithChecksOffLeavesTheBannerChoiceAlone(): void
