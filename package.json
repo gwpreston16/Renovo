@@ -1,6 +1,6 @@
 {
   "name": "renovo-assets",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "private": true,
   "description": "Front-end build for Renovo. Compiles Tailwind, bundles the JavaScript and vendors the webfont into public/build, so a running instance loads nothing from a third-party host.",
   "license": "AGPL-3.0-or-later",

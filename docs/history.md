@@ -559,6 +559,15 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   cancellations, import preview, attachments, stats and dashboard totals are
   drawn as figures. No API changes. No migrations. See
   [Version and updates](operations.md#version-and-updates).
+- **Phase 49 — notification windows and test hardening, from the
+  known-issues log — complete (1.18.0).** A weekly or monthly digest lists
+  each renewal once: an issue covers today up to, but not including, the day of
+  the next issue, and a monthly issue follows the calendar. The new-subscription
+  form's start date follows the application's date rather than the server's PHP
+  time zone. The rest is test coverage, for dispatch stopping at the outbound
+  rate limit, the backup alert opt-outs, and tests that no longer depend on the
+  machine. No API changes. No migrations. See
+  [Notifications](features/notifications.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
