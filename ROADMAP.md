@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–51
+## Planned — Phases 30–52
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -60,6 +60,7 @@ can be moved.
 | 49 | [Notification windows and test hardening, from the known-issues log](docs/phases/PHASE-49.md) | — | None | ✅ done |
 | 50 | [Permission, isolation and filter tests, from the known-issues log](docs/phases/PHASE-50.md) | — | None | ✅ done |
 | 51 | [Tag and category names, from the known-issues log](docs/phases/PHASE-51.md) | — | None | 📋 planned |
+| 52 | [API input and fixed terms, from the known-issues log](docs/phases/PHASE-52.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -155,6 +156,10 @@ can be moved.
   K43, K58): a tag or category is found by its whole name, ignoring case and
   accents, so near-duplicates are refused instead of a 500; too many or too long
   tags are refused with 422; and an uncoloured category stays uncoloured.
+- **52 — API input and fixed terms.** A batch from the known-issues log (K39,
+  K86, K90, K91, K92, K123): impossible dates and wrongly typed fields are
+  refused with 422, leaving a fixed term clears its end, a resume with no
+  billing date left is refused, and the OpenAPI contract matches the API reference.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
