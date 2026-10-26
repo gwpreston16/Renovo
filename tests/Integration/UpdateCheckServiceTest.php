@@ -266,20 +266,54 @@ final class UpdateCheckServiceTest extends DatabaseTestCase
 
     public function testConfigReadsTheEnvironment(): void
     {
-        $_ENV['UPDATE_CHECK'] = 'false';
-        $_ENV['UPDATE_CHECK_REPOSITORY'] = 'someone/fork';
+        // The reader looks in `$_ENV` and then the process environment, so a
+        // runner that exports UPDATE_CHECK would otherwise decide the result:
+        // set both for the keys, and put both back as they were.
+        $keys = ['UPDATE_CHECK', 'UPDATE_CHECK_REPOSITORY'];
+        $before = [];
+        foreach ($keys as $key) {
+            $before[$key] = [
+                'env' => array_key_exists($key, $_ENV) ? $_ENV[$key] : null,
+                'process' => getenv($key, true),
+            ];
+        }
+
+        $set = static function (array $values) use ($keys): void {
+            foreach ($keys as $key) {
+                if (isset($values[$key])) {
+                    $_ENV[$key] = $values[$key];
+                    putenv($key . '=' . $values[$key]);
+                } else {
+                    unset($_ENV[$key]);
+                    putenv($key);
+                }
+            }
+        };
 
         try {
+            $set(['UPDATE_CHECK' => 'false', 'UPDATE_CHECK_REPOSITORY' => 'someone/fork']);
             $config = UpdateCheckConfig::fromEnvironment();
             self::assertFalse($config->allowedByEnvironment);
             self::assertSame('someone/fork', $config->repository);
 
-            unset($_ENV['UPDATE_CHECK'], $_ENV['UPDATE_CHECK_REPOSITORY']);
+            $set([]);
             $config = UpdateCheckConfig::fromEnvironment();
             self::assertTrue($config->allowedByEnvironment);
             self::assertSame(UpdateCheckConfig::DEFAULT_REPOSITORY, $config->repository);
         } finally {
-            unset($_ENV['UPDATE_CHECK'], $_ENV['UPDATE_CHECK_REPOSITORY']);
+            foreach ($before as $key => $value) {
+                if ($value['env'] === null) {
+                    unset($_ENV[$key]);
+                } else {
+                    $_ENV[$key] = $value['env'];
+                }
+
+                if (is_string($value['process'])) {
+                    putenv($key . '=' . $value['process']);
+                } else {
+                    putenv($key);
+                }
+            }
         }
     }
 

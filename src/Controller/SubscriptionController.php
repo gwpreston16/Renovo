@@ -243,7 +243,7 @@ final class SubscriptionController extends Controller
             // payment is not guessable in the same way: the cycle has not been
             // chosen yet, so any date offered would be arbitrary, and one that
             // is silently accepted is worse than one the user has to enter.
-            'start_date' => date('Y-m-d'),
+            'start_date' => $this->clock->today()->format('Y-m-d'),
             'reminder_mode' => SubscriptionFormService::REMINDER_DEFAULT,
             'split_mode' => 'none',
         ]));

@@ -287,12 +287,24 @@ final class ApiRateLimitTest extends ApiTestCase
         $windows->hit('token:9', $old);
         $windows->hit('token:9', $recent);
 
+        // The child must reach the database this test case does, which reads
+        // `$_ENV`, then `$_SERVER`, then the process environment: a runner
+        // that sets DB_NAME through a phpunit <server> entry is in `$_SERVER`
+        // alone, so the process environment cannot be handed over as it is.
+        $environment = getenv();
+        foreach (['DB_DRIVER', 'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASSWORD', 'DB_CHARSET'] as $key) {
+            $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+            if (is_scalar($value)) {
+                $environment[$key] = (string) $value;
+            }
+        }
+
         $process = proc_open(
             [PHP_BINARY, dirname(__DIR__, 2) . '/bin/console', 'maintenance:prune'],
             [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
             $pipes,
             dirname(__DIR__, 2),
-            getenv(),
+            $environment,
         );
         self::assertIsResource($process);
         $out = (string) stream_get_contents($pipes[1]);

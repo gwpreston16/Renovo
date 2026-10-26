@@ -18,6 +18,8 @@ use App\Service\InstanceSettingsService;
 use App\Tests\Integration\DatabaseTestCase;
 use App\Tests\Support\ArraySession;
 use App\Tests\Support\RecordingMailer;
+use App\Support\Clock;
+use App\Support\FrozenClock;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Slim\App;
@@ -37,6 +39,7 @@ final class MoneyPagesTest extends DatabaseTestCase
     /** @var App<ContainerInterface> */
     private App $app;
     private ArraySession $session;
+    private FrozenClock $clock;
 
     private int $ownerId;
     private int $viewerId;
@@ -49,11 +52,14 @@ final class MoneyPagesTest extends DatabaseTestCase
         parent::setUp();
 
         $this->session = new ArraySession();
+        // Pinned, so "today" is a fact and not the machine's date or zone.
+        $this->clock = FrozenClock::at('2026-03-15 10:30:00');
 
         $bootstrap = require dirname(__DIR__, 2) . '/config/bootstrap.php';
         $this->app = $bootstrap(true, [
             SessionInterface::class => $this->session,
             MailerInterface::class => new RecordingMailer(),
+            Clock::class => $this->clock,
         ]);
 
         $container = $this->app->getContainer();
@@ -65,7 +71,7 @@ final class MoneyPagesTest extends DatabaseTestCase
         $settings->markSetupComplete('2026-01-01 00:00:00');
         // No rate provider will be reachable from a test, and that is the point
         // of the degraded path: every page must still render.
-        $settings->markRatesAttempted(new \DateTimeImmutable());
+        $settings->markRatesAttempted($this->clock->now());
 
         $users = new UserRepository($this->db);
         $households = new HouseholdRepository($this->db);
@@ -115,7 +121,7 @@ final class MoneyPagesTest extends DatabaseTestCase
             'subscription_type' => 'recurring',
             'billing_cycle' => 'monthly',
             'is_trial' => true,
-            'trial_end_date' => (new \DateTimeImmutable('+10 days'))->format('Y-m-d'),
+            'trial_end_date' => ($this->clock->today()->modify('+10 days'))->format('Y-m-d'),
             'converts_to_price_minor' => 1299,
             'is_active' => true,
         ], []);
@@ -131,7 +137,7 @@ final class MoneyPagesTest extends DatabaseTestCase
             // The last day of this month: never in the past, and never in the
             // next month, which "+5 days" was for the last five days of every
             // month — leaving this month's budget nothing it could not convert.
-            'next_payment_date' => (new \DateTimeImmutable('last day of this month'))->format('Y-m-d'),
+            'next_payment_date' => ($this->clock->today()->modify('last day of this month'))->format('Y-m-d'),
             'is_active' => true,
         ], []);
 
@@ -283,7 +289,7 @@ final class MoneyPagesTest extends DatabaseTestCase
         $body = (string) $this->get('/subscriptions/new', $this->ownerId)->getBody();
 
         self::assertSame(
-            date('Y-m-d'),
+            $this->clock->today()->format('Y-m-d'),
             self::dateInputValue($body, 'start_date'),
             'the start date should default to today',
         );
