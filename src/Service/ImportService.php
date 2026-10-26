@@ -284,7 +284,7 @@ final class ImportService
         }
 
         $existing = $this->categories->findByName($scope, $name);
-        if ($existing !== null && mb_strtolower($existing->name) === mb_strtolower($name)) {
+        if ($existing !== null) {
             return $existing->id;
         }
 

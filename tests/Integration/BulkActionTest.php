@@ -172,6 +172,29 @@ final class BulkActionTest extends DatabaseTestCase
         self::assertSame(['shared'], $this->tagNames($second));
     }
 
+    public function testAddingATagContainedInAnotherTagsNameUsesTheWholeName(): void
+    {
+        $id = $this->create('One');
+        $tags = new TagRepository($this->db);
+        $longer = $tags->create($this->scope(), 'Apple TV');
+
+        self::assertSame(1, $this->bulk->apply($this->scope(), [
+            'action' => BulkActionService::ACTION_ADD_TAG,
+            'ids' => [$id],
+            'tag' => 'TV',
+        ]));
+        // "tv" is the tag already on it, not a second one.
+        self::assertSame(0, $this->bulk->apply($this->scope(), [
+            'action' => BulkActionService::ACTION_ADD_TAG,
+            'ids' => [$id],
+            'tag' => 'tv',
+        ]));
+
+        self::assertSame(['TV'], $this->tagNames($id));
+        self::assertCount(2, $tags->findAll($this->scope()));
+        self::assertNotNull($tags->find($this->scope(), $longer));
+    }
+
     public function testPausingAndResuming(): void
     {
         $id = $this->create('One');

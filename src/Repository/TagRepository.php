@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Domain\Entity\Tag;
+use App\Domain\NameKey;
 use App\Persistence\Criteria;
 use App\Security\Scope;
 use DateTimeImmutable;
@@ -44,6 +45,22 @@ final class TagRepository extends AbstractScopedRepository
     }
 
     /**
+     * The tag with this name — the whole name, accents and case ignored, as
+     * the unique index reads it — or null. Never a tag whose name merely
+     * contains it: "TV" is not "Apple TV".
+     */
+    public function findByName(Scope $scope, string $name): ?Tag
+    {
+        foreach ($this->findAll($scope) as $tag) {
+            if (NameKey::same($tag->name, $name)) {
+                return $tag;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Resolve a list of tag names to ids, creating any that do not yet exist.
      *
      * @param list<string> $names
@@ -51,6 +68,11 @@ final class TagRepository extends AbstractScopedRepository
      */
     public function resolveOrCreate(Scope $scope, array $names): array
     {
+        $known = [];
+        foreach ($this->findAll($scope) as $tag) {
+            $known[NameKey::of($tag->name)] = $tag->id;
+        }
+
         $ids = [];
 
         foreach ($names as $name) {
@@ -59,18 +81,11 @@ final class TagRepository extends AbstractScopedRepository
                 continue;
             }
 
-            $existing = $this->findOneScoped($scope, Criteria::new()->search(['name'], $name));
-            if ($existing !== null && mb_strtolower((string) $existing['name']) === mb_strtolower($name)) {
-                $ids[] = (int) $existing['id'];
-                continue;
+            $key = NameKey::of($name);
+            if (!isset($known[$key])) {
+                $known[$key] = $this->create($scope, $name);
             }
-
-            $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
-            $ids[] = $this->insertScoped($scope, [
-                'name' => $name,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
+            $ids[] = $known[$key];
         }
 
         return array_values(array_unique($ids));

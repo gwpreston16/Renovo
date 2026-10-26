@@ -14,6 +14,7 @@ use App\Domain\AuditAction;
 use App\Domain\BillingCycle;
 use App\Domain\Currency;
 use App\Domain\Money;
+use App\Domain\NameKey;
 use App\Domain\Entity\Attachment;
 use App\Domain\Entity\Budget;
 use App\Domain\Entity\Category;
@@ -412,7 +413,7 @@ final class BackupService
         // Whatever the household already has keeps its id: restoring must not
         // create a second "Streaming" beside the existing one.
         foreach ($this->categories->all($scope) as $existing) {
-            $ids[mb_strtolower($existing->name)] = $existing->id;
+            $ids[NameKey::of($existing->name)] = $existing->id;
         }
 
         foreach (is_array($rows) ? $rows : [] as $row) {
@@ -420,7 +421,7 @@ final class BackupService
                 continue;
             }
 
-            $key = mb_strtolower(trim($row['name']));
+            $key = NameKey::of(trim($row['name']));
             if ($key === '' || isset($ids[$key])) {
                 continue;
             }
@@ -462,7 +463,7 @@ final class BackupService
         $hasLogo = [];
 
         foreach ($this->paymentMethods->all($scope) as $existing) {
-            $key = mb_strtolower($existing->name);
+            $key = NameKey::of($existing->name);
             $ids[$key] = $existing->id;
             $hasLogo[$key] = $existing->logoPath !== null;
         }
@@ -472,7 +473,7 @@ final class BackupService
                 continue;
             }
 
-            $key = mb_strtolower(trim($row['name']));
+            $key = NameKey::of(trim($row['name']));
             if ($key === '') {
                 continue;
             }
@@ -553,14 +554,14 @@ final class BackupService
     ): array {
         $input = SubscriptionPayload::toServiceInput($row);
 
-        $categoryName = is_string($row['category_name'] ?? null) ? mb_strtolower(trim($row['category_name'])) : '';
+        $categoryName = is_string($row['category_name'] ?? null) ? NameKey::of(trim($row['category_name'])) : '';
         $input['category_id'] = $categoryIds[$categoryName] ?? '';
 
         // By name, like the category: the archive's `payment_method_id` is an
         // id in the household it left, and would name the wrong row here — or
         // another household's.
         $methodName = is_string($row['payment_method_name'] ?? null)
-            ? mb_strtolower(trim($row['payment_method_name']))
+            ? NameKey::of(trim($row['payment_method_name']))
             : '';
         $input['payment_method_id'] = $paymentMethodIds[$methodName] ?? '';
 
@@ -627,7 +628,7 @@ final class BackupService
                 continue;
             }
 
-            $categoryName = is_string($row['category_name'] ?? null) ? mb_strtolower(trim($row['category_name'])) : '';
+            $categoryName = is_string($row['category_name'] ?? null) ? NameKey::of(trim($row['category_name'])) : '';
 
             try {
                 $this->budgets->create($scope, [

@@ -8,6 +8,30 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Changed
+
+- **More than 25 tags, or a tag over 50 characters, is a `422`.** A subscription
+  saved with them used to keep the first 25 and cut the rest to 50 characters
+  without a word, although the API reference and OpenAPI document gave the
+  limits. A client that sent 30 tags and got 25 now gets a `422` on `tags`; the
+  web form shows the same error. The OpenAPI document is now version 1.9.2.
+  *Phase 51.*
+
+### Fixed
+
+- **Tag and category names are matched whole.** With "Apple TV" and "TV" in a
+  household, saving a subscription tagged "TV" was a server error, "tv" made a
+  second tag beside "TV", and "Music" beside "Music Videos" was an error rather
+  than the duplicate message. Names now match as a whole, ignoring case, in the
+  forms, the API, bulk add, CSV import and backup restore. *Phase 51.*
+- **"Café" beside "Cafe" is the duplicate message on both databases.** On MySQL
+  it was a server error and on PostgreSQL a separate name; a category, tag or
+  payment method that differs only by accents or case is now refused the same
+  way on both, and two saves racing for one name get the message too. *Phase 51.*
+- **Renaming a category with no colour keeps it without one.** It saved as grey;
+  the category forms in Settings now offer "Automatic colour" as payment methods
+  do, so a category can be made colourless again. *Phase 51.*
+
 ## [1.19.0] - 2026-10-26
 
 ### Changed

@@ -403,6 +403,32 @@ final class BackupRestoreTest extends DatabaseTestCase
         self::assertEqualsCanonicalizing(['applied', 'unused'], $names);
     }
 
+    public function testRestoreMatchesNamesWholeIgnoringCaseAndAccents(): void
+    {
+        $categories = new \App\Repository\CategoryRepository($this->db);
+        $tags = new \App\Repository\TagRepository($this->db);
+
+        $categories->create($this->source, 'Music', null);
+        $categories->create($this->source, 'Music Videos', null);
+        $categories->create($this->source, 'Café', null);
+        $tags->create($this->source, 'TV');
+        $tags->create($this->source, 'Apple TV');
+
+        // The target already has near-names: a case variant of one, an accent
+        // variant of another, and a name that merely contains one restored.
+        $categories->create($this->target, 'MUSIC', null);
+        $categories->create($this->target, 'Cafe', null);
+        $tags->create($this->target, 'tv');
+
+        $this->backups->restore($this->target, $this->targetUser, $this->export());
+
+        $categoryNames = array_map(static fn ($c): string => $c->name, $categories->findAll($this->target));
+        self::assertEqualsCanonicalizing(['MUSIC', 'Cafe', 'Music Videos'], $categoryNames);
+
+        $tagNames = array_map(static fn ($t): string => $t->name, $tags->findAll($this->target));
+        self::assertEqualsCanonicalizing(['tv', 'Apple TV'], $tagNames);
+    }
+
     public function testTheHouseholdNameIsExportedButNotImposedOnRestore(): void
     {
         // Deliberate: a restore lands in a household that already exists and

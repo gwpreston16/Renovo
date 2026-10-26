@@ -997,6 +997,7 @@ final class SubscriptionService
         // form that does not show it — a bulk edit, a later API — from wiping a
         // per-subscription reminder schedule it never asked about.
         $reminderDays = $this->reminderDays($input, $errors);
+        $this->checkTags($input, $errors);
 
         if ($errors !== []) {
             throw new ValidationException($errors);
@@ -1344,14 +1345,29 @@ final class SubscriptionService
             $names = explode(',', is_scalar($raw) ? (string) $raw : '');
         }
 
-        $names = array_values(array_filter(array_map(
-            static fn (string $name): string => mb_substr(trim($name), 0, 50),
-            $names,
-        ), static fn (string $name): bool => $name !== ''));
+        return array_values(array_filter(
+            array_map(static fn (string $name): string => trim($name), $names),
+            static fn (string $name): bool => $name !== '',
+        ));
+    }
 
-        // A sane upper bound: the field is free text, and nothing good comes
-        // of a single subscription creating two hundred tags.
-        return array_slice($names, 0, 25);
+    /**
+     * The tag limits, refused rather than cut: the field is free text, and
+     * nothing good comes of a single subscription creating two hundred tags,
+     * but a client that sent thirty should be told, not handed twenty-five.
+     *
+     * @param array<string, mixed>  $input
+     * @param array<string, string> $errors
+     */
+    private function checkTags(array $input, array &$errors): void
+    {
+        $names = $this->tagNames($input);
+
+        if (count($names) > 25) {
+            $errors['tags'] = 'error.tags.too_many_25';
+        } elseif (array_filter($names, static fn (string $name): bool => mb_strlen($name) > 50) !== []) {
+            $errors['tags'] = 'error.tag.too_long_50';
+        }
     }
 
     /**

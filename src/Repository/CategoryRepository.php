@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Domain\Entity\Category;
+use App\Domain\NameKey;
 use App\Persistence\Criteria;
 use App\Security\Scope;
 use DateTimeImmutable;
@@ -52,11 +53,20 @@ final class CategoryRepository extends AbstractScopedRepository
         return $row === null ? null : $this->hydrate($row);
     }
 
+    /**
+     * The category with this name — the whole name, accents and case
+     * ignored, as the unique index reads it — or null; never one whose name
+     * merely contains it.
+     */
     public function findByName(Scope $scope, string $name): ?Category
     {
-        $row = $this->findOneScoped($scope, Criteria::new()->search(['name'], $name));
+        foreach ($this->findAll($scope) as $category) {
+            if (NameKey::same($category->name, $name)) {
+                return $category;
+            }
+        }
 
-        return $row === null ? null : $this->hydrate($row);
+        return null;
     }
 
     public function create(Scope $scope, string $name, ?string $colour): int

@@ -110,14 +110,14 @@ None.
 
 ## Status
 
-- [ ] K12: tags and categories matched by whole name, ignoring case
-- [ ] K34: accent variants refused as duplicates on both engines
-- [ ] K43: over-limit tags refused with 422
-- [ ] K58: an uncoloured category stays uncoloured
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 51 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K12: tags and categories matched by whole name, ignoring case
+- [x] K34: accent variants refused as duplicates on both engines
+- [x] K43: over-limit tags refused with 422
+- [x] K58: an uncoloured category stays uncoloured
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 51 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

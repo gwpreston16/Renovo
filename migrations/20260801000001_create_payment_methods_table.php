@@ -19,8 +19,8 @@ use Phinx\Migration\AbstractMigration;
  * glyph without the project bundling anybody's trademark: "PayPal" ships with
  * a generic wallet, and a household that wants the real mark uploads it.
  *
- * The unique index is case-sensitive for the reason given on `categories`; the
- * service performs the case-insensitive check.
+ * The unique index is the backstop for the check the service makes, for the
+ * reason given on `categories`: case and accents are folded by `NameKey`.
  */
 final class CreatePaymentMethodsTable extends AbstractMigration
 {

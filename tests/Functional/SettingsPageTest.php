@@ -422,6 +422,60 @@ final class SettingsPageTest extends DatabaseTestCase
         self::assertNull($row['category_id']);
     }
 
+    public function testRenamingAnUncolouredCategoryKeepsItUncoloured(): void
+    {
+        $this->signIn($this->ownerId);
+        $categories = new CategoryRepository($this->db);
+        $id = $categories->create($this->ownerScope(), 'Imported', null);
+
+        // The colour input always submits its grey; "Automatic" is ticked
+        // because the category has no colour of its own.
+        $page = (string) preg_replace('/\s+/', ' ', $this->body($this->request('GET', '/settings')));
+        self::assertMatchesRegularExpression('~name="colour_auto" value="1"[^>]*checked~', $page);
+        self::assertStringContainsString('data-css-background="var(--s-other)"', $page);
+
+        $response = $this->request('POST', '/categories/' . $id, [
+            'name' => 'Imported stuff',
+            'colour' => '#888888',
+            'colour_auto' => '1',
+        ]);
+
+        self::assertSame(302, $response->getStatusCode());
+        $renamed = $categories->find($this->ownerScope(), $id);
+        self::assertNotNull($renamed);
+        self::assertSame('Imported stuff', $renamed->name);
+        self::assertNull($renamed->colour);
+    }
+
+    public function testAutomaticClearsTheColour(): void
+    {
+        $this->signIn($this->ownerId);
+        $categories = new CategoryRepository($this->db);
+        $id = $categories->create($this->ownerScope(), 'Streaming', null);
+
+        $this->request('POST', '/categories/' . $id, ['name' => 'Streaming', 'colour' => '#112233']);
+        self::assertSame('#112233', $categories->find($this->ownerScope(), $id)?->colour);
+
+        $this->request('POST', '/categories/' . $id, [
+            'name' => 'Streaming',
+            'colour' => '#112233',
+            'colour_auto' => '1',
+        ]);
+        self::assertNull($categories->find($this->ownerScope(), $id)->colour);
+    }
+
+    public function testANewCategoryCanBeAddedWithAutomaticColour(): void
+    {
+        $this->signIn($this->ownerId);
+
+        $this->request('POST', '/categories', ['name' => 'Plain', 'colour' => '#4f7df0', 'colour_auto' => '1']);
+        $this->request('POST', '/categories', ['name' => 'Blue', 'colour' => '#4f7df0']);
+
+        $categories = new CategoryRepository($this->db);
+        self::assertNull($categories->findByName($this->ownerScope(), 'Plain')?->colour);
+        self::assertSame('#4f7df0', $categories->findByName($this->ownerScope(), 'Blue')?->colour);
+    }
+
     public function testARenameThatFailsComesBackOpenBesideItsRow(): void
     {
         $this->signIn($this->ownerId);

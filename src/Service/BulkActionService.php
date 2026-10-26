@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Domain\Currency;
+use App\Domain\NameKey;
 use App\Domain\PriceChangeSource;
 use App\Persistence\Database;
 use App\Repository\CategoryRepository;
@@ -202,7 +203,7 @@ final class BulkActionService
                         static fn ($tag): int => $tag->id,
                         array_filter(
                             $subscription->tags,
-                            static fn ($tag): bool => mb_strtolower($tag->name) === mb_strtolower($name),
+                            static fn ($tag): bool => NameKey::same($tag->name, $name),
                         ),
                     );
                     $next = array_values(array_diff($current, $removing));

@@ -43,6 +43,12 @@
                                            aria-label="{{ t('settings.rename_category', {'name': category.name}) }}">
                                     <input type="color" name="colour" value="{{ category.colour|default('#888888') }}"
                                            aria-label="{{ t('categories.category_colour') }}">
+                                    <label class="choice">
+                                        <input type="checkbox" name="colour_auto" value="1"
+                                               aria-label="{{ t('categories.colour_automatic_of', {'name': category.name}) }}"
+                                               {{ category.colour is null ? 'checked' : '' }}>
+                                        {{ t('categories.colour_automatic') }}
+                                    </label>
                                     <button type="submit" class="button button-outline">{{ t('action.save') }}</button>
                                 </form>
                                 {% if is_failed and errors.name is defined %}<p class="field-error">{{ error_message(errors.name) }}</p>{% endif %}
@@ -79,6 +85,11 @@
                    value="{{ new_failed ? values.name|default('') : '' }}">
             <input type="color" name="colour" value="{{ new_failed ? values.colour|default('#4f7df0') : '#4f7df0' }}"
                    aria-label="{{ t('categories.colour') }}">
+            <label class="choice">
+                <input type="checkbox" name="colour_auto" value="1"
+                       {{ new_failed and values.colour_auto is defined ? 'checked' : '' }}>
+                {{ t('categories.colour_automatic') }}
+            </label>
             <button type="submit" class="button button-outline">{{ icon('add') }}{{ t('action.add') }}</button>
         </form>
         {% if new_failed and errors.name is defined %}<p class="field-error">{{ error_message(errors.name) }}</p>{% endif %}

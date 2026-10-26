@@ -1244,6 +1244,8 @@ return [
     // categories
     'categories.category_colour' => 'Category colour',
     'categories.colour' => 'Colour',
+    'categories.colour_automatic' => 'Automatic colour',
+    'categories.colour_automatic_of' => 'Automatic colour for {name}',
     'categories.new_category' => 'New category',
     'categories.no_categories_yet' => 'No categories yet.',
     'categories.no_tags_yet' => 'No tags yet.',
@@ -2692,6 +2694,8 @@ return [
     'confirm.delete_tag' => 'Delete {name}? It comes off every subscription that carries it.',
     'error.tag.duplicate' => 'A tag with that name already exists.',
     'error.tag.too_long' => 'A tag must be 50 characters or fewer.',
+    'error.tag.too_long_50' => 'Each tag must be 50 characters or fewer.',
+    'error.tags.too_many_25' => 'Use at most 25 tags on one subscription.',
     'flash.channel_turned_off' => 'Channel turned off.',
     'flash.channel_turned_on' => 'Channel turned on.',
     'flash.rates_backing_off' => 'The last refresh failed, so the next can be tried after {time}.',

@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.1"
+  version: "1.9.2"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -1148,7 +1148,7 @@ paths:
                 name:
                   type: string
                   maxLength: 50
-                  description: Unique in the household, ignoring case.
+                  description: Unique in the household, ignoring case and accents.
       responses:
         "201":
           description: Created.
@@ -1193,7 +1193,7 @@ paths:
                 name:
                   type: string
                   maxLength: 50
-                  description: Unique in the household, ignoring case.
+                  description: Unique in the household, ignoring case and accents.
       responses:
         "200":
           description: The renamed tag.
@@ -1853,7 +1853,10 @@ components:
           type: array
           items: { type: string, maxLength: 50 }
           maxItems: 25
-          description: Tags are created by name if they do not exist.
+          description: |
+            Tags are created by name if they do not exist, matched whole and
+            ignoring case and accents. More than 25 tags, or a tag over 50
+            characters, is refused with `422` rather than cut.
 
     Subscription:
       allOf:
