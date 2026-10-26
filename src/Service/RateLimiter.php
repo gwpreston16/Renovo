@@ -53,12 +53,12 @@ final class RateLimiter
         $starts = [];
         if ($accountKey !== '') {
             $starts[] = $this->lastLimitingFailure(
-                $this->attempts->failureTimesForAccount($kind, $accountKey, $since),
+                $this->attempts->failureTimesForAccount($kind, $accountKey, $since, $this->maxPerAccount),
                 $this->maxPerAccount,
             );
         }
         $starts[] = $this->lastLimitingFailure(
-            $this->attempts->failureTimesForIp($kind, $ipAddress, $since),
+            $this->attempts->failureTimesForIp($kind, $ipAddress, $since, $this->maxPerIp),
             $this->maxPerIp,
         );
 

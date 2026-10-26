@@ -120,6 +120,37 @@ final class RateLimiterTest extends DatabaseTestCase
         self::assertFalse($limiter->isBlocked(self::KIND, self::ACCOUNT, self::IP));
     }
 
+    public function testALimitAboveTheHistoryCapStillBlocks(): void
+    {
+        $limit = AuthAttemptRepository::FAILURE_HISTORY_CAP + 20;
+        $limiter = new RateLimiter($this->attempts, $this->clock, 3, $limit, 900, 3600);
+
+        for ($i = 0; $i < $limit; $i++) {
+            $this->attempts->record(self::KIND, 'x' . $i . '@example.test', self::IP, false);
+        }
+
+        self::assertSame(3600, $limiter->remainingLockoutSeconds(self::KIND, 'new@example.test', self::IP));
+    }
+
+    public function testALimitOfZeroBlocksAfterOneFailure(): void
+    {
+        $limiter = new RateLimiter($this->attempts, $this->clock, 0, 20, 900, 600);
+        $limiter->recordFailure(self::KIND, self::ACCOUNT, self::IP);
+
+        self::assertSame(600, $limiter->remainingLockoutSeconds(self::KIND, self::ACCOUNT, self::IP));
+    }
+
+    public function testTheSecondFactorHasItsOwnBlock(): void
+    {
+        $limiter = $this->limiter(window: 900, lockout: 600);
+        $this->failTimes($limiter, 3);
+
+        self::assertSame(
+            0,
+            $limiter->remainingLockoutSeconds(AuthAttemptRepository::KIND_TWO_FACTOR, self::ACCOUNT, self::IP),
+        );
+    }
+
     private function limiter(int $window, int $lockout, int $perIp = 20): RateLimiter
     {
         return new RateLimiter($this->attempts, $this->clock, 3, $perIp, $window, $lockout);

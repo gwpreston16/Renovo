@@ -95,31 +95,46 @@ final class AuthAttemptRepository extends AbstractRepository
 
     /**
      * When each failure for an account happened since a moment, oldest first.
-     * At most the most recent {@see self::FAILURE_HISTORY_CAP}.
+     * At most the most recent {@see self::FAILURE_HISTORY_CAP}, plus `$limit`
+     * so that a limit above the cap can still be reached.
      *
      * @return list<DateTimeImmutable>
      */
-    public function failureTimesForAccount(string $kind, string $accountKey, DateTimeImmutable $since): array
-    {
-        return $this->failureTimes('account_key', $this->hashAccountKey($accountKey), $kind, $since);
+    public function failureTimesForAccount(
+        string $kind,
+        string $accountKey,
+        DateTimeImmutable $since,
+        int $limit = 0,
+    ): array {
+        return $this->failureTimes('account_key', $this->hashAccountKey($accountKey), $kind, $since, $limit);
     }
 
     /**
      * When each failure from an address happened since a moment, oldest first.
-     * At most the most recent {@see self::FAILURE_HISTORY_CAP}.
+     * At most the most recent {@see self::FAILURE_HISTORY_CAP}, plus `$limit`
+     * so that a limit above the cap can still be reached.
      *
      * @return list<DateTimeImmutable>
      */
-    public function failureTimesForIp(string $kind, string $ipAddress, DateTimeImmutable $since): array
-    {
-        return $this->failureTimes('ip_address', substr($ipAddress, 0, 45), $kind, $since);
+    public function failureTimesForIp(
+        string $kind,
+        string $ipAddress,
+        DateTimeImmutable $since,
+        int $limit = 0,
+    ): array {
+        return $this->failureTimes('ip_address', substr($ipAddress, 0, 45), $kind, $since, $limit);
     }
 
     /**
      * @return list<DateTimeImmutable>
      */
-    private function failureTimes(string $column, string $value, string $kind, DateTimeImmutable $since): array
-    {
+    private function failureTimes(
+        string $column,
+        string $value,
+        string $kind,
+        DateTimeImmutable $since,
+        int $limit,
+    ): array {
         $rows = $this->db->fetchAll(
             'SELECT ' . $this->quote('attempted_at') . ' FROM ' . $this->quote('auth_attempts')
             . ' WHERE ' . $this->quote('kind') . ' = :kind'
@@ -127,7 +142,7 @@ final class AuthAttemptRepository extends AbstractRepository
             . ' AND ' . $this->quote('successful') . ' = :failed'
             . ' AND ' . $this->quote('attempted_at') . ' >= :since'
             . ' ORDER BY ' . $this->quote('attempted_at') . ' DESC, ' . $this->quote('id') . ' DESC'
-            . ' LIMIT ' . self::FAILURE_HISTORY_CAP,
+            . ' LIMIT ' . (self::FAILURE_HISTORY_CAP + max(0, $limit)),
             ['kind' => $kind, 'value' => $value, 'failed' => false, 'since' => $since->format('Y-m-d H:i:s')],
         );
 
