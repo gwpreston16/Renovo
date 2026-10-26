@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Domain\Entity\Category;
+use App\Persistence\Database;
 use App\Repository\CategoryRepository;
 use App\Security\Scope;
+use PDOException;
 
 final class CategoryService
 {
@@ -30,7 +32,11 @@ final class CategoryService
         $name = trim($name);
         $this->assertValid($scope, $name, $colour);
 
-        return $this->categories->create($scope, $name, $this->normaliseColour($colour));
+        try {
+            return $this->categories->create($scope, $name, $this->normaliseColour($colour));
+        } catch (PDOException $exception) {
+            throw $this->duplicateOrRethrow($exception);
+        }
     }
 
     /**
@@ -41,7 +47,11 @@ final class CategoryService
         $name = trim($name);
         $this->assertValid($scope, $name, $colour, $id);
 
-        $this->categories->update($scope, $id, $name, $this->normaliseColour($colour));
+        try {
+            $this->categories->update($scope, $id, $name, $this->normaliseColour($colour));
+        } catch (PDOException $exception) {
+            throw $this->duplicateOrRethrow($exception);
+        }
     }
 
     public function delete(Scope $scope, int $id): void
@@ -61,18 +71,28 @@ final class CategoryService
             throw ValidationException::field('name', 'error.name.too_long_60');
         }
 
+        // The repository matches the whole name, accents and case ignored, as
+        // the unique index does — never a name that merely contains it.
         $existing = $this->categories->findByName($scope, $name);
-        $isDuplicate = $existing !== null
-            && $existing->id !== $ignoreId
-            && mb_strtolower($existing->name) === mb_strtolower($name);
 
-        if ($isDuplicate) {
+        if ($existing !== null && $existing->id !== $ignoreId) {
             throw ValidationException::field('name', 'error.category.duplicate');
         }
 
         if ($colour !== null && $colour !== '' && preg_match('/^#[0-9a-fA-F]{6}$/', $colour) !== 1) {
             throw ValidationException::field('colour', 'error.category.colour_required');
         }
+    }
+
+    /**
+     * Two requests can both pass the check above; the unique index settles
+     * which one wins, and the loser is told the name is taken, not a 500.
+     */
+    private function duplicateOrRethrow(PDOException $exception): ValidationException|PDOException
+    {
+        return Database::isUniqueViolation($exception)
+            ? ValidationException::field('name', 'error.category.duplicate')
+            : $exception;
     }
 
     private function normaliseColour(?string $colour): ?string

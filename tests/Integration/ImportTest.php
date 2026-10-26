@@ -170,6 +170,38 @@ final class ImportTest extends DatabaseTestCase
         );
     }
 
+    public function testACategoryAndATagAreMatchedWholeIgnoringCase(): void
+    {
+        $categories = new \App\Repository\CategoryRepository($this->db);
+        $longer = $categories->create($this->scope, 'Music Videos', null);
+        $music = $categories->create($this->scope, 'Music', null);
+        $tags = new \App\Repository\TagRepository($this->db);
+        $tags->create($this->scope, 'Apple TV');
+
+        $csv = <<<CSV
+        Name,Price,Currency,Billing cycle,Next payment date,Category,Tags
+        One,1.00,GBP,Monthly,2026-12-01,music,TV
+        Two,2.00,GBP,Monthly,2026-12-01,MUSIC VIDEOS,tv
+        Three,3.00,GBP,Monthly,2026-12-01,Music Vid,
+        CSV;
+        $id = $this->imports->stage(FakeUpload::of($csv, 'export.csv'));
+        $mapping = $this->imports->suggestMapping(ImportPreset::AUTOMATIC, $this->imports->read($id)->headers);
+
+        $result = $this->imports->commit($this->scope, $this->user, $id, $mapping, 'GBP');
+
+        self::assertSame(['imported' => 3, 'skipped' => 0], $result);
+        $byName = [];
+        foreach ($this->subscriptions->allForStats($this->scope, activeOnly: false) as $subscription) {
+            $byName[$subscription->name] = $subscription;
+        }
+        self::assertSame($music, $byName['One']->categoryId);
+        self::assertSame($longer, $byName['Two']->categoryId);
+        self::assertNotContains($byName['Three']->categoryId, [$music, $longer]);
+        self::assertCount(3, $categories->findAll($this->scope));
+        self::assertSame(['TV'], array_map(static fn ($tag): string => $tag->name, $byName['One']->tags));
+        self::assertCount(2, $tags->findAll($this->scope));
+    }
+
     public function testAPlanColumnIsMappedAndImported(): void
     {
         $csv = <<<CSV

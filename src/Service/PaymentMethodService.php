@@ -7,19 +7,22 @@ namespace App\Service;
 use App\Domain\DefaultPaymentMethods;
 use App\Domain\Entity\PaymentMethod;
 use App\Domain\Entity\User;
+use App\Domain\NameKey;
+use App\Persistence\Database;
 use App\I18n\Locales;
 use App\I18n\Translator;
 use App\Repository\PaymentMethodRepository;
 use App\Security\Scope;
 use App\Security\ScopeFactory;
 use App\Security\ScopeViolationException;
+use PDOException;
 use Psr\Http\Message\UploadedFileInterface;
 
 /**
  * The household's list of payment methods.
  *
  * Categories' rules, deliberately: the same name validation, the same
- * case-insensitive duplicate check, the same colour format. Where a decision
+ * case- and accent-insensitive duplicate check, the same colour format. Where a decision
  * was already made for categories it is made the same way here rather than a
  * second time.
  *
@@ -67,13 +70,19 @@ final class PaymentMethodService
         // After validation, so a rejected name does not leave an orphaned file.
         $logoPath = $this->logos->store($logo);
 
-        return $this->methods->create(
-            $scope,
-            $name,
-            $this->normaliseColour($colour),
-            $this->normaliseIcon($icon),
-            $logoPath,
-        );
+        try {
+            return $this->methods->create(
+                $scope,
+                $name,
+                $this->normaliseColour($colour),
+                $this->normaliseIcon($icon),
+                $logoPath,
+            );
+        } catch (PDOException $exception) {
+            $this->logos->delete($logoPath);
+
+            throw $this->duplicateOrRethrow($exception);
+        }
     }
 
     /**
@@ -95,7 +104,13 @@ final class PaymentMethodService
 
         $logoPath = $this->logos->store($logo);
 
-        $this->methods->update($scope, $id, $name, $this->normaliseColour($colour));
+        try {
+            $this->methods->update($scope, $id, $name, $this->normaliseColour($colour));
+        } catch (PDOException $exception) {
+            $this->logos->delete($logoPath);
+
+            throw $this->duplicateOrRethrow($exception);
+        }
 
         if ($logoPath !== null) {
             $this->methods->setLogo($scope, $id, $logoPath);
@@ -219,7 +234,7 @@ final class PaymentMethodService
         // "Credit Card" and never see the "Card" that is the real duplicate.
         // The list is a household's handful of labels, so reading it is cheap.
         foreach ($this->methods->findAll($scope) as $existing) {
-            if ($existing->id !== $ignoreId && mb_strtolower($existing->name) === mb_strtolower($name)) {
+            if ($existing->id !== $ignoreId && NameKey::same($existing->name, $name)) {
                 throw ValidationException::field('name', 'error.payment_method.duplicate');
             }
         }
@@ -227,6 +242,13 @@ final class PaymentMethodService
         if ($colour !== null && $colour !== '' && preg_match('/^#[0-9a-fA-F]{6}$/', $colour) !== 1) {
             throw ValidationException::field('colour', 'error.category.colour_required');
         }
+    }
+
+    private function duplicateOrRethrow(PDOException $exception): ValidationException|PDOException
+    {
+        return Database::isUniqueViolation($exception)
+            ? ValidationException::field('name', 'error.payment_method.duplicate')
+            : $exception;
     }
 
     private function normaliseColour(?string $colour): ?string

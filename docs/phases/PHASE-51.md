@@ -93,7 +93,7 @@ None.
 
 ## Decisions & assumptions (confirm or correct before build)
 
-- **K12** makes the code do what `PaymentMethodService` already does for its
+- **K12** *Confirmed 2026-10-26.* Makes the code do what `PaymentMethodService` already does for its
   own names: compare whole names, ignoring case.
 - **K34** *Decided 2026-10-26:* accent variants are the same name on both
   engines, the duplicate message is shown. Not chosen: distinct on both engines
@@ -102,21 +102,22 @@ None.
   `unaccent` extension, which an install may not have.
 - **K43** *Decided 2026-10-26:* refuse with 422. Not chosen: keep truncating
   and document it.
-- **K58** assumes "uncoloured" is stored as NULL, as for payment methods.
+- **K58** *Confirmed 2026-10-26* (the `categories.colour` column is nullable):  assumes "uncoloured" is stored as NULL, as for payment methods.
+- **K60** *Confirmed 2026-10-26:* left Open, not added to this phase.
 - **How it ships.** *Decided 2026-10-26:* as its own patch release once merged
   (1.19.1, after 1.19.0; the number is re-checked at release). Not chosen:
   waiting for the next minor release.
 
 ## Status
 
-- [ ] K12: tags and categories matched by whole name, ignoring case
-- [ ] K34: accent variants refused as duplicates on both engines
-- [ ] K43: over-limit tags refused with 422
-- [ ] K58: an uncoloured category stays uncoloured
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 51 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K12: tags and categories matched by whole name, ignoring case
+- [x] K34: accent variants refused as duplicates on both engines
+- [x] K43: over-limit tags refused with 422
+- [x] K58: an uncoloured category stays uncoloured
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 51 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

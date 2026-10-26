@@ -176,6 +176,12 @@ whether the amount varies (above). Everything the application had besides sits u
 is someone else, notes — which opens by itself when one of those fields comes
 back with an error.
 
+A subscription takes up to 25 tags of up to 50 characters each; more is an
+error, not a quiet cut. Names of tags, categories and payment methods are
+matched whole, ignoring case and accents: "tv" is "TV", "Cafe" is "Café", and
+"TV" is not "Apple TV". In Settings a category's colour can be left on
+**Automatic colour**, which takes the theme's palette.
+
 The split is saved with the row, in one transaction, so a save is both or
 neither. "Only me" and a split cannot both be chosen; whichever is set rules the
 other out on the form, and the server refuses the pair regardless. A reminder
@@ -241,6 +247,7 @@ preview calls valid is one that will be written.
 - The Terms columns — contract ends, payments end, amount varies — are matched
   by those names.
 - Categories are created by name if they do not already exist; so are tags.
+  Names match whole, ignoring case and accents.
 
 Imported rows land in your household with the ordinary owner rules, exactly as if
 you had typed them in.

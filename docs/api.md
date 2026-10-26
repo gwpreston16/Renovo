@@ -877,7 +877,7 @@ Create, or rename and recolour. Body:
 ```
 
 The same rules as a category: `name` is required, maximum 60 characters, and
-unique in the household ignoring case; `colour` is nullable and must match
+unique in the household ignoring case and accents; `colour` is nullable and must match
 `^#[0-9a-fA-F]{6}$`. A null colour takes the theme's palette in the breakdown.
 A logo doesn't travel in this body; it has an endpoint of its own, below.
 
@@ -915,7 +915,7 @@ Create, or rename. Body:
 ```
 
 `name` is required, maximum 50 characters, and unique in the household
-ignoring case. "tv" and "TV" are one tag, the same rule a subscription's `tags`
+ignoring case and accents. "tv" and "TV" are one tag, as are "Café" and "Cafe", the same rule a subscription's `tags`
 array follows, so a tag made here and a tag typed on a subscription can't end
 up as two. An existing name is refused with `422` rather than returned.
 Renaming changes the name on every subscription that carries the tag.
@@ -992,7 +992,7 @@ The writable half of a subscription. Required: `name`, `price_minor`,
 | `payment_method_id` | integer, null | An absent key leaves the current assignment alone — unlike the other fields, so a client written before it existed does not clear it. Send `null` to clear it. |
 | `owner_user_id` | integer, null | Must be a household member. Ignored in ISOLATED mode, where a user may own only their own rows. |
 | `payer_user_id` | integer, null | |
-| `tags` | string[] | Max 25, each max 50 chars. Created by name if they do not exist. |
+| `tags` | string[] | Max 25, each max 50 chars; more is a `422` on `tags`, never cut. Created by name if they do not exist, matched whole ignoring case and accents. |
 
 ### Subscription
 

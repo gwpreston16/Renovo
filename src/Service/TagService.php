@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Domain\Entity\Tag;
+use App\Persistence\Database;
 use App\Repository\TagRepository;
 use App\Security\Scope;
+use PDOException;
 
 final class TagService
 {
@@ -33,7 +35,11 @@ final class TagService
         $name = trim($name);
         $this->assertValid($scope, $name);
 
-        return $this->tags->create($scope, $name);
+        try {
+            return $this->tags->create($scope, $name);
+        } catch (PDOException $exception) {
+            throw $this->duplicateOrRethrow($exception);
+        }
     }
 
     /**
@@ -48,12 +54,23 @@ final class TagService
         $name = trim($name);
         $this->assertValid($scope, $name, $id);
 
-        $this->tags->rename($scope, $id, $name);
+        try {
+            $this->tags->rename($scope, $id, $name);
+        } catch (PDOException $exception) {
+            throw $this->duplicateOrRethrow($exception);
+        }
     }
 
     public function delete(Scope $scope, int $id): void
     {
         $this->tags->delete($scope, $id);
+    }
+
+    private function duplicateOrRethrow(PDOException $exception): ValidationException|PDOException
+    {
+        return Database::isUniqueViolation($exception)
+            ? ValidationException::field('name', 'error.tag.duplicate')
+            : $exception;
     }
 
     /**
@@ -70,12 +87,11 @@ final class TagService
             throw ValidationException::field('name', 'error.tag.too_long');
         }
 
-        // Compared whole and without regard to case, as the tag field on a
-        // subscription resolves names: "tv" and "TV" are one tag.
-        foreach ($this->tags->findAll($scope) as $tag) {
-            if ($tag->id !== $ignoreId && mb_strtolower($tag->name) === mb_strtolower($name)) {
-                throw ValidationException::field('name', 'error.tag.duplicate');
-            }
+        // Compared whole and without regard to case or accents, as the tag
+        // field on a subscription resolves names: "tv" and "TV" are one tag.
+        $existing = $this->tags->findByName($scope, $name);
+        if ($existing !== null && $existing->id !== $ignoreId) {
+            throw ValidationException::field('name', 'error.tag.duplicate');
         }
     }
 }

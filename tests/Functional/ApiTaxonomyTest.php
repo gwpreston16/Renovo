@@ -53,6 +53,59 @@ final class ApiTaxonomyTest extends ApiTestCase
         return [LogoStorage::class => new LogoStorage($this->logoDirectory, 512 * 1024)];
     }
 
+    public function testMoreThanTwentyFiveTagsOrALongTagAreRefusedWith422(): void
+    {
+        $base = [
+            'name' => 'Streaming',
+            'price_minor' => 1099,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-12-01',
+        ];
+
+        $tooMany = $this->api('POST', '/api/v1/subscriptions', $this->editorToken, $base + [
+            'tags' => array_map(static fn (int $n): string => 'tag' . $n, range(1, 26)),
+        ]);
+        self::assertSame(422, $tooMany->getStatusCode(), (string) $tooMany->getBody());
+        self::assertStringContainsString('tags', (string) $tooMany->getBody());
+
+        $tooLong = $this->api('POST', '/api/v1/subscriptions', $this->editorToken, $base + [
+            'tags' => [str_repeat('x', 51)],
+        ]);
+        self::assertSame(422, $tooLong->getStatusCode(), (string) $tooLong->getBody());
+
+        $limit = $this->api('POST', '/api/v1/subscriptions', $this->editorToken, $base + [
+            'tags' => array_merge(
+                array_map(static fn (int $n): string => 'tag' . $n, range(1, 24)),
+                [str_repeat('x', 50)],
+            ),
+        ]);
+        self::assertSame(201, $limit->getStatusCode(), (string) $limit->getBody());
+    }
+
+    public function testATagContainedInAnotherTagsNameIsNotADuplicate(): void
+    {
+        self::assertSame(
+            201,
+            $this->api('POST', '/api/v1/tags', $this->editorToken, ['name' => 'Apple TV'])->getStatusCode(),
+        );
+        self::assertSame(
+            201,
+            $this->api('POST', '/api/v1/tags', $this->editorToken, ['name' => 'TV'])->getStatusCode(),
+        );
+        self::assertSame(
+            422,
+            $this->api('POST', '/api/v1/tags', $this->editorToken, ['name' => 'tv'])->getStatusCode(),
+        );
+
+        $this->api('POST', '/api/v1/tags', $this->editorToken, ['name' => 'Café']);
+        self::assertSame(
+            422,
+            $this->api('POST', '/api/v1/tags', $this->editorToken, ['name' => 'Cafe'])->getStatusCode(),
+        );
+    }
+
     public function testATagIsCreatedAndAnotherCaseOfItsNameIsRefused(): void
     {
         $response = $this->api('POST', '/api/v1/tags', $this->editorToken, ['name' => ' Work ']);

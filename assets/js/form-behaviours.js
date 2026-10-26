@@ -10,6 +10,9 @@
  *     declined question stops it. Without script the form sends unasked, as
  *     it did when JavaScript was off before.
  *   - `data-autosubmit` on a control: sends its form when it changes.
+ *   - `data-clears="name"` on a control: changing it unticks the checkbox of
+ *     that name in its form. A colour picked beside an "Automatic colour"
+ *     box means the colour, not the box.
  *   - `data-typed-trigger` on a form: typing in one of its text or number
  *     fields fires `renovo:typed` on the form, for an `hx-trigger` to wait
  *     on. htmx's own event filters would need `eval`, which the policy
@@ -48,6 +51,18 @@ function submitOnChange(event) {
     control.form.requestSubmit();
 }
 
+function clearOnChange(event) {
+    const control = event.target;
+    if (!(control instanceof Element) || !control.hasAttribute('data-clears') || !control.form) {
+        return;
+    }
+
+    const box = control.form.elements.namedItem(control.getAttribute('data-clears'));
+    if (box instanceof HTMLInputElement && box.type === 'checkbox') {
+        box.checked = false;
+    }
+}
+
 function announceTyping(event) {
     const field = event.target;
     if (!(field instanceof HTMLInputElement) || (field.type !== 'text' && field.type !== 'number')) {
@@ -82,6 +97,7 @@ export function bindFormBehaviours() {
 
     document.addEventListener('submit', confirmBeforeSending, true);
     document.addEventListener('change', submitOnChange);
+    document.addEventListener('input', clearOnChange);
     document.addEventListener('input', announceTyping);
     document.addEventListener('htmx:afterSwap', focusAfterSwap);
 }

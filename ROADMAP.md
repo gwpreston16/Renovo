@@ -59,7 +59,7 @@ can be moved.
 | 48 | [Update banner and dashboard polish, from the known-issues log](docs/phases/PHASE-48.md) | — | None | ✅ done |
 | 49 | [Notification windows and test hardening, from the known-issues log](docs/phases/PHASE-49.md) | — | None | ✅ done |
 | 50 | [Permission, isolation and filter tests, from the known-issues log](docs/phases/PHASE-50.md) | — | None | ✅ done |
-| 51 | [Tag and category names, from the known-issues log](docs/phases/PHASE-51.md) | — | None | 📋 planned |
+| 51 | [Tag and category names, from the known-issues log](docs/phases/PHASE-51.md) | — | None | ✅ done |
 | 52 | [API input and fixed terms, from the known-issues log](docs/phases/PHASE-52.md) | — | None | 📋 planned |
 | 53 | [Dev tooling, docs and test gaps, from the known-issues log](docs/phases/PHASE-53.md) | — | None | 📋 planned |
 

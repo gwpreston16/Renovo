@@ -54,7 +54,7 @@ final class CategoryController extends Controller
             $this->categories->create(
                 $this->scope($request),
                 $this->string($body, 'name'),
-                is_scalar($body['colour'] ?? null) ? (string) $body['colour'] : null,
+                $this->colour($body),
             );
         } catch (ValidationException $exception) {
             return $this->failed($request, $response, $exception, $body, 'categories');
@@ -74,7 +74,7 @@ final class CategoryController extends Controller
                 $this->scope($request),
                 (int) $id,
                 $this->string($body, 'name'),
-                is_scalar($body['colour'] ?? null) ? (string) $body['colour'] : null,
+                $this->colour($body),
             );
         } catch (ValidationException $exception) {
             return $this->failed($request, $response, $exception, $body, 'categories', (int) $id);
@@ -180,5 +180,20 @@ final class CategoryController extends Controller
     private function string(array $body, string $key): string
     {
         return is_scalar($body[$key] ?? null) ? (string) $body[$key] : '';
+    }
+
+    /**
+     * The colour the form asked for, or null for "automatic" — a checkbox,
+     * because a colour input always submits some colour.
+     *
+     * @param array<string, mixed> $body
+     */
+    private function colour(array $body): ?string
+    {
+        if (($body['colour_auto'] ?? null) === '1') {
+            return null;
+        }
+
+        return is_scalar($body['colour'] ?? null) ? (string) $body['colour'] : null;
     }
 }
