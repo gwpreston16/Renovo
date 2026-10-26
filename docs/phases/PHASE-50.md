@@ -124,7 +124,7 @@ None.
   `ApiContributorFenceTest::testAMissingOrHiddenSubscriptionIsA404`. Names
   otherwise as listed under Tests.
 - **How it ships.** *Decided 2026-10-25:* as its own patch release once merged
-  (1.13.6, after 1.13.5 for Phase 49; the numbers are re-checked at release).
+  (1.18.1, after 1.18.0 for Phase 49; the number is re-checked at release).
   Not chosen: waiting for the next minor release.
 
 ## Status
