@@ -184,7 +184,14 @@ final class BackupAlertTest extends NotificationTestCase
         $this->copy($old, $nas, BackupCopy::CONFIRMED, '2026-09-10 03:05:00');
         $rehearsals = new BackupRehearsalRepository($this->db);
         $id = $rehearsals->start(null, 'NAS', BackupRehearsal::KIND_RESTORE, $this->clock->now());
-        $rehearsals->finish($id, BackupRehearsal::FAILED, BackupRehearsal::KIND_RESTORE, 'restoring', 'x', $this->clock->now());
+        $rehearsals->finish(
+            $id,
+            BackupRehearsal::FAILED,
+            BackupRehearsal::KIND_RESTORE,
+            'restoring',
+            'x',
+            $this->clock->now(),
+        );
         $this->failedRun('2026-09-15 03:00:00');
 
         $this->notificationSettings->savePreferences($this->admin, [

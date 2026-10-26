@@ -492,7 +492,7 @@ final class ReminderRunTest extends NotificationTestCase
         // Monday 26 October: 2 November is the next issue's today, not this one's.
         $this->clock->advanceTo(new DateTimeImmutable('2026-10-26 08:00:00'));
         $this->runner->run();
-        self::assertSame([], $this->notifier->sent);
+        self::assertSame([], $this->notifier->alertTypes());
 
         $this->clock->advanceTo(new DateTimeImmutable('2026-11-02 08:00:00'));
         $this->runner->run();
