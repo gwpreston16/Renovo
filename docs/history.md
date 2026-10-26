@@ -533,6 +533,14 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   `/subscriptions`, `/api/v1/subscriptions` and `/audit` instead of a 500, and
   an API logo upload with no file answers 422 and keeps the existing logo; the
   OpenAPI document is version 1.8.1. No migrations. See [Calendar feed](features/calendar.md#calendar-feed).
+- **Phase 46 — sign-in and second-factor edge cases, from the known-issues
+  log — complete (1.15.0).** A `next` target after sign-in can only be a path
+  on this site, the setup wizard's sign-in is audited like every other, and
+  `AUTH_LOCKOUT_SECONDS` is how long a lockout lasts. An authenticator code is
+  spent once even when sent twice at once, a passkey can be re-saved with the
+  same name on MySQL, and an unreadable authenticator setup is a form error
+  rather than a 500. No API changes. No migrations. See
+  [Security](security.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says

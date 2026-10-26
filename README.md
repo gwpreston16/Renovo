@@ -180,9 +180,9 @@ uses it, and a deployment from the published image never installs it. See
 ## What's new
 
 Release notes are in [CHANGELOG.md](CHANGELOG.md), and what each phase built is
-in [docs/history.md](docs/history.md). The latest phase is **Phase 45, calendar feed
-and API edge cases, from the known-issues log**
-([brief](docs/phases/PHASE-45.md)); the [roadmap](ROADMAP.md) shows what is in
+in [docs/history.md](docs/history.md). The latest phase is **Phase 46, sign-in and
+second-factor edge cases, from the known-issues log**
+([brief](docs/phases/PHASE-46.md)); the [roadmap](ROADMAP.md) shows what is in
 progress and what is planned.
 
 ## Contributing
