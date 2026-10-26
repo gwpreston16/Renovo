@@ -163,13 +163,23 @@ final class SubscriptionPayload
             return '';
         }
 
+        $whole = self::wholeNumber($value);
+        if ($whole === null) {
+            // 19.99 is not a count of minor units, and the service's price
+            // parser would read it as £19.99. Passed on as something that is
+            // not a number at all, so the service refuses it on this field.
+            return 'x';
+        }
+
         if (!Currency::isValidCode($currency)) {
             // An invalid currency is the currency field's error to report, not
             // this one's. Pass the digits through and let validation speak.
-            return (string) (int) $value;
+            return $whole;
         }
 
-        return Money::of((int) $value, $currency)->toDecimalString();
+        // A figure past the integer range saturates here, and the service
+        // refuses it as too large.
+        return Money::of((int) $whole, $currency)->toDecimalString();
     }
 
     /**
@@ -207,7 +217,35 @@ final class SubscriptionPayload
             return '';
         }
 
-        return is_numeric($value) ? (string) (int) $value : '';
+        if (!is_numeric($value)) {
+            return '';
+        }
+
+        // A fraction is passed on as sent, for validation to refuse.
+        return self::wholeNumber($value) ?? (string) $value;
+    }
+
+    /**
+     * The digits of a JSON integer, of a string of digits (optionally
+     * negative), or of a float with no fractional part (`19.0` is 19); null
+     * for anything else, which is not a whole number and must not be guessed
+     * into one.
+     */
+    private static function wholeNumber(mixed $value): ?string
+    {
+        if (is_int($value)) {
+            return (string) $value;
+        }
+
+        if (is_float($value)) {
+            return is_finite($value) && floor($value) === $value ? number_format($value, 0, '', '') : null;
+        }
+
+        if (is_string($value) && preg_match('/^-?[0-9]+$/', trim($value)) === 1) {
+            return trim($value);
+        }
+
+        return null;
     }
 
     /**

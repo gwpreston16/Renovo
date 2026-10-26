@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Domain\AmountTooLargeException;
 use App\Domain\ActualsAverage;
 use App\Domain\ChargeSource;
 use App\Domain\ChargeStatus;
@@ -958,6 +959,10 @@ final class ChargeService
 
         try {
             $amount = Money::fromUserInput($raw, $currency);
+        } catch (AmountTooLargeException) {
+            $errors[$field] = 'error.price.too_large';
+
+            return null;
         } catch (InvalidArgumentException) {
             $errors[$field] = 'error.price.invalid';
 

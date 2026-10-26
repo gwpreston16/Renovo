@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.8.1"
+  version: "1.9.0"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -1379,7 +1379,9 @@ components:
             message: { type: string }
             errors:
               type: object
-              description: Field name to message. Present on a 422.
+              description: >-
+                Field name to message, the name being the field the client
+                sent (a bad price is under `price_minor`). Present on a 422.
               additionalProperties: { type: string }
 
     Page:
@@ -1688,7 +1690,10 @@ components:
             stored as https.
         price_minor:
           type: integer
-          description: Minor units. £19.99 is 1999.
+          maximum: 1000000000000
+          description: >-
+            Minor units. £19.99 is 1999. A fraction, or more than the maximum,
+            is a 422.
         currency: { type: string, description: ISO 4217 code. }
         subscription_type:
           type: string
@@ -1750,7 +1755,7 @@ components:
             a list of lead times overrides the preference for this subscription.
         is_trial: { type: boolean, default: false }
         trial_end_date: { type: string, format: date, nullable: true }
-        converts_to_price_minor: { type: integer, nullable: true }
+        converts_to_price_minor: { type: integer, nullable: true, maximum: 1000000000000 }
         converts_to_billing_cycle:
           type: string
           nullable: true

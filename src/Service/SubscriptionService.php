@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Domain\AmountTooLargeException;
 use App\Domain\BillingCycle;
 use App\Domain\Currency;
 use App\Domain\Entity\Subscription;
@@ -168,13 +169,15 @@ final class SubscriptionService
             }
             $this->subscriptions->update($scope, $id, $data, $tagIds);
 
+            $start = null;
             if ($existing !== null && is_string($data['start_date'] ?? null)) {
-                $start = DateTimeImmutable::createFromFormat('!Y-m-d', $data['start_date']);
+                $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $data['start_date']);
+                $start = $parsed === false ? null : $parsed;
                 $this->charges->followDateChange(
                     $scope,
                     $existing,
                     SubscriptionType::from((string) $data['subscription_type']),
-                    $start === false ? null : $start,
+                    $start,
                 );
             }
 
@@ -191,6 +194,13 @@ final class SubscriptionService
                         : PriceChangeSource::CurrencyChange,
                     (int) $data['owner_user_id'],
                     isPromotional: $offer !== false && $offer !== null,
+                    // Not started: dated where the initial row is, the start
+                    // date it had, so the later row wins that date and catch-up
+                    // resolves to the edit and not back to the row it replaced
+                    // (K10). The start date may be moving in the same save.
+                    effectiveFrom: $existing->startDate !== null && $existing->startDate > $this->clock->today()
+                        ? $existing->startDate
+                        : null,
                 );
             }
 
@@ -279,6 +289,8 @@ final class SubscriptionService
                 } else {
                     $convertsToMinor = $converts->amountMinor;
                 }
+            } catch (AmountTooLargeException) {
+                $errors['converts_to_price'] = 'error.price.too_large';
             } catch (InvalidArgumentException) {
                 $errors['converts_to_price'] = 'error.trial.converts_to_invalid';
             }
@@ -287,7 +299,7 @@ final class SubscriptionService
         $convertsToCycle = BillingCycle::tryFromString($this->str($input, 'converts_to_billing_cycle'));
         $convertsToCycleDays = null;
         if ($convertsToCycle !== null && $convertsToCycle->requiresCycleDays()) {
-            $convertsToCycleDays = (int) $this->str($input, 'converts_to_cycle_days');
+            $convertsToCycleDays = $this->wholeNumber($this->str($input, 'converts_to_cycle_days')) ?? 0;
             if ($convertsToCycleDays < 1 || $convertsToCycleDays > 3650) {
                 $errors['converts_to_cycle_days'] = 'error.cycle_days.range';
             }
@@ -850,6 +862,8 @@ final class SubscriptionService
             if ($price->isNegative()) {
                 $errors['price'] = 'error.price.negative';
             }
+        } catch (AmountTooLargeException) {
+            $errors['price'] = 'error.price.too_large';
         } catch (InvalidArgumentException) {
             $errors['price'] = 'error.price.invalid';
         }
@@ -865,7 +879,7 @@ final class SubscriptionService
             if ($cycle === null) {
                 $errors['billing_cycle'] = 'error.cycle.required';
             } elseif ($cycle->requiresCycleDays()) {
-                $cycleDays = (int) $this->str($input, 'cycle_days');
+                $cycleDays = $this->wholeNumber($this->str($input, 'cycle_days')) ?? 0;
                 if ($cycleDays < 1 || $cycleDays > 3650) {
                     $errors['cycle_days'] = 'error.cycle_days.range';
                 }
@@ -903,7 +917,8 @@ final class SubscriptionService
         $offer = $this->validateOffer($scope, $input, $type, $currency, $price, $startDate, $existing, $errors);
 
         $noticeAmountRaw = trim($this->str($input, 'notice_period_amount'));
-        $noticeAmount = $noticeAmountRaw === '' ? null : (int) $noticeAmountRaw;
+        // Not a whole number is out of range, never rounded down to one (K8).
+        $noticeAmount = $noticeAmountRaw === '' ? null : ($this->wholeNumber($noticeAmountRaw) ?? -1);
         $noticeUnit = $this->str($input, 'notice_period_unit');
         if ($noticeAmount !== null && ($noticeAmount < 0 || $noticeAmount > 3650)) {
             $errors['notice_period_amount'] = 'error.notice.range';
@@ -917,12 +932,18 @@ final class SubscriptionService
         );
 
         $categoryId = $this->positiveInt($input['category_id'] ?? null);
-        if ($categoryId !== null && $this->categories->find($scope, $categoryId) === null) {
+        if (
+            $this->isFraction($input['category_id'] ?? null)
+            || ($categoryId !== null && $this->categories->find($scope, $categoryId) === null)
+        ) {
             $errors['category_id'] = 'error.category.not_found';
         }
 
         $paymentMethodId = $this->positiveInt($input['payment_method_id'] ?? null);
-        if ($paymentMethodId !== null && $this->paymentMethods->find($scope, $paymentMethodId) === null) {
+        if (
+            $this->isFraction($input['payment_method_id'] ?? null)
+            || ($paymentMethodId !== null && $this->paymentMethods->find($scope, $paymentMethodId) === null)
+        ) {
             $errors['payment_method_id'] = 'error.payment_method.not_found';
         }
 
@@ -935,13 +956,16 @@ final class SubscriptionService
         if ($scope->restrictsWritesToOwner()) {
             // Somebody fenced to their own rows may only ever own what they make.
             $ownerUserId = $scope->userId;
-        } elseif (!in_array($ownerUserId, $memberIds, true)) {
+        } elseif ($this->isFraction($input['owner_user_id'] ?? null) || !in_array($ownerUserId, $memberIds, true)) {
             $errors['owner_user_id'] = 'error.member.not_in_household';
             $ownerUserId = $scope->userId;
         }
 
         $payerUserId = $this->positiveInt($input['payer_user_id'] ?? null);
-        if ($payerUserId !== null && !in_array($payerUserId, $memberIds, true)) {
+        if (
+            $this->isFraction($input['payer_user_id'] ?? null)
+            || ($payerUserId !== null && !in_array($payerUserId, $memberIds, true))
+        ) {
             $errors['payer_user_id'] = 'error.member.not_in_household';
             $payerUserId = null;
         }
@@ -1434,6 +1458,25 @@ final class SubscriptionService
         $value = $input[$key] ?? '';
 
         return is_scalar($value) ? (string) $value : '';
+    }
+
+    /**
+     * A whole number written out, or null for anything else: "2.5" is not 2.
+     */
+    private function wholeNumber(string $value): ?int
+    {
+        $value = trim($value);
+
+        return preg_match('/^-?[0-9]{1,15}$/', $value) === 1 ? (int) $value : null;
+    }
+
+    /**
+     * Whether a value that should be an id is some other kind of number, such
+     * as "2.5", which `positiveInt()` would otherwise round down to a row.
+     */
+    private function isFraction(mixed $value): bool
+    {
+        return is_scalar($value) && trim((string) $value) !== '' && $this->wholeNumber((string) $value) === null;
     }
 
     private function positiveInt(mixed $value): ?int

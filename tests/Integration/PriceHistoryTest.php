@@ -203,6 +203,28 @@ final class PriceHistoryTest extends DatabaseTestCase
         self::assertSame(1100, $this->subscriptions->find($scope, $id)?->price->amountMinor);
     }
 
+    public function testTheLaterOfTwoChangesOnOneDateWins(): void
+    {
+        // Two changes with one effective_from: the one recorded last is the
+        // price. The id DESC tie-break is the only thing that says so (K38).
+        $scope = $this->scope($this->alice);
+        $id = $this->createSubscription($scope, 999);
+
+        $this->recordInitial($scope, $id, 999, '2025-01-01');
+        $this->append($scope, $id, 1200, '2026-09-01');
+        $this->append($scope, $id, 1300, '2026-09-01');
+
+        self::assertSame(
+            1300,
+            $this->history->findEffectiveOn($scope, $id, $this->date('2026-09-14'))?->price->amountMinor,
+        );
+
+        // The catch-up uses the second query; the column still says 999.
+        $divergent = $this->history->findDivergentCurrentPrices($scope, $this->date('2026-09-14'));
+        self::assertCount(1, $divergent);
+        self::assertSame(1300, $divergent[0]['price_minor']);
+    }
+
     public function testAViewerTriggersNoWrites(): void
     {
         $ownerScope = $this->scope($this->alice);

@@ -121,7 +121,7 @@ None.
   chosen: refusing only what overflows an integer (weekly totals could still
   overflow); hardening the arithmetic to saturate (larger, touches `Money`,
   `BillingCycle` and `Rounding`). The exact constant is an assumption to
-  confirm or correct before build.
+  confirm or correct before build. *Confirmed 2026-10-26:* 10^12.
 - **K10, the fix.** *Decided 2026-10-25:* date the edit at the start date while
   the subscription hasn't started. Not chosen: rewriting the initial row in
   place (loses the record of the edit); making catch-up ignore rows older than
@@ -129,22 +129,23 @@ None.
 - **K35** follows the rule the split already uses for its weights; it changes a
   sum by at most a minor unit per member.
 - **K38** is test-only; the code is already right.
-- **How it ships.** *Decided 2026-10-25:* as its own patch release, 1.13.3,
-  once merged (after 1.13.2, Phase 45). Not chosen: waiting for the next minor
-  release.
+- **How it ships.** *Decided 2026-10-25:* as its own release once merged;
+  *Changed 2026-10-26:* the number is `/release`'s to pick (1.13.3 was written
+  before 1.14 and 1.15 shipped), and the API contract moves to 1.9.0. Not
+  chosen: waiting for the next minor release.
 
 ## Status
 
-- [ ] K8: a fractional price or whole number is a 422
-- [ ] K41: price errors under `price_minor` and `converts_to_price_minor`
-- [ ] K9: a price above the ceiling is refused on every entry path
-- [ ] K10: a pre-start price edit survives the start date
-- [ ] K35: split shares sum to the charge
-- [ ] K38: same-date tie-break tested
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 47 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K8: a fractional price or whole number is a 422
+- [x] K41: price errors under `price_minor` and `converts_to_price_minor`
+- [x] K9: a price above the ceiling is refused on every entry path
+- [x] K10: a pre-start price edit survives the start date
+- [x] K35: split shares sum to the charge
+- [x] K38: same-date tie-break tested
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 47 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
