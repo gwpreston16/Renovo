@@ -99,6 +99,14 @@ final class MoneyTest extends TestCase
         }
     }
 
+    public function testTheCeilingIsInMinorUnitsWhateverTheCurrency(): void
+    {
+        self::assertSame(Money::MAX_MINOR, Money::fromUserInput('1000000000000', 'JPY')->amountMinor);
+        $this->expectException(AmountTooLargeException::class);
+
+        Money::fromUserInput('1000000000001', 'JPY');
+    }
+
     public function testRoundTripsThroughDecimalString(): void
     {
         self::assertSame('9.99', Money::of(999, 'GBP')->toDecimalString());

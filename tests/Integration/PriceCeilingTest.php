@@ -176,6 +176,55 @@ final class PriceCeilingTest extends DatabaseTestCase
         self::assertSame(1200, $this->rows->find($this->scope, $id)?->price->amountMinor);
     }
 
+    public function testAPriceAndStartDateMovedTogetherBeforeTheStartStillSurvive(): void
+    {
+        $id = $this->subscriptions->create($this->scope, $this->input([
+            'price' => '10.00',
+            'start_date' => '2026-12-01',
+            'next_payment_date' => '2026-12-01',
+        ]));
+
+        $this->subscriptions->update($this->scope, $id, $this->input([
+            'price' => '12.00',
+            'start_date' => '2026-11-15',
+            'next_payment_date' => '2026-11-15',
+        ]));
+
+        foreach (['2026-11-20', '2026-12-02'] as $day) {
+            $this->clock->advanceTo(new DateTimeImmutable($day . ' 09:00:00'));
+            $this->history->applyDueChanges($this->scope);
+            self::assertSame(1200, $this->rows->find($this->scope, $id)?->price->amountMinor, $day);
+        }
+    }
+
+    public function testABudgetAmountAndAScheduledPriceAboveTheCeilingAreRefused(): void
+    {
+        $id = $this->subscriptions->create($this->scope, $this->input());
+
+        try {
+            $this->history->schedule($this->scope, $id, [
+                'price' => '99999999999999999999',
+                'effective_from' => '2027-01-01',
+            ]);
+            self::fail('A scheduled price past the ceiling must be refused.');
+        } catch (ValidationException $exception) {
+            self::assertSame('error.price.too_large', $exception->errors()['price']->key);
+        }
+
+        $budgets = $this->container()->get(\App\Service\BudgetService::class);
+        try {
+            $budgets->create($this->scope, [
+                'name' => 'Big',
+                'amount' => '99999999999999999999',
+                'currency' => 'GBP',
+                'period' => 'monthly',
+            ]);
+            self::fail('A budget past the ceiling must be refused.');
+        } catch (ValidationException $exception) {
+            self::assertSame('error.price.too_large', $exception->errors()['amount']->key);
+        }
+    }
+
     public function testAnEditAfterTheStartDateIsStillDatedToday(): void
     {
         $id = $this->subscriptions->create($this->scope, $this->input([

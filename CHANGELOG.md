@@ -8,6 +8,16 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Changed
+
+- **The API refuses what it used to guess at, and names price errors by the
+  field you sent.** A 422 for a bad price now reports `price_minor` and
+  `converts_to_price_minor` (it was `price` and `converts_to_price`), and a
+  fractional price, `cycle_days`, `notice_period_amount` or id, or a price above
+  10^12 minor units, is a 422 where it used to be stored altered. Clients that
+  read `errors.price` should read `errors.price_minor`. The OpenAPI document is
+  now version 1.9.0. *Phase 47.*
+
 ### Fixed
 
 - **A fraction is not a price.** `price_minor: 19.99` (or `"19.99"`) was stored

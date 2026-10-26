@@ -194,10 +194,13 @@ final class SubscriptionService
                         : PriceChangeSource::CurrencyChange,
                     (int) $data['owner_user_id'],
                     isPromotional: $offer !== false && $offer !== null,
-                    // Not started: dated at the start date, where the initial
-                    // row is, so catch-up resolves to the edit and not back to
-                    // the row it replaced (K10).
-                    effectiveFrom: $start !== null && $start > $this->clock->today() ? $start : null,
+                    // Not started: dated where the initial row is, the start
+                    // date it had, so the later row wins that date and catch-up
+                    // resolves to the edit and not back to the row it replaced
+                    // (K10). The start date may be moving in the same save.
+                    effectiveFrom: $existing->startDate !== null && $existing->startDate > $this->clock->today()
+                        ? $existing->startDate
+                        : null,
                 );
             }
 

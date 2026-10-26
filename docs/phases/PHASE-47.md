@@ -129,9 +129,10 @@ None.
 - **K35** follows the rule the split already uses for its weights; it changes a
   sum by at most a minor unit per member.
 - **K38** is test-only; the code is already right.
-- **How it ships.** *Decided 2026-10-25:* as its own patch release, 1.13.3,
-  once merged (after 1.13.2, Phase 45). Not chosen: waiting for the next minor
-  release.
+- **How it ships.** *Decided 2026-10-25:* as its own release once merged;
+  *Changed 2026-10-26:* the number is `/release`'s to pick (1.13.3 was written
+  before 1.14 and 1.15 shipped), and the API contract moves to 1.9.0. Not
+  chosen: waiting for the next minor release.
 
 ## Status
 

@@ -362,7 +362,10 @@ row in it.
 numbers are binary floats in most clients, 19.99 is not representable as one,
 and that is most of the reason this application stores integers everywhere.
 A fraction is refused, not rounded: `price_minor: 19.99` and `"19.99"` are a
-`422` on `price_minor`, and so is `cycle_days: 2.5` on `cycle_days`. The
+`422` on `price_minor`, and so is `cycle_days: 2.5` on `cycle_days`. The same
+goes for `converts_to_cycle_days`, `notice_period_amount` and the id fields
+(`category_id`, `payment_method_id`, `owner_user_id`, `payer_user_id`): a number
+with a fraction is never rounded. `19.0` is `19`. The
 largest price accepted is `1000000000000` minor units (10 billion in a
 two-decimal currency); more is a `422` too.
 

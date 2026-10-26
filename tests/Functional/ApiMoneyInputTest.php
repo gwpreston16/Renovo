@@ -24,6 +24,9 @@ final class ApiMoneyInputTest extends ApiTestCase
             'notice period' => ['notice_period_amount', 2.5, 'notice_period_amount'],
             'category id' => ['category_id', 1.5, 'category_id'],
             'payer id' => ['payer_user_id', 1.5, 'payer_user_id'],
+            'owner id' => ['owner_user_id', 1.5, 'owner_user_id'],
+            'payment method id' => ['payment_method_id', 1.5, 'payment_method_id'],
+            'converts-to cycle days' => ['converts_to_cycle_days', 2.5, 'converts_to_cycle_days'],
         ];
     }
 
@@ -45,8 +48,9 @@ final class ApiMoneyInputTest extends ApiTestCase
             'converts_to_billing_cycle' => 'monthly',
         ];
         $body[$field] = $value;
-        if ($field === 'converts_to_price_minor') {
-            $body['converts_to_billing_cycle'] = 'monthly';
+        if ($field === 'converts_to_cycle_days') {
+            // Only a custom cycle reads its length.
+            $body['converts_to_billing_cycle'] = 'custom_days';
         }
 
         return $body;
