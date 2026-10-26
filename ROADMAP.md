@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–52
+## Planned — Phases 30–53
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -61,6 +61,7 @@ can be moved.
 | 50 | [Permission, isolation and filter tests, from the known-issues log](docs/phases/PHASE-50.md) | — | None | ✅ done |
 | 51 | [Tag and category names, from the known-issues log](docs/phases/PHASE-51.md) | — | None | 📋 planned |
 | 52 | [API input and fixed terms, from the known-issues log](docs/phases/PHASE-52.md) | — | None | 📋 planned |
+| 53 | [Dev tooling, docs and test gaps, from the known-issues log](docs/phases/PHASE-53.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -160,6 +161,12 @@ can be moved.
   K86, K90, K91, K92, K123): impossible dates and wrongly typed fields are
   refused with 422, leaving a fixed term clears its end, a resume with no
   billing date left is refused, and the OpenAPI contract matches the API reference.
+- **53 — Dev tooling, docs and test gaps.** A batch from the known-issues log
+  (K83, K84, K85, K101, K119, K121, K125, K126, K127): `dev-setup.sh` runs on
+  Linux, compose passes `RENOVO_BUILD`, stale "no ledger" comments are corrected,
+  the README's Money and Your data groups mention the ledger and off-server
+  backups, and the Viewer route, instance-admin isolation and literal-search
+  tests are added.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
