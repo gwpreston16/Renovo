@@ -135,8 +135,8 @@ None.
 - [x] K63: list filters tested on a database
 - [x] K66: instance admin without a household tested over HTTP
 - [x] K94: refused payment stays on its own subscription
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
 - [ ] ROADMAP: Phase 50 row marked ✅ done
 - [ ] composer check, coverage and the API doc tests green
 

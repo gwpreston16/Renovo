@@ -130,7 +130,10 @@ final class ApiContributorFenceTest extends ApiTestCase
             404,
             $this->upload($path, $this->contributorToken, 'file', FakeUpload::pdf('theirs.pdf'))->getStatusCode(),
         );
-        self::assertSame(404, $this->api('DELETE', $path . '/' . $attachmentId, $this->contributorToken)->getStatusCode());
+        self::assertSame(
+            404,
+            $this->api('DELETE', $path . '/' . $attachmentId, $this->contributorToken)->getStatusCode(),
+        );
         self::assertCount(1, $this->attachmentsOf($theirs));
 
         // On their own row, the same calls work.

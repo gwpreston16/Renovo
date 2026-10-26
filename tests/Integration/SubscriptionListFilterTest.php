@@ -72,7 +72,8 @@ final class SubscriptionListFilterTest extends DatabaseTestCase
         $this->kids = $tags->create($aliceScope, 'Kids');
 
         $this->add($aliceScope, 'Netflix', 'GBP', SubscriptionType::Recurring, $this->video, [$this->home]);
-        $this->add($aliceScope, 'Spotify', 'USD', SubscriptionType::Recurring, $this->music, [$this->home, $this->kids]);
+        $both = [$this->home, $this->kids];
+        $this->add($aliceScope, 'Spotify', 'USD', SubscriptionType::Recurring, $this->music, $both);
         $bobScope = $this->scope($this->bob);
         $this->add($bobScope, 'Piano', 'GBP', SubscriptionType::OneOff, $this->music, [$this->kids]);
         $this->add($bobScope, 'Gym', 'EUR', SubscriptionType::Recurring, null, []);
@@ -165,7 +166,10 @@ final class SubscriptionListFilterTest extends DatabaseTestCase
             ['Netflix', 'Spotify'],
             $this->names($isolated, new SubscriptionFilter(tagIds: [$this->home, $this->kids])),
         );
-        self::assertSame(1, $this->subscriptions->countForList($isolated, new SubscriptionFilter(tagIds: [$this->kids])));
+        self::assertSame(
+            1,
+            $this->subscriptions->countForList($isolated, new SubscriptionFilter(tagIds: [$this->kids])),
+        );
     }
 
     /**

@@ -155,7 +155,13 @@ final class AttachmentRoutesTest extends ApiTestCase
     public function testAContributorCannotTouchAnotherMembersAttachments(): void
     {
         $users = new UserRepository($this->db);
-        $contributorId = $users->create('contributor@example.test', 'Contributor', 'hash', false, new DateTimeImmutable());
+        $contributorId = $users->create(
+            'contributor@example.test',
+            'Contributor',
+            'hash',
+            false,
+            new DateTimeImmutable(),
+        );
         (new MembershipRepository($this->db))->create($this->householdId, $contributorId, Role::Contributor);
 
         $theirs = $this->createSubscription(['name' => 'Owner row']);

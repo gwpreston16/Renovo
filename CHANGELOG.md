@@ -8,6 +8,24 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Changed
+
+- **The attachment list and upload answer `404` for a subscription that isn't
+  there.** `GET` and `POST /api/v1/subscriptions/{id}/attachments` now say so
+  for one that doesn't exist, isn't visible to the token, or can't be written
+  to by it, as every other sub-resource does, instead of `200` with an empty
+  list and `422`. A client that read the empty list for a missing subscription
+  now gets the `404`. *Phase 50.*
+
+### Fixed
+
+- **Tests that would have passed with their code removed now fail without it:**
+  a Contributor's write fence over the API and the attachment routes, the
+  Viewer's refusal of every mutating route (read from the route table, so a new
+  one needs a decision), the list's category, owner, currency, type and tag
+  filters on both databases, an instance admin with no household over HTTP,
+  and a refused payment staying on its own subscription. *Phase 50.*
+
 ## [1.18.0] - 2026-10-26
 
 ### Fixed
