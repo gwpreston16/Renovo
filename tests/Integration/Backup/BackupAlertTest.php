@@ -176,6 +176,74 @@ final class BackupAlertTest extends NotificationTestCase
             ->findForUser($this->admin)->backupFailedAlerts);
     }
 
+    public function testTurningOffStaleAndRehearsalAlertsStopsThem(): void
+    {
+        // Three open incidents; only the failed run is still wanted.
+        $nas = $this->destination('NAS', '2026-09-01 00:00:00');
+        $old = $this->verifiedRun('2026-09-10 03:00:00');
+        $this->copy($old, $nas, BackupCopy::CONFIRMED, '2026-09-10 03:05:00');
+        $rehearsals = new BackupRehearsalRepository($this->db);
+        $id = $rehearsals->start(null, 'NAS', BackupRehearsal::KIND_RESTORE, $this->clock->now());
+        $rehearsals->finish($id, BackupRehearsal::FAILED, BackupRehearsal::KIND_RESTORE, 'restoring', 'x', $this->clock->now());
+        $this->failedRun('2026-09-15 03:00:00');
+
+        $this->notificationSettings->savePreferences($this->admin, [
+            'lead_days' => ['30', '7', '1'],
+            'digest_mode' => 'immediate',
+            'digest_day' => '1',
+            'backup_stale_alerts' => '0',
+            'backup_rehearsal_alerts' => '0',
+        ]);
+
+        $this->alerts()->notify();
+
+        self::assertSame([AlertType::BackupFailed->value], $this->notifier->alertTypes());
+
+        $stored = (new NotificationPreferenceRepository($this->db, $this->clock))->findForUser($this->admin);
+        self::assertFalse($stored->backupStaleAlerts);
+        self::assertFalse($stored->backupRehearsalAlerts);
+        self::assertTrue($stored->backupFailedAlerts);
+    }
+
+    public function testOneAdministratorsFailedSendDoesNotStopTheOthers(): void
+    {
+        $other = $this->users->create('max@example.test', 'Max', 'hash', true);
+        $this->addChannel($other);
+        $this->failedRun('2026-09-15 03:00:00');
+
+        // The first administrator's pass throws; a clock that fails once is
+        // the one seam reached from inside the per-user pass.
+        $failing = new class ($this->clock) implements \App\Support\Clock {
+            private bool $thrown = false;
+
+            public function __construct(private readonly \App\Support\Clock $inner)
+            {
+            }
+
+            public function now(): DateTimeImmutable
+            {
+                if (!$this->thrown) {
+                    $this->thrown = true;
+
+                    throw new \RuntimeException('clock failed');
+                }
+
+                return $this->inner->now();
+            }
+
+            public function today(): DateTimeImmutable
+            {
+                return $this->inner->today();
+            }
+        };
+
+        $service = $this->alertsWithClock($failing);
+
+        self::assertSame(1, $service->notify());
+        self::assertCount(1, $this->notifier->sent);
+        self::assertSame(AlertType::BackupFailed, $this->notifier->sent[0]['alert']->type);
+    }
+
     public function testADisabledAdministratorIsSkippedAndAnOldIncidentIsForgotten(): void
     {
         $this->users->setDisabledAt($this->admin, $this->clock->now());
@@ -249,6 +317,11 @@ final class BackupAlertTest extends NotificationTestCase
 
     private function alerts(): BackupAlertService
     {
+        return $this->alertsWithClock($this->clock);
+    }
+
+    private function alertsWithClock(\App\Support\Clock $clock): BackupAlertService
+    {
         return new BackupAlertService(
             $this->users,
             new BackupRunRepository($this->db),
@@ -261,7 +334,7 @@ final class BackupAlertTest extends NotificationTestCase
             new LocaleContext('en_GB'),
             new Locales(new CatalogLoader(dirname(__DIR__, 3) . '/translations'), 'en_GB'),
             TestTranslator::create(),
-            $this->clock,
+            $clock,
             new NullLogger(),
             'https://renovo.example',
         );
