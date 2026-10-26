@@ -8,6 +8,30 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Sign-in only follows a path on this site.** `?next=/\evil.example` and
+  `?next=/<tab>/evil.example` are read by browsers as another host, and signing
+  in from them landed the user there. One shared check now covers a password
+  sign-in, a second factor and a usernameless passkey, and anything that is not
+  a path on this site goes to the dashboard. *Phase 46.*
+- **The setup wizard's sign-in is audited.** The first administrator's sign-in
+  at the end of setup now leaves its "signed in" entry in the audit log and
+  rotates the CSRF token, as every other sign-in does. *Phase 46.*
+- **`AUTH_LOCKOUT_SECONDS` is how long the block lasts.** A lockout longer than
+  the throttle window kept blocking after the failures had left the window, and
+  a shorter one told the user to retry before they could. The block now runs for
+  the lockout from the failure that reached the limit, and the wait shown is the
+  wait that applies. *Phase 46.*
+- **An authenticator code works once, even sent twice at once.** Two requests
+  carrying the same code at the same moment could both be accepted; the database
+  now lets only one spend it. *Phase 46.*
+- **Saving a passkey's name unchanged no longer says "not found" on MySQL.**
+  *Phase 46.*
+- **An unreadable authenticator setup is a form error, not a 500.** If the
+  encryption key changed half-way through setup, confirming the code now says to
+  start again. *Phase 46.*
+
 ## [1.14.0] - 2026-10-25
 
 ### Fixed

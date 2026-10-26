@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Application\Middleware\AuthenticationMiddleware;
+use App\Domain\AuditAction;
 use App\Domain\IsolationMode;
 use App\Domain\Role;
 use App\Repository\HouseholdRepository;
@@ -95,6 +97,31 @@ final class SetupWizardTest extends DatabaseTestCase
 
         $this->request('GET', '/setup');
         self::assertSame(10, $count($this->db));
+    }
+
+    public function testTheFirstAdminSignInIsAuditedAndRotatesTheToken(): void
+    {
+        $container = $this->app->getContainer();
+        self::assertNotNull($container);
+        $before = $container->get(CsrfTokenManager::class)->token();
+
+        $response = $this->submitValidSetup();
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame('/setup/household', $response->getHeaderLine('Location'));
+
+        $user = (new UserRepository($this->db))->findByEmail('first@example.test');
+        self::assertNotNull($user);
+        self::assertSame($user->id, $this->session->get(AuthenticationMiddleware::SESSION_USER_ID));
+
+        $audit = $this->db->platform();
+        self::assertNotNull($this->db->fetchValue(
+            'SELECT 1 FROM ' . $audit->quoteIdentifier('audit_log')
+            . ' WHERE ' . $audit->quoteIdentifier('action') . ' = :action',
+            ['action' => AuditAction::LoginSucceeded->value],
+        ));
+
+        self::assertNotSame($before, $container->get(CsrfTokenManager::class)->token());
     }
 
     public function testInstanceSettingsAreLeftAtTheirDefaults(): void

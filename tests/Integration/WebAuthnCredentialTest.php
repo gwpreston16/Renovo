@@ -292,6 +292,34 @@ final class WebAuthnCredentialTest extends DatabaseTestCase
     }
 
     /**
+     * MySQL reports zero changed rows when the form is saved without touching
+     * the name; that is still a passkey that exists and is the user's.
+     */
+    public function testRenamingToTheSameNameSucceeds(): void
+    {
+        $authenticator = $this->registeredAuthenticator();
+        $credential = $this->credentials->findByCredentialId($authenticator->credentialIdBase64Url());
+        self::assertNotNull($credential);
+
+        $this->webAuthn->rename($this->user(), $credential->id, 'Same name');
+        $this->webAuthn->rename($this->user(), $credential->id, 'Same name');
+
+        self::assertTrue($this->credentials->rename($this->userId, $credential->id, 'Same name'));
+        self::assertSame('Same name', $this->credentials->find($this->userId, $credential->id)?->name);
+    }
+
+    public function testRenamingAnotherUsersPasskeyIsStillNotFound(): void
+    {
+        $authenticator = $this->registeredAuthenticator();
+        $credential = $this->credentials->findByCredentialId($authenticator->credentialIdBase64Url());
+        self::assertNotNull($credential);
+
+        self::assertFalse($this->credentials->rename($this->userId + 1000, $credential->id, 'Taken over'));
+        self::assertFalse($this->credentials->rename($this->userId, $credential->id + 1000, 'Nothing here'));
+        self::assertNotSame('Taken over', $this->credentials->find($this->userId, $credential->id)?->name);
+    }
+
+    /**
      * A passkey is a second factor, so registering one has to come with the
      * same way back in that an authenticator app does. Without this, a user who
      * added a passkey for convenience would have silently made their password

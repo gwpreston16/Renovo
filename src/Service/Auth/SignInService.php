@@ -12,6 +12,7 @@ use App\Domain\Permission;
 use App\Repository\MembershipRepository;
 use App\Security\CsrfTokenManager;
 use App\Security\PermissionService;
+use App\Security\SafeRedirectTarget;
 use App\Security\ScopeFactory;
 use App\Security\SessionInterface;
 use App\Service\AuditLogService;
@@ -106,12 +107,13 @@ final class SignInService
      * preference only decides where *nowhere in particular* is, which is why
      * the only target it replaces is `/`.
      *
-     * The target is assumed to have been through the caller's own same-site
-     * check already — this decides where to go, not whether a supplied target
-     * is safe to go to.
+     * The target is checked again here, whatever the caller did: a second-factor
+     * challenge carries it through the session, and no sign-in path may follow
+     * one that is not a path on this site.
      */
     public function landingFor(User $user, string $target): string
     {
+        $target = SafeRedirectTarget::orHome($target);
         if ($target !== '/') {
             return $target;
         }

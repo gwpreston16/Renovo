@@ -658,6 +658,8 @@ return [
 
     'error.totp.no_pending' => 'Start the setup again — no pending enrolment was found.',
     'error.totp.already_set_up' => 'An authenticator app is already set up for this account.',
+    'error.totp.setup_unreadable' =>
+        'This setup can no longer be completed. Start it again to get a new secret.',
     'error.totp.code_incorrect' => 'That code is not correct. Check the clock on your device.',
     'error.two_factor.none_set_up' =>
         'There is no second factor set up for this account, so there is nothing to recover.',

@@ -122,22 +122,24 @@ None.
   user's.
 - **K106** fails closed and logs, as `verify()` already does for the same
   condition.
-- **How it ships.** *Decided 2026-10-25:* as its own patch release, 1.13.3,
-  once merged (Phase 45 takes 1.13.2). Not chosen: waiting for the next minor
-  release.
+- **How it ships.** *Decided 2026-10-25:* as its own patch release once
+  merged. *Changed 2026-10-26:* 1.14.1, since 1.14.0 is already tagged (the
+  1.13.3 in the first decision is out of date). Not chosen: waiting for the
+  next minor release.
+- **K6, K28, K30, K33, K106.** *Confirmed 2026-10-26*, as written above.
 
 ## Status
 
-- [ ] K6: `next` redirect check shared and strict
-- [ ] K28: setup wizard signs in through `establish()`
-- [ ] K29: the block lasts `AUTH_LOCKOUT_SECONDS`
-- [ ] K30: TOTP step recorded conditionally
-- [ ] K33: passkey rename with an unchanged name succeeds on MySQL
-- [ ] K106: unreadable setup secret is a form error
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 46 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K6: `next` redirect check shared and strict
+- [x] K28: setup wizard signs in through `establish()`
+- [x] K29: the block lasts `AUTH_LOCKOUT_SECONDS`
+- [x] K30: TOTP step recorded conditionally
+- [x] K33: passkey rename with an unchanged name succeeds on MySQL
+- [x] K106: unreadable setup secret is a form error
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 46 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
