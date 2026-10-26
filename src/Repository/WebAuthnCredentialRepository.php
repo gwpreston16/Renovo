@@ -114,13 +114,19 @@ final class WebAuthnCredentialRepository extends AbstractRepository
         );
     }
 
+    /**
+     * @return bool Whether the credential exists and is this user's. Not whether a
+     *              row changed: MySQL counts a name saved unchanged as zero rows.
+     */
     public function rename(int $userId, int $id, string $name): bool
     {
-        return $this->db->execute(
+        $changed = $this->db->execute(
             'UPDATE ' . $this->quote('webauthn_credentials') . ' SET ' . $this->quote('name') . ' = :name'
             . ' WHERE ' . $this->quote('id') . ' = :id AND ' . $this->quote('user_id') . ' = :user',
             ['name' => $name, 'id' => $id, 'user' => $userId],
-        ) === 1;
+        );
+
+        return $changed > 0 || $this->find($userId, $id) !== null;
     }
 
     /**
