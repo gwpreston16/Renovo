@@ -550,6 +550,15 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   before a subscription starts survives its start date, and a split's shares
   total exactly the charge after a price change. The OpenAPI document is
   version 1.9.0. No migrations. See [Money](features/money.md).
+- **Phase 48 — update banner and dashboard polish, from the known-issues
+  log — complete (1.17.0).** Dismissing the update banner hides the release it
+  named rather than whatever is newest, and dismissing it with the keyboard
+  keeps focus on the page heading and tells a screen reader. The "Show a
+  banner" switch is drawn off while update checks are off, the Free trials card
+  shows each trial's logo, and dates, amounts and sizes across the
+  cancellations, import preview, attachments, stats and dashboard totals are
+  drawn as figures. No API changes. No migrations. See
+  [Version and updates](operations.md#version-and-updates).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
