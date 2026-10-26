@@ -499,6 +499,31 @@ final class ImportTest extends DatabaseTestCase
         self::assertSame(['imported' => 2, 'skipped' => 1], $result);
     }
 
+    public function testAPriceAboveTheCeilingIsReportedInThePreviewAndSkippedOnCommit(): void
+    {
+        $csv = <<<CSV
+        Name,Price,Currency,Billing cycle,Next payment date
+        Fine,9.99,GBP,Monthly,2026-12-01
+        Huge,99999999999999999999,GBP,Monthly,2026-12-01
+        Just over,10000000000.01,GBP,Weekly,2026-12-01
+        At the ceiling,10000000000.00,GBP,Yearly,2026-12-01
+        CSV;
+
+        $id = $this->imports->stage(FakeUpload::of($csv, 'huge.csv'));
+        $mapping = $this->imports->suggestMapping(ImportPreset::AUTOMATIC, $this->imports->read($id)->headers);
+
+        $preview = $this->imports->preview($this->scope, $id, $mapping, 'GBP');
+
+        self::assertSame([], $preview[0]['errors']);
+        self::assertSame('error.price.too_large', $preview[1]['errors']['price']->key);
+        self::assertSame('error.price.too_large', $preview[2]['errors']['price']->key);
+        self::assertSame([], $preview[3]['errors']);
+
+        $result = $this->imports->commit($this->scope, $this->user, $id, $mapping, 'GBP');
+
+        self::assertSame(['imported' => 2, 'skipped' => 2], $result);
+    }
+
     public function testThePreviewWritesNothingAtAll(): void
     {
         // Including tags, which the validation path would otherwise create —

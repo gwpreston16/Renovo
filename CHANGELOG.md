@@ -10,13 +10,11 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ### Changed
 
-- **The API refuses what it used to guess at, and names price errors by the
-  field you sent.** A 422 for a bad price now reports `price_minor` and
-  `converts_to_price_minor` (it was `price` and `converts_to_price`), and a
-  fractional price, `cycle_days`, `notice_period_amount` or id, or a price above
-  10^12 minor units, is a 422 where it used to be stored altered. Clients that
-  read `errors.price` should read `errors.price_minor`. The OpenAPI document is
-  now version 1.9.0. *Phase 47.*
+- **The API names a bad price by the field you sent.** A 422 for a bad price
+  now reports `price_minor` and `converts_to_price_minor` (it was `price` and
+  `converts_to_price`), so a client that reads `errors.price` should read
+  `errors.price_minor`. Prices and whole numbers it used to alter are refused
+  (see Fixed). The OpenAPI document is now version 1.9.0. *Phase 47.*
 
 ### Fixed
 
@@ -24,9 +22,6 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   as £0.19, and `cycle_days: 2.5` as 2. The API now refuses a price,
   `cycle_days`, `notice_period_amount` or id that is not a whole number with a
   422 on that field. *Phase 47.*
-- **A bad price is reported under the field you sent.** The 422 named `price`
-  and `converts_to_price`; it now names `price_minor` and
-  `converts_to_price_minor`. *Phase 47.*
 - **A price too large is refused, not saved.** Anything above 10^12 minor units
   (10 billion in a two-decimal currency) is a validation error on the web form,
   the API, a CSV import and a restore, instead of being clamped and then

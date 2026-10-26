@@ -114,6 +114,19 @@ final class PriceCeilingTest extends DatabaseTestCase
         self::assertSame('error.price.too_large', $errors['price']->key);
     }
 
+    public function testARestoredRowAboveTheCeilingIsRefused(): void
+    {
+        // A backup restore creates rows through the same call, flagged as a
+        // restore, so a price past the ceiling is refused there too.
+        try {
+            $this->subscriptions->create($this->scope, $this->input(['price' => '99999999999999999999']), true);
+            self::fail('A restored price past the ceiling must be refused.');
+        } catch (ValidationException $exception) {
+            self::assertSame('error.price.too_large', $exception->errors()['price']->key);
+            self::assertCount(0, $this->rows->findAllForStats($this->scope, false));
+        }
+    }
+
     public function testAConvertsToPriceAboveTheCeilingIsRefused(): void
     {
         $errors = $this->subscriptions->validationErrors($this->scope, $this->input([
