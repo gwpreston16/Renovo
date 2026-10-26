@@ -16,6 +16,9 @@ FROM php:8.4-fpm-alpine AS base
 
 # Upgraded first: the base image is rebuilt less often than Alpine ships fixes,
 # and CI fails the build on a fixable high or critical vulnerability (Phase 43).
+# CI passes the date, so a cached layer is not reused past the day Alpine
+# published a fix; a plain `docker build` leaves it at "none".
+ARG ALPINE_REFRESH=none
 RUN apk upgrade --no-cache \
     && apk add --no-cache \
         icu-libs \
@@ -145,6 +148,7 @@ FROM nginx:1.29-alpine AS web
 
 # As for the application image: the fixes Alpine has shipped since the nginx
 # image was built (Phase 43).
+ARG ALPINE_REFRESH=none
 RUN apk upgrade --no-cache
 
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
