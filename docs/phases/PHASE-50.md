@@ -137,8 +137,8 @@ None.
 - [x] K94: refused payment stays on its own subscription
 - [x] Rows marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 50 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] ROADMAP: Phase 50 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

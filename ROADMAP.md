@@ -58,7 +58,7 @@ can be moved.
 | 47 | [Money inputs and price history, from the known-issues log](docs/phases/PHASE-47.md) | — | None | ✅ done |
 | 48 | [Update banner and dashboard polish, from the known-issues log](docs/phases/PHASE-48.md) | — | None | ✅ done |
 | 49 | [Notification windows and test hardening, from the known-issues log](docs/phases/PHASE-49.md) | — | None | ✅ done |
-| 50 | [Permission, isolation and filter tests, from the known-issues log](docs/phases/PHASE-50.md) | — | None | 🚧 in progress |
+| 50 | [Permission, isolation and filter tests, from the known-issues log](docs/phases/PHASE-50.md) | — | None | ✅ done |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
