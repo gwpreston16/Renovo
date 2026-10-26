@@ -88,8 +88,8 @@ final class AlertScanner
     }
 
     /**
-     * Everything falling inside a window, ignoring lead times — the content of
-     * a digest.
+     * Everything falling inside a window of `$days` days starting today (today
+     * through day `$days - 1`), ignoring lead times — the content of a digest.
      *
      * @return list<Alert>
      */
@@ -108,7 +108,7 @@ final class AlertScanner
 
             foreach ($this->datedEvents($subscription, $preferences) as $event) {
                 $until = $this->daysUntil($event['date'], $today);
-                if ($until < 0 || $until > $days) {
+                if ($until < 0 || $until >= $days) {
                     continue;
                 }
 

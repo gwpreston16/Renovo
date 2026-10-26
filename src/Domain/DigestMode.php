@@ -36,10 +36,8 @@ enum DigestMode: string
     }
 
     /**
-     * How far ahead a digest looks, in days.
-     *
-     * A week's digest covers the coming week and a month's the coming month,
-     * so that nothing falls between two issues.
+     * How far back a digest's price-change look-back reaches, in days. The
+     * look-ahead is `windowDays()`, which ends before the next issue.
      */
     public function horizonDays(): int
     {
@@ -48,6 +46,30 @@ enum DigestMode: string
             self::Weekly => 7,
             self::Monthly => 31,
         };
+    }
+
+    /**
+     * How many days an issue sent today covers: today up to, but not including,
+     * the day its successor goes out, so a renewal is in exactly one issue.
+     *
+     * Weekly is always seven. Monthly follows the calendar — today through the
+     * day before `$day` of next month — so February's issue is shorter than
+     * January's and never reaches the March issue's first day.
+     */
+    public function windowDays(DateTimeImmutable $today, int $day): int
+    {
+        return match ($this) {
+            self::Immediate => 0,
+            self::Weekly => 7,
+            self::Monthly => (int) $today->setTime(0, 0)->diff($this->nextIssue($today, $day))->days,
+        };
+    }
+
+    private function nextIssue(DateTimeImmutable $today, int $day): DateTimeImmutable
+    {
+        $next = $today->modify('first day of next month');
+
+        return $next->setDate((int) $next->format('Y'), (int) $next->format('n'), $day)->setTime(0, 0);
     }
 
     /**

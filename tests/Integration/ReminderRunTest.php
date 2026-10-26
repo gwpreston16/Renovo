@@ -478,4 +478,45 @@ final class ReminderRunTest extends NotificationTestCase
         self::assertCount(1, $this->notifier->sent);
         self::assertStringContainsString('Monthly subscription summary', $this->notifier->titles()[0]);
     }
+
+    public function testADigestWindowEndsBeforeTheNextIssue(): void
+    {
+        $this->addChannel($this->alice);
+        $this->createSubscription('Netflix', 1099, '2026-11-02', $this->alice);
+        $this->notificationSettings->savePreferences($this->alice, [
+            'lead_days' => '30,7,1',
+            'digest_mode' => DigestMode::Weekly->value,
+            'digest_day' => '1',
+        ]);
+
+        // Monday 26 October: 2 November is the next issue's today, not this one's.
+        $this->clock->advanceTo(new DateTimeImmutable('2026-10-26 08:00:00'));
+        $this->runner->run();
+        self::assertSame([], $this->notifier->sent);
+
+        $this->clock->advanceTo(new DateTimeImmutable('2026-11-02 08:00:00'));
+        $this->runner->run();
+        self::assertCount(1, $this->notifier->sent);
+        self::assertStringContainsString('Netflix', $this->notifier->sent[0]['alert']->body());
+    }
+
+    public function testAMonthlyDigestWindowEndsBeforeTheNextMonthsIssue(): void
+    {
+        $this->addChannel($this->alice);
+        $this->createSubscription('Netflix', 1099, '2026-03-28', $this->alice);
+        $this->createSubscription('Spotify', 1199, '2026-03-27', $this->alice);
+        $this->notificationSettings->savePreferences($this->alice, [
+            'lead_days' => '30,7,1',
+            'digest_mode' => DigestMode::Monthly->value,
+            'digest_day' => '28',
+        ]);
+
+        $this->clock->advanceTo(new DateTimeImmutable('2026-02-28 08:00:00'));
+        $this->runner->run();
+
+        self::assertCount(1, $this->notifier->sent);
+        $body = $this->notifier->sent[0]['alert']->body();
+        self::assertStringContainsString('Spotify', $body);
+        self::assertStringNotContainsString('Netflix', $body);
+    }
 }
