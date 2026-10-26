@@ -236,6 +236,30 @@ final class SubscriptionsScreenTest extends DatabaseTestCase
 
     // ------------------------------------------------------------------ strip
 
+    public function testAnInstanceAdminWithoutAHouseholdSeesNothing(): void
+    {
+        $admin = (new UserRepository($this->db))->create(
+            'admin@example.test',
+            'Admin',
+            'hash',
+            true,
+            new DateTimeImmutable(),
+        );
+
+        // The household has subscriptions (setUp made them); the admin belongs
+        // to no household, and administering an instance is not a licence to
+        // read what is in it. The role-less scope has no `subscription.view`,
+        // so the page is refused before any query runs: nothing is rendered,
+        // not even an empty table.
+        $response = $this->get('/subscriptions', $admin);
+
+        self::assertSame(403, $response->getStatusCode());
+        self::assertSame([], $this->rowNames($response));
+        foreach (['Streaming', 'Gym membership'] as $name) {
+            self::assertStringNotContainsString($name, $this->body($response));
+        }
+    }
+
     public function testTheStripCountsEachStatusTheListFiltersBy(): void
     {
         $strip = $this->section($this->body($this->get('/subscriptions', $this->ownerId)), 'subscription-strip');

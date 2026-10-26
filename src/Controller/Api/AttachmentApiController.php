@@ -39,6 +39,10 @@ final class AttachmentApiController extends ApiController
         ResponseInterface $response,
         string $id,
     ): ResponseInterface {
+        if (!$this->attachments->subscriptionVisible($this->scope($request), (int) $id)) {
+            throw new HttpNotFoundException($request, $this->translator->trans('error.api.subscription_not_found'));
+        }
+
         return $this->json($response, [
             'data' => array_map(
                 static fn (Attachment $attachment): array => Resource::attachment($attachment),
@@ -52,6 +56,10 @@ final class AttachmentApiController extends ApiController
         ResponseInterface $response,
         string $id,
     ): ResponseInterface {
+        if (!$this->attachments->subscriptionWritable($this->scope($request), (int) $id)) {
+            throw new HttpNotFoundException($request, $this->translator->trans('error.api.subscription_not_found'));
+        }
+
         $files = $request->getUploadedFiles();
         $file = $files['file'] ?? null;
 

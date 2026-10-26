@@ -713,7 +713,9 @@ Invoices and receipts filed against a subscription.
 
 #### `GET /api/v1/subscriptions/{id}/attachments`
 
-List them. Responses: `200`, `401`, `403`.
+List them. A subscription that doesn't exist, or that the token can't see,
+is a `404`, as for every other sub-resource. Responses: `200`, `401`, `403`,
+`404`.
 
 #### `POST /api/v1/subscriptions/{id}/attachments`
 
@@ -733,7 +735,8 @@ curl -X POST \
      https://your-instance.example/api/v1/subscriptions/12/attachments
 ```
 
-Responses: `201`, `400`, `401`, `403`, `422`.
+A subscription that doesn't exist, or that the token can't write to, is a
+`404`. Responses: `201`, `400`, `401`, `403`, `404`, `422`.
 
 #### `GET /api/v1/subscriptions/{id}/attachments/{attachmentId}`
 

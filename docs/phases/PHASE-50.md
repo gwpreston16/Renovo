@@ -76,8 +76,12 @@ through any filter). Tests only, unless a filter is wrong (record it).
 ### E. K66 — an instance admin with no household gets nothing over HTTP
 
 `GET /subscriptions` and `GET /api/v1/subscriptions` as an instance admin with
-no household membership answer with an empty list (the web page renders its
-empty state), with other users' subscriptions present in the database.
+no household membership give them none of the household's subscriptions, with
+other users' subscriptions present in the database. *Changed 2026-10-26:* the
+answer is 403, not an empty list: a scope with no role has no
+`subscription.view`, so the permission check refuses it before any query runs.
+The test asserts the 403 and that no row is in the body, in both isolation
+modes.
 
 ### F. K94 — a refused payment doesn't reopen on another subscription
 
@@ -110,22 +114,31 @@ None.
   and documenting the exception (a hidden subscription would keep looking
   like an empty one). A client that read the 200 empty list for a missing
   subscription now gets 404; the CHANGELOG says so.
+- **K66** *Changed 2026-10-26:* the brief expected an empty list; over HTTP the
+  household-less instance admin is refused with 403 (see section E). Nothing
+  reaches them either way, and no code changes. Not chosen: making the list
+  route render an empty state for a role-less scope.
+- **Test placement.** *Decided 2026-10-26:* the K20 API tests are in a new
+  `ApiContributorFenceTest` (SHARED mode, the one `ApiIsolationTest` does not
+  run) rather than `ApiIsolationTest`; the K42 404 test is
+  `ApiContributorFenceTest::testAMissingOrHiddenSubscriptionIsA404`. Names
+  otherwise as listed under Tests.
 - **How it ships.** *Decided 2026-10-25:* as its own patch release once merged
-  (1.13.6, after 1.13.5 for Phase 49; the numbers are re-checked at release).
+  (1.18.1, after 1.18.0 for Phase 49; the number is re-checked at release).
   Not chosen: waiting for the next minor release.
 
 ## Status
 
-- [ ] K20: Contributor write fence tested over the API and attachment routes
-- [ ] K23: Viewer-403 test driven by the route table
-- [ ] K42: attachment list and upload answer 404 for a missing subscription
-- [ ] K63: list filters tested on a database
-- [ ] K66: instance admin without a household tested over HTTP
-- [ ] K94: refused payment stays on its own subscription
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 50 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K20: Contributor write fence tested over the API and attachment routes
+- [x] K23: Viewer-403 test driven by the route table
+- [x] K42: attachment list and upload answer 404 for a missing subscription
+- [x] K63: list filters tested on a database
+- [x] K66: instance admin without a household tested over HTTP
+- [x] K94: refused payment stays on its own subscription
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 50 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
