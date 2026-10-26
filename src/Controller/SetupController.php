@@ -6,9 +6,8 @@ namespace App\Controller;
 
 use App\Domain\Entity\User;
 use App\I18n\Translator;
-use App\Application\Middleware\AuthenticationMiddleware;
-use App\Repository\MembershipRepository;
 use App\Security\SessionInterface;
+use App\Service\Auth\SignInService;
 use App\Notification\NotifierRegistry;
 use App\Notification\NotifierException;
 use App\Service\Notification\NotificationSettingsService;
@@ -48,7 +47,7 @@ final class SetupController extends Controller
         Translator $translator,
         private readonly SetupService $setup,
         private readonly SetupWizardService $wizard,
-        private readonly MembershipRepository $memberships,
+        private readonly SignInService $signIn,
         private readonly NotificationSettingsService $notifications,
         private readonly NotifierRegistry $notifiers,
         private readonly string $smtpHost = '',
@@ -77,13 +76,9 @@ final class SetupController extends Controller
             );
         }
 
-        $this->session->regenerate();
-        $this->session->set(AuthenticationMiddleware::SESSION_USER_ID, $user->id);
-
-        $memberships = $this->memberships->findAllForUser($user->id);
-        if ($memberships !== []) {
-            $this->session->set(AuthenticationMiddleware::SESSION_HOUSEHOLD_ID, $memberships[0]->householdId);
-        }
+        // The same sign-in every other route uses: a new session id, a new CSRF
+        // token and the "signed in" audit entry, rather than a hand-set session.
+        $this->signIn->establish($user, SignInService::METHOD_PASSWORD);
 
         return $this->redirect($response, '/setup/household');
     }

@@ -131,7 +131,7 @@ None.
 ## Status
 
 - [x] K6: `next` redirect check shared and strict
-- [ ] K28: setup wizard signs in through `establish()`
+- [x] K28: setup wizard signs in through `establish()`
 - [ ] K29: the block lasts `AUTH_LOCKOUT_SECONDS`
 - [ ] K30: TOTP step recorded conditionally
 - [ ] K33: passkey rename with an unchanged name succeeds on MySQL
