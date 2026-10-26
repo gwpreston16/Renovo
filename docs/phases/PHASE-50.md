@@ -117,7 +117,7 @@ None.
 ## Status
 
 - [x] K20: Contributor write fence tested over the API and attachment routes
-- [ ] K23: Viewer-403 test driven by the route table
+- [x] K23: Viewer-403 test driven by the route table
 - [x] K42: attachment list and upload answer 404 for a missing subscription
 - [ ] K63: list filters tested on a database
 - [ ] K66: instance admin without a household tested over HTTP
