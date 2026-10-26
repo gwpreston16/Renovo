@@ -4057,6 +4057,12 @@ a.segmented-option {
     margin: 0 0 0.25rem;
 }
 
+.trial-row-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 .trial-row form {
     margin-top: 0.5rem;
 }

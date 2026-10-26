@@ -72,7 +72,7 @@
     <p class="muted note one-off-note">
         {% for total in kpis.one_off %}
             {{ t('dashboard.one_off_in', {'currency': total.currency}) }}
-            {{ total.total_minor|money(total.currency) }}
+            <span class="num">{{ total.total_minor|money(total.currency) }}</span>
             ({{ t('dashboard.one_off_note', {'count': total.count}) }}){{ not loop.last ? ' · ' : '' }}
         {% endfor %}
     </p>

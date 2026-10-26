@@ -104,8 +104,9 @@ None.
 
 - **K96** makes Dismiss do what the banner says: it dismisses the version
   shown. The version is untrusted input, so it is parsed and capped at the
-  stored latest.
+  stored latest. *Confirmed 2026-10-26.*
 - **K100** fixes the banner only; the same-kind rows of K18 stay out.
+  *Confirmed 2026-10-26.*
 - **K98.** *Decided 2026-10-25:* a locked switch is drawn off and disabled,
   like the check switch. Not chosen: drawing the stored preference dimmed (it
   still reads "on" when no banner can appear).
@@ -114,20 +115,21 @@ None.
 - **How it ships.** *Decided 2026-10-25:* as its own patch release, 1.13.4,
   once merged (after 1.13.2 for Phase 45 and 1.13.3 for Phase 46; Phase 47's
   brief also names 1.13.3, so the numbers are re-checked at release). Not
-  chosen: waiting for the next minor release.
+  chosen: waiting for the next minor release. *Confirmed 2026-10-26;* the
+  number is `/release`'s to pick.
 
 ## Status
 
-- [ ] K96: Dismiss records the version shown
-- [ ] K100: dismissing the banner keeps focus and the live region
-- [ ] K98: a locked banner switch is drawn off and disabled
-- [ ] K99: only the version number is in the figures font
-- [ ] K62: the Free trials card shows each trial's logo
-- [ ] K61: figures take `.num`, empty cells `none_symbol`
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 48 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K96: Dismiss records the version shown
+- [x] K100: dismissing the banner keeps focus and the live region
+- [x] K98: a locked banner switch is drawn off and disabled
+- [x] K99: only the version number is in the figures font
+- [x] K62: the Free trials card shows each trial's logo
+- [x] K61: figures take `.num`, empty cells `none_symbol`
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 48 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

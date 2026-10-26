@@ -124,9 +124,17 @@ final class DashboardController extends Controller
      */
     public function dismissUpdate(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        $this->updates->dismiss($this->user($request));
+        $body = $this->body($request);
+        $this->updates->dismiss(
+            $this->user($request),
+            is_scalar($body['version'] ?? null) ? (string) $body['version'] : null,
+        );
 
         if ($this->isHtmx($request)) {
+            // The live region stays, emptied, so a screen reader hears the
+            // banner go and focus has somewhere to be sent from.
+            $response->getBody()->write('<div role="status" id="update-banner"></div>');
+
             return $response->withStatus(200);
         }
 

@@ -37,10 +37,10 @@
                     <tr class="{{ row.errors is not empty ? 'row-invalid' : '' }}">
                         <td class="muted">{{ row.row }}</td>
                         <td>{{ row.input.name }}</td>
-                        <td>{{ row.input.price }} {{ row.input.currency }}</td>
+                        <td class="num">{{ row.input.price }} {{ row.input.currency }}</td>
                         <td>{{ cycle_label(row.input.billing_cycle, row.input.cycle_days ?: null, row.input.cycle_interval ?: null) }}</td>
-                        <td>{{ row.input.next_payment_date ?: '—' }}</td>
-                        <td>{{ row.category ?: '—' }}</td>
+                        <td class="num">{{ row.input.next_payment_date ?: t('common.none_symbol') }}</td>
+                        <td>{{ row.category ?: t('common.none_symbol') }}</td>
                         <td>
                             {%- if row.errors is empty -%}
                                 <span class="pill pill-success">{{ t('import_preview.ready') }}</span>

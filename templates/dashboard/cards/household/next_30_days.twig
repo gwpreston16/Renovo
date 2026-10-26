@@ -18,7 +18,7 @@
             <p class="muted">
                 {{ t('dashboard.charges_count', {'count': timeline.count}) }}
                 {% if timeline.totals is not empty %}
-                    · {% include 'dashboard/_headline.twig' with {'figures': timeline} only %}
+                    · <span class="num">{% include 'dashboard/_headline.twig' with {'figures': timeline} only %}</span>
                 {% endif %}
             </p>
         </div>

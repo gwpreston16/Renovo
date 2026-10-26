@@ -382,6 +382,33 @@ final class DashboardTest extends DatabaseTestCase
         self::assertSame('/', $response->getHeaderLine('Location'));
     }
 
+    /** K62: each trial has its logo tile, the mark when it has no logo of its own. */
+    public function testFreeTrialsShowEachTrialsLogo(): void
+    {
+        $withLogo = $this->container()->get(SubscriptionRepository::class)->create($this->scopeFor($this->ownerId), [
+            'name' => 'Logo trial',
+            'price_minor' => 0,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'is_trial' => true,
+            'trial_end_date' => '2026-06-26',
+            'converts_to_price_minor' => 500,
+            'is_active' => true,
+        ], []);
+        $this->db->execute(
+            'UPDATE subscriptions SET logo_path = :path WHERE id = :id',
+            ['path' => 'storage/logos/trial.png', 'id' => $withLogo],
+        );
+
+        $card = $this->section($this->body($this->get('/', $this->ownerId)), 'trials-card');
+
+        self::assertStringContainsString('<img class="logo" src="/storage/logos/trial.png"', $card);
+        self::assertStringContainsString('logo-fallback', $card);
+        self::assertSame(2, substr_count($card, 'class="trial-row"'));
+        self::assertSame(2, preg_match_all('~class="logo\b~', $card));
+    }
+
     public function testThereIsNoKeepItButton(): void
     {
         self::assertStringNotContainsString('Keep it', $this->body($this->get('/', $this->ownerId)));

@@ -240,15 +240,27 @@ final class UpdateCheckService
     /**
      * Hide the banner from this administrator until a release newer than the
      * one it announces appears.
+     *
+     * `$shown` is the version the banner displayed, posted back by its form,
+     * so a release found after the page was drawn still gets its own banner.
+     * It is untrusted: one that is not a version, or is newer than the stored
+     * latest, is ignored and the stored latest is recorded.
      */
-    public function dismiss(User $user): void
+    public function dismiss(User $user, ?string $shown = null): void
     {
         $latest = $this->settings->latestRelease()['version'];
         if ($latest === '') {
             return;
         }
 
-        $this->users->setDismissedUpdateVersion($user->id, $latest);
+        $record = $latest;
+        $posted = SemanticVersion::parse($shown ?? '');
+        $stored = SemanticVersion::parse($latest);
+        if ($posted !== null && $stored !== null && !$posted->isNewerThan($stored)) {
+            $record = $posted->toString();
+        }
+
+        $this->users->setDismissedUpdateVersion($user->id, $record);
     }
 
     private function mayCheck(): bool

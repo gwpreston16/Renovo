@@ -6,9 +6,13 @@
     nothing on this page comes from a third-party host. The link is drawn only
     when the stored page is on GitHub, over https.
 
-    Dismiss is a form. With script, htmx posts it and the banner goes; without,
-    the post reloads the dashboard without it. Either way it stays gone for
-    this administrator until a newer release appears.
+    Dismiss is a form. With script, htmx posts it and the banner's contents go
+    but the `role="status"` region stays, emptied, so a screen reader hears
+    it change, and focus moves to the page heading rather than falling to the
+    top of the page (`data-focus-after`); without script, the post reloads the
+    dashboard without it. Either way it stays gone for this administrator
+    until a newer release appears. The form posts the version shown, so a
+    release found since the page was drawn still gets its own banner.
 
     `banner`  the UpdateBanner
 #}
@@ -26,8 +30,10 @@
     </p>
 
     <form method="post" action="/updates/dismiss"
-          hx-post="/updates/dismiss" hx-target="#update-banner" hx-swap="outerHTML">
+          hx-post="/updates/dismiss" hx-target="#update-banner" hx-swap="outerHTML"
+          data-focus-after="#page-heading">
         {{ csrf_field() }}
+        <input type="hidden" name="version" value="{{ banner.latestVersion }}">
         <button type="submit" class="button button-quiet">{{ t('updates.dismiss') }}</button>
     </form>
 </div>

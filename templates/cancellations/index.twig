@@ -43,7 +43,7 @@
                                 </div>
                             </td>
                             <td>
-                                <strong>{{ row.deadline|local_date('d MMM y') }}</strong>
+                                <strong class="num">{{ row.deadline|local_date('d MMM y') }}</strong>
                                 <div class="hint">
                                     {% if row.kind == 'contract' %}
                                         {% if row.is_passed %}
@@ -63,9 +63,9 @@
                                     {% endif %}
                                 </div>
                             </td>
-                            <td>
+                            <td class="num">
                                 {{ row.subscription.nextChargeDate
-                                    ? row.subscription.nextChargeDate|local_date('d MMM y') : '—' }}
+                                    ? row.subscription.nextChargeDate|local_date('d MMM y') : t('common.none_symbol') }}
                                 {% if row.subscription.isTrial %}
                                     <div class="hint">{{ t('state.trial_converts') }}</div>
                                 {% endif %}

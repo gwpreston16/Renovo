@@ -7,6 +7,7 @@
     There is no "Keep it": keeping a trial is what happens when nobody does
     anything, so a button for it would have nothing to do.
 #}
+{% import 'partials/logo.twig' as logo %}
 <section class="card trials-card" aria-labelledby="trials-card-heading">
     <header class="card-header">
         <h2 id="trials-card-heading" class="stat-label">{{ t('dashboard.free_trials') }}</h2>
@@ -20,7 +21,10 @@
             {% for row in trials %}
                 {% set trial = row.subscription %}
                 <li class="trial-row">
-                    <p class="trial-row-name"><strong>{{ trial.name }}</strong></p>
+                    <p class="trial-row-name">
+                        {{ logo.mark(trial) }}
+                        <strong>{{ trial.name }}</strong>
+                    </p>
                     <p class="hint">
                         {% if row.days_left is not null and row.days_left <= 0 %}
                             {{ t('dashboard.trial_ends_today') }}

@@ -30,8 +30,8 @@
                                 {{ attachment.originalFilename }}
                             </a>
                         </td>
-                        <td class="num">{{ attachment.periodDate ? attachment.periodDate|local_date('MMM y') : '—' }}</td>
-                        <td class="muted">{{ attachment.humanSize() }}</td>
+                        <td class="num">{{ attachment.periodDate ? attachment.periodDate|local_date('MMM y') : t('common.none_symbol') }}</td>
+                        <td class="muted num">{{ attachment.humanSize() }}</td>
                         <td class="muted num">{{ attachment.createdAt|local_date('d MMM y') }}</td>
                         {% if editable %}
                             <td>

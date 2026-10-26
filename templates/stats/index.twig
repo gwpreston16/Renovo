@@ -60,7 +60,7 @@
                     <div class="stat">
                         <h3 class="stat-label">{{ t('period.per_' ~ label) }}</h3>
                         <p class="stat-value num">
-                            {{ amount is not null ? amount|money(combined_yearly.currency) : '—' }}
+                            {{ amount is not null ? amount|money(combined_yearly.currency) : t('common.none_symbol') }}
                         </p>
                     </div>
                 {% endfor %}
@@ -140,7 +140,7 @@
                                     {% if signal.cost_per_use_minor is not null %}
                                         {{ signal.cost_per_use_minor|money(subscription.price.currency) }}
                                     {% else %}
-                                        <span class="muted" title="{{ t('stats.no_uses_recorded') }}">—</span>
+                                        <span class="muted" title="{{ t('stats.no_uses_recorded') }}">{{ t('common.none_symbol') }}</span>
                                     {% endif %}
                                 </td>
                                 <td>
@@ -154,7 +154,7 @@
                                             {%- endfor -%}
                                         </span>
                                     {% else %}
-                                        <span class="muted">—</span>
+                                        <span class="muted">{{ t('common.none_symbol') }}</span>
                                     {% endif %}
                                 </td>
                                 <td class="actions">

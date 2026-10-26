@@ -95,7 +95,7 @@
                             <span class="choice-note">{{ t('settings.update_banner_hint') }}</span>
                         </span>
                         <input type="checkbox" class="toggle" role="switch" name="update_banner_enabled" value="1"
-                               {{ update_banner_enabled ? 'checked' : '' }}
+                               {{ update_banner_enabled and not banner_locked ? 'checked' : '' }}
                                {{ banner_locked ? 'disabled' : '' }}>
                     </label>
                 </fieldset>
