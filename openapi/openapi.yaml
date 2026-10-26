@@ -1110,8 +1110,8 @@ paths:
       summary: List tags.
       description: |
         A tag can be created here or by naming it in a subscription's `tags`
-        array. Both follow the same rule: names are compared ignoring case, so
-        "tv" and "TV" are one tag.
+        array. Both follow the same rule: names are compared whole, ignoring case
+        and accents, so "tv" and "TV" are one tag.
       responses:
         "200":
           description: The household's tags.

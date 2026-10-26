@@ -14,7 +14,9 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   saved with them used to keep the first 25 and cut the rest to 50 characters
   without a word, although the API reference and OpenAPI document gave the
   limits. A client that sent 30 tags and got 25 now gets a `422` on `tags`; the
-  web form shows the same error. The OpenAPI document is now version 1.9.2.
+  web form shows the same error, and a CSV import or backup restore row with
+  too many or too long tags is refused as a row error. Clients that relied on
+  the cut must trim first. The OpenAPI document is now version 1.9.2.
   *Phase 51.*
 
 ### Fixed
