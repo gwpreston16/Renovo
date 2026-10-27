@@ -106,14 +106,14 @@ None.
 
 ## Status
 
-- [ ] K21: passkey sign-in tested
-- [ ] K22: session cookie and database session store tested
-- [ ] K108: `secrets:rotate` tested
-- [ ] K109: rotation count excludes a mid-batch rewrite
-- [ ] K116: off-site retention failure paths tested
-- [ ] K117: Test connection step labels tested
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
+- [x] K21: passkey sign-in tested
+- [x] K22: session cookie and database session store tested
+- [x] K108: `secrets:rotate` tested
+- [x] K109: rotation count excludes a mid-batch rewrite
+- [x] K116: off-site retention failure paths tested
+- [x] K117: Test connection step labels tested
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
 - [ ] ROADMAP: Phase 55 row marked ✅ done
 - [ ] composer check, coverage and the API doc tests green
 
