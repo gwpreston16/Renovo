@@ -197,6 +197,42 @@ final class ContractTermsScreensTest extends DatabaseTestCase
         self::assertCount($before, $this->subscriptions->findAllForStats($this->owner, false));
     }
 
+    public function testTheResumeButtonRefusesATermWithNoBillingDateLeft(): void
+    {
+        $id = $this->create('Phone', 3000, [
+            'is_active' => false,
+            'next_payment_date' => $this->day('-70 days')->format('Y-m-d'),
+            'anchor_day' => (int) $this->day('-70 days')->format('j'),
+            'payments_end_on' => $this->day('-60 days')->format('Y-m-d'),
+        ]);
+        $this->signIn($this->ownerId);
+
+        $response = $this->request('POST', '/subscriptions/' . $id . '/toggle');
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertFalse($this->subscriptions->find($this->owner, $id)?->isActive);
+        // The flash lives in the session, which page() would clear.
+        $page = (string) $this->request('GET', '/subscriptions')->getBody();
+        self::assertStringContainsString('so this can’t be resumed', $page);
+        self::assertStringNotContainsString('finished', $page);
+    }
+
+    public function testAnImpossiblePriceChangeDateOnTheFormIsRefused(): void
+    {
+        $id = $this->create('Netflix', 1099);
+        $this->signIn($this->ownerId);
+
+        $response = $this->request('POST', '/subscriptions/' . $id . '/price-changes', [
+            'price' => '12.99',
+            'currency' => 'GBP',
+            'effective_from' => '2027-02-30',
+        ]);
+
+        self::assertSame(302, $response->getStatusCode());
+        $page = (string) $this->request('GET', '/subscriptions/' . $id . '/money')->getBody();
+        self::assertStringContainsString('Enter a valid date.', $page);
+    }
+
     public function testForwardLookingTotalsIncludingAVaryingBillAreEstimates(): void
     {
         $this->create('Octopus Energy', 5800, [

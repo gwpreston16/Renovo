@@ -121,7 +121,11 @@ None.
 - **K90** assumes a type that is not recurring has no end to keep, as the form
   already hides it. *Confirmed 2026-10-27.*
 - **K86** *Decided 2026-10-26:* refuse with `422`. Not chosen: accept and let
-  the catch-up end the term again.
+  the catch-up end the term again. *Extended 2026-10-27, owner's call:* the
+  Resume button refuses the same term with a flash message, and a bulk resume
+  leaves it paused (the rest of the batch resumes), through one shared
+  `Subscription::resumeLeavesNoBillingDate()`. A backup restore skips a
+  subscription row with a wrongly typed field (K91) instead of aborting.
 - **How it ships.** *Decided 2026-10-26:* as its own patch release once merged
   (1.19.2 if Phase 51 ships as 1.19.1 first; the number is re-checked at
   release). Not chosen: waiting for the next minor release.
