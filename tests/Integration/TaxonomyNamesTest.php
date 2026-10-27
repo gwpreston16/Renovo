@@ -79,6 +79,8 @@ final class TaxonomyNamesTest extends DatabaseTestCase
             'accent and case' => ['Café', 'CAFE'],
             'decomposed accent' => ["Cafe\u{0301}", 'Café'],
             'surrounding space' => ['Music', ' music '],
+            'sharp s' => ['Straße', 'Strasse'],
+            'capital and sharp s' => ['STRASSE', 'straße'],
         ];
     }
 
@@ -292,6 +294,115 @@ final class TaxonomyNamesTest extends DatabaseTestCase
                 fn () => $this->methods->update($this->scope, $other, 'Other', '#112233'),
             );
         });
+    }
+
+    public function testSharpSAndSSAreOneTagOnBothEngines(): void
+    {
+        $first = $this->tags->resolveOrCreate($this->scope, ['Strasse']);
+        $second = $this->tags->resolveOrCreate($this->scope, ['Straße']);
+
+        self::assertSame($first, $second);
+        self::assertCount(1, $this->tags->findAll($this->scope));
+
+        $this->assertDuplicate('error.tag.duplicate', fn () => $this->tagService->create($this->scope, 'STRASSE'));
+    }
+
+    public function testALostRaceResolvesToTheExistingTag(): void
+    {
+        // Another request inserts the tag after this one has looked and found
+        // nothing: the lookup is made, then the create hits the unique index.
+        $racing = new class ($this->db, $this->scope) extends TagRepository {
+            private bool $raced = false;
+
+            public function __construct(\App\Persistence\Database $db, private readonly Scope $racer)
+            {
+                parent::__construct($db);
+            }
+
+            public function findAll(Scope $scope): array
+            {
+                $found = parent::findAll($scope);
+                if (!$this->raced) {
+                    $this->raced = true;
+                    $this->create($this->racer, 'shared');
+                }
+
+                return $found;
+            }
+        };
+
+        $ids = $racing->resolveOrCreate($this->scope, ['shared']);
+
+        self::assertCount(1, $ids);
+        self::assertCount(1, $this->tags->findAll($this->scope));
+        self::assertSame($ids[0], $this->tags->findByName($this->scope, 'shared')?->id);
+    }
+
+    public function testALostRaceInsideATransactionLeavesItUsable(): void
+    {
+        $racing = new class ($this->db, $this->scope) extends TagRepository {
+            private bool $raced = false;
+
+            public function __construct(\App\Persistence\Database $db, private readonly Scope $racer)
+            {
+                parent::__construct($db);
+            }
+
+            public function findAll(Scope $scope): array
+            {
+                $found = parent::findAll($scope);
+                if (!$this->raced) {
+                    $this->raced = true;
+                    $this->create($this->racer, 'shared');
+                }
+
+                return $found;
+            }
+        };
+
+        $ids = $this->db->transactional(function () use ($racing): array {
+            $ids = $racing->resolveOrCreate($this->scope, ['shared', 'later']);
+            // PostgreSQL would refuse every statement after a failed insert.
+            $this->tags->findAll($this->scope);
+
+            return $ids;
+        });
+
+        self::assertCount(2, $ids);
+        self::assertCount(2, $this->tags->findAll($this->scope));
+    }
+
+    public function testACreateThatLosesTheRaceShowsTheDuplicateMessage(): void
+    {
+        $this->tags->create($this->scope, 'Taken');
+        $service = new TagService($this->blindTagRepository());
+
+        $this->assertDuplicate('error.tag.duplicate', fn () => $service->create($this->scope, 'Taken'));
+        self::assertCount(1, $this->tags->findAll($this->scope));
+    }
+
+    public function testARenameThatLosesTheRaceShowsTheDuplicateMessage(): void
+    {
+        $this->tags->create($this->scope, 'Taken');
+        $other = $this->tags->create($this->scope, 'Other');
+        $service = new TagService($this->blindTagRepository());
+
+        $this->assertDuplicate('error.tag.duplicate', fn () => $service->rename($this->scope, $other, 'Taken'));
+    }
+
+    /**
+     * A repository whose duplicate check finds nothing, as it would for a
+     * request that validated just before another one created the tag: the
+     * insert then meets the unique index.
+     */
+    private function blindTagRepository(): TagRepository
+    {
+        return new class ($this->db) extends TagRepository {
+            public function findByName(Scope $scope, string $name): ?\App\Domain\Entity\Tag
+            {
+                return null;
+            }
+        };
     }
 
     public function testOnlyAUniqueViolationBecomesTheDuplicateMessage(): void

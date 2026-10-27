@@ -122,6 +122,10 @@ final class BackupController extends Controller
             $this->flash('warning', 'flash.restore_skipped', ['count' => $summary['skipped']]);
         }
 
+        if ($summary['tags_trimmed'] > 0) {
+            $this->flash('warning', 'flash.restore_tags_trimmed', ['count' => $summary['tags_trimmed']]);
+        }
+
         return $this->redirectAfterWrite($request, $response, self::SECTION);
     }
 }

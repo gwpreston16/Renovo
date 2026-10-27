@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.3"
+  version: "1.9.4"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -972,11 +972,12 @@ paths:
               type: object
               required: [name]
               properties:
-                name: { type: string, maxLength: 60 }
+                name: { type: string, maxLength: 60, description: "Unique in the household, ignoring case and accents." }
                 colour:
                   type: string
                   nullable: true
                   pattern: "^#[0-9a-fA-F]{6}$"
+                  description: "Null or absent leaves the category uncoloured; a PUT without it clears an existing colour."
       responses:
         "201":
           headers:
@@ -1022,11 +1023,12 @@ paths:
               type: object
               required: [name]
               properties:
-                name: { type: string, maxLength: 60 }
+                name: { type: string, maxLength: 60, description: "Unique in the household, ignoring case and accents." }
                 colour:
                   type: string
                   nullable: true
                   pattern: "^#[0-9a-fA-F]{6}$"
+                  description: "Null or absent leaves the category uncoloured; a PUT without it clears an existing colour."
       responses:
         "200":
           headers:

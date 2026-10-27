@@ -72,7 +72,7 @@
                     {% endfor %}
                 </select>
 
-                <input type="text" name="tag" placeholder="{{ t('field.tag') }}" aria-label="{{ t('field.tag') }}">
+                <input type="text" name="tag" maxlength="50" placeholder="{{ t('field.tag') }}" aria-label="{{ t('field.tag') }}">
 
                 <select name="user_id" aria-label="{{ t('field.member') }}">
                     <option value="">{{ t('subscriptions_list.nobody') }}</option>

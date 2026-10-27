@@ -7,10 +7,16 @@ namespace App\Repository;
 use App\Domain\Entity\Tag;
 use App\Domain\NameKey;
 use App\Persistence\Criteria;
+use App\Persistence\Database;
 use App\Security\Scope;
 use DateTimeImmutable;
+use PDOException;
 
-final class TagRepository extends AbstractScopedRepository
+/**
+ * Not final: a test stands in one that loses the race to create a tag, to show
+ * a second save resolves to the tag the first made.
+ */
+class TagRepository extends AbstractScopedRepository
 {
     protected function table(): string
     {
@@ -83,12 +89,35 @@ final class TagRepository extends AbstractScopedRepository
 
             $key = NameKey::of($name);
             if (!isset($known[$key])) {
-                $known[$key] = $this->create($scope, $name);
+                $known[$key] = $this->createOrFind($scope, $name);
             }
             $ids[] = $known[$key];
         }
 
         return array_values(array_unique($ids));
+    }
+
+    /**
+     * Create the tag, or take the one another request created between the
+     * lookup and this insert: the unique index refuses the second, and the
+     * answer is the tag that won, not an error.
+     */
+    private function createOrFind(Scope $scope, string $name): int
+    {
+        try {
+            return $this->db->withSavepoint(fn (): int => $this->create($scope, $name));
+        } catch (PDOException $exception) {
+            if (!Database::isUniqueViolation($exception)) {
+                throw $exception;
+            }
+
+            $existing = $this->findByName($scope, $name);
+            if ($existing === null) {
+                throw $exception;
+            }
+
+            return $existing->id;
+        }
     }
 
     public function create(Scope $scope, string $name): int

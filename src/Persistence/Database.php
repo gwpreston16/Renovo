@@ -234,6 +234,43 @@ final class Database
     }
 
     /**
+     * Run `$work` so that a statement it fails on can be caught and the
+     * transaction carried on.
+     *
+     * PostgreSQL aborts the whole transaction on a failed statement, so a
+     * caller that expects a unique violation and handles it (two requests
+     * creating one tag) must put a savepoint round it. Outside a transaction
+     * there is nothing to protect and `$work` simply runs.
+     *
+     * @template T
+     * @param callable(): T $work
+     * @return T
+     */
+    public function withSavepoint(callable $work): mixed
+    {
+        $pdo = $this->connection();
+
+        if (!$pdo->inTransaction()) {
+            return $work();
+        }
+
+        $pdo->exec('SAVEPOINT renovo_attempt');
+
+        try {
+            $result = $work();
+        } catch (Throwable $exception) {
+            $pdo->exec('ROLLBACK TO SAVEPOINT renovo_attempt');
+            $pdo->exec('RELEASE SAVEPOINT renovo_attempt');
+
+            throw $exception;
+        }
+
+        $pdo->exec('RELEASE SAVEPOINT renovo_attempt');
+
+        return $result;
+    }
+
+    /**
      * Run `$work` inside a read-only transaction that sees one consistent
      * snapshot of every table (Platform::snapshotStatements()).
      *

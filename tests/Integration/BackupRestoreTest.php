@@ -403,6 +403,65 @@ final class BackupRestoreTest extends DatabaseTestCase
         self::assertEqualsCanonicalizing(['applied', 'unused'], $names);
     }
 
+    public function testARestoredRowWithOverTwentyFiveTagsKeepsTheFirstTwentyFive(): void
+    {
+        $this->subscriptions->create($this->source, [
+            'name' => 'Tagged',
+            'price' => '9.99',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-12-01',
+        ]);
+        $archive = $this->export();
+
+        $names = array_map(static fn (int $i): string => 'tag-' . $i, range(1, 27));
+        $data = $this->readArchiveJson($archive, 'data.json');
+        $data['subscriptions'][0]['tags'] = $names;
+        $data['tags'] = array_map(static fn (string $name): array => ['name' => $name], $names);
+        $this->rewriteData($archive, $data);
+
+        $summary = $this->backups->restore($this->target, $this->targetUser, $archive);
+
+        self::assertSame(1, $summary['subscriptions']);
+        self::assertSame(1, $summary['tags_trimmed']);
+        self::assertSame(0, $summary['skipped']);
+        $restored = $this->subscriptions->allForStats($this->target, activeOnly: false)[0];
+        // Tags read back by name, so compare as sets: the first 25 survive.
+        self::assertEqualsCanonicalizing(
+            array_slice($names, 0, 25),
+            array_map(static fn ($tag): string => $tag->name, $restored->tags),
+        );
+    }
+
+    public function testARestoreSkipsATagOverFiftyCharacters(): void
+    {
+        $this->subscriptions->create($this->source, [
+            'name' => 'Tagged',
+            'price' => '9.99',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-12-01',
+        ]);
+        $archive = $this->export();
+
+        $long = str_repeat('x', 51);
+        $data = $this->readArchiveJson($archive, 'data.json');
+        $data['subscriptions'][0]['tags'] = ['fine', $long];
+        $data['tags'] = [['name' => 'fine'], ['name' => $long], ['name' => 'also fine']];
+        $this->rewriteData($archive, $data);
+
+        $summary = $this->backups->restore($this->target, $this->targetUser, $archive);
+
+        self::assertSame(1, $summary['subscriptions']);
+        self::assertSame(2, $summary['tags']);
+        // The long name is dropped from the list and from the row.
+        self::assertSame(2, $summary['skipped']);
+        $restored = $this->subscriptions->allForStats($this->target, activeOnly: false)[0];
+        self::assertSame(['fine'], array_map(static fn ($tag): string => $tag->name, $restored->tags));
+    }
+
     public function testRestoreMatchesNamesWholeIgnoringCaseAndAccents(): void
     {
         $categories = new \App\Repository\CategoryRepository($this->db);
@@ -1176,6 +1235,17 @@ final class BackupRestoreTest extends DatabaseTestCase
         self::assertIsArray($decoded);
 
         return $decoded;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function rewriteData(string $archive, array $data): void
+    {
+        $zip = new ZipArchive();
+        self::assertTrue($zip->open($archive) === true);
+        $zip->addFromString('data.json', json_encode($data, JSON_THROW_ON_ERROR));
+        $zip->close();
     }
 
     private function householdWithoutThePartner(): Scope
