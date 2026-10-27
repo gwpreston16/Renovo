@@ -152,8 +152,9 @@ None.
   Not chosen: leave the README as it is.
 - **K119.** *Decided 2026-10-26:* extend the existing backups bullet. Not
   chosen: a separate bullet; leave the README as it is.
-- **Ships** as its own patch release, 1.19.1, once merged. Nothing here touches
-  code that Phases 51 and 52 change.
+- **Ships** as its own patch release once merged. *Changed 2026-10-27:* 1.21.1,
+  not 1.19.1 (master is already at 1.21.0). Nothing here touches code that
+  Phases 51 and 52 changed.
 
 ## Status
 
