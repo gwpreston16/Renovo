@@ -9,10 +9,12 @@ use App\Application\Api\ApiRouteScope;
 use App\Domain\IsolationMode;
 use App\Domain\Permission;
 use App\Domain\Role;
+use App\Domain\SplitMode;
 use App\Domain\TokenScope;
 use App\Security\PermissionService;
 use App\Security\Scope;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Yaml\Yaml;
 use Slim\Interfaces\RouteInterface;
 use App\Tests\Support\TestTranslator;
 
@@ -185,6 +187,38 @@ final class ApiDocCoverageTest extends TestCase
             $this->examplePermissions(),
             'The GET /me example in docs/api.md is not what an Editor would actually receive.',
         );
+    }
+
+    /**
+     * K47: three of the ten corrections are things a test can pin — the Role
+     * enum is described in full, `split_mode` has its values, and the `tag`
+     * list filter exists — in the prose and in the contract alike.
+     */
+    public function testSplitModeEnumContributorRoleAndTagFilterAreDescribed(): void
+    {
+        $prose = $this->document();
+        $spec = Yaml::parse((string) file_get_contents(dirname(__DIR__, 2) . '/openapi/openapi.yaml'));
+
+        // The role list: every Role case, in the contract and where `GET /me`
+        // is described.
+        $roles = array_map(static fn (Role $role): string => $role->value, Role::cases());
+        self::assertSame($roles, $spec['components']['schemas']['Identity']['properties']['role']['enum']);
+        self::assertSame(1, preg_match('/`role` \(([^)]*)\)/', $prose, $identity));
+        foreach ($roles as $role) {
+            self::assertStringContainsString('`' . $role . '`', $identity[1], 'The Identity role list misses ' . $role);
+        }
+
+        // `split_mode`: the SplitMode values.
+        $modes = array_map(static fn (SplitMode $mode): string => $mode->value, SplitMode::cases());
+        self::assertSame($modes, $spec['components']['schemas']['Subscription']['allOf'][1]['properties']['split_mode']['enum']);
+        foreach ($modes as $mode) {
+            self::assertStringContainsString('`' . $mode . '`', $prose);
+        }
+
+        // The `tag` list filter.
+        $parameters = array_column($spec['paths']['/api/v1/subscriptions']['get']['parameters'], 'name');
+        self::assertContains('tag', $parameters);
+        self::assertStringContainsString('| `tag` |', $prose);
     }
 
     /**

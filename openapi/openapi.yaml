@@ -187,6 +187,17 @@ paths:
         - { name: q, in: query, schema: { type: string }, description: Search names and notes. }
         - { name: category, in: query, schema: { type: integer }, description: Category id. }
         - { name: owner, in: query, schema: { type: integer }, description: Owner user id. }
+        - name: tag
+          in: query
+          style: form
+          explode: true
+          schema:
+            oneOf:
+              - { type: integer }
+              - { type: array, items: { type: integer } }
+          description: >
+            Tag id; repeat it (`tag[]=3&tag[]=7`) for several. A subscription
+            matches when it has any of them.
         - { name: currency, in: query, schema: { type: string }, description: ISO 4217 code. }
         - name: type
           in: query
@@ -669,7 +680,10 @@ paths:
       summary: Download an attachment.
       responses:
         "200":
-          description: The file.
+          description: >
+            The file, with the `Content-Type` it was stored with (its type as
+            detected when it was uploaded) and a `Content-Disposition:
+            attachment` header carrying its original name.
           headers:
             Content-Disposition:
               schema: { type: string }
@@ -680,7 +694,7 @@ paths:
             RateLimit-Reset:
               $ref: "#/components/headers/RateLimit-Reset"
           content:
-            application/octet-stream:
+            "*/*":
               schema:
                 type: string
                 format: binary
@@ -1593,6 +1607,9 @@ components:
       description: |
         The token does not hold the scope the operation needs (the message
         names it), or the role of the account behind it does not permit this.
+        On a read-only demonstration instance every write is refused with this
+        status, whatever the role: "This instance is a read-only
+        demonstration. Nothing here can be changed."
       content:
         application/json:
           schema:
@@ -1773,7 +1790,7 @@ components:
         logo_path:
           type: string
           nullable: true
-          description: Read-only. An uploaded logo, managed on the web screen.
+          description: Read-only. An uploaded logo; set it with the logo endpoints.
 
     Tag:
       type: object
@@ -2157,8 +2174,9 @@ components:
           type: integer
           nullable: true
           description: |
-            Must be a member of the household. Ignored when the instance is in
-            ISOLATED mode, where a user may only own their own rows.
+            Must be a member of the household. Ignored when the token's user is
+            fenced to their own rows: in ISOLATED mode, and for a Contributor
+            in SHARED mode too. They own only what they make.
         payer_user_id: { type: integer, nullable: true }
         tags:
           type: array
@@ -2195,7 +2213,7 @@ components:
                 unless the cycle changes.
             category_name: { type: string, nullable: true }
             payment_method_name: { type: string, nullable: true }
-            split_mode: { type: string }
+            split_mode: { type: string, enum: [none, equal, custom] }
             usage_count: { type: integer }
             usage_rating: { type: integer, nullable: true }
             logo_path:

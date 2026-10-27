@@ -393,15 +393,20 @@ days: `2026-02-31` is a `422`, not 3 March. **Timestamps** are ISO 8601 date-tim
 **Read-only fields** are returned but ignored on write: `id`, `anchor_day`,
 `category_name`, `payment_method_name`, `split_mode`, `usage_count`, `usage_rating`, `logo_path`,
 `monthly_minor`, `yearly_minor`, `next_charge_date`, `cancellation_deadline`,
-`days_until_next_payment`, `cancelled_at`, `status`, `created_at`, `updated_at`.
+`days_until_next_payment`, `cancelled_at`, `status`, `price_is_promotional`,
+`promo_ends_on`, `promo_then_price_minor`, `created_at`, `updated_at`.
 
-**Six fields keep their value when omitted**, unlike the rest of a `PUT`:
+**Eight fields keep their value when omitted**, unlike the rest of a `PUT`:
 `payment_method_id`, `plan`, `visibility`, `contract_ends_on`,
-`payments_end_on` and `amount_varies`. Each arrived after the API did, and a
-client written before it must not clear it — or, for `visibility`, make a
-private subscription visible to the household — by putting back a
-representation it never knew had the field. Send `null` (or, for `plan` and
-the two dates, an empty string) to clear one.
+`payments_end_on`, `amount_varies`, `cycle_interval` and
+`converts_to_cycle_interval`. Each arrived after the API did, and a client
+written before it must not clear it — or, for `visibility`, make a private
+subscription visible to the household, or, for an interval, turn a six-monthly
+policy monthly — by putting back a representation it never knew had the field.
+Send `null` (or, for `plan` and the two dates, an empty string) to clear one.
+The two intervals are the exception to "clear": an absent or `null` interval
+keeps the current one while the cycle is unchanged, and is 1 once the cycle
+changes.
 
 **A private subscription is invisible to everybody but its owner.** With
 `visibility: "payer"`, no other member's token — Owner/Admin included, in
@@ -425,8 +430,8 @@ Every error is JSON, in one shape:
 {
   "error": {
     "status": 422,
-    "title": "Unprocessable Entity",
-    "message": "The subscription could not be saved.",
+    "title": "Validation failed",
+    "message": "The submitted data is not valid.",
     "errors": {
       "price_minor": "Enter a price, for example 9.99.",
       "next_payment_date": "A recurring subscription needs a next payment date."
@@ -443,7 +448,7 @@ the field the client sent: a bad price is under `price_minor`, a bad
 | --- | --- |
 | `400` | The request was malformed — a bad multipart body, an unreadable upload. |
 | `401` | No token presented, or it is revoked, expired, malformed or unknown. The four are one answer. A write sent with no bearer token, or another scheme, is a `401` too. |
-| `403` | The token does not hold the scope the route needs (the message names it), **or** the role does not permit this, **or** a token that can write was offered to the calendar feed. |
+| `403` | The token does not hold the scope the route needs (the message names it), **or** the role does not permit this, **or** a token that can write was offered to the calendar feed, **or** the instance is a read-only demonstration: every write (`POST`, `PUT`, `DELETE`) is refused with the message "This instance is a read-only demonstration. Nothing here can be changed." |
 | `404` | No such row — **or** one the caller may not see. |
 | `422` | The body was understood but is not valid. |
 | `429` | Over a [rate limit](#rate-limits), or the address has failed token authentication ten times in five minutes. `Retry-After` says how many seconds to wait. |
@@ -583,6 +588,7 @@ without anybody editing the row. A token without that scope changes nothing.
 | `q` | string | Search names and notes. |
 | `category` | integer | Category id. |
 | `owner` | integer | Owner user id. |
+| `tag` | integer or integer[] | Tag id; repeat it (`tag[]=3&tag[]=7`) for several. A subscription matches when it has **any** of them. |
 | `currency` | string | ISO 4217 code. |
 | `type` | enum | `recurring`, `one_off`, `lifetime`. |
 | `inactive` | `"1"` | Include inactive subscriptions — paused and cancelled. |
@@ -742,8 +748,10 @@ A subscription that doesn't exist, or that the token can't write to, is a
 
 #### `GET /api/v1/subscriptions/{id}/attachments/{attachmentId}`
 
-Download the file. Returns the bytes with a `Content-Disposition` header, not
-JSON. Responses: `200`, `401`, `403`, `404`.
+Download the file. Returns the bytes, not JSON, with the `Content-Type` the file
+was stored with (its type as detected when it was uploaded, not always
+`application/octet-stream`) and a `Content-Disposition: attachment` header
+carrying its original name. Responses: `200`, `401`, `403`, `404`.
 
 #### `DELETE /api/v1/subscriptions/{id}/attachments/{attachmentId}`
 
@@ -1002,7 +1010,7 @@ stored value) or an explicit `null` has a meaning there.
 | `visibility` | enum | `household` (default) or `payer`. `payer` keeps it to its owner: hidden from every other member in either isolation mode, and out of their totals. Only the owner may set it, only when `payer_user_id` is the owner or null, and never on a split subscription. An absent key keeps the current setting. |
 | `category_id` | integer, null | |
 | `payment_method_id` | integer, null | An absent key leaves the current assignment alone — unlike the other fields, so a client written before it existed does not clear it. Send `null` to clear it. |
-| `owner_user_id` | integer, null | Must be a household member. Ignored in ISOLATED mode, where a user may own only their own rows. |
+| `owner_user_id` | integer, null | Must be a household member. Ignored when the token's user is fenced to their own rows: in ISOLATED mode, and for a Contributor in SHARED mode too. They own only what they make. |
 | `payer_user_id` | integer, null | |
 | `tags` | string[] | Max 25, each max 50 chars; more is a `422` on `tags`, never cut. Created by name if they do not exist, matched whole ignoring case and accents. |
 
@@ -1016,7 +1024,7 @@ Everything in `SubscriptionInput`, plus these read-only fields:
 | `anchor_day` | integer, null | The day of the month billing returns to after a short month. `31` on a monthly subscription is the last day of every month, as the web form's "On the last day of the month" sets it; a PUT that leaves the payment date on a month end keeps it. A PUT that leaves the date on the day a later anchor clamps to in a shorter month — the 30th's 28 February — keeps that anchor, unless the cycle changes. |
 | `category_name` | string, null | |
 | `payment_method_name` | string, null | |
-| `split_mode` | string | Shared-cost splits are read here, written in the web interface. |
+| `split_mode` | enum | `none`, `equal` or `custom`. Shared-cost splits are read here, written in the web interface. |
 | `usage_count` | integer | |
 | `usage_rating` | integer, null | |
 | `logo_path` | string, null | Set it with the logo endpoints. |
@@ -1048,7 +1056,7 @@ Returned as `meta` on a list response.
 
 Returned by `GET /me`. Fields: `user` (`id`, `email`, `display_name`,
 `is_instance_admin`), `household_id` (nullable), `role` (`owner_admin`,
-`editor`, `viewer`, or null), `isolation_mode` (`shared`, `isolated`),
+`editor`, `contributor`, `viewer`, or null), `isolation_mode` (`shared`, `isolated`),
 `permissions` (array of strings), `token` (`id`, `name`, `public_id`, `scopes`,
 `abilities` (deprecated), `last_used_at`, `expires_at`, `revoked_at`,
 `created_at`; never the secret).
