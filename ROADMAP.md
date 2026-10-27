@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–54
+## Planned — Phases 30–55
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -63,6 +63,7 @@ can be moved.
 | 52 | [API input and fixed terms, from the known-issues log](docs/phases/PHASE-52.md) | — | None | ✅ done |
 | 53 | [Dev tooling, docs and test gaps, from the known-issues log](docs/phases/PHASE-53.md) | — | None | ✅ done |
 | 54 | [Tag integrity, from the known-issues log](docs/phases/PHASE-54.md) | — | None | 📋 planned |
+| 55 | [Security and backup test gaps, from the known-issues log](docs/phases/PHASE-55.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -173,6 +174,10 @@ can be moved.
   backup with either restores what it can, `ß` and `ss` are one name on both
   engines, two saves creating one tag at once both succeed, and the category
   notes in the API reference are completed.
+- **55 — Security and backup test gaps.** A batch from the known-issues log (K21,
+  K22, K108, K109, K116, K117): tests for passkey sign-in, the session cookie and
+  database session store, `secrets:rotate`, off-site retention failures and the
+  Test connection step labels. No behaviour changes.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
