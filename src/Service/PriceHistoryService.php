@@ -17,6 +17,7 @@ use App\Repository\PriceHistoryRepository;
 use App\Repository\SubscriptionRepository;
 use App\Security\Scope;
 use App\Support\Clock;
+use App\Support\IsoDate;
 use DateTimeImmutable;
 use InvalidArgumentException;
 
@@ -583,7 +584,9 @@ final class PriceHistoryService
 
         $effectiveFrom = $this->date($this->str($input, 'effective_from'));
         if ($effectiveFrom === null) {
-            $errors['effective_from'] = 'error.price_change.date_required';
+            $errors['effective_from'] = trim($this->str($input, 'effective_from')) === ''
+                ? 'error.price_change.date_required'
+                : 'error.date.invalid';
         } elseif ($effectiveFrom <= $today) {
             // A change dated today or earlier is not a schedule, it is an edit.
             // Refusing here keeps the two paths distinguishable rather than
@@ -804,13 +807,6 @@ final class PriceHistoryService
 
     private function date(string $value): ?DateTimeImmutable
     {
-        $value = trim($value);
-        if ($value === '') {
-            return null;
-        }
-
-        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
-
-        return $date === false ? null : $date;
+        return IsoDate::parse($value);
     }
 }

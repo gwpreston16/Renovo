@@ -415,9 +415,11 @@ final class SubscriptionController extends Controller
             $this->subscriptions->setActive($scope, $subscription->id, !$subscription->isActive);
         } catch (ScopeViolationException) {
             throw $this->notFound($request);
-        } catch (ValidationException) {
-            // Resuming a cancelled subscription: the way back is un-cancel.
-            $this->flash('error', 'error.subscription.cancelled_resume');
+        } catch (ValidationException $exception) {
+            // Resuming a cancelled subscription (the way back is un-cancel),
+            // or a fixed term with no billing date left (move its end first).
+            $error = $exception->errors()['payments_end_on'] ?? null;
+            $this->flash('error', $error === null ? 'error.subscription.cancelled_resume' : $error->key);
 
             return $this->redirectAfterWrite($request, $response, '/subscriptions');
         }

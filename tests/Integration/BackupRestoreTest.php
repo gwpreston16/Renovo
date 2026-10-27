@@ -1005,6 +1005,39 @@ final class BackupRestoreTest extends DatabaseTestCase
         ]);
     }
 
+    public function testASubscriptionRowOfTheWrongTypeIsSkippedNotTheWholeRestore(): void
+    {
+        foreach (['Energy', 'Water'] as $name) {
+            $this->subscriptions->create($this->source, [
+                'name' => $name,
+                'price' => '10.00',
+                'currency' => 'GBP',
+                'subscription_type' => 'recurring',
+                'billing_cycle' => 'monthly',
+                'next_payment_date' => '2026-06-15',
+            ]);
+        }
+
+        $archive = $this->export();
+        $data = $this->readArchiveJson($archive, 'data.json');
+        $data['subscriptions'][0]['notes'] = [];
+        $data['subscriptions'][0]['payments_end_on'] = true;
+        $zip = new ZipArchive();
+        self::assertTrue($zip->open($archive) === true);
+        $zip->addFromString('data.json', json_encode($data, JSON_THROW_ON_ERROR));
+        $zip->close();
+
+        $summary = $this->backups->restore($this->target, $this->targetUser, $archive);
+
+        self::assertSame(1, $summary['subscriptions']);
+        self::assertSame(1, $summary['skipped']);
+        $restored = array_map(
+            static fn ($s): string => $s->name,
+            $this->subscriptions->allForStats($this->target, activeOnly: false),
+        );
+        self::assertSame([$data['subscriptions'][1]['name']], $restored);
+    }
+
     public function testABadPaymentRowInAnArchiveIsSkippedNotWritten(): void
     {
         $this->subscriptions->create($this->source, [

@@ -501,6 +501,23 @@ final class Subscription
     }
 
     /**
+     * Whether resuming a paused fixed term would leave it nothing to bill: its
+     * last payment is before the first billing date from `$today`, so the
+     * next catch-up would end it again with a cancel date before the resume
+     * (K86). A row that is not a running fixed term never is.
+     */
+    public function resumeLeavesNoBillingDate(DateTimeImmutable $today): bool
+    {
+        if ($this->paymentsEndOn === null || $this->isCancelled() || !$this->type->countsTowardsRecurringTotals()) {
+            return false;
+        }
+
+        $first = $this->resumedPaymentDate($today) ?? $this->nextPaymentDate;
+
+        return $first !== null && $this->paymentsEndOn->setTime(0, 0) < $first->setTime(0, 0);
+    }
+
+    /**
      * The billing dates a pause stepped over — from the payment date it left
      * behind up to, not including, `resumedPaymentDate()` — which the ledger
      * records as skipped.

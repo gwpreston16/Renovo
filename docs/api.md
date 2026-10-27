@@ -671,8 +671,10 @@ mistake corrected cannot silently restart charges; resume it by `PUT`ting it
 back with `is_active: true`, which moves a payment date left in the past on to
 the first billing date from today. A fixed term the catch-up ended is ended
 again by any catch-up while its `payments_end_on` has passed. To bring one
-back, `PUT` a later or empty `payments_end_on` first, while it is still
-cancelled, then uncancel it, then resume it. Responses: `200`, `401`,
+back, `PUT` an empty `payments_end_on`, or one on or after the first billing
+date from today, first, while it is still cancelled, then uncancel it, then
+resume it. A resume whose end is still before that billing date is a `422` on
+`payments_end_on`, whichever way it is made. Responses: `200`, `401`,
 `403`, `404`.
 
 ---
@@ -960,6 +962,13 @@ Responses: `200` (`text/calendar`), `401`, `403`, `429`.
 The writable half of a subscription. Required: `name`, `price_minor`,
 `currency`.
 
+A date that does not exist (`2026-02-30`, `2026-13-01`) is a `422` on its field,
+never rolled over to another day. A text field (`name`, `notes`, `plan`, a date,
+an enum) sent as `true`, `false`, a list or an object is a `422` on that field
+("Send this as text, not as true, false, a list or an object.") and clears
+nothing: only an absent key (keeps the
+stored value) or an explicit `null` has a meaning there.
+
 | Field | Type | Notes |
 | --- | --- | --- |
 | `name` | string | Max 150. |
@@ -971,13 +980,13 @@ The writable half of a subscription. Required: `name`, `price_minor`,
 | `billing_cycle` | enum, null | `weekly`, `monthly`, `quarterly`, `yearly`, `custom_days`. |
 | `cycle_days` | integer, null | 1–3650. Required when `billing_cycle` is `custom_days`. |
 | `cycle_interval` | integer, null | Every N of the cycle's unit — `monthly` with `6` is every six months, `weekly` with `2` fortnightly. Weekly 1–52, monthly 1–24, yearly 1–10; `quarterly` and `custom_days` take only 1, and anything else is a 422, never a clamp. Omitted or null is 1 on a new subscription; on a PUT that keeps the same `billing_cycle`, an absent key keeps the current interval. |
-| `next_payment_date` | date, null | Required for a recurring subscription that is not a trial. |
+| `next_payment_date` | date, null | Required for a recurring subscription that is not a trial. A date that does not exist is a `422`. |
 | `start_date` | date, null | The rules below follow the type the request submits: a one-off turning recurring keeps its payment as history. On a one-off or lifetime entry, changing it moves the entry's own payment (`source: one_off`) to the new date — today included — with any amount, note and invoice on it; a future date removes it until that day passes, when it is written again and its invoice returns to it. A date that already has another payment is a `422` on `start_date`. Other payments, including those the row recorded while it was recurring, are not touched. |
 | `notice_period_amount` | integer, null | 0–3650. |
 | `notice_period_unit` | enum, null | `days`, `weeks`, `months`. |
 | `reminder_days` | int[], null | Max 6 items, each 0–365. Three states — see [Conventions](#conventions). |
 | `is_trial` | boolean | Default `false`. |
-| `trial_end_date` | date, null | |
+| `trial_end_date` | date, null | A date that does not exist is a `422`. |
 | `converts_to_price_minor` | integer, null | |
 | `converts_to_billing_cycle` | enum, null | As `billing_cycle`. |
 | `converts_to_cycle_days` | integer, null | |
@@ -985,7 +994,7 @@ The writable half of a subscription. Required: `name`, `price_minor`,
 | `is_active` | boolean | Default `true`. `false` pauses it. Stays `false` while the subscription is cancelled. Pausing records the billing dates already passed first, and keeps the date they move the row to unless the `PUT` sends another: the `next_payment_date` the row was read with is not written back over it. Resuming skips the paused dates: a past `next_payment_date` moves on to the first billing date from today, so the response may not echo the date sent, and each date it steps over is recorded as a `skipped` charge with `source` `paused` — except one that already has a payment added by hand, which becomes that date's `paused` charge, keeping its status. Billed for one of those months after all? `PATCH` that charge's `actual_minor`; a `POST` on its date is a `422`. |
 | `plan` | string, null | Max 60 — "Standard", "Family". An absent key keeps the current value. |
 | `contract_ends_on` | date, null | When its contract ends. It keeps running after; the date is announced at the lead times (`contract_ending` alerts) and listed beside cancel-by deadlines. An absent key keeps the current value. |
-| `payments_end_on` | date, null | The last charge of a fixed term: the last billing date on or before it is the final payment. Nothing is charged or forecast after it, and when the catch-up next runs after the final payment the row is cancelled with `cancelled_at` the day after it. Ignored for a one-off or lifetime entry. Not before `start_date` or the next charge (`422`) — measured on a `PUT` that leaves it out, too, so moving `next_payment_date` past a stored end is refused against this field. An absent key keeps the current value. |
+| `payments_end_on` | date, null | The last charge of a fixed term: the last billing date on or before it is the final payment. Nothing is charged or forecast after it, and when the catch-up next runs after the final payment the row is cancelled with `cancelled_at` the day after it. Ignored for a one-off or lifetime entry, and cleared when a `PUT` makes the row one of them — turning it back to recurring starts without a term. Not before `start_date` or the next charge (`422`) — measured on a `PUT` that leaves it out, too, so moving `next_payment_date` past a stored end is refused against this field. Resuming a paused term is refused (`422`) when the end is still before the first billing date from today, since the next catch-up would end it again. An absent key keeps the current value. |
 | `amount_varies` | boolean | The price is an estimate: the amount varies bill to bill. An absent key keeps the current value; `false` on a new row. |
 | `visibility` | enum | `household` (default) or `payer`. `payer` keeps it to its owner: hidden from every other member in either isolation mode, and out of their totals. Only the owner may set it, only when `payer_user_id` is the owner or null, and never on a split subscription. An absent key keeps the current setting. |
 | `category_id` | integer, null | |

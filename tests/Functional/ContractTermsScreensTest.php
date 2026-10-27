@@ -139,6 +139,100 @@ final class ContractTermsScreensTest extends DatabaseTestCase
         self::assertMatchesRegularExpression('~id="list-summary".*?≈ £68\\.99~s', $body);
     }
 
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function impossibleDates(): array
+    {
+        $cases = [];
+        foreach (['next_payment_date', 'start_date', 'contract_ends_on', 'payments_end_on'] as $field) {
+            $cases[$field . ' 30 February'] = [$field, '2026-02-30'];
+            $cases[$field . ' month 13'] = [$field, '2026-13-01'];
+        }
+
+        return $cases;
+    }
+
+    /**
+     * @dataProvider impossibleDates
+     */
+    public function testAnImpossibleDateOnTheFormIsRefusedNotRolledOver(string $field, string $value): void
+    {
+        $this->signIn($this->ownerId);
+        $before = count($this->subscriptions->findAllForStats($this->owner, false));
+
+        $response = $this->request('POST', '/subscriptions', [
+            'name' => 'Octopus Energy',
+            'price' => '58.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => $this->nextMonth->format('Y-m-d'),
+            $field => $value,
+        ]);
+
+        self::assertNotSame(302, $response->getStatusCode(), 'An impossible date was accepted.');
+        self::assertStringContainsString('Enter a valid date.', (string) $response->getBody());
+        self::assertCount($before, $this->subscriptions->findAllForStats($this->owner, false));
+    }
+
+    public function testAnImpossibleTrialEndOnTheFormIsRefused(): void
+    {
+        $this->signIn($this->ownerId);
+        $before = count($this->subscriptions->findAllForStats($this->owner, false));
+
+        $response = $this->request('POST', '/subscriptions', [
+            'name' => 'Octopus Energy',
+            'price' => '58.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => $this->nextMonth->format('Y-m-d'),
+            'is_trial' => '1',
+            'trial_end_date' => '2026-02-30',
+        ]);
+
+        self::assertNotSame(302, $response->getStatusCode(), 'An impossible trial end was accepted.');
+        self::assertStringContainsString('Enter a valid date.', (string) $response->getBody());
+        self::assertCount($before, $this->subscriptions->findAllForStats($this->owner, false));
+    }
+
+    public function testTheResumeButtonRefusesATermWithNoBillingDateLeft(): void
+    {
+        $id = $this->create('Phone', 3000, [
+            'is_active' => false,
+            'next_payment_date' => $this->day('-70 days')->format('Y-m-d'),
+            'anchor_day' => (int) $this->day('-70 days')->format('j'),
+            'payments_end_on' => $this->day('-60 days')->format('Y-m-d'),
+        ]);
+        $this->signIn($this->ownerId);
+
+        $response = $this->request('POST', '/subscriptions/' . $id . '/toggle');
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertFalse($this->subscriptions->find($this->owner, $id)?->isActive);
+        // The flash lives in the session, which page() would clear.
+        $page = (string) $this->request('GET', '/subscriptions')->getBody();
+        self::assertStringContainsString('so this can’t be resumed', $page);
+        self::assertStringNotContainsString('finished', $page);
+    }
+
+    public function testAnImpossiblePriceChangeDateOnTheFormIsRefused(): void
+    {
+        $id = $this->create('Netflix', 1099);
+        $this->signIn($this->ownerId);
+
+        $response = $this->request('POST', '/subscriptions/' . $id . '/price-changes', [
+            'price' => '12.99',
+            'currency' => 'GBP',
+            'effective_from' => '2027-02-30',
+        ]);
+
+        self::assertSame(302, $response->getStatusCode());
+        $page = (string) $this->request('GET', '/subscriptions/' . $id . '/money')->getBody();
+        self::assertStringContainsString('Enter a valid date.', $page);
+    }
+
     public function testForwardLookingTotalsIncludingAVaryingBillAreEstimates(): void
     {
         $this->create('Octopus Energy', 5800, [

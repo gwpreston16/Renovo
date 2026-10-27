@@ -264,6 +264,34 @@ final class PriceHistoryTest extends DatabaseTestCase
         }
     }
 
+    public function testAnImpossibleEffectiveDateIsRefused(): void
+    {
+        $scope = $this->scope($this->alice);
+        $id = $this->createSubscription($scope, 999);
+
+        foreach (['2026-02-30', '2026-13-01'] as $impossible) {
+            try {
+                $this->service->schedule($scope, $id, [
+                    'price' => '12.99',
+                    'currency' => 'GBP',
+                    'effective_from' => $impossible,
+                ]);
+                self::fail($impossible . ' is not a date.');
+            } catch (ValidationException $exception) {
+                self::assertSame('error.date.invalid', $exception->errors()['effective_from']->key);
+            }
+        }
+
+        // A leap day that exists is still a date.
+        $this->service->schedule($scope, $id, [
+            'price' => '12.99',
+            'currency' => 'GBP',
+            'effective_from' => '2028-02-29',
+        ]);
+        $scheduled = $this->service->scheduledChanges($scope)[$id][0];
+        self::assertSame('2028-02-29', $scheduled->effectiveFrom->format('Y-m-d'));
+    }
+
     public function testSchedulingRejectsAPriceThatIsNotANumber(): void
     {
         $scope = $this->scope($this->alice);

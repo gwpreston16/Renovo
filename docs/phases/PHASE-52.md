@@ -115,13 +115,17 @@ None.
 ## Decisions & assumptions (confirm or correct before build)
 
 - **K39** makes the code do what `docs/api.md` already says: an impossible date
-  is a `422`.
+  is a `422`. *Confirmed 2026-10-27.*
 - **K91** assumes the 422 names the field that was sent wrongly, as every other
-  field error does.
+  field error does. *Confirmed 2026-10-27.*
 - **K90** assumes a type that is not recurring has no end to keep, as the form
-  already hides it.
+  already hides it. *Confirmed 2026-10-27.*
 - **K86** *Decided 2026-10-26:* refuse with `422`. Not chosen: accept and let
-  the catch-up end the term again.
+  the catch-up end the term again. *Extended 2026-10-27, owner's call:* the
+  Resume button refuses the same term with a flash message, and a bulk resume
+  leaves it paused (the rest of the batch resumes), through one shared
+  `Subscription::resumeLeavesNoBillingDate()`. A backup restore skips a
+  subscription row with a wrongly typed field (K91) instead of aborting.
 - **How it ships.** *Decided 2026-10-26:* as its own patch release once merged
   (1.19.2 if Phase 51 ships as 1.19.1 first; the number is re-checked at
   release). Not chosen: waiting for the next minor release.
@@ -130,16 +134,16 @@ None.
 
 ## Status
 
-- [ ] K39: impossible dates refused
-- [ ] K91: wrongly typed fields refused
-- [ ] K90: leaving a fixed term clears its end
-- [ ] K86: resume with no billing date left refused
-- [ ] K92: OpenAPI field descriptions match `docs/api.md`
-- [ ] K123: rate-limit headers declared on every counted response
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 52 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K39: impossible dates refused
+- [x] K91: wrongly typed fields refused
+- [x] K90: leaving a fixed term clears its end
+- [x] K86: resume with no billing date left refused
+- [x] K92: OpenAPI field descriptions match `docs/api.md`
+- [x] K123: rate-limit headers declared on every counted response
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 52 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

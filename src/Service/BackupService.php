@@ -369,7 +369,14 @@ final class BackupService
                 continue;
             }
 
-            $input = $this->subscriptionInput($scope, $row, $categoryIds, $paymentMethodIds, $owners);
+            try {
+                $input = $this->subscriptionInput($scope, $row, $categoryIds, $paymentMethodIds, $owners);
+            } catch (ValidationException) {
+                // A field of the wrong JSON type: the row is skipped like any
+                // other that fails validation, not the whole restore.
+                $summary['skipped']++;
+                continue;
+            }
 
             $logo = $this->restoreLogo($zip, $row, $written);
             if ($logo !== null) {
