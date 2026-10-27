@@ -183,3 +183,14 @@ in `translations/`. Then mark it ✅ in `ROADMAP.md`.
   (monthly, yearly and neither).
 - **K47:** `OpenApiCoverageTest` and `ApiDocCoverageTest`, plus
   `ApiDocCoverageTest::testSplitModeEnumContributorRoleAndTagFilterAreDescribed`.
+
+## Browser check (2026-10-27)
+
+No JS test harness exists, so K18's focus behaviour was checked in a browser
+(the working tree served against the demo data, Chromium pane): at 1280 px,
+activating the sort link and Next month each left focus on the same control
+after the swap; when Previous month disappeared at the earliest month, focus
+fell to `#calendar-heading`; the region's status line read "November 2026: 12
+charges"; the list status read "19 subscriptions match". At 375 px in dark the
+scenario screen drew unchanged. The list pager's last-page fallback was not
+reached: the demo data fits on one page.

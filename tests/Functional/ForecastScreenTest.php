@@ -184,8 +184,21 @@ final class ForecastScreenTest extends DatabaseTestCase
         self::assertSame(['regular' => true, 'long' => false, 'total' => true], $marks($bars['2026-06']));
         self::assertSame(['regular' => false, 'long' => false, 'total' => false], $marks($bars['2026-03']));
 
+        // The month table draws the mark in the part cells the flags name.
         $html = (string) $this->get('/forecast', $this->ownerId)->getBody();
-        self::assertMatchesRegularExpression('~<td class="numeric num">\s*≈ £[\d,.]+\s*</td>~u', $html);
+        $cells = static function (string $month) use ($html): array {
+            self::assertSame(
+                1,
+                preg_match('~<th scope="row">' . $month . '</th>(.*?)</tr>~s', $html, $row),
+                $month . ' has no row in the month table.',
+            );
+            preg_match_all('~<td class="numeric num">(.*?)</td>~s', $row[1], $tds);
+
+            return array_map(static fn (string $cell): bool => str_contains($cell, '≈'), $tds[1]);
+        };
+        self::assertSame([false, true, true], $cells('May 2026'));
+        self::assertSame([true, false, true], $cells('June 2026'));
+        self::assertSame([false, false, false], $cells('March 2026'));
     }
 
     public function testTheTwoPartsOfEveryMonthAddUpToTheForecastsOwnMonth(): void
