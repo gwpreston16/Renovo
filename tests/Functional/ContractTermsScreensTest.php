@@ -176,6 +176,27 @@ final class ContractTermsScreensTest extends DatabaseTestCase
         self::assertCount($before, $this->subscriptions->findAllForStats($this->owner, false));
     }
 
+    public function testAnImpossibleTrialEndOnTheFormIsRefused(): void
+    {
+        $this->signIn($this->ownerId);
+        $before = count($this->subscriptions->findAllForStats($this->owner, false));
+
+        $response = $this->request('POST', '/subscriptions', [
+            'name' => 'Octopus Energy',
+            'price' => '58.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => $this->nextMonth->format('Y-m-d'),
+            'is_trial' => '1',
+            'trial_end_date' => '2026-02-30',
+        ]);
+
+        self::assertNotSame(302, $response->getStatusCode(), 'An impossible trial end was accepted.');
+        self::assertStringContainsString('Enter a valid date.', (string) $response->getBody());
+        self::assertCount($before, $this->subscriptions->findAllForStats($this->owner, false));
+    }
+
     public function testForwardLookingTotalsIncludingAVaryingBillAreEstimates(): void
     {
         $this->create('Octopus Energy', 5800, [

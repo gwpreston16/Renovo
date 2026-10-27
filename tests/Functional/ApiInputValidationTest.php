@@ -120,7 +120,8 @@ final class ApiInputValidationTest extends ApiTestCase
         $id = $this->createSubscription(['start_date' => '2026-01-01']);
         $before = $this->show($id);
 
-        $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, ['start_date' => null] + $before);
+        $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, ['start_date' => null] + $before);
+        self::assertSame(200, $put->getStatusCode(), (string) $put->getBody());
 
         self::assertNull($this->show($id)['start_date']);
     }
@@ -171,6 +172,58 @@ final class ApiInputValidationTest extends ApiTestCase
         $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, $lifetime + $before);
         self::assertSame(200, $put->getStatusCode(), (string) $put->getBody());
         self::assertNull($this->show($id)['payments_end_on']);
+    }
+
+    public function testResumingATermWithNoBillingDateLeftIsA422OnTheEnd(): void
+    {
+        $id = $this->createSubscription(['name' => 'Phone finance']);
+        $last = new \DateTimeImmutable('first day of last month');
+        $this->db->execute(
+            'UPDATE subscriptions SET next_payment_date = :next, anchor_day = 1, payments_end_on = :end'
+            . ' WHERE id = :id',
+            ['next' => $last->format('Y-m-d'), 'end' => $last->format('Y-m-d'), 'id' => $id],
+        );
+        // Any listing runs the catch-up, which ends the finished term.
+        $this->api('GET', '/api/v1/subscriptions', $this->ownerToken);
+        self::assertSame('cancelled', $this->show($id)['status']);
+
+        // Resuming while cancelled changes nothing and is not refused.
+        $stillCancelled = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+            'is_active' => true,
+        ] + $this->show($id));
+        self::assertSame(200, $stillCancelled->getStatusCode(), (string) $stillCancelled->getBody());
+        self::assertSame('cancelled', $this->show($id)['status']);
+
+        $uncancel = $this->api('POST', '/api/v1/subscriptions/' . $id . '/uncancel', $this->ownerToken);
+        self::assertSame(200, $uncancel->getStatusCode(), (string) $uncancel->getBody());
+        $paused = $this->show($id);
+        self::assertSame('paused', $paused['status']);
+
+        // The stored end (last month) is kept when the key is absent, and it
+        // is before the first billing date from today.
+        $resume = ['is_active' => true] + $paused;
+        unset($resume['payments_end_on']);
+        $absent = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, $resume);
+        self::assertSame(422, $absent->getStatusCode(), (string) $absent->getBody());
+        self::assertArrayHasKey('payments_end_on', $this->decode($absent)['error']['errors']);
+
+        // So is one sent: yesterday is before any billing date from today.
+        $yesterday = (new \DateTimeImmutable('yesterday'))->format('Y-m-d');
+        $sent = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+            'is_active' => true,
+            'payments_end_on' => $yesterday,
+        ] + $paused);
+        self::assertSame(422, $sent->getStatusCode(), (string) $sent->getBody());
+        self::assertSame('paused', $this->show($id)['status']);
+
+        // An end two months out leaves a billing date, and the resume goes through.
+        $later = (new \DateTimeImmutable('first day of +2 months'))->format('Y-m-d');
+        $ok = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+            'is_active' => true,
+            'payments_end_on' => $later,
+        ] + $paused);
+        self::assertSame(200, $ok->getStatusCode(), (string) $ok->getBody());
+        self::assertSame('active', $this->show($id)['status']);
     }
 
     /**

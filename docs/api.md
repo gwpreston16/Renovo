@@ -671,8 +671,10 @@ mistake corrected cannot silently restart charges; resume it by `PUT`ting it
 back with `is_active: true`, which moves a payment date left in the past on to
 the first billing date from today. A fixed term the catch-up ended is ended
 again by any catch-up while its `payments_end_on` has passed. To bring one
-back, `PUT` a later or empty `payments_end_on` first, while it is still
-cancelled, then uncancel it, then resume it. Responses: `200`, `401`,
+back, `PUT` an empty `payments_end_on`, or one on or after the first billing
+date from today, first, while it is still cancelled, then uncancel it, then
+resume it. A resume whose end is still before that billing date is a `422` on
+`payments_end_on`. Responses: `200`, `401`,
 `403`, `404`.
 
 ---
@@ -963,7 +965,8 @@ The writable half of a subscription. Required: `name`, `price_minor`,
 A date that does not exist (`2026-02-30`, `2026-13-01`) is a `422` on its field,
 never rolled over to another day. A text field (`name`, `notes`, `plan`, a date,
 an enum) sent as `true`, `false`, a list or an object is a `422` on that field
-(`error.json.wrong_type`) and clears nothing: only an absent key (keeps the
+("Send this as text, not as true, false, a list or an object.") and clears
+nothing: only an absent key (keeps the
 stored value) or an explicit `null` has a meaning there.
 
 | Field | Type | Notes |

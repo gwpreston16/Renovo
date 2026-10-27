@@ -454,9 +454,11 @@ paths:
         active, so an accidental cancel corrected cannot silently restart
         charges; resume it with a PUT setting `is_active` to true. A fixed
         term the catch-up ended is ended again by any catch-up while its
-        `payments_end_on` has passed: to bring one back, PUT a later or empty
-        `payments_end_on` first, while it is still cancelled, then uncancel
-        and resume it.
+        `payments_end_on` has passed: to bring one back, PUT an empty
+        `payments_end_on`, or one on or after the first billing date from
+        today, first, while it is still cancelled, then uncancel and resume
+        it. A resume whose end is still before that date is a `422` on
+        `payments_end_on`.
       responses:
         "200":
           headers:

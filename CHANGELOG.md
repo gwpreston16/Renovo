@@ -16,7 +16,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   as 2 March; the same goes for the effective date of a price change. A text
   field the API reads (`plan`, `visibility`, a date, `notes`, …) sent as
   `true`, `false`, a list or an object is refused on that field instead of
-  being read as empty, which cleared the stored value. An absent key and an
+  being read as empty, which cleared the stored value; a backup restore skips
+  a subscription row with such a field instead of failing. An absent key and an
   explicit `null` mean what they did. The OpenAPI document is now version
   1.9.3. *Phase 52.*
 - **Resuming a fixed term with no billing date left is a `422` on
