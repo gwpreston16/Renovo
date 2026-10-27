@@ -114,7 +114,7 @@ final class PaymentMethodService
 
         if ($logoPath !== null) {
             $this->methods->setLogo($scope, $id, $logoPath);
-            $this->logos->delete($existing->logoPath);
+            $this->logos->release($existing->logoPath);
         }
     }
 
@@ -134,7 +134,7 @@ final class PaymentMethodService
             ?? throw ValidationException::field('logo', 'error.logo.type');
 
         $this->methods->setLogo($scope, $id, $logoPath);
-        $this->logos->delete($existing->logoPath);
+        $this->logos->release($existing->logoPath);
     }
 
     /**
@@ -151,7 +151,7 @@ final class PaymentMethodService
         $existing = $this->methods->find($scope, $id) ?? throw ScopeViolationException::forRow('payment_methods', $id);
 
         $this->methods->setLogo($scope, $id, null);
-        $this->logos->delete($existing->logoPath);
+        $this->logos->release($existing->logoPath);
     }
 
     /**
@@ -163,7 +163,7 @@ final class PaymentMethodService
         $existing = $this->methods->find($scope, $id) ?? throw ScopeViolationException::forRow('payment_methods', $id);
 
         $this->methods->delete($scope, $id);
-        $this->logos->delete($existing->logoPath);
+        $this->logos->release($existing->logoPath);
     }
 
     /**

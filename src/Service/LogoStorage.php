@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Repository\LogoUsageRepository;
 use Psr\Http\Message\UploadedFileInterface;
 use RuntimeException;
 
@@ -32,6 +33,7 @@ final class LogoStorage
     public function __construct(
         private readonly string $directory,
         private readonly int $maxBytes,
+        private readonly ?LogoUsageRepository $usage = null,
     ) {
     }
 
@@ -156,5 +158,21 @@ final class LogoStorage
         }
 
         @unlink(rtrim($this->directory, '/') . '/' . basename((string) $storedPath));
+    }
+
+    /**
+     * Remove the logo of a row that has just been deleted, changed or
+     * cleared, unless another row still names the same file (K120).
+     *
+     * Call this after the row is saved without the path. `delete()` is for a
+     * file no row ever named, such as an upload whose request then failed.
+     */
+    public function release(?string $storedPath): void
+    {
+        if ($storedPath !== null && $this->usage?->isInUse($storedPath) === true) {
+            return;
+        }
+
+        $this->delete($storedPath);
     }
 }

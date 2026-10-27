@@ -92,6 +92,25 @@ final class ApiContributorFenceTest extends ApiTestCase
         self::assertNull($row['logo_path']);
     }
 
+    /**
+     * K31: the file is written before the write is refused, so a refused upload
+     * must take it back out.
+     */
+    public function testAContributorsRefusedLogoUploadLeavesNoFileBehind(): void
+    {
+        $theirs = $this->createSubscription(['name' => 'Owner row']);
+
+        $refused = $this->upload(
+            '/api/v1/subscriptions/' . $theirs . '/logo',
+            $this->contributorToken,
+            'logo',
+            FakeUpload::png(),
+        );
+
+        self::assertSame(404, $refused->getStatusCode(), (string) $refused->getBody());
+        self::assertSame([], glob($this->directory . '/logos/*') ?: [], 'Nothing is left in logo storage.');
+    }
+
     public function testAContributorCanWriteTheirOwnSubscription(): void
     {
         $mine = $this->createSubscription(['name' => 'Contributor row'], $this->contributorToken);

@@ -11,6 +11,7 @@ use App\Repository\UserRepository;
 use App\Domain\IsolationMode;
 use App\Security\CsrfTokenManager;
 use App\Security\Scope;
+use App\Repository\LogoUsageRepository;
 use App\Service\LogoStorage;
 use App\Service\SubscriptionService;
 use App\Tests\Support\FakeUpload;
@@ -54,7 +55,11 @@ final class LogoPathTest extends ApiTestCase
 
     protected function containerOverrides(): array
     {
-        return [LogoStorage::class => new LogoStorage($this->logoDirectory, 512 * 1024)];
+        return [LogoStorage::class => new LogoStorage(
+            $this->logoDirectory,
+            512 * 1024,
+            new LogoUsageRepository($this->db),
+        )];
     }
 
     /**
@@ -244,6 +249,140 @@ final class LogoPathTest extends ApiTestCase
         unlink($file);
         rmdir($directory . '/sub');
         rmdir($directory);
+    }
+
+    /**
+     * K31: a create or edit that fails validation has already stored its
+     * upload, and no row will ever name it.
+     */
+    public function testAWebCreateThatFailsValidationLeavesNoLogoBehind(): void
+    {
+        $this->signIn($this->editorId);
+
+        $response = $this->web('POST', '/subscriptions', $this->form(['name' => '']), ['logo' => FakeUpload::png()]);
+
+        self::assertSame(422, $response->getStatusCode(), (string) $response->getBody());
+        self::assertSame([], $this->storedFiles());
+    }
+
+    public function testAWebEditThatFailsValidationLeavesNoLogoBehind(): void
+    {
+        $subscriptionId = $this->createSubscription();
+        $this->signIn($this->editorId);
+
+        $response = $this->web(
+            'POST',
+            '/subscriptions/' . $subscriptionId,
+            $this->form(['name' => '']),
+            ['logo' => FakeUpload::png()],
+        );
+
+        self::assertSame(422, $response->getStatusCode(), (string) $response->getBody());
+        self::assertSame([], $this->storedFiles());
+    }
+
+    public function testAWebEditRefusedByTheFenceLeavesNoLogoBehind(): void
+    {
+        $subscriptionId = $this->createSubscription();
+        $this->signIn($this->contributorId);
+
+        $response = $this->web(
+            'POST',
+            '/subscriptions/' . $subscriptionId,
+            $this->form(['owner_user_id' => (string) $this->contributorId]),
+            ['logo' => FakeUpload::png()],
+        );
+
+        self::assertSame(404, $response->getStatusCode(), (string) $response->getBody());
+        self::assertSame([], $this->storedFiles());
+    }
+
+    /**
+     * K120: a row saved before K1's fix may name a co-member's file. Removing
+     * that row, or its logo, must not take the co-member's file with it.
+     */
+    public function testDeletingARowKeepsAFileAnotherRowUses(): void
+    {
+        [$theirs, $file] = $this->subscriptionWithAStoredLogo();
+        $mine = $this->createSubscription();
+        $this->nameLogo($mine, $this->logoOf($theirs));
+
+        $this->signIn($this->editorId);
+        $response = $this->web('POST', '/subscriptions/' . $mine . '/delete', []);
+
+        self::assertSame(302, $response->getStatusCode(), (string) $response->getBody());
+        self::assertFileExists($file, "The co-member's file is kept.");
+        self::assertSame(basename($file), basename((string) $this->logoOf($theirs)));
+    }
+
+    public function testDeletingARowRemovesItsOwnLogo(): void
+    {
+        [$mine, $file] = $this->subscriptionWithAStoredLogo();
+
+        $this->signIn($this->editorId);
+        $response = $this->web('POST', '/subscriptions/' . $mine . '/delete', []);
+
+        self::assertSame(302, $response->getStatusCode(), (string) $response->getBody());
+        self::assertFileDoesNotExist($file);
+    }
+
+    public function testRemovingAndReplacingALogoKeepsAFileAnotherRowUses(): void
+    {
+        [$theirs, $file] = $this->subscriptionWithAStoredLogo();
+        $mine = $this->createSubscription();
+        $this->nameLogo($mine, $this->logoOf($theirs));
+
+        $replaced = $this->uploadLogo($mine);
+        self::assertSame(200, $replaced->getStatusCode(), (string) $replaced->getBody());
+        self::assertFileExists($file, 'Replacing keeps the file the other row uses.');
+
+        $this->nameLogo($mine, $this->logoOf($theirs));
+        self::assertSame(204, $this->api('DELETE', '/api/v1/subscriptions/' . $mine . '/logo', $this->ownerToken)->getStatusCode());
+        self::assertFileExists($file, 'Removing keeps it too.');
+        self::assertNotNull($this->logoOf($theirs));
+    }
+
+    /**
+     * @return array{0: int, 1: string} The subscription and its logo file.
+     */
+    private function subscriptionWithAStoredLogo(): array
+    {
+        $id = $this->createSubscription();
+        $uploaded = $this->uploadLogo($id);
+        self::assertSame(200, $uploaded->getStatusCode(), (string) $uploaded->getBody());
+        $file = $this->logoDirectory . '/' . basename((string) $this->logoOf($id));
+        self::assertFileExists($file);
+
+        return [$id, $file];
+    }
+
+    private function uploadLogo(int $id): ResponseInterface
+    {
+        $request = (new ServerRequestFactory())
+            ->createServerRequest(
+                'POST',
+                'http://localhost/api/v1/subscriptions/' . $id . '/logo',
+                ['REMOTE_ADDR' => '127.0.0.1'],
+            )
+            ->withHeader('Authorization', 'Bearer ' . $this->ownerToken)
+            ->withUploadedFiles(['logo' => FakeUpload::png()]);
+
+        return $this->app->handle($request);
+    }
+
+    private function nameLogo(int $id, ?string $path): void
+    {
+        $this->db->execute('UPDATE subscriptions SET logo_path = :path WHERE id = :id', ['path' => $path, 'id' => $id]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function storedFiles(): array
+    {
+        return is_dir($this->logoDirectory)
+            ? array_values(array_diff((array) scandir($this->logoDirectory), ['.', '..']))
+            : [];
     }
 
     private function postEdit(int $subscriptionId, string $logoPath, ?int $ownerId = null): ResponseInterface
