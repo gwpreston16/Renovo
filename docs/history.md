@@ -615,6 +615,12 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   once both succeed. The API reference now says how a category's `colour` and
   name are handled; OpenAPI 1.9.4, wording only. No migrations. See
   [Tracking](features/tracking.md).
+- **Phase 55 — security and backup test gaps, from the known-issues log —
+  complete (1.24.0).** Passkey sign-in, the session cookie and the database
+  session store are tested, as are `secrets:rotate` and the off-site backup
+  failure paths, including Test connection naming the step that failed. No
+  behaviour changes. The OpenAPI document is unchanged. No migrations. See
+  [Security](security.md) and [Operations](operations.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
