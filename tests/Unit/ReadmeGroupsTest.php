@@ -29,7 +29,8 @@ final class ReadmeGroupsTest extends TestCase
     private function group(string $name): string
     {
         $readme = (string) file_get_contents(dirname(__DIR__, 2) . '/README.md');
-        self::assertSame(1, preg_match('/^\*\*' . preg_quote($name, '/') . '\*\*.*?(?=^\*\*|^## |\z)/ms', $readme, $m), "README has no $name group");
+        $pattern = '/^\*\*' . preg_quote($name, '/') . '\*\*.*?(?=^\*\*|^## |\z)/ms';
+        self::assertSame(1, preg_match($pattern, $readme, $m), "README has no $name group");
 
         return $m[0];
     }

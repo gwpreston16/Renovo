@@ -691,8 +691,10 @@ final class SubscriptionsScreenTest extends DatabaseTestCase
         self::assertContains('Streaming', $this->rowNames($this->get('/subscriptions', $adminId)));
 
         $this->session->set(AuthenticationMiddleware::SESSION_USER_ID, $adminId);
-        self::assertSame(404, $this->post('/subscriptions/' . $this->streamingId . '/toggle', $adminId)->getStatusCode());
-        self::assertSame(404, $this->post('/subscriptions/' . $this->streamingId . '/delete', $adminId)->getStatusCode());
+        $refused = $this->post('/subscriptions/' . $this->streamingId . '/toggle', $adminId);
+        self::assertSame(404, $refused->getStatusCode());
+        $refused = $this->post('/subscriptions/' . $this->streamingId . '/delete', $adminId);
+        self::assertSame(404, $refused->getStatusCode());
     }
 
     public function testAnInstanceAdminMemberDoesNotSeeOthersPrivateRowsInIsolatedMode(): void

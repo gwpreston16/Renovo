@@ -21,12 +21,15 @@ final class StaleLedgerCommentsTest extends TestCase
         $root = dirname(__DIR__, 2);
         $found = [];
         foreach (['src', 'templates'] as $dir) {
-            $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$root/$dir", RecursiveDirectoryIterator::SKIP_DOTS));
+            $files = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator("$root/$dir", RecursiveDirectoryIterator::SKIP_DOTS),
+            );
             foreach ($files as $file) {
                 if (!in_array($file->getExtension(), ['php', 'twig'], true)) {
                     continue;
                 }
-                $text = strtolower((string) preg_replace('/[\s*#]+/', ' ', (string) file_get_contents($file->getPathname())));
+                $source = (string) file_get_contents($file->getPathname());
+                $text = strtolower((string) preg_replace('/[\s*#]+/', ' ', $source));
                 foreach (self::STALE as $phrase) {
                     if (str_contains($text, $phrase)) {
                         $found[] = substr($file->getPathname(), strlen($root) + 1) . ": \"$phrase\"";

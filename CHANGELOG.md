@@ -8,6 +8,27 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Added
+
+- **The README names the payment ledger and off-server backup copies.** The
+  Money group lists recording what was charged, skipping a charge, invoices on
+  payments and paging the calendar back; the Your data group says each verified
+  backup can be sent off the server and a scheduled rehearsal restores from it.
+  *Phase 53.*
+
+### Fixed
+
+- **`./bin/dev-setup.sh` runs on Linux and in Git Bash.** Its temporary files
+  were made with a `mktemp` template GNU `mktemp` refuses, so setup stopped at
+  step 3. *Phase 53.*
+- **An edge image can be built with its commit id.** `docker-compose.yml` now
+  passes `RENOVO_BUILD` to the build, and the install guide gives the one
+  command, so `docker compose up -d --build` shows `1.21.0 (a1b2c3d)` rather
+  than the bare version. *Phase 53.*
+- **Code comments and a migration note no longer say Renovo keeps no payment
+  ledger,** and the attachment migration's note says what a rollback restores.
+  *Phase 53.*
+
 ## [1.21.0] - 2026-10-27
 
 ### Changed
