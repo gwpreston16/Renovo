@@ -206,7 +206,9 @@ final class ForecastScreenService
                 'estimate' => StatsService::chargesIncludeEstimate($month['events']),
                 // ...and so is whichever part holds it, which the month table
                 // marks beside the Total.
-                'regular_estimate' => StatsService::chargesIncludeEstimate($partEvents[ForecastService::CADENCE_REGULAR]),
+                'regular_estimate' => StatsService::chargesIncludeEstimate(
+                    $partEvents[ForecastService::CADENCE_REGULAR],
+                ),
                 'long_estimate' => StatsService::chargesIncludeEstimate($partEvents[ForecastService::CADENCE_LONG]),
             ];
 

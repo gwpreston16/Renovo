@@ -65,7 +65,7 @@ can be moved.
 | 54 | [Tag integrity, from the known-issues log](docs/phases/PHASE-54.md) | — | None | ✅ done |
 | 55 | [Security and backup test gaps, from the known-issues log](docs/phases/PHASE-55.md) | — | None | ✅ done |
 | 56 | [Logo storage and sign-in edges, from the known-issues log](docs/phases/PHASE-56.md) | — | None | ✅ done |
-| 57 | [Screen-reader labels and estimate marks, from the known-issues log](docs/phases/PHASE-57.md) | — | None | 🚧 in progress |
+| 57 | [Screen-reader labels and estimate marks, from the known-issues log](docs/phases/PHASE-57.md) | — | None | ✅ done |
 | 58 | [Scenario cycles, one-off fences, sign-in timing and update-check tests, from the known-issues log](docs/phases/PHASE-58.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos

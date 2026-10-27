@@ -8,6 +8,35 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Keyboard focus stays on the control you used.** After a filter chip, a sort
+  header, Previous/Next, a calendar month or day, a spend-trend choice or a
+  price-history page swaps its region, focus stays on that control (or on the
+  region's heading when the control is gone, such as Next on the last page),
+  and a screen reader is told what the region now shows. *Phase 57.*
+- **Screen readers hear the sorted column and the usage rating.** The sorted
+  column of the subscription list says which way it runs, a usage rating is
+  read as "4 out of 5" rather than as star characters, and a cost-per-use
+  dash says no uses are recorded. *Phase 57.*
+- **Member actions and category colour pickers name their row.** "Revoke login
+  for Sam", "Colour of Streaming", and so on, instead of the same label on every
+  row. *Phase 57.*
+- **A scenario's "With changes" figures are marked "≈" only when they hold a
+  varying bill.** Cancelling the only varying bill leaves the figures a plain
+  £10.00 (or £0.00 when nothing is left); Now and the Difference keep the mark.
+  *Phase 57.*
+- **The forecast's month table marks the part that holds the varying bill.**
+  Regular or Long-term is drawn "≈" beside the Total, where it was the Total
+  alone. *Phase 57.*
+- **The API reference and OpenAPI contract match the code.** The attachment
+  download's content type, the `contributor` role, the `owner_user_id` rule for a
+  Contributor, the fields that keep their value on a `PUT` (now including the
+  intervals), the read-only promo fields, the payment-method `logo_path`, the
+  `422` example, the `split_mode` values, the `tag` list filter and the
+  demonstration-mode `403` are described as they behave. No endpoint changes,
+  so the contract version stays 1.9.4. *Phase 57.*
+
 ## [1.25.0] - 2026-10-27
 
 ### Fixed

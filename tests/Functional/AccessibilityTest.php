@@ -399,11 +399,14 @@ final class AccessibilityTest extends DatabaseTestCase
     public function testTheListAndCalendarStatusesNameTheResults(): void
     {
         self::assertStringContainsString('1 subscription matches</p>', $this->get('/subscriptions'));
-        self::assertMatchesRegularExpression('~role="status" data-swap-status>[A-Z][a-z]+ \d{4}: \d+ charges?</p>~', $this->get('/calendar'));
+        self::assertMatchesRegularExpression(
+            '~role="status" data-swap-status>[A-Z][a-z]+ \d{4}: \d+ charges?</p>~',
+            $this->get('/calendar'),
+        );
     }
 
     /**
-     * @return list<array{0: string, 1: string}>
+     * @return array<string, array{0: string, 1: string}>
      */
     public static function sortChoices(): array
     {
@@ -448,7 +451,8 @@ final class AccessibilityTest extends DatabaseTestCase
         $html = $this->get('/stats');
 
         self::assertMatchesRegularExpression(
-            '~<span class="muted"[^>]*aria-hidden="true">—</span>\s*<span class="visually-hidden">[^<]*[Nn]o uses[^<]*</span>~u',
+            '~<span class="muted"[^>]*aria-hidden="true">—</span>\s*'
+            . '<span class="visually-hidden">[^<]*[Nn]o uses[^<]*</span>~u',
             $html,
         );
     }
@@ -461,12 +465,21 @@ final class AccessibilityTest extends DatabaseTestCase
 
         $html = $this->get('/settings/members');
 
-        preg_match_all('/<button\b[^>]*class="[^"]*member-action[^"]*"[^>]*>(.*?)<\/button>/s', $html, $buttons, PREG_SET_ORDER);
+        preg_match_all(
+            '/<button\b[^>]*class="[^"]*member-action[^"]*"[^>]*>(.*?)<\/button>/s',
+            $html,
+            $buttons,
+            PREG_SET_ORDER,
+        );
         self::assertGreaterThanOrEqual(4, count($buttons));
 
         $names = [];
         foreach ($buttons as $button) {
-            self::assertSame(1, preg_match('/aria-label="([^"]+)"/', $button[0], $label), 'A member action has no aria-label.');
+            self::assertSame(
+                1,
+                preg_match('/aria-label="([^"]+)"/', $button[0], $label),
+                'A member action has no aria-label.',
+            );
             $names[] = $label[1];
         }
 

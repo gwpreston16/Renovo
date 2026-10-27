@@ -210,7 +210,8 @@ final class ApiDocCoverageTest extends TestCase
 
         // `split_mode`: the SplitMode values.
         $modes = array_map(static fn (SplitMode $mode): string => $mode->value, SplitMode::cases());
-        self::assertSame($modes, $spec['components']['schemas']['Subscription']['allOf'][1]['properties']['split_mode']['enum']);
+        $subscription = $spec['components']['schemas']['Subscription']['allOf'][1];
+        self::assertSame($modes, $subscription['properties']['split_mode']['enum']);
         foreach ($modes as $mode) {
             self::assertStringContainsString('`' . $mode . '`', $prose);
         }
