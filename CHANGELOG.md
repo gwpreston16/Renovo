@@ -8,6 +8,33 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Changed
+
+- **An impossible date, or a text field of the wrong JSON type, is a `422`.**
+  `next_payment_date: "2026-02-30"`, or any date field that
+  does not exist, is refused with "Enter a valid date" instead of being stored
+  as 2 March; the same goes for the effective date of a price change. A text
+  field the API reads (`plan`, `visibility`, a date, `notes`, …) sent as
+  `true`, `false`, a list or an object is refused on that field instead of
+  being read as empty, which cleared the stored value. An absent key and an
+  explicit `null` mean what they did. The OpenAPI document is now version
+  1.9.3. *Phase 52.*
+- **Resuming a fixed term with no billing date left is a `422`.** A term the
+  catch-up ended, given a new end still before the first billing date from
+  today, used to resume and then be ended again with a cancel date before the
+  resume. *Phase 52.*
+
+### Fixed
+
+- **Making a fixed term one-off or lifetime clears its end.** Through an API
+  `PUT` that left `payments_end_on` out, the old end stayed on the row and
+  `GET` still returned it, and turning the row back to recurring was refused
+  against a date the client never sent. *Phase 52.*
+- **The OpenAPI document matches what the API does.** The date, pause and
+  anchor notes, and the `RateLimit-Limit`, `RateLimit-Remaining` and
+  `RateLimit-Reset` headers on every counted response, are now in the contract,
+  not only on the `429`. *Phase 52.*
+
 ## [1.20.0] - 2026-10-26
 
 ### Changed

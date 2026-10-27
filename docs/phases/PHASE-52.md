@@ -130,16 +130,16 @@ None.
 
 ## Status
 
-- [ ] K39: impossible dates refused
-- [ ] K91: wrongly typed fields refused
-- [ ] K90: leaving a fixed term clears its end
-- [ ] K86: resume with no billing date left refused
-- [ ] K92: OpenAPI field descriptions match `docs/api.md`
-- [ ] K123: rate-limit headers declared on every counted response
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 52 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K39: impossible dates refused
+- [x] K91: wrongly typed fields refused
+- [x] K90: leaving a fixed term clears its end
+- [x] K86: resume with no billing date left refused
+- [x] K92: OpenAPI field descriptions match `docs/api.md`
+- [x] K123: rate-limit headers declared on every counted response
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 52 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

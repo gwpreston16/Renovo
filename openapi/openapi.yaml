@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.2"
+  version: "1.9.3"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
