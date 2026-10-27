@@ -105,7 +105,7 @@ None.
 - **Decided 2026-10-27:** K57 drops `/favicon.ico` from the candidates and tries
   the PNG. Not chosen: keeping the ICO request and skipping it when storage
   refuses the type (same result, one wasted request).
-- **Assumed:** K120 stops the delete when another row names the same path; it
+- **Confirmed 2026-10-27:** K120 stops the delete when another row names the same path; it
   does not repair existing rows (a co-member's path saved under K1 stays as it
   is, and just never causes a deletion).
 - **Decided 2026-10-27:** ships as its own patch release (v1.24.1) once merged,
