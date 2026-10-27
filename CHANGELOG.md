@@ -8,6 +8,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.22.0] - 2026-10-27
+
 ### Changed
 
 - **The README names the payment ledger and off-server backup copies.** The
@@ -876,7 +878,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.21.0...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.22.0...HEAD
+[1.22.0]: https://github.com/gwpreston16/Renovo/compare/v1.21.0...v1.22.0
 [1.21.0]: https://github.com/gwpreston16/Renovo/compare/v1.20.0...v1.21.0
 [1.20.0]: https://github.com/gwpreston16/Renovo/compare/v1.19.0...v1.20.0
 [1.19.0]: https://github.com/gwpreston16/Renovo/compare/v1.18.0...v1.19.0

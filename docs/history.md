@@ -599,6 +599,14 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   rate-limit headers and the date, pause and anchor notes are in the OpenAPI
   contract, now version 1.9.3. No migrations. See
   [API reference](api.md).
+- **Phase 53 — dev tooling, docs and test gaps, from the known-issues log —
+  complete (1.22.0).** `./bin/dev-setup.sh` runs on Linux and in Git Bash, and
+  `docker-compose.yml` passes `RENOVO_BUILD` so an edge image shows its commit
+  id. The README names the payment ledger and off-server backup copies, and
+  code comments and a migration note no longer say Renovo keeps no ledger. New
+  tests cover the Viewer route table, an instance admin who is also a household
+  member, and a search for `%` or `_`. The OpenAPI document is unchanged. No
+  migrations. See [Install](install.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
