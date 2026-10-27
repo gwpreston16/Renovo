@@ -34,12 +34,24 @@ final class FakeGuardedClient implements GuardedClient
         private readonly string $body,
         private readonly ?BlockedTargetException $failure,
         private readonly bool $failWithUrl = false,
+        /** @var array<string, string>|null */
+        private readonly ?array $bodiesByPath = null,
     ) {
     }
 
     public static function returning(string $body = '', int $status = 200): self
     {
         return new self($status, $body, null);
+    }
+
+    /**
+     * A site that answers each path with its own body and 404s the rest.
+     *
+     * @param array<string, string> $bodies Response body by request path.
+     */
+    public static function serving(array $bodies): self
+    {
+        return new self(404, '', null, false, $bodies);
     }
 
     /**
@@ -89,6 +101,14 @@ final class FakeGuardedClient implements GuardedClient
 
         if ($this->failWithUrl) {
             throw HttpClientException::transport($request, 'the connection timed out');
+        }
+
+        if ($this->bodiesByPath !== null) {
+            $body = $this->bodiesByPath[$request->getUri()->getPath()] ?? null;
+
+            return (new ResponseFactory())
+                ->createResponse($body === null ? 404 : 200)
+                ->withBody((new StreamFactory())->createStream($body ?? ''));
         }
 
         return (new ResponseFactory())
