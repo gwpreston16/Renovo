@@ -475,6 +475,17 @@ final class FixedTermTest extends DatabaseTestCase
         self::assertSame('2026-07-01', $row->nextPaymentDate?->format('Y-m-d'));
     }
 
+    public function testTheQuickResumeAcceptsAnEndOnTheFirstBillingDate(): void
+    {
+        $id = $this->endedTermUncancelled();
+        $this->service->update($this->scope(), $id, ['is_active' => '0', 'payments_end_on' => '2026-07-01']
+            + $this->formInput('2026-02-01'));
+
+        $this->service->setActive($this->scope(), $id, true);
+
+        self::assertTrue($this->find($id)->isActive);
+    }
+
     /**
      * A monthly term the catch-up ended in February, undone, on 10 June.
      */

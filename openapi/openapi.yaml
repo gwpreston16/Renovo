@@ -1974,6 +1974,10 @@ components:
       description: |
         The writable half of a subscription. Everything the web form can set is
         here; the derived figures and the logo are not.
+
+        Every text field (`name`, `notes`, `plan`, `visibility` and the rest)
+        takes a string or null. A true, false, list or object there is a 422 on
+        that field, not a cleared value.
       properties:
         name: { type: string, maxLength: 150 }
         notes: { type: string, nullable: true, maxLength: 5000 }

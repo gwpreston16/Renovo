@@ -1031,6 +1031,11 @@ final class BackupRestoreTest extends DatabaseTestCase
 
         self::assertSame(1, $summary['subscriptions']);
         self::assertSame(1, $summary['skipped']);
+        $restored = array_map(
+            static fn ($s): string => $s->name,
+            $this->subscriptions->allForStats($this->target, activeOnly: false),
+        );
+        self::assertSame([$data['subscriptions'][1]['name']], $restored);
     }
 
     public function testABadPaymentRowInAnArchiveIsSkippedNotWritten(): void

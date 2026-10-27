@@ -212,6 +212,30 @@ final class BulkActionTest extends DatabaseTestCase
         self::assertTrue($this->activeState($id));
     }
 
+    public function testABulkResumeAcceptsAnEndOnTheFirstBillingDate(): void
+    {
+        // Today is 15 Jan 2026, so the first billing date from today is 1 Feb.
+        $id = $this->subscriptions->create($this->scope(), [
+            'name' => 'Phone',
+            'price_minor' => 3000,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2025-12-01',
+            'anchor_day' => 1,
+            'payments_end_on' => '2026-02-01',
+            'is_active' => false,
+        ], []);
+
+        $changed = $this->bulk->apply($this->scope(), [
+            'action' => BulkActionService::ACTION_ACTIVATE,
+            'ids' => [$id],
+        ]);
+
+        self::assertSame(1, $changed);
+        self::assertTrue($this->activeState($id));
+    }
+
     public function testABulkResumeLeavesAFixedTermWithNoBillingDateLeftPaused(): void
     {
         // Today is 15 Jan 2026. Paused on 1 Dec with the last payment on 20 Dec:
