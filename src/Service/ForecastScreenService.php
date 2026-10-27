@@ -178,10 +178,12 @@ final class ForecastScreenService
 
         foreach ($months as $index => $month) {
             $parts = [ForecastService::CADENCE_REGULAR => [], ForecastService::CADENCE_LONG => []];
+            $partEvents = [ForecastService::CADENCE_REGULAR => [], ForecastService::CADENCE_LONG => []];
             foreach ($month['events'] as $charge) {
                 $cadence = $this->forecast->cadenceOf($charge['subscription']);
                 $code = $charge['amount']->currency;
                 $parts[$cadence][$code] = ($parts[$cadence][$code] ?? 0) + $charge['amount']->amountMinor;
+                $partEvents[$cadence][] = $charge;
             }
 
             $regular = $drawable ? $this->combined($parts[ForecastService::CADENCE_REGULAR], $currency) : 0;
@@ -202,6 +204,10 @@ final class ForecastScreenService
                 'total_display' => $this->money->formatMinor($total, $currency),
                 // A bill whose amount varies is in the month: its total is an estimate.
                 'estimate' => StatsService::chargesIncludeEstimate($month['events']),
+                // ...and so is whichever part holds it, which the month table
+                // marks beside the Total.
+                'regular_estimate' => StatsService::chargesIncludeEstimate($partEvents[ForecastService::CADENCE_REGULAR]),
+                'long_estimate' => StatsService::chargesIncludeEstimate($partEvents[ForecastService::CADENCE_LONG]),
             ];
 
             // Ties go to the earlier month, as on the spend chart.

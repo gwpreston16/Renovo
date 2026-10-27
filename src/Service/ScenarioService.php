@@ -176,14 +176,20 @@ final class ScenarioService
         $twelveNow = $this->sumByCurrency($current);
         $twelveThen = $this->sumByCurrency($planned);
 
+        $appliedRows = $this->applied($all, $scenario);
+        $estimateNow = StatsService::includesEstimate($all) || StatsService::chargesIncludeEstimate($current);
+        $estimateThen = StatsService::includesEstimate($appliedRows) || StatsService::chargesIncludeEstimate($planned);
+
         return [
             'is_empty' => $scenario->isEmpty(),
             'horizon_months' => $horizon,
-            // Any bill whose amount varies in either picture makes every
-            // figure here an estimate.
-            'estimate' => StatsService::includesEstimate($all)
-                || StatsService::chargesIncludeEstimate($current)
-                || StatsService::chargesIncludeEstimate($planned),
+            // A figure is an estimate only when a bill whose amount varies is
+            // in it. Now and With changes are two pictures, and a scenario
+            // that cancels the only varying bill leaves the second without
+            // one; the Difference holds a varying bill from either.
+            'estimate' => $estimateNow || $estimateThen,
+            'estimate_current' => $estimateNow,
+            'estimate_scenario' => $estimateThen,
             'run_rate' => [
                 'current' => [
                     'monthly' => $this->figures($runRateNow['monthly']),
