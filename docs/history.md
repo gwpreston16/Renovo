@@ -621,6 +621,14 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   failure paths, including Test connection naming the step that failed. No
   behaviour changes. The OpenAPI document is unchanged. No migrations. See
   [Security](security.md) and [Operations](operations.md).
+- **Phase 56 — logo storage and sign-in edges, from the known-issues log —
+  complete (1.25.0).** A failed logo upload leaves no file behind, and
+  deleting a row, replacing its logo or removing it keeps a file another
+  subscription or payment method still uses. A site with a `/favicon.png` gets
+  its logo. A passkey sign-in to an unverified account is audited and counts
+  toward lockout, and starting a session no longer raises a deprecation notice
+  on PHP 8.5. The payment-method race logo cleanup is tested. The OpenAPI
+  document is unchanged. No migrations. See [Customising](features/customising.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
