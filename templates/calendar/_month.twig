@@ -34,9 +34,10 @@
                    hx-target="#calendar-month" hx-swap="outerHTML" hx-push-url="true">{{ t('state.today') }}</a>
 
                 {#
-                    Previous is drawn disabled on the current month rather than
-                    left out, so the control does not jump about as the month
-                    changes. There is no ledger to page back into.
+                    Previous is drawn disabled at the earliest month, rather
+                    than left out, so the control does not jump about as the
+                    month changes. The calendar pages back as far as the first
+                    recorded payment.
                 #}
                 {% if calendar.previous %}
                     <a class="icon-button"
