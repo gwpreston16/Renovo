@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–57
+## Planned — Phases 30–58
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -66,6 +66,7 @@ can be moved.
 | 55 | [Security and backup test gaps, from the known-issues log](docs/phases/PHASE-55.md) | — | None | ✅ done |
 | 56 | [Logo storage and sign-in edges, from the known-issues log](docs/phases/PHASE-56.md) | — | None | ✅ done |
 | 57 | [Screen-reader labels and estimate marks, from the known-issues log](docs/phases/PHASE-57.md) | — | None | 📋 planned |
+| 58 | [Scenario cycles, one-off fences, sign-in timing and update-check tests, from the known-issues log](docs/phases/PHASE-58.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -188,6 +189,7 @@ can be moved.
   log (K18, K59, K60, K88, K89, K47): focus stays put and swaps are announced,
   sort order, ratings and per-row actions are named, "≈" marks only figures that
   hold a varying bill, and ten API doc corrections.
+- **58 — Scenario cycles, one-off fences, sign-in timing and update-check tests.** A batch from the known-issues log (K37, K74, K26, K134, K103, K104): a scenario's custom cycle change opens the edit form, a Contributor gets the fence's 404 before the ledger's 422, an unknown address takes as long to sign in as a real one, a new category's colour starts automatic, and the update check's guards and wiring are tested.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
