@@ -8,11 +8,11 @@ namespace App\Domain;
  * The window a budget measures.
  *
  * Both are *rolling* windows starting today rather than calendar periods, and
- * the choice is deliberate. A calendar month would have to include the charges
- * already taken earlier in the month, and this application keeps no payment
- * ledger — it knows what is due, not what has been paid. A budget that silently
- * omitted the first three weeks of the month would read as comfortably under
- * when it was not.
+ * the choice is deliberate. The alert projects what is still to come, so a
+ * breach is raised the same way whichever day or way a payment was recorded,
+ * and a window that began on the 1st would lose sight of the first weeks of the
+ * month as soon as they passed. The screens read the calendar period instead
+ * (charged so far plus the forecast); see docs/features/money.md.
  *
  * So "monthly" means the next month from today, and "annual" the next twelve.
  * The figure is always complete, and it is stated that way in the UI.

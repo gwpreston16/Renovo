@@ -23,6 +23,14 @@ final class RouteTableViewerTest extends ApiTestCase
     private const MUTATING = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
     /**
+     * Prefixes that cover per-user routes only by name: a route under one of
+     * them is exempt only if its exact pattern is in viewerMayUseExactly(), so
+     * a new mutating route under `/dashboard/` or `/profile/` is sent as a
+     * Viewer and must be refused (K125).
+     */
+    private const EXACT_ONLY = ['/dashboard/', '/profile/', '/settings/notifications/'];
+
+    /**
      * Route-pattern prefixes a Viewer may use, and why. Matched against the
      * route's own pattern, so `/profile/` covers every account screen.
      *
@@ -41,16 +49,53 @@ final class RouteTableViewerTest extends ApiTestCase
             '/accept-invite' => 'Accepting an invitation: guest-facing, authorised by the emailed token.',
             '/logout' => 'Signing out is every signed-in user\'s.',
             // The user's own account, not the household's data.
-            '/profile/' => 'Their own account: theme, details, password, avatar, two-step sign-in, sessions.',
             '/settings/api-tokens' => 'Their own API tokens, which carry at most their own role.',
-            '/settings/notifications/' => 'Their own notification channels and preferences.',
             // Per-user view preferences that change no household data.
-            '/dashboard/' => 'Their own dashboard view and card layout.',
             '/subscriptions/density' => 'Their own list density.',
             '/saved-views' => 'Their own saved list views.',
             '/calendar/feed-link' => 'Their own calendar feed link, which shows only what they can see.',
             '/forecast/scenario/selection' => 'Which rows their own scenario lists; nothing is stored on a row.',
             '/updates/dismiss' => 'Hiding the update banner for themselves.',
+        ];
+    }
+
+    /**
+     * The exact route patterns under EXACT_ONLY a Viewer may use, and why.
+     *
+     * @return array<string, string>
+     */
+    private static function viewerMayUseExactly(): array
+    {
+        $own = 'Their own account, not the household\'s data.';
+
+        return [
+            '/dashboard/view' => 'Their own dashboard view.',
+            '/dashboard/layout' => 'Their own card layout.',
+            '/profile/theme' => $own,
+            '/profile/preferences' => $own,
+            '/profile/details' => $own,
+            '/profile/email/resend' => $own,
+            '/profile/email/cancel' => $own,
+            '/profile/password' => $own,
+            '/profile/avatar' => $own,
+            '/profile/avatar/delete' => $own,
+            '/profile/two-step/totp' => $own,
+            '/profile/two-step/totp/confirm' => $own,
+            '/profile/two-step/totp/cancel' => $own,
+            '/profile/two-step/totp/disable' => $own,
+            '/profile/two-step/recovery-codes' => $own,
+            '/profile/two-step/passkeys/options' => $own,
+            '/profile/two-step/passkeys' => $own,
+            '/profile/two-step/passkeys/{id:[0-9]+}/rename' => $own,
+            '/profile/two-step/passkeys/{id:[0-9]+}/delete' => $own,
+            '/profile/sessions/revoke' => $own,
+            '/profile/sessions/revoke-others' => $own,
+            '/settings/notifications/preferences' => 'Their own notification preferences.',
+            '/settings/notifications/channels' => 'Their own notification channels.',
+            '/settings/notifications/channels/{id:[0-9]+}' => 'Their own notification channels.',
+            '/settings/notifications/channels/{id:[0-9]+}/active' => 'Their own notification channels.',
+            '/settings/notifications/channels/{id:[0-9]+}/test' => 'Their own notification channels.',
+            '/settings/notifications/channels/{id:[0-9]+}/delete' => 'Their own notification channels.',
         ];
     }
 
@@ -91,7 +136,10 @@ final class RouteTableViewerTest extends ApiTestCase
         // The walk must have found the routes (an empty table passes anything)…
         self::assertGreaterThan(60, $checked);
         // …and every exemption must still match a route, so the list cannot rot.
-        self::assertSame([], array_values(array_diff(array_keys(self::viewerMayUse()), array_keys($allowed))));
+        self::assertSame([], array_values(array_diff(
+            [...array_keys(self::viewerMayUse()), ...array_keys(self::viewerMayUseExactly())],
+            array_keys($allowed),
+        )));
     }
 
     public function testTheRoutesThatWereMissedBeforeAreInTheTable(): void
@@ -110,8 +158,27 @@ final class RouteTableViewerTest extends ApiTestCase
         self::assertSame(403, $this->viewerRequest('POST', '/import/cancel')->getStatusCode());
     }
 
+    public function testAMutatingRouteUnderAnExemptPrefixIsNotExempt(): void
+    {
+        // A route the list has never heard of, under each prefix that is exact-only.
+        foreach (self::EXACT_ONLY as $prefix) {
+            self::assertNull($this->reasonFor($prefix . 'some-new-household-action'), $prefix);
+        }
+
+        // The real per-user routes are still exempt.
+        self::assertNotNull($this->reasonFor('/dashboard/layout'));
+        self::assertNotNull($this->reasonFor('/profile/two-step/passkeys/{id:[0-9]+}/rename'));
+
+        // A prefix that is not exact-only still covers what is under it.
+        self::assertNotNull($this->reasonFor('/login/two-factor'));
+    }
+
     private function reasonFor(string $pattern): ?string
     {
+        if (isset(self::viewerMayUseExactly()[$pattern])) {
+            return self::viewerMayUseExactly()[$pattern];
+        }
+
         $prefix = $this->prefixFor($pattern);
 
         return $prefix === '' ? null : self::viewerMayUse()[$prefix];
@@ -119,6 +186,10 @@ final class RouteTableViewerTest extends ApiTestCase
 
     private function prefixFor(string $pattern): string
     {
+        if (isset(self::viewerMayUseExactly()[$pattern])) {
+            return $pattern;
+        }
+
         foreach (array_keys(self::viewerMayUse()) as $prefix) {
             if ($pattern === $prefix || str_starts_with($pattern, $prefix)) {
                 return $prefix;

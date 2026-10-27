@@ -336,7 +336,7 @@ fi
 mkdir -p public/build
 
 # A stale container from the other engine holds the same service name.
-build_log="$(mktemp -t renovo-build)"
+build_log="$(mktemp "${TMPDIR:-/tmp}/renovo-build.XXXXXX")"
 if ! compose up -d --build >"$build_log" 2>&1; then
     sed 's/^/      /' "$build_log" | tail -20
     clash=0
@@ -513,7 +513,7 @@ if [ "$SAMPLE_DATA" -eq 1 ]; then
     if [ "$SETUP_NEEDED" -eq 0 ]; then
         warn "skipped — the instance already has accounts, and this would need to sign in as one"
     else
-        JAR="$(mktemp -t renovo-setup)"
+        JAR="$(mktemp "${TMPDIR:-/tmp}/renovo-setup.XXXXXX")"
         trap 'rm -f "$JAR" "${MEMBER_JAR:-}"' EXIT
 
         # Pulled out with parameter expansion rather than a pipeline: a
@@ -907,7 +907,7 @@ if [ "$SAMPLE_DATA" -eq 1 ]; then
                 # every helper above reads it when it is called, so pointing it
                 # somewhere else is the whole of "sign in as somebody else".
                 DEV_JAR="$JAR"
-                MEMBER_JAR="$(mktemp -t renovo-setup-member)"
+                MEMBER_JAR="$(mktemp "${TMPDIR:-/tmp}/renovo-setup-member.XXXXXX")"
                 JAR="$MEMBER_JAR"
 
                 accept_status=000

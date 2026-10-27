@@ -681,6 +681,54 @@ final class SubscriptionsScreenTest extends DatabaseTestCase
         self::assertSame(404, $refused->getStatusCode());
     }
 
+    public function testAnInstanceAdminContributorCannotEditOthersRows(): void
+    {
+        $adminId = $this->instanceAdminMember(Role::Contributor);
+
+        // The flag widens nothing: in SHARED mode the Contributor reads the
+        // household, and is refused a write to another member's row as any
+        // Contributor is.
+        self::assertContains('Streaming', $this->rowNames($this->get('/subscriptions', $adminId)));
+
+        $this->session->set(AuthenticationMiddleware::SESSION_USER_ID, $adminId);
+        $refused = $this->post('/subscriptions/' . $this->streamingId . '/toggle', $adminId);
+        self::assertSame(404, $refused->getStatusCode());
+        $refused = $this->post('/subscriptions/' . $this->streamingId . '/delete', $adminId);
+        self::assertSame(404, $refused->getStatusCode());
+    }
+
+    public function testAnInstanceAdminMemberDoesNotSeeOthersPrivateRowsInIsolatedMode(): void
+    {
+        $this->container()->get(InstanceSettingsService::class)->setIsolationMode(IsolationMode::Isolated);
+        $adminId = $this->instanceAdminMember(Role::Editor);
+
+        $response = $this->get('/subscriptions', $adminId);
+
+        self::assertSame(200, $response->getStatusCode());
+        // Nothing of theirs is another member's to read, though they run the
+        // instance and sit in the household. (The search box's placeholder
+        // says "Streaming", so only the list is searched.)
+        self::assertSame([], $this->rowNames($response));
+        $list = $this->section($this->body($response), 'subscription-list');
+        foreach (['Streaming', 'Gym membership'] as $name) {
+            self::assertStringNotContainsString($name, $list);
+        }
+    }
+
+    private function instanceAdminMember(Role $role): int
+    {
+        $adminId = (new UserRepository($this->db))->create(
+            'member-admin@example.test',
+            'Member Admin',
+            'hash',
+            true,
+            new DateTimeImmutable(),
+        );
+        (new MembershipRepository($this->db))->create($this->householdId, $adminId, $role);
+
+        return $adminId;
+    }
+
     public function testAnIsolatedParticipantSeesTheRowButIsOfferedNoAction(): void
     {
         $this->container()->get(InstanceSettingsService::class)->setIsolationMode(IsolationMode::Isolated);

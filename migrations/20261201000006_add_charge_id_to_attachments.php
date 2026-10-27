@@ -15,9 +15,12 @@ use Phinx\Migration\AbstractMigration;
  * `period_date` is exactly a charge's `due_date` on the same subscription is
  * that charge's invoice. On an upgrade the ledger is still empty, so it links
  * nothing — `ledger:backfill` runs the same step once it has written the
- * payments. It matters on a rollback and re-migrate, where it restores every
- * link: an invoice filed against a payment carries that payment's date. Portable SQL: a correlated
- * subquery rather than an UPDATE … FROM, which MySQL does not accept.
+ * payments. It matters on a rollback and re-migrate of this migration alone,
+ * where it restores every link: an invoice filed against a payment carries that
+ * payment's date. Once the ledger migration is rolled back too, the payments
+ * added by hand are gone, and their invoices come back filed against the
+ * subscription. Portable SQL: a correlated subquery rather than an
+ * UPDATE … FROM, which MySQL does not accept.
  *
  * On MySQL, where DDL is not transactional, a failure part-way leaves the
  * column without its foreign key or index, or — when the link step fails after

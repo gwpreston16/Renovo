@@ -28,6 +28,8 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile
       target: app
+      args:
+        RENOVO_BUILD: ${RENOVO_BUILD:-}
     restart: unless-stopped
     depends_on:
       database:

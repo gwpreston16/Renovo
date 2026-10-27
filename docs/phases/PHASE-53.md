@@ -152,24 +152,25 @@ None.
   Not chosen: leave the README as it is.
 - **K119.** *Decided 2026-10-26:* extend the existing backups bullet. Not
   chosen: a separate bullet; leave the README as it is.
-- **Ships** as its own patch release, 1.19.1, once merged. Nothing here touches
-  code that Phases 51 and 52 change.
+- **Ships** as its own patch release once merged. *Changed 2026-10-27:* 1.21.1,
+  not 1.19.1 (master is already at 1.21.0). Nothing here touches code that
+  Phases 51 and 52 changed.
 
 ## Status
 
-- [ ] K121: `mktemp` templates portable
-- [ ] K101: `RENOVO_BUILD` forwarded by compose and documented
-- [ ] K83: migration docblock corrected
-- [ ] K84: four stale "no ledger" comments rewritten
-- [ ] K85: README Money bullet
-- [ ] K119: README backups bullet
-- [ ] K125: Viewer route test exempts named routes only
-- [ ] K126: instance-admin isolation tests
-- [ ] K127: literal `%` and `_` search tests
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 53 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K121: `mktemp` templates portable
+- [x] K101: `RENOVO_BUILD` forwarded by compose and documented
+- [x] K83: migration docblock corrected
+- [x] K84: four stale "no ledger" comments rewritten
+- [x] K85: README Money bullet
+- [x] K119: README backups bullet
+- [x] K125: Viewer route test exempts named routes only
+- [x] K126: instance-admin isolation tests
+- [x] K127: literal `%` and `_` search tests
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 53 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
