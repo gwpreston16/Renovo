@@ -127,6 +127,18 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml \
 # Or just: ./bin/dev-setup.sh --mysql
 ```
 
+### Building an edge image
+
+An image built from a commit rather than a release shows the commit's short id
+beside the version (`1.7.0 (a1b2c3d)`). Pass it as the `RENOVO_BUILD` build
+argument:
+
+```bash
+RENOVO_BUILD=$(git rev-parse --short HEAD) docker compose up -d --build
+```
+
+Left unset, the build is a release image and shows the bare version.
+
 ## Running without Docker
 
 ```bash

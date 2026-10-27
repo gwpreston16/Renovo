@@ -497,7 +497,8 @@ nothing is written at all.
 Every signed-in page names the release at the foot of the sidebar (and of the
 **More** sheet on a phone), and **Settings → Instance → Instance status** leads
 with a **Version** row. An image built from a commit rather than a release adds
-its short commit id: `1.7.0 (a1b2c3d)`, from the `RENOVO_BUILD` build argument.
+its short commit id: `1.7.0 (a1b2c3d)`, from the `RENOVO_BUILD` build argument
+([how to pass it](install.md#building-an-edge-image)).
 A token can read the same through `GET /api/v1/instance`. Nothing without a
 sign-in or a token is told the version — not the sign-in page, not an error
 page, not `/healthz` — since an exact release is a map to its known issues.
