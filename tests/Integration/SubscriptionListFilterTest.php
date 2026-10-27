@@ -107,6 +107,25 @@ final class SubscriptionListFilterTest extends DatabaseTestCase
         self::assertSame([], $this->names($shared, new SubscriptionFilter(ownerUserId: 999_999)));
     }
 
+    public function testPercentAndUnderscoreAreLiteral(): void
+    {
+        $alice = $this->scope($this->alice);
+        foreach (['50% off', '50x', 'a_b', 'axb', 'back\\slash', 'backXslash'] as $name) {
+            $this->add($alice, $name, 'GBP', SubscriptionType::Recurring, null, []);
+        }
+
+        // Without escapeLike(), `%` and `_` are wildcards: "50%" would match
+        // "50x" too, "a_b" would match "axb", and `\` would escape the next
+        // character instead of standing for itself.
+        self::assertSame(['50% off'], $this->names($alice, new SubscriptionFilter(search: '50%')));
+        self::assertSame(['a_b'], $this->names($alice, new SubscriptionFilter(search: 'a_b')));
+        self::assertSame(['back\\slash'], $this->names($alice, new SubscriptionFilter(search: 'back\\s')));
+
+        // A lone wildcard matches only a name that really holds it.
+        self::assertSame(['50% off'], $this->names($alice, new SubscriptionFilter(search: '%')));
+        self::assertSame(['a_b'], $this->names($alice, new SubscriptionFilter(search: '_')));
+    }
+
     public function testFiltersCombine(): void
     {
         $shared = $this->scope($this->alice);
