@@ -12,6 +12,7 @@ use App\Domain\IsolationMode;
 use App\Security\CsrfTokenManager;
 use App\Security\Scope;
 use App\Repository\LogoUsageRepository;
+use App\Repository\PaymentMethodRepository;
 use App\Service\LogoStorage;
 use App\Service\SubscriptionService;
 use App\Tests\Support\FakeUpload;
@@ -346,16 +347,8 @@ final class LogoPathTest extends ApiTestCase
     public function testAFileAPaymentMethodUsesIsKeptWhenASubscriptionLetsGo(): void
     {
         [$mine, $file] = $this->subscriptionWithAStoredLogo();
-        $this->db->execute(
-            'INSERT INTO payment_methods (household_id, name, logo_path, created_at, updated_at)'
-            . ' VALUES (:household, :name, :path, :now, :now)',
-            [
-                'household' => $this->householdId,
-                'name' => 'Card',
-                'path' => $this->logoOf($mine),
-                'now' => '2026-06-01 09:00:00',
-            ],
-        );
+        $scope = Scope::forMember($this->ownerId, false, $this->householdId, Role::OwnerAdmin, IsolationMode::Shared);
+        (new PaymentMethodRepository($this->db))->create($scope, 'Card', null, null, $this->logoOf($mine));
 
         $removed = $this->api('DELETE', '/api/v1/subscriptions/' . $mine . '/logo', $this->ownerToken);
 
