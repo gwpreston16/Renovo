@@ -153,7 +153,8 @@
                                     {% if member.isPending() and member.canReceiveMail %}
                                         <form method="post" action="/settings/members/{{ member.userId }}/invite" class="inline">
                                             {{ csrf_field() }}
-                                            <button type="submit" class="button button-quiet member-action">
+                                            <button type="submit" class="button button-quiet member-action"
+                                                    aria-label="{{ t('members.resend_invite_for', {'name': member.displayName}) }}">
                                                 {{ icon('send') }}{{ t('members.resend_invite') }}
                                             </button>
                                         </form>
@@ -162,7 +163,8 @@
                                     {% if member.canReceiveMail %}
                                         <form method="post" action="/settings/members/{{ member.userId }}/reset-password" class="inline">
                                             {{ csrf_field() }}
-                                            <button type="submit" class="button button-outline member-action">
+                                            <button type="submit" class="button button-outline member-action"
+                                                    aria-label="{{ t('members.send_reset_for', {'name': member.displayName}) }}">
                                                 {{ t('members.send_reset') }}
                                             </button>
                                         </form>
@@ -171,14 +173,16 @@
                                     {% if member.isDisabled %}
                                         <form method="post" action="/settings/members/{{ member.userId }}/restore" class="inline">
                                             {{ csrf_field() }}
-                                            <button type="submit" class="button button-quiet member-action">
+                                            <button type="submit" class="button button-quiet member-action"
+                                                    aria-label="{{ t('members.restore_login_for', {'name': member.displayName}) }}">
                                                 {{ t('members.restore_login') }}
                                             </button>
                                         </form>
                                     {% else %}
                                         <form method="post" action="/settings/members/{{ member.userId }}/revoke" class="inline">
                                             {{ csrf_field() }}
-                                            <button type="submit" class="button button-outline member-action">
+                                            <button type="submit" class="button button-outline member-action"
+                                                    aria-label="{{ t('members.revoke_login_for', {'name': member.displayName}) }}">
                                                 {{ t('members.revoke_login') }}
                                             </button>
                                         </form>

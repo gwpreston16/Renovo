@@ -28,16 +28,19 @@
 {% import _self as trend_card %}
 
 <section class="card trend-card" id="spend-trend" aria-labelledby="spend-trend-heading">
+    <p class="visually-hidden" role="status" data-swap-status>{{ t('dashboard.spend_trend_status', {
+        'choice': t('dashboard.spend_trend_by_' ~ trend.by),
+    }) }}</p>
     <header class="card-header">
         <div>
-            <h2 id="spend-trend-heading">{{ t('dashboard.spend_trend') }}</h2>
+            <h2 id="spend-trend-heading" tabindex="-1" data-focus-fallback>{{ t('dashboard.spend_trend') }}</h2>
             <p class="muted">{{ t('dashboard.spend_trend_note', {'count': 12, 'currency': trend.currency}) }}</p>
         </div>
 
         {% if trend.is_member_available %}
             <nav class="segmented" aria-label="{{ t('dashboard.spend_trend_choice') }}">
                 {% for choice in ['category', 'member'] %}
-                    <a class="segmented-option" href="/?trend={{ choice }}#spend-trend"
+                    <a id="trend-range-{{ choice }}" class="segmented-option" href="/?trend={{ choice }}#spend-trend"
                        hx-get="/?trend={{ choice }}" hx-target="#spend-trend" hx-swap="outerHTML"
                        hx-push-url="/?trend={{ choice }}"
                        aria-current="{{ trend.by == choice ? 'true' : 'false' }}">

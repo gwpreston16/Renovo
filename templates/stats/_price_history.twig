@@ -14,9 +14,13 @@
 
 <section class="card analytics-price-history" id="analytics-price-history"
          aria-labelledby="analytics-price-history-heading">
+    <p class="visually-hidden" role="status" data-swap-status>{{ t('stats.price_history_status', {
+        'page': history.page,
+        'pages': history.pages,
+    }) }}</p>
     <header class="card-header">
         <div>
-            <h2 id="analytics-price-history-heading">{{ t('stats.price_history') }}</h2>
+            <h2 id="analytics-price-history-heading" tabindex="-1" data-focus-fallback>{{ t('stats.price_history') }}</h2>
             <p class="muted">{{ t('stats.price_history_note') }}</p>
         </div>
     </header>
@@ -80,7 +84,7 @@
                 {% for step in [{'page': history.page - 1, 'label': t('action.previous'), 'show': history.page > 1},
                                 {'page': history.page + 1, 'label': t('action.next'), 'show': history.page < history.pages}] %}
                     {% if step.show %}
-                        <a class="button button-quiet"
+                        <a id="price-history-{{ step.page > history.page ? 'next' : 'previous' }}" class="button button-quiet"
                            href="/stats?history_page={{ step.page }}#analytics-price-history"
                            hx-get="/stats?history_page={{ step.page }}"
                            hx-target="#analytics-price-history" hx-select="#analytics-price-history"

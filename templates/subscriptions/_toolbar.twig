@@ -27,17 +27,17 @@
 #}
 <div id="list-filters" class="list-filters"{% if oob %} hx-swap-oob="true"{% endif %}>
     <nav class="chip-row" aria-label="{{ t('field.category') }}">
-        {{ bar.link(filter.toQueryString({'category': null, 'page': null}), t('state.all'), filter.categoryId is null, 'chip chip-action') }}
+        {{ bar.link(filter.toQueryString({'category': null, 'page': null}), t('state.all'), filter.categoryId is null, 'chip chip-action', 'filter-category-all') }}
         {% for category in categories %}
             {{ bar.link(filter.toQueryString({'category': category.id, 'page': null}), category.name,
-                filter.categoryId == category.id, 'chip chip-action') }}
+                filter.categoryId == category.id, 'chip chip-action', 'filter-category-' ~ category.id) }}
         {% endfor %}
     </nav>
 
     {% if tags is not empty %}
         <nav class="chip-row chip-row-tags" aria-label="{{ t('field.tags') }}">
             {% for tag in tags %}
-                {{ bar.link(filter.queryTogglingTag(tag.id), '#' ~ tag.name, tag.id in filter.tagIds, 'chip chip-action chip-tag') }}
+                {{ bar.link(filter.queryTogglingTag(tag.id), '#' ~ tag.name, tag.id in filter.tagIds, 'chip chip-action chip-tag', 'filter-tag-' ~ tag.id) }}
             {% endfor %}
         </nav>
     {% endif %}
@@ -46,10 +46,10 @@
         <div class="list-segment">
             <span class="group-label" id="status-filter-label">{{ t('field.status') }}</span>
             <nav class="segmented" aria-labelledby="status-filter-label">
-                {{ bar.link(filter.toQueryString({'status': null, 'page': null}), t('state.all'), filter.status is null, 'segmented-option') }}
+                {{ bar.link(filter.toQueryString({'status': null, 'page': null}), t('state.all'), filter.status is null, 'segmented-option', 'filter-status-all') }}
                 {% for status in statuses %}
                     {{ bar.link(filter.toQueryString({'status': status.value, 'page': null}),
-                        t('subscriptions.status_filter.' ~ status.value), filter.status == status, 'segmented-option') }}
+                        t('subscriptions.status_filter.' ~ status.value), filter.status == status, 'segmented-option', 'filter-status-' ~ status.value) }}
                 {% endfor %}
             </nav>
         </div>
@@ -63,8 +63,8 @@
             <div class="list-segment">
                 <span class="group-label" id="scope-filter-label">{{ t('subscriptions.scope') }}</span>
                 <nav class="segmented" aria-labelledby="scope-filter-label">
-                    {{ bar.link(filter.toQueryString({'scope': null, 'page': null}), t('visibility.household'), not filter.mine, 'segmented-option') }}
-                    {{ bar.link(filter.toQueryString({'scope': 'mine', 'page': null}), t('subscriptions.scope_mine'), filter.mine, 'segmented-option') }}
+                    {{ bar.link(filter.toQueryString({'scope': null, 'page': null}), t('visibility.household'), not filter.mine, 'segmented-option', 'filter-scope-household') }}
+                    {{ bar.link(filter.toQueryString({'scope': 'mine', 'page': null}), t('subscriptions.scope_mine'), filter.mine, 'segmented-option', 'filter-scope-mine') }}
                 </nav>
             </div>
         {% endif %}
@@ -148,12 +148,13 @@
 </div>
 
 {#
-    One filter link. `aria-current` marks the chosen one, which is what the
+    One filter link. Its `id` is built from what it chooses, so htmx can put
+    focus back on it when the swap redraws the row of chips. `aria-current` marks the chosen one, which is what the
     chip and segment styles key on, so what the eye reads from the fill is what
     a screen reader is told.
 #}
-{% macro link(query, label, active, class) %}
-    <a class="{{ class }}" href="/subscriptions{{ query ? '?' ~ query : '' }}"
+{% macro link(query, label, active, class, id) %}
+    <a id="{{ id }}" class="{{ class }}" href="/subscriptions{{ query ? '?' ~ query : '' }}"
        hx-get="/subscriptions{{ query ? '?' ~ query : '' }}"
        hx-target="#subscription-list" hx-select="#subscription-list"
        hx-swap="outerHTML" hx-push-url="true"
