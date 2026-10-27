@@ -404,7 +404,7 @@ return [
     'members.revoke_login_for' => 'Revoke login for {name}',
     'members.revoke_login' => 'Revoke login',
     'members.send_invitation' => 'Send invitation',
-    'members.send_reset_for' => 'Send password reset to {name}',
+    'members.send_reset_for' => 'Send reset to {name}',
     'members.send_reset' => 'Send reset',
     'members.subtitle' => '{household} · {count, plural, one {# person} other {# people}}',
     'members.table_heading' => 'Members',

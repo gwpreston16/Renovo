@@ -404,9 +404,8 @@ written before it must not clear it — or, for `visibility`, make a private
 subscription visible to the household, or, for an interval, turn a six-monthly
 policy monthly — by putting back a representation it never knew had the field.
 Send `null` (or, for `plan` and the two dates, an empty string) to clear one.
-The two intervals are the exception to "clear": an absent or `null` interval
-keeps the current one while the cycle is unchanged, and is 1 once the cycle
-changes.
+The two intervals are the exception to "clear": only an *absent* key keeps the
+current interval (while the cycle is unchanged); `null` or an empty value is 1.
 
 **A private subscription is invisible to everybody but its owner.** With
 `visibility: "payer"`, no other member's token — Owner/Admin included, in
@@ -448,7 +447,7 @@ the field the client sent: a bad price is under `price_minor`, a bad
 | --- | --- |
 | `400` | The request was malformed — a bad multipart body, an unreadable upload. |
 | `401` | No token presented, or it is revoked, expired, malformed or unknown. The four are one answer. A write sent with no bearer token, or another scheme, is a `401` too. |
-| `403` | The token does not hold the scope the route needs (the message names it), **or** the role does not permit this, **or** a token that can write was offered to the calendar feed, **or** the instance is a read-only demonstration: every write (`POST`, `PUT`, `DELETE`) is refused with the message "This instance is a read-only demonstration. Nothing here can be changed." |
+| `403` | The token does not hold the scope the route needs (the message names it), **or** the role does not permit this, **or** a token that can write was offered to the calendar feed, **or** the instance is a read-only demonstration: every write (any method but `GET`, `HEAD` and `OPTIONS`) is refused with the message "This instance is a read-only demonstration. Nothing here can be changed." |
 | `404` | No such row — **or** one the caller may not see. |
 | `422` | The body was understood but is not valid. |
 | `429` | Over a [rate limit](#rate-limits), or the address has failed token authentication ten times in five minutes. `Retry-After` says how many seconds to wait. |

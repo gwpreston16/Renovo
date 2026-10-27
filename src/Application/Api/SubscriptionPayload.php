@@ -118,10 +118,10 @@ final class SubscriptionPayload
             $input['amount_varies'] = self::flag($json, 'amount_varies', false);
         }
 
-        // And for the intervals. Absent or null is 1 on a new row, and on an
-        // edit keeps the interval of a cycle that has not changed — a client
+        // And for the intervals. Absent is 1 on a new row, and on an edit
+        // keeps the interval of a cycle that has not changed — a client
         // written before intervals existed must not turn a six-monthly policy
-        // monthly by putting it back.
+        // monthly by putting it back. An explicit null is 1 either way.
         if (array_key_exists('cycle_interval', $json)) {
             $input['cycle_interval'] = self::intString($json, 'cycle_interval');
         }

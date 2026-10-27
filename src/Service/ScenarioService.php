@@ -171,12 +171,12 @@ final class ScenarioService
         );
 
         $runRateNow = $this->stats->runRate($all);
-        $runRateThen = $this->stats->runRate($this->applied($all, $scenario));
+        $appliedRows = $this->applied($all, $scenario);
+        $runRateThen = $this->stats->runRate($appliedRows);
 
         $twelveNow = $this->sumByCurrency($current);
         $twelveThen = $this->sumByCurrency($planned);
 
-        $appliedRows = $this->applied($all, $scenario);
         $estimateNow = StatsService::includesEstimate($all) || StatsService::chargesIncludeEstimate($current);
         $estimateThen = StatsService::includesEstimate($appliedRows) || StatsService::chargesIncludeEstimate($planned);
 
