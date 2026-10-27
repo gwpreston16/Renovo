@@ -7,6 +7,7 @@ namespace App\Application\Api;
 use App\Domain\Currency;
 use App\Domain\Money;
 use App\Domain\Entity\Subscription;
+use App\Service\ValidationException;
 
 /**
  * Translates a JSON request body into the shape SubscriptionService expects.
@@ -37,6 +38,13 @@ use App\Domain\Entity\Subscription;
  */
 final class SubscriptionPayload
 {
+    /** The fields read as text; a boolean or an array is not one. */
+    private const STRING_FIELDS = [
+        'name', 'notes', 'website_url', 'currency', 'subscription_type', 'billing_cycle',
+        'next_payment_date', 'start_date', 'notice_period_unit', 'trial_end_date',
+        'converts_to_billing_cycle', 'visibility', 'plan', 'contract_ends_on', 'payments_end_on',
+    ];
+
     /**
      * Build a full service input from a JSON body.
      *
@@ -48,6 +56,8 @@ final class SubscriptionPayload
      */
     public static function toServiceInput(array $json, ?Subscription $existing = null): array
     {
+        self::refuseWrongTypes($json);
+
         $currency = Currency::normalise(self::string($json, 'currency') ?? $existing?->price->currency ?? '');
 
         $input = [
@@ -127,6 +137,29 @@ final class SubscriptionPayload
         }
 
         return $input;
+    }
+
+    /**
+     * A string field sent as a boolean, an array or an object is refused on
+     * that field. Read as empty it would clear what is stored (K91): `true` for
+     * `payments_end_on` would remove a fixed term, `[]` for `start_date`
+     * would drop the start. Absent and null keep their meaning.
+     *
+     * @param array<string, mixed> $json
+     * @throws ValidationException
+     */
+    private static function refuseWrongTypes(array $json): void
+    {
+        $errors = [];
+        foreach (self::STRING_FIELDS as $key) {
+            if (array_key_exists($key, $json) && (is_bool($json[$key]) || is_array($json[$key]))) {
+                $errors[$key] = 'error.json.wrong_type';
+            }
+        }
+
+        if ($errors !== []) {
+            throw new ValidationException($errors);
+        }
     }
 
     /**

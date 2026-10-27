@@ -23,6 +23,7 @@ use App\Repository\SubscriptionRepository;
 use App\Repository\TagRepository;
 use App\Security\Scope;
 use App\Support\Clock;
+use App\Support\IsoDate;
 use DateTimeImmutable;
 use InvalidArgumentException;
 
@@ -144,6 +145,21 @@ final class SubscriptionService
             // covered are skipped, as `setActive()` skips them.
             $paused = $this->pausedDates($existing, $data);
             $data['next_payment_date'] = $this->resumedDate($existing, $data);
+
+            // A fixed term whose end is still before the first billing date
+            // from today would be ended again by the next catch-up, with a
+            // cancel date before this resume (K86).
+            $end = array_key_exists('payments_end_on', $data)
+                ? $data['payments_end_on']
+                : $existing->paymentsEndOn?->format('Y-m-d');
+            if (
+                !$existing->isCancelled()
+                && is_string($end)
+                && is_string($data['next_payment_date'])
+                && $end < $data['next_payment_date']
+            ) {
+                throw ValidationException::field('payments_end_on', 'error.payments_end.no_billing_date');
+            }
         }
 
         $price = Money::of((int) $data['price_minor'], (string) $data['currency']);
@@ -273,7 +289,9 @@ final class SubscriptionService
 
         $endDate = $this->date($this->str($input, 'trial_end_date'));
         if ($endDate === null) {
-            $errors['trial_end_date'] = 'error.trial.end_date_required';
+            $errors['trial_end_date'] = trim($this->str($input, 'trial_end_date')) === ''
+                ? 'error.trial.end_date_required'
+                : 'error.date.invalid';
         }
 
         // The converts-to price is optional: plenty of trials convert to
@@ -1070,6 +1088,14 @@ final class SubscriptionService
         }
 
         foreach (['visibility', 'plan', 'contract_ends_on', 'payments_end_on', 'amount_varies'] as $column) {
+            // A one-off or lifetime row has no fixed term, so leaving the field
+            // out still clears the end it had: kept, it would come back to
+            // refuse a later switch to recurring against a date the client
+            // never sent (K90).
+            if ($column === 'payments_end_on' && !$type->countsTowardsRecurringTotals()) {
+                continue;
+            }
+
             if ($existing !== null && !array_key_exists($column, $input)) {
                 unset($data[$column]);
             }
@@ -1508,15 +1534,6 @@ final class SubscriptionService
 
     private function date(string $value): ?DateTimeImmutable
     {
-        $value = trim($value);
-        if ($value === '') {
-            return null;
-        }
-
-        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
-        $errors = DateTimeImmutable::getLastErrors();
-
-        // "2026-02-31" is not 3 March: an impossible date is no date.
-        return $date === false || ($errors !== false && $errors['warning_count'] > 0) ? null : $date;
+        return IsoDate::parse($value);
     }
 }

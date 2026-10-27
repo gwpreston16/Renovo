@@ -30,6 +30,7 @@ use App\Service\PriceHistoryService;
 use App\Service\SplitService;
 use App\Service\SubscriptionService;
 use App\Service\TrialService;
+use App\Service\ValidationException;
 use App\Support\FrozenClock;
 use App\Tests\Support\TestFixedTermService;
 use App\Tests\Support\TestSubscriptionService;
@@ -367,6 +368,98 @@ final class FixedTermTest extends DatabaseTestCase
             self::assertTrue($row->isSkipped());
         }
         self::assertSame('2026-03-02', $this->find($id)->cancelledAt?->format('Y-m-d'));
+    }
+
+    public function testLeavingAFixedTermClearsItsEnd(): void
+    {
+        $id = $this->term('Phone', 3000, start: '2024-07-01', next: '2026-02-01', end: '2026-12-01');
+
+        // A PUT that leaves the end out and makes the row one-off.
+        $input = $this->formInput('2026-02-01');
+        unset($input['payments_end_on']);
+        $this->service->update(
+            $this->scope(),
+            $id,
+            ['subscription_type' => 'one_off', 'billing_cycle' => ''] + $input,
+        );
+        self::assertNull($this->find($id)->paymentsEndOn);
+
+        // Back to recurring against a date the client never sent: accepted.
+        $back = $this->formInput('2027-01-01');
+        unset($back['payments_end_on']);
+        $this->service->update($this->scope(), $id, $back);
+        self::assertNull($this->find($id)->paymentsEndOn);
+    }
+
+    public function testResumeWithNoBillingDateLeftIsRefused(): void
+    {
+        $id = $this->endedTermUncancelled();
+
+        // Moved to 20 Jun: still before the first billing date from 10 Jun's
+        // resume (1 Jul), so the next catch-up would end it again.
+        try {
+            $this->service->update(
+                $this->scope(),
+                $id,
+                ['payments_end_on' => '2026-06-20'] + $this->formInput('2026-02-01'),
+            );
+            self::fail('A resume with no billing date before the end was accepted.');
+        } catch (ValidationException $exception) {
+            self::assertSame(
+                'error.payments_end.no_billing_date',
+                $exception->errors()['payments_end_on']->key,
+            );
+        }
+        self::assertFalse($this->find($id)->isActive);
+    }
+
+    public function testResumeWithABillingDateLeftIsAccepted(): void
+    {
+        $id = $this->endedTermUncancelled();
+
+        $this->service->update(
+            $this->scope(),
+            $id,
+            ['payments_end_on' => '2026-07-01'] + $this->formInput('2026-02-01'),
+        );
+
+        $row = $this->find($id);
+        self::assertTrue($row->isActive);
+        self::assertSame('2026-07-01', $row->nextPaymentDate?->format('Y-m-d'));
+        self::assertSame('2026-07-01', $row->paymentsEndOn?->format('Y-m-d'));
+    }
+
+    /**
+     * A monthly term the catch-up ended in February, undone, on 10 June.
+     */
+    private function endedTermUncancelled(): int
+    {
+        $id = $this->term('Phone', 3000, start: '2024-07-01', next: '2026-02-01', end: '2026-02-01');
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 09:00:00'));
+        $this->catchUp->run($this->scope());
+        $this->service->uncancel($this->scope(), $id);
+        $this->clock->advanceTo(new DateTimeImmutable('2026-06-10 09:00:00'));
+
+        return $id;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function formInput(string $next): array
+    {
+        return [
+            'name' => 'Phone',
+            'price' => '30.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'start_date' => '2024-07-01',
+            'next_payment_date' => $next,
+            'payments_end_on' => '',
+            'is_active' => '1',
+            'owner_user_id' => (string) $this->alice,
+        ];
     }
 
     public function testAViewerNeverEndsATerm(): void
