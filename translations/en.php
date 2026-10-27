@@ -634,7 +634,7 @@ return [
     'error.estimate.nothing_to_use' => 'There is no different average of recorded bills to use yet.',
     'error.payments_end.before_next' => 'The last payment can’t come before the next one.',
     'error.payments_end.no_billing_date' =>
-        'The last payment can’t come before the first billing date from today. Choose a later date.',
+        'The last payment would be before the first billing date from today, so this can’t be resumed. Move the last payment date later first.',
     'error.json.wrong_type' => 'Send this as text, not as true, false, a list or an object.',
     'error.payments_end.before_start' => 'The last payment can’t come before the start date.',
     'error.file.required' => 'Choose a file to upload.',

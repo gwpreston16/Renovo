@@ -212,6 +212,34 @@ final class BulkActionTest extends DatabaseTestCase
         self::assertTrue($this->activeState($id));
     }
 
+    public function testABulkResumeLeavesAFixedTermWithNoBillingDateLeftPaused(): void
+    {
+        // Today is 15 Jan 2026. Paused on 1 Dec with the last payment on 20 Dec:
+        // the first billing date from today (1 Feb) is after it.
+        $ended = $this->subscriptions->create($this->scope(), [
+            'name' => 'Phone',
+            'price_minor' => 3000,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2025-12-01',
+            'anchor_day' => 1,
+            'payments_end_on' => '2025-12-20',
+            'is_active' => false,
+        ], []);
+        $open = $this->create('Gym');
+        $this->bulk->apply($this->scope(), ['action' => BulkActionService::ACTION_DEACTIVATE, 'ids' => [$open]]);
+
+        $changed = $this->bulk->apply($this->scope(), [
+            'action' => BulkActionService::ACTION_ACTIVATE,
+            'ids' => [$ended, $open],
+        ]);
+
+        self::assertSame(1, $changed);
+        self::assertFalse($this->activeState($ended));
+        self::assertTrue($this->activeState($open));
+    }
+
     public function testChangingCurrencyConvertsRatherThanRelabels(): void
     {
         // The decision this feature turns on. £10.00 becoming €10.00 would be a

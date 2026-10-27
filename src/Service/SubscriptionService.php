@@ -436,7 +436,8 @@ final class SubscriptionService
      * skip that step would leave a row that is active and cancelled at once —
      * counted in every total while every screen called it cancelled.
      *
-     * @throws ValidationException when resuming a cancelled subscription.
+     * @throws ValidationException when resuming a cancelled subscription, or
+     *         a fixed term with no billing date left.
      * @throws \App\Security\ScopeViolationException when the row is not this
      *         scope's to change.
      */
@@ -445,6 +446,17 @@ final class SubscriptionService
         $subscription = $this->subscriptions->find($scope, $id);
         if ($active && $subscription?->isCancelled() === true) {
             throw ValidationException::field('is_active', 'error.subscription.cancelled_resume');
+        }
+
+        if (
+            $active
+            && $subscription !== null
+            && !$subscription->isActive
+            && $subscription->resumeLeavesNoBillingDate($this->clock->today())
+        ) {
+            // The edit form and the API refuse this on the end they are given
+            // (K86); here the end is the stored one.
+            throw ValidationException::field('payments_end_on', 'error.payments_end.no_billing_date');
         }
 
         if (!$active && $subscription !== null) {

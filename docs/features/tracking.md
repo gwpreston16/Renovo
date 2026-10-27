@@ -129,7 +129,11 @@ row that uses none behaves exactly as before.
   the same, its paused months recorded as skipped. The cost page's Payments
   card shows **Payment 14 of 36** and **£1,078.00 of £2,772.00 paid**, counted
   from the dates and, where it has them, the ledger's amounts. No balance or
-  interest rate is stored.
+  interest rate is stored. A term can't be resumed when its last payment is
+  before the first billing date from today, because it would be ended again
+  straight away: move the date later first. The Resume button and a bulk resume
+  leave such a term paused, and switching a row to a one-off or lifetime entry
+  clears its end.
 - **The amount varies** — gas, electricity, water. The price becomes an
   **estimate**: the form calls it *Estimated amount*, and the row's price and
   every forward-looking figure that includes it — totals, forecast, budgets —

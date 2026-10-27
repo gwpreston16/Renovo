@@ -446,6 +446,35 @@ final class FixedTermTest extends DatabaseTestCase
         self::assertNull($this->find($open)->paymentsEndOn);
     }
 
+    public function testTheQuickResumeRefusesATermWithNoBillingDateLeft(): void
+    {
+        $id = $this->endedTermUncancelled();
+
+        try {
+            $this->service->setActive($this->scope(), $id, true);
+            self::fail('A quick resume left a term with nothing to bill.');
+        } catch (ValidationException $exception) {
+            self::assertSame(
+                'error.payments_end.no_billing_date',
+                $exception->errors()['payments_end_on']->key,
+            );
+        }
+        self::assertFalse($this->find($id)->isActive);
+    }
+
+    public function testTheQuickResumeAcceptsATermWithABillingDateLeft(): void
+    {
+        $id = $this->endedTermUncancelled();
+        $this->service->update($this->scope(), $id, ['is_active' => '0', 'payments_end_on' => '2026-08-01']
+            + $this->formInput('2026-02-01'));
+
+        $this->service->setActive($this->scope(), $id, true);
+
+        $row = $this->find($id);
+        self::assertTrue($row->isActive);
+        self::assertSame('2026-07-01', $row->nextPaymentDate?->format('Y-m-d'));
+    }
+
     /**
      * A monthly term the catch-up ended in February, undone, on 10 June.
      */

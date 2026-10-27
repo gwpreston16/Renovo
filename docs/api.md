@@ -674,7 +674,7 @@ again by any catch-up while its `payments_end_on` has passed. To bring one
 back, `PUT` an empty `payments_end_on`, or one on or after the first billing
 date from today, first, while it is still cancelled, then uncancel it, then
 resume it. A resume whose end is still before that billing date is a `422` on
-`payments_end_on`. Responses: `200`, `401`,
+`payments_end_on`, whichever way it is made. Responses: `200`, `401`,
 `403`, `404`.
 
 ---

@@ -21,7 +21,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   explicit `null` mean what they did. The OpenAPI document is now version
   1.9.3. *Phase 52.*
 - **Resuming a fixed term with no billing date left is a `422` on
-  `payments_end_on`.** A term the
+  `payments_end_on`, and the Resume button and a bulk resume refuse it too.** A
+  term the
   catch-up ended, given a new end still before the first billing date from
   today, used to resume and then be ended again with a cancel date before the
   resume. *Phase 52.*

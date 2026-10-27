@@ -135,8 +135,20 @@ final class BulkActionService
     {
         return $this->db->transactional(function () use ($scope, $ids): int {
             $today = $this->clock->today();
+            $resumable = [];
             foreach ($ids as $id) {
                 $subscription = $this->subscriptions->findForWrite($scope, $id);
+                // A fixed term with no billing date left stays paused, like a
+                // cancelled row (K86): the catch-up would end it again.
+                if (
+                    $subscription !== null
+                    && !$subscription->isActive
+                    && $subscription->resumeLeavesNoBillingDate($today)
+                ) {
+                    continue;
+                }
+
+                $resumable[] = $id;
                 $resumed = $subscription !== null && !$subscription->isActive
                     ? $subscription->resumedPaymentDate($today)
                     : null;
@@ -146,7 +158,7 @@ final class BulkActionService
                 }
             }
 
-            return $this->subscriptions->updateMany($scope, $ids, ['is_active' => true]);
+            return $resumable === [] ? 0 : $this->subscriptions->updateMany($scope, $resumable, ['is_active' => true]);
         });
     }
 
