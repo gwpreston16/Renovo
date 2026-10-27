@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–56
+## Planned — Phases 30–57
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -65,6 +65,7 @@ can be moved.
 | 54 | [Tag integrity, from the known-issues log](docs/phases/PHASE-54.md) | — | None | ✅ done |
 | 55 | [Security and backup test gaps, from the known-issues log](docs/phases/PHASE-55.md) | — | None | ✅ done |
 | 56 | [Logo storage and sign-in edges, from the known-issues log](docs/phases/PHASE-56.md) | — | None | ✅ done |
+| 57 | [Screen-reader labels and estimate marks, from the known-issues log](docs/phases/PHASE-57.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -183,6 +184,10 @@ can be moved.
   K57, K120, K133, K136, K137): no orphaned or shared logo files, a favicon PNG
   used when the ICO is refused, passkey sign-in to an unverified account audited,
   and a session start that is quiet on PHP 8.5.
+- **57 — Screen-reader labels and estimate marks.** A batch from the known-issues
+  log (K18, K59, K60, K88, K89, K47): focus stays put and swaps are announced,
+  sort order, ratings and per-row actions are named, "≈" marks only figures that
+  hold a varying bill, and ten API doc corrections.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
