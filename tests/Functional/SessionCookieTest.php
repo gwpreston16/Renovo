@@ -29,7 +29,9 @@ final class SessionCookieTest extends DatabaseTestCase
 
     public function testTheCookieIsSecureHttpOnlyAndSameSiteAsShipped(): void
     {
-        $cookie = $this->sessionCookie($this->get(['SESSION_COOKIE_SECURE' => 'true', 'SESSION_COOKIE_SAMESITE' => 'Lax']));
+        $cookie = $this->sessionCookie(
+            $this->get(['SESSION_COOKIE_SECURE' => 'true', 'SESSION_COOKIE_SAMESITE' => 'Lax']),
+        );
 
         self::assertMatchesRegularExpression('/;\s*secure(;|$)/i', $cookie);
         self::assertMatchesRegularExpression('/;\s*HttpOnly(;|$)/i', $cookie);
@@ -108,9 +110,6 @@ final class SessionCookieTest extends DatabaseTestCase
         $body = @file_get_contents($this->server->url('/login'), false, $context);
         self::assertNotFalse($body, 'The application answered.');
 
-        /** @var list<string> $headers */
-        $headers = $http_response_header ?? [];
-
-        return $headers;
+        return http_get_last_response_headers() ?? [];
     }
 }

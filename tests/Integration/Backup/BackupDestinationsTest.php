@@ -121,7 +121,7 @@ final class BackupDestinationsTest extends TestCase
 
             public function head(string $object): ?int
             {
-                return strlen($this->stored);
+                return $this->stored === '' ? null : strlen($this->stored);
             }
 
             public function get(string $object, string $localPath): void
