@@ -8,6 +8,24 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Passkey sign-in, the session cookie and the database session store are
+  tested.** A locked-out address gets no challenge, a failed assertion counts
+  toward the lockout and is audited, and a disabled or unverified account is
+  refused although its credential verifies. The session cookie is checked as the
+  application sends it (`Secure`, `HttpOnly`, `SameSite`, and an id the client
+  chose is never adopted), and so are the store's insert, read, update, destroy
+  and expiry. No behaviour changes. *Phase 55.*
+- **`secrets:rotate` and the off-site backup failure paths are tested.** The
+  command's exit codes and messages (a value no key opens, an unknown option,
+  `--dry-run`, an unset `SECRETS_KEY`), a value the application rewrote
+  mid-rotation staying out of the count, a failed delete leaving an off-site
+  copy confirmed so the next prune retries it, a destination that can't be built
+  pruning nothing, and Test connection naming the step that failed (read,
+  verify or delete). `StoredSecretRepository` is no longer `final`, so a test can
+  rewrite a value between the rotation's read and its replace. *Phase 55.*
+
 ## [1.23.0] - 2026-10-27
 
 ### Fixed

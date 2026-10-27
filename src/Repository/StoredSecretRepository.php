@@ -17,7 +17,7 @@ use App\Service\InstanceSettingsService;
  * The row id is the user id for a two-factor seed, the channel id for a
  * channel, and 0 for the one rate provider key.
  */
-final class StoredSecretRepository
+class StoredSecretRepository
 {
     public function __construct(private readonly Database $db)
     {

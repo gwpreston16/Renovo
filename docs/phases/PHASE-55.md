@@ -97,22 +97,28 @@ None.
   removed or broken, as the rows were found; the build re-runs that check.
 - **Source change only for a seam a test cannot do without.** If K109 needs one,
   it is the smallest possible and noted in the PR.
-- **Decided 2026-10-27:** ships as its own patch release, v1.22.1, once merged.
-  Not with the next minor. The rows are tests only and touch nothing a planned
-  phase is about to change.
+- **Decided 2026-10-27:** ships as its own patch release once merged. Not with
+  the next minor. The rows are tests only and touch nothing a planned phase is
+  about to change.
+- **Changed 2026-10-27:** the patch is v1.23.1, not v1.22.1; 1.23.0 was already
+  released when the phase started.
+- **Seam used:** K109 needed `StoredSecretRepository` to stop being `final`, so a
+  test can rewrite a value between the rotation's read and its replace. No
+  behaviour changes; noted in the PR.
+- **Confirmed 2026-10-27:** the other decisions above stand.
 
 ## Status
 
-- [ ] K21: passkey sign-in tested
-- [ ] K22: session cookie and database session store tested
-- [ ] K108: `secrets:rotate` tested
-- [ ] K109: rotation count excludes a mid-batch rewrite
-- [ ] K116: off-site retention failure paths tested
-- [ ] K117: Test connection step labels tested
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 55 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K21: passkey sign-in tested
+- [x] K22: session cookie and database session store tested
+- [x] K108: `secrets:rotate` tested
+- [x] K109: rotation count excludes a mid-batch rewrite
+- [x] K116: off-site retention failure paths tested
+- [x] K117: Test connection step labels tested
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 55 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

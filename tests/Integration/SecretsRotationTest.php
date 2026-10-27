@@ -18,6 +18,7 @@ use App\Repository\AuditLogRepository;
 use App\Repository\InstanceSettingsRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\NotificationChannelRepository;
+use App\Persistence\Database;
 use App\Repository\StoredSecretRepository;
 use App\Repository\TotpRepository;
 use App\Repository\UserRepository;
@@ -140,6 +141,49 @@ final class SecretsRotationTest extends DatabaseTestCase
 
         self::assertFalse($replaced);
         self::assertSame($current, $this->rawConfig($id));
+    }
+
+    public function testAValueRewrittenDuringTheBatchIsNotCounted(): void
+    {
+        $old = new KeyRing('key-one');
+        $this->seed($old);
+        $rewritten = $this->channels($old)->create($this->bob, 'ntfy', 'Busy', ['topic' => 'before']);
+        $ring = new KeyRing('key-two', ['key-one']);
+        $latest = (new SecretCipher($old, SecretCipher::PURPOSE_CHANNEL_CONFIG))->encrypt('{"topic":"after"}');
+
+        // The application saves the channel again between the service reading
+        // it and replacing it, so the replace finds a value it did not read.
+        $repository = new class ($this->db, $rewritten, $latest) extends StoredSecretRepository {
+            public function __construct(
+                private readonly Database $database,
+                private readonly int $id,
+                private readonly string $latest,
+            ) {
+                parent::__construct($database);
+            }
+
+            public function replace(StoredSecretKind $kind, int $id, string $was, string $value): bool
+            {
+                if ($kind === StoredSecretKind::ChannelConfig && $id === $this->id) {
+                    $this->database->execute(
+                        'UPDATE notification_channels SET config = :c WHERE id = :id',
+                        ['c' => $this->latest, 'id' => $id],
+                    );
+                }
+
+                return parent::replace($kind, $id, $was, $value);
+            }
+        };
+
+        $report = (new SecretsRotationService($repository, $ring, $this->db, $this->audit()))->rotate();
+
+        // Two channels were read; only the one nobody touched was replaced.
+        self::assertSame(1, $report['channel_configs']['rotated']);
+        self::assertSame($latest, $this->rawConfig($rewritten), 'Left for the next run, not overwritten.');
+        $entry = $this->db->fetchOne("SELECT * FROM audit_log WHERE action = 'secrets.rotated'");
+        self::assertNotNull($entry);
+        $context = json_decode((string) $entry['context'], true);
+        self::assertSame(1, $context['channel_configs']['rotated']);
     }
 
     public function testAPlaintextTwoFactorSeedIsReportedNotEncrypted(): void

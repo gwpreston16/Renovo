@@ -16,12 +16,14 @@ use App\Service\Backup\Destination\BackupDestinationFactory;
 use App\Service\Backup\Destination\DestinationException;
 use App\Service\Backup\Destination\DirectoryDestination;
 use App\Service\Backup\Destination\HttpExchange;
+use App\Service\Backup\Destination\RoundTripTest;
 use App\Service\Backup\Destination\S3Destination;
 use App\Service\Backup\Destination\S3Signer;
 use App\Service\Backup\Destination\WebDavDestination;
 use App\Support\SystemClock;
 use App\Tests\Support\FakeDnsResolver;
 use App\Tests\Support\LocalServer;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Slim\Psr7\Factory\RequestFactory;
@@ -86,6 +88,68 @@ final class BackupDestinationsTest extends TestCase
         $this->webdav()->test();
 
         self::assertSame([], array_values(array_diff((array) scandir(self::$webdavRoot), ['.', '..'])));
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function failingSteps(): array
+    {
+        return [
+            'reading the marker back' => [DestinationException::STEP_READ],
+            'comparing what came back' => [DestinationException::STEP_VERIFY],
+            'deleting the marker' => [DestinationException::STEP_DELETE],
+        ];
+    }
+
+    #[DataProvider('failingSteps')]
+    public function testTestConnectionNamesTheStepThatFailed(string $failsAt): void
+    {
+        $destination = new class ($failsAt) implements BackupDestination {
+            use RoundTripTest;
+
+            private string $stored = '';
+
+            public function __construct(private readonly string $failsAt)
+            {
+            }
+
+            public function put(string $localPath, string $object, string $sha256, int $size): void
+            {
+                $this->stored = (string) file_get_contents($localPath);
+            }
+
+            public function head(string $object): ?int
+            {
+                return $this->stored === '' ? null : strlen($this->stored);
+            }
+
+            public function get(string $object, string $localPath): void
+            {
+                if ($this->failsAt === DestinationException::STEP_READ) {
+                    // Raised under another label: the round trip names it.
+                    throw new DestinationException(DestinationException::STEP_WRITE, 'unreachable', 'Gone.');
+                }
+                file_put_contents(
+                    $localPath,
+                    $this->failsAt === DestinationException::STEP_VERIFY ? 'something else' : $this->stored,
+                );
+            }
+
+            public function delete(string $object): void
+            {
+                if ($this->failsAt === DestinationException::STEP_DELETE) {
+                    throw new DestinationException(DestinationException::STEP_WRITE, 'denied', 'Not allowed.');
+                }
+            }
+        };
+
+        try {
+            $destination->test();
+            self::fail('A failing step passed the connection test.');
+        } catch (DestinationException $exception) {
+            self::assertSame($failsAt, $exception->step);
+        }
     }
 
     public function testWebDavWithTheWrongPasswordFailsAtTheWriteStep(): void
