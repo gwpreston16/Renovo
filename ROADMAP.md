@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–55
+## Planned — Phases 30–56
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -64,6 +64,7 @@ can be moved.
 | 53 | [Dev tooling, docs and test gaps, from the known-issues log](docs/phases/PHASE-53.md) | — | None | ✅ done |
 | 54 | [Tag integrity, from the known-issues log](docs/phases/PHASE-54.md) | — | None | ✅ done |
 | 55 | [Security and backup test gaps, from the known-issues log](docs/phases/PHASE-55.md) | — | None | ✅ done |
+| 56 | [Logo storage and sign-in edges, from the known-issues log](docs/phases/PHASE-56.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -178,6 +179,10 @@ can be moved.
   K22, K108, K109, K116, K117): tests for passkey sign-in, the session cookie and
   database session store, `secrets:rotate`, off-site retention failures and the
   Test connection step labels. No behaviour changes.
+- **56 — Logo storage and sign-in edges.** A batch from the known-issues log (K31,
+  K57, K120, K133, K136, K137): no orphaned or shared logo files, a favicon PNG
+  used when the ICO is refused, passkey sign-in to an unverified account audited,
+  and a session start that is quiet on PHP 8.5.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
