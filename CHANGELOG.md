@@ -8,6 +8,24 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Bulk "Add tag" keeps to the tag limits.** A subscription that already has 25
+  tags is left as it is, and a message says how many were; a tag name over 50
+  characters is refused like it is on the subscription form (it was a server
+  error), and the toolbar input stops at 50. Restoring a backup keeps the first
+  25 tags of a row that has more and leaves out a tag name over 50 characters,
+  and says so, instead of skipping the subscription or failing the restore.
+  *Phase 54.*
+- **"Straße" and "Strasse" are one tag name on both engines.** PostgreSQL kept
+  two tags where MySQL refused the second with a server error. *Phase 54.*
+- **Two saves creating the same new tag at once both succeed.** The second now
+  uses the tag the first made instead of failing with a server error. *Phase 54.*
+- **The category section of the API reference is complete.** `POST` and `PUT
+  /api/v1/categories` now say a null or absent `colour` leaves the category
+  uncoloured (a `PUT` without it clears the colour) and that the name is unique
+  ignoring case and accents; OpenAPI 1.9.4, wording only. *Phase 54.*
+
 ## [1.22.0] - 2026-10-27
 
 ### Changed
