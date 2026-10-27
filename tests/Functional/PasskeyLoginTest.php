@@ -97,6 +97,18 @@ final class PasskeyLoginTest extends DatabaseTestCase
         self::assertNull($this->session->get(self::CHALLENGE_KEY), 'The challenge is spent.');
     }
 
+    public function testASameSiteNextIsFollowedAndAnOffSiteOneIsIgnored(): void
+    {
+        [$user, $authenticator] = $this->userWithAPasskey();
+
+        $followed = $this->signInWith($user, $authenticator, '/subscriptions');
+        self::assertSame('/subscriptions', $this->decode($followed)['redirect']);
+
+        $this->session->clear();
+        $ignored = $this->signInWith($user, $authenticator, 'https://evil.example/');
+        self::assertSame('/', $this->decode($ignored)['redirect']);
+    }
+
     public function testASignInWithoutAChallengeIsSentBackToStart(): void
     {
         $response = $this->postJson('/login/passkey', '{}');
@@ -232,8 +244,11 @@ final class PasskeyLoginTest extends DatabaseTestCase
         return [$user, $authenticator];
     }
 
-    private function signInWith(User $user, VirtualAuthenticator $authenticator): ResponseInterface
-    {
+    private function signInWith(
+        User $user,
+        VirtualAuthenticator $authenticator,
+        ?string $next = null,
+    ): ResponseInterface {
         $options = $this->post('/login/passkey/options');
         self::assertSame(200, $options->getStatusCode());
 
@@ -241,7 +256,7 @@ final class PasskeyLoginTest extends DatabaseTestCase
         self::assertNotNull($handle);
 
         return $this->postJson(
-            '/login/passkey',
+            '/login/passkey' . ($next === null ? '' : '?next=' . rawurlencode($next)),
             $authenticator->authenticate($this->challengeOf((string) $options->getBody()), $handle),
         );
     }

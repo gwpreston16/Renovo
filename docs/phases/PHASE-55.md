@@ -102,6 +102,9 @@ None.
   about to change.
 - **Changed 2026-10-27:** the patch is v1.23.1, not v1.22.1; 1.23.0 was already
   released when the phase started.
+- **Seam used:** K109 needed `StoredSecretRepository` to stop being `final`, so a
+  test can rewrite a value between the rotation's read and its replace. No
+  behaviour changes; noted in the PR.
 - **Confirmed 2026-10-27:** the other decisions above stand.
 
 ## Status
@@ -114,7 +117,7 @@ None.
 - [x] K117: Test connection step labels tested
 - [x] Rows marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 55 row marked ✅ done
+- [x] ROADMAP: Phase 55 row marked ✅ done
 - [ ] composer check, coverage and the API doc tests green
 
 ## Definition of done
