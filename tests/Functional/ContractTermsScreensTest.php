@@ -139,6 +139,43 @@ final class ContractTermsScreensTest extends DatabaseTestCase
         self::assertMatchesRegularExpression('~id="list-summary".*?≈ £68\\.99~s', $body);
     }
 
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function impossibleDates(): array
+    {
+        $cases = [];
+        foreach (['next_payment_date', 'start_date', 'contract_ends_on', 'payments_end_on'] as $field) {
+            $cases[$field . ' 30 February'] = [$field, '2026-02-30'];
+            $cases[$field . ' month 13'] = [$field, '2026-13-01'];
+        }
+
+        return $cases;
+    }
+
+    /**
+     * @dataProvider impossibleDates
+     */
+    public function testAnImpossibleDateOnTheFormIsRefusedNotRolledOver(string $field, string $value): void
+    {
+        $this->signIn($this->ownerId);
+        $before = count($this->subscriptions->findAllForStats($this->owner, false));
+
+        $response = $this->request('POST', '/subscriptions', [
+            'name' => 'Octopus Energy',
+            'price' => '58.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => $this->nextMonth->format('Y-m-d'),
+            $field => $value,
+        ]);
+
+        self::assertNotSame(302, $response->getStatusCode(), 'An impossible date was accepted.');
+        self::assertStringContainsString('Enter a valid date.', (string) $response->getBody());
+        self::assertCount($before, $this->subscriptions->findAllForStats($this->owner, false));
+    }
+
     public function testForwardLookingTotalsIncludingAVaryingBillAreEstimates(): void
     {
         $this->create('Octopus Energy', 5800, [

@@ -429,6 +429,23 @@ final class FixedTermTest extends DatabaseTestCase
         self::assertSame('2026-07-01', $row->paymentsEndOn?->format('Y-m-d'));
     }
 
+    public function testResumeOfATermEndingLaterOrWithNoEndIsUnchanged(): void
+    {
+        $later = $this->endedTermUncancelled();
+        $this->service->update(
+            $this->scope(),
+            $later,
+            ['payments_end_on' => '2027-01-01'] + $this->formInput('2026-02-01'),
+        );
+        self::assertSame('2026-07-01', $this->find($later)->nextPaymentDate?->format('Y-m-d'));
+
+        // Ended and uncancelled, then resumed with the end cleared.
+        $open = $this->term('Gym', 2000, start: '2024-07-01', next: '2026-06-01', end: '2026-06-01', active: false);
+        $this->service->update($this->scope(), $open, ['payments_end_on' => ''] + $this->formInput('2026-06-01'));
+        self::assertTrue($this->find($open)->isActive);
+        self::assertNull($this->find($open)->paymentsEndOn);
+    }
+
     /**
      * A monthly term the catch-up ended in February, undone, on 10 June.
      */

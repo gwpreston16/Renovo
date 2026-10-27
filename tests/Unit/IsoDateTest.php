@@ -28,6 +28,8 @@ final class IsoDateTest extends TestCase
             'day 0' => ['2026-01-00'],
             'words' => ['next week'],
             'a time on the end' => ['2026-01-01 10:00'],
+            'a trailing digit' => ['2026-01-011'],
+            'a five digit year' => ['12026-01-01'],
         ];
     }
 
