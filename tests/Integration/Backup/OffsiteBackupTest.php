@@ -282,6 +282,69 @@ final class OffsiteBackupTest extends DatabaseTestCase
         self::assertCount(2, $this->listing('nas'));
     }
 
+    public function testAFailedDeleteLeavesTheCopyConfirmed(): void
+    {
+        $nas = $this->destination('NAS', $this->root . '/nas');
+        foreach ([1, 0] as $day) {
+            $run = $this->verifiedRun($day);
+            $this->service()->queue($run);
+            $this->service()->sendPending();
+        }
+        $repository = new BackupDestinationRepository($this->db, $this->clock, $this->keys());
+        $record = $repository->find($nas);
+        self::assertNotNull($record);
+        $repository->update($nas, 'NAS', $record->config, null, new BackupRetention(0, 0, 0));
+        $record = $repository->find($nas);
+        self::assertNotNull($record);
+
+        // The old copy is due to go, and the destination cannot be reached to
+        // delete it: the directory is no longer there.
+        rename($this->root . '/nas', $this->root . '/nas-gone');
+        $logger = new CapturingLogger();
+
+        $pruned = $this->service($logger)->prune($record);
+
+        self::assertSame(0, $pruned);
+        self::assertCount(2, $this->copies()->confirmedAt($nas), 'Still confirmed, so the next prune tries again.');
+        self::assertStringContainsString('could not delete', implode("\n", $logger->lines));
+
+        // The next prune, with the destination back, finishes the job.
+        rename($this->root . '/nas-gone', $this->root . '/nas');
+        self::assertSame(1, $this->service()->prune($record));
+        self::assertCount(1, $this->copies()->confirmedAt($nas));
+    }
+
+    public function testADestinationThatCannotBeBuiltIsLoggedAndNothingIsPruned(): void
+    {
+        // Created under another key, so its credentials cannot be opened.
+        $id = (new BackupDestinationRepository($this->db, $this->clock, new KeyRing('another-key')))->create(
+            BackupDestinationType::WebDav,
+            'Locked',
+            ['url' => 'https://dav.example/', 'username' => 'me'],
+            ['password' => 'pw'],
+            true,
+            new BackupRetention(0, 0, 0),
+        );
+        foreach ([1, 0] as $day) {
+            $run = $this->verifiedRun($day);
+            $this->copies()->queue($run->id, $id, 'object-' . $day);
+        }
+        foreach ($this->copies()->pending() as $copy) {
+            $this->copies()->confirm($copy->id, $this->clock->now());
+        }
+        $record = (new BackupDestinationRepository($this->db, $this->clock, $this->keys()))->find($id);
+        self::assertNotNull($record);
+        self::assertTrue($record->secretsUnreadable);
+        $logger = new CapturingLogger();
+
+        $pruned = $this->service($logger)->prune($record);
+
+        self::assertSame(0, $pruned, 'Logged, not thrown.');
+        self::assertCount(2, $this->copies()->confirmedAt($id));
+        self::assertStringContainsString('could not prune', implode("\n", $logger->lines));
+        self::assertStringNotContainsString('pw', implode("\n", $logger->lines));
+    }
+
     /**
      * @return list<string>
      */
