@@ -8,6 +8,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.23.0] - 2026-10-27
+
 ### Fixed
 
 - **Bulk "Add tag" keeps to the tag limits.** A subscription that already has 25
@@ -898,7 +900,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.22.0...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.23.0...HEAD
+[1.23.0]: https://github.com/gwpreston16/Renovo/compare/v1.22.0...v1.23.0
 [1.22.0]: https://github.com/gwpreston16/Renovo/compare/v1.21.0...v1.22.0
 [1.21.0]: https://github.com/gwpreston16/Renovo/compare/v1.20.0...v1.21.0
 [1.20.0]: https://github.com/gwpreston16/Renovo/compare/v1.19.0...v1.20.0

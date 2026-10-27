@@ -607,6 +607,14 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   tests cover the Viewer route table, an instance admin who is also a household
   member, and a search for `%` or `_`. The OpenAPI document is unchanged. No
   migrations. See [Install](install.md).
+- **Phase 54 — tag integrity, from the known-issues log — complete (1.23.0).**
+  Bulk "Add tag" keeps to the 25-tag and 50-character limits, and restoring a
+  backup keeps the first 25 tags of a row and leaves out an over-long name,
+  saying so. "Straße" and "Strasse" are one name for tags, categories and
+  payment methods on both engines, and two saves creating the same new tag at
+  once both succeed. The API reference now says how a category's `colour` and
+  name are handled; OpenAPI 1.9.4, wording only. No migrations. See
+  [Tracking](features/tracking.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
