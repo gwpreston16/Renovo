@@ -48,6 +48,7 @@ use App\Repository\AuthAttemptRepository;
 use App\Repository\ExchangeRateRepository;
 use App\Controller\Ops\MetricsController;
 use App\Repository\LogoCacheRepository;
+use App\Repository\LogoUsageRepository;
 use App\Repository\UserRepository;
 use App\Service\MetricsService;
 use App\Repository\NotificationLogRepository;
@@ -524,7 +525,11 @@ return static function (ContainerBuilder $builder, ?array $settings = null): voi
         LogoStorage::class => static function (ContainerInterface $c): LogoStorage {
             $uploads = $c->get('settings')['uploads'];
 
-            return new LogoStorage($uploads['logo_directory'], $uploads['logo_max_bytes']);
+            return new LogoStorage(
+                $uploads['logo_directory'],
+                $uploads['logo_max_bytes'],
+                $c->get(LogoUsageRepository::class),
+            );
         },
 
         // ------------------------------------------------------------------

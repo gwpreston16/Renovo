@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Security\Session;
 use App\Tests\Integration\DatabaseTestCase;
 use App\Tests\Support\LocalServer;
+use PHPUnit\Framework\Attributes\PreserveGlobalState;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 
 /**
  * The session cookie the application really sends.
@@ -53,6 +56,37 @@ final class SessionCookieTest extends DatabaseTestCase
         $cookie = $this->sessionCookie($this->get(['SESSION_COOKIE_SAMESITE' => 'Strict']));
 
         self::assertMatchesRegularExpression('/;\s*SameSite=Strict(;|$)/i', $cookie);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testStartingASessionRaisesNoDeprecation(): void
+    {
+        error_reporting(E_ALL);
+        $raised = [];
+        set_error_handler(static function (int $level, string $message) use (&$raised): bool {
+            $raised[] = $message;
+
+            return true;
+        });
+        session_save_path(sys_get_temp_dir());
+        ob_start();
+
+        try {
+            (new Session([
+                'name' => 'renovo_session',
+                'lifetime' => 0,
+                'secure' => true,
+                'samesite' => 'Lax',
+                'path' => '/',
+                'domain' => '',
+            ]))->start();
+        } finally {
+            ob_end_clean();
+            restore_error_handler();
+        }
+
+        self::assertSame([], $raised, 'Starting a session raises no deprecation or notice.');
     }
 
     public function testAnIdTheServerNeverIssuedIsNotAdopted(): void

@@ -23,6 +23,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\UploadedFileInterface;
 use Slim\Exception\HttpBadRequestException;
 use Slim\Exception\HttpNotFoundException;
+use Throwable;
 use App\Domain\TokenScope;
 
 /**
@@ -265,10 +266,19 @@ final class SubscriptionApiController extends ApiController
         // the logo with, and clearing it would be DELETE's job.
         $stored = $this->logos->store($file)
             ?? throw ValidationException::field('logo', 'error.logo.type');
-        $this->subscriptions->setLogo($scope, $id, $stored);
+
+        try {
+            $this->subscriptions->setLogo($scope, $id, $stored);
+        } catch (Throwable $failure) {
+            // A Contributor on another member's row is refused here, after
+            // the file was written: nothing will ever name it (K31).
+            $this->logos->delete($stored);
+
+            throw $failure;
+        }
 
         if ($existing->logoPath !== null && $existing->logoPath !== $stored) {
-            $this->logos->delete($existing->logoPath);
+            $this->logos->release($existing->logoPath);
         }
 
         $updated = $this->subscriptions->find($scope, $id);
@@ -293,7 +303,7 @@ final class SubscriptionApiController extends ApiController
         }
 
         $this->subscriptions->setLogo($scope, $id, null);
-        $this->logos->delete($existing->logoPath);
+        $this->logos->release($existing->logoPath);
 
         return $this->noContent($response);
     }

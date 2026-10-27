@@ -196,6 +196,21 @@ final class PasskeyLoginTest extends DatabaseTestCase
         self::assertNull($this->session->get(AuthenticationMiddleware::SESSION_USER_ID));
     }
 
+    public function testAnUnverifiedAccountIsAudited(): void
+    {
+        [$user, $authenticator] = $this->userWithAPasskey(verified: false);
+
+        $this->signInWith($user, $authenticator);
+
+        $entry = $this->db->fetchOne(
+            'SELECT * FROM audit_log WHERE action = :action',
+            ['action' => AuditAction::LoginFailed->value],
+        );
+        self::assertNotNull($entry, 'The refused sign-in is in the audit log.');
+        self::assertStringContainsString('unverified', (string) $entry['context']);
+        self::assertSame(1, $this->failuresFromThisAddress(), 'It counts toward lockout.');
+    }
+
     private function failedAttempts(int $count): void
     {
         $limiter = $this->container->get(RateLimiter::class);

@@ -259,10 +259,16 @@ final class SubscriptionController extends Controller
         $scope = $this->scope($request);
         $body = $this->body($request);
 
+        $stored = null;
+
         try {
-            $body['logo_path'] = $this->logos->store($this->uploadedLogo($request)) ?? '';
+            $stored = $this->logos->store($this->uploadedLogo($request));
+            $body['logo_path'] = $stored ?? '';
             $this->form->create($scope, $body);
         } catch (ValidationException $exception) {
+            // The row was not saved, so nothing will ever name the file (K31).
+            $this->logos->delete($stored);
+
             return $this->render(
                 $request,
                 $response->withStatus(422),
@@ -367,6 +373,8 @@ final class SubscriptionController extends Controller
         // row would then delete (K1).
         unset($body['logo_path']);
 
+        $uploaded = null;
+
         try {
             $uploaded = $this->logos->store($this->uploadedLogo($request));
             if ($uploaded !== null) {
@@ -375,6 +383,8 @@ final class SubscriptionController extends Controller
 
             $this->form->update($scope, (int) $id, $body);
         } catch (ValidationException $exception) {
+            $this->logos->delete($uploaded);
+
             return $this->render(
                 $request,
                 $response->withStatus(422),
@@ -382,6 +392,8 @@ final class SubscriptionController extends Controller
                 $this->formData($request, $body, $exception->errors(), (int) $id),
             );
         } catch (ScopeViolationException) {
+            $this->logos->delete($uploaded);
+
             throw $this->notFound($request);
         }
 
@@ -397,7 +409,7 @@ final class SubscriptionController extends Controller
         try {
             $subscription = $this->subscriptions->find($scope, (int) $id);
             $this->subscriptions->delete($scope, (int) $id);
-            $this->logos->delete($subscription?->logoPath);
+            $this->logos->release($subscription?->logoPath);
         } catch (ScopeViolationException) {
             throw $this->notFound($request);
         }

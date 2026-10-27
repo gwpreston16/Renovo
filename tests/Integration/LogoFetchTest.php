@@ -9,6 +9,7 @@ use App\Service\LogoFetcher;
 use App\Support\FrozenClock;
 use App\Tests\Support\FakeGuardedClient;
 use App\Tests\Support\TestLogoFetcher;
+use Psr\Http\Message\RequestInterface;
 
 /**
  * The cache is the whole feature.
@@ -99,6 +100,60 @@ final class LogoFetchTest extends DatabaseTestCase
         $fetcher->fetchFor('https://nothing.example');
 
         self::assertGreaterThan($afterFirst, count($client->requests), 'The domain is asked again eventually.');
+    }
+
+    /**
+     * K57: `LogoStorage` refuses ICO, so an ICO that was accepted here would be
+     * cached as a success that never stores, and the PNG would go untried.
+     */
+    public function testFaviconPngIsUsedWhenTheIcoIsRefused(): void
+    {
+        $client = FakeGuardedClient::serving([
+            '/favicon.ico' => $this->icoBytes(),
+            '/favicon.png' => $this->pngBytes(),
+        ]);
+
+        $path = TestLogoFetcher::with($client, $this->db, $this->clock)->fetchFor('https://both.example');
+
+        self::assertNotNull($path, 'The PNG is stored.');
+        self::assertStringEndsWith('.png', $path);
+        self::assertNotContains('/favicon.ico', $this->requestedPaths($client), 'The ICO is not worth asking for.');
+    }
+
+    public function testAnIcoOnlySiteIsCachedAsAMiss(): void
+    {
+        $client = FakeGuardedClient::serving(['/favicon.ico' => $this->icoBytes()]);
+        $fetcher = TestLogoFetcher::with($client, $this->db, $this->clock);
+
+        self::assertNull($fetcher->fetchFor('https://ico-only.example'));
+        $afterFirst = count($client->requests);
+
+        self::assertNull($fetcher->fetchFor('https://ico-only.example'));
+
+        $cached = (new LogoCacheRepository($this->db))->find('ico-only.example');
+        self::assertNotNull($cached);
+        self::assertNull($cached['cached_path']);
+        self::assertNotNull($cached['failed_at'], 'Remembered as a miss, like a site with no icon.');
+        self::assertSame($afterFirst, count($client->requests), 'Not asked again inside the window.');
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function requestedPaths(FakeGuardedClient $client): array
+    {
+        return array_map(
+            static fn (RequestInterface $request): string => $request->getUri()->getPath(),
+            $client->requests,
+        );
+    }
+
+    /** A 1x1 icon, the one format the fetcher can read and the store refuses. */
+    private function icoBytes(): string
+    {
+        $dib = pack('VVVvvVVVVVV', 40, 1, 2, 1, 32, 0, 4, 0, 0, 0, 0) . "\x00\x00\x00\xff" . "\x00\x00\x00\x00";
+
+        return pack('vvv', 0, 1, 1) . pack('CCCCvvVV', 1, 1, 0, 0, 1, 32, strlen($dib), 22) . $dib;
     }
 
     public function testEveryRequestIsMadeOverHttpsThroughTheGuardedClient(): void

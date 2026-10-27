@@ -108,6 +108,14 @@ final class PasskeyLoginController extends Controller
         }
 
         if (!$user->isVerified()) {
+            $this->rateLimiter->recordFailure(
+                AuthAttemptRepository::KIND_LOGIN,
+                $user->email,
+                $this->clientIp($request),
+            );
+
+            $this->audit->recordAnonymous(AuditAction::LoginFailed, $user->email, $user, ['reason' => 'unverified']);
+
             return $this->json($response->withStatus(403), [
                 'error' => $this->translator->trans('error.auth.unverified_short'),
             ]);

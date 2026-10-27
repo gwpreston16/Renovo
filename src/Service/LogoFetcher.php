@@ -37,11 +37,14 @@ use Throwable;
  */
 final class LogoFetcher
 {
-    /** Tried in order; the first that is an image wins. */
+    /**
+     * Tried in order; the first that is an image wins. Not `/favicon.ico`:
+     * `LogoStorage` refuses ICO, so a site answering there would be cached as
+     * a success that never stores, and `/favicon.png` would go untried (K57).
+     */
     private const CANDIDATES = [
         '/apple-touch-icon.png',
         '/apple-touch-icon-precomposed.png',
-        '/favicon.ico',
         '/favicon.png',
     ];
 
@@ -168,7 +171,7 @@ final class LogoFetcher
     private function download(string $domain, bool &$refusedByMode): ?string
     {
         // A site that does not answer must not hold a save for the sum of
-        // four timeouts (K55): once the budget is spent, the rest are skipped.
+        // several timeouts (K55): once the budget is spent, the rest are skipped.
         $deadline = microtime(true) + self::BUDGET_SECONDS;
         foreach (self::CANDIDATES as $path) {
             if (microtime(true) >= $deadline || $refusedByMode) {

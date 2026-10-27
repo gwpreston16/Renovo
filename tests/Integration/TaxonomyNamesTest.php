@@ -14,10 +14,12 @@ use App\Repository\TagRepository;
 use App\Repository\UserRepository;
 use App\Security\Scope;
 use App\Service\CategoryService;
+use App\Service\LogoStorage;
 use App\Service\PaymentMethodService;
 use App\Service\SubscriptionService;
 use App\Service\TagService;
 use App\Service\ValidationException;
+use App\Tests\Support\FakeUpload;
 use DI\ContainerBuilder;
 use PHPUnit\Framework\Attributes\DataProvider;
 
@@ -35,6 +37,7 @@ final class TaxonomyNamesTest extends DatabaseTestCase
     private PaymentMethodService $methods;
     private SubscriptionService $subscriptions;
     private Scope $scope;
+    private string $logoDirectory;
 
     protected function setUp(): void
     {
@@ -50,8 +53,10 @@ final class TaxonomyNamesTest extends DatabaseTestCase
             'password' => $this->env('DB_PASSWORD', 'renovo'),
             'charset' => $this->env('DB_CHARSET', 'utf8'),
         ];
+        $this->logoDirectory = sys_get_temp_dir() . '/renovo-taxonomy-logos-' . bin2hex(random_bytes(6));
         $builder = new ContainerBuilder();
         (require dirname(__DIR__, 2) . '/config/container.php')($builder, $settings);
+        $builder->addDefinitions([LogoStorage::class => new LogoStorage($this->logoDirectory, 512 * 1024)]);
         $container = $builder->build();
 
         $this->categories = $container->get(CategoryService::class);
@@ -66,6 +71,18 @@ final class TaxonomyNamesTest extends DatabaseTestCase
         $household = (new HouseholdRepository($this->db))->create('Home', $ownerId);
         (new MembershipRepository($this->db))->create($household, $ownerId, Role::OwnerAdmin);
         $this->scope = Scope::forMember($ownerId, false, $household, Role::OwnerAdmin, IsolationMode::Shared);
+    }
+
+    protected function tearDown(): void
+    {
+        foreach (glob($this->logoDirectory . '/*') ?: [] as $file) {
+            unlink($file);
+        }
+        if (is_dir($this->logoDirectory)) {
+            rmdir($this->logoDirectory);
+        }
+
+        parent::tearDown();
     }
 
     /**
@@ -294,6 +311,38 @@ final class TaxonomyNamesTest extends DatabaseTestCase
                 fn () => $this->methods->update($this->scope, $other, 'Other', '#112233'),
             );
         });
+    }
+
+    /**
+     * K133: the logo is stored before the row, so a create or update that loses
+     * the race has to take it back out.
+     */
+    public function testALostPaymentMethodRaceDeletesItsLogo(): void
+    {
+        $this->withUniqueColour('payment_methods', function (): void {
+            $this->methods->create($this->scope, 'First', '#112233');
+            $other = $this->methods->create($this->scope, 'Other', '#445566');
+
+            $this->assertDuplicate(
+                'error.payment_method.duplicate',
+                fn () => $this->methods->create($this->scope, 'Second', '#112233', FakeUpload::png()),
+            );
+            self::assertSame([], $this->storedLogos(), 'A create that lost the race leaves no file.');
+
+            $this->assertDuplicate(
+                'error.payment_method.duplicate',
+                fn () => $this->methods->update($this->scope, $other, 'Other', '#112233', FakeUpload::png()),
+            );
+            self::assertSame([], $this->storedLogos(), 'An update that lost the race leaves no file.');
+        });
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function storedLogos(): array
+    {
+        return glob($this->logoDirectory . '/*') ?: [];
     }
 
     public function testSharpSAndSSAreOneTagOnBothEngines(): void

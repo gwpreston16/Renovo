@@ -897,7 +897,8 @@ null `payment_method_id`. No subscription is deleted. Responses: `204`, `401`,
 
 Replace the method's logo. `multipart/form-data` with a `logo` part — PNG,
 JPEG, GIF or WebP, with the type read from the file's contents — exactly as for
-a [subscription's logo](#logos). Any earlier logo file is deleted.
+a [subscription's logo](#logos). Any earlier logo file is deleted, unless another
+subscription or payment method still uses it.
 
 Returns the updated payment method. Responses: `200`, `400` (no `logo` part),
 `401`, `403`, `404`, `422` (not an accepted image, or too large).
