@@ -88,6 +88,8 @@ for both accounts (an Owner/Admin and a Contributor) when it is ready.
 - Budgets checked against projected spend, a twelve-month forecast, and a
   scenario planner for "what if I cancelled these?".
 - Analytics, year over year, and shared costs split between members.
+- A payment ledger: record what was charged, skip a charge, attach an invoice
+  to a payment, and page the calendar back through past months.
 - What introductory offers, discounts and cancellations have saved you,
   counted from what was actually charged.
 
@@ -121,8 +123,11 @@ for both accounts (an Owner/Admin and a Contributor) when it is ready.
 
 - Import and export, and whole-household backup and restore, files included.
 - Scheduled instance backups of everything: encrypted, checked after they are
-  written, pruned by policy, and restorable into PostgreSQL or MySQL. Keep
-  the key somewhere that is not the server.
+  written, pruned by policy, and restorable into PostgreSQL or MySQL. Each
+  verified backup can be sent off the server (S3-compatible storage, WebDAV or
+  a directory) with its own retention, and a scheduled rehearsal restores from
+  a destination and alerts instance administrators when it fails. Keep the key
+  somewhere that is not the server.
 - An iCalendar feed of what is due ([calendar](docs/features/calendar.md)).
 - Invoices and receipts attached to a subscription.
 - A versioned JSON API with an OpenAPI contract ([API](docs/api.md)).
