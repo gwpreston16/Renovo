@@ -117,7 +117,7 @@ None.
 - **K39** makes the code do what `docs/api.md` already says: an impossible date
   is a `422`. *Confirmed 2026-10-27.*
 - **K91** assumes the 422 names the field that was sent wrongly, as every other
-  field error does.
+  field error does. *Confirmed 2026-10-27.*
 - **K90** assumes a type that is not recurring has no end to keep, as the form
   already hides it. *Confirmed 2026-10-27.*
 - **K86** *Decided 2026-10-26:* refuse with `422`. Not chosen: accept and let
