@@ -588,6 +588,17 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   and the category forms offer "Automatic colour". The OpenAPI document is
   version 1.9.2. No migrations. See
   [Tracking](features/tracking.md).
+- **Phase 52 — API input and fixed terms, from the known-issues log —
+  complete (1.21.0).** An impossible date such as `2026-02-30`, on a
+  subscription or a price change, is refused with "Enter a valid date" instead
+  of being stored as 2 March, and a text field sent as `true`, a list or an
+  object is a `422` on that field instead of clearing the stored value; a
+  backup restore skips such a row. Making a fixed term one-off or lifetime
+  clears its end, and resuming a fixed term with no billing date left is
+  refused, by the form, the Resume button, a bulk resume and the API. The
+  rate-limit headers and the date, pause and anchor notes are in the OpenAPI
+  contract, now version 1.9.3. No migrations. See
+  [API reference](api.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
