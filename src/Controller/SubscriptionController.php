@@ -419,7 +419,7 @@ final class SubscriptionController extends Controller
             // Resuming a cancelled subscription (the way back is un-cancel),
             // or a fixed term with no billing date left (move its end first).
             $error = $exception->errors()['payments_end_on'] ?? null;
-            $this->flash('error', $error?->key ?? 'error.subscription.cancelled_resume');
+            $this->flash('error', $error === null ? 'error.subscription.cancelled_resume' : $error->key);
 
             return $this->redirectAfterWrite($request, $response, '/subscriptions');
         }
