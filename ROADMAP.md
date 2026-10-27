@@ -63,7 +63,7 @@ can be moved.
 | 52 | [API input and fixed terms, from the known-issues log](docs/phases/PHASE-52.md) | — | None | ✅ done |
 | 53 | [Dev tooling, docs and test gaps, from the known-issues log](docs/phases/PHASE-53.md) | — | None | ✅ done |
 | 54 | [Tag integrity, from the known-issues log](docs/phases/PHASE-54.md) | — | None | ✅ done |
-| 55 | [Security and backup test gaps, from the known-issues log](docs/phases/PHASE-55.md) | — | None | 📋 planned |
+| 55 | [Security and backup test gaps, from the known-issues log](docs/phases/PHASE-55.md) | — | None | 🚧 in progress |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
