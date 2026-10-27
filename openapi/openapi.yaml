@@ -196,7 +196,8 @@ paths:
               - { type: integer }
               - { type: array, items: { type: integer } }
           description: >
-            Tag id; repeat it (`tag[]=3&tag[]=7`) for several. A subscription
+            Tag id. For several, send the array form `tag[]=3&tag[]=7`: a
+            plain repeated `tag=3&tag=7` keeps only the last. A subscription
             matches when it has any of them.
         - { name: currency, in: query, schema: { type: string }, description: ISO 4217 code. }
         - name: type
