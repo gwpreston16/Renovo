@@ -8,7 +8,7 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
-### Added
+### Changed
 
 - **The README names the payment ledger and off-server backup copies.** The
   Money group lists recording what was charged, skipping a charge, invoices on
