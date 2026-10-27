@@ -343,6 +343,26 @@ final class LogoPathTest extends ApiTestCase
         self::assertNotNull($this->logoOf($theirs));
     }
 
+    public function testAFileAPaymentMethodUsesIsKeptWhenASubscriptionLetsGo(): void
+    {
+        [$mine, $file] = $this->subscriptionWithAStoredLogo();
+        $this->db->execute(
+            'INSERT INTO payment_methods (household_id, name, logo_path, created_at, updated_at)'
+            . ' VALUES (:household, :name, :path, :now, :now)',
+            [
+                'household' => $this->householdId,
+                'name' => 'Card',
+                'path' => $this->logoOf($mine),
+                'now' => '2026-06-01 09:00:00',
+            ],
+        );
+
+        $removed = $this->api('DELETE', '/api/v1/subscriptions/' . $mine . '/logo', $this->ownerToken);
+
+        self::assertSame(204, $removed->getStatusCode());
+        self::assertFileExists($file, 'The payment method still shows it.');
+    }
+
     /**
      * @return array{0: int, 1: string} The subscription and its logo file.
      */
