@@ -194,6 +194,33 @@ final class ScopingTest extends DatabaseTestCase
         self::assertSame(0, $this->subscriptions->countForList($admin, new SubscriptionFilter()));
     }
 
+    public function testInstanceAdminWidensNothingInIsolatedMode(): void
+    {
+        $this->createSubscription($this->scope($this->alice, IsolationMode::Isolated), 'Alice private');
+        $this->createSubscription($this->scope($this->bob, IsolationMode::Isolated), 'Bob music');
+
+        // Bob is also the instance admin, and still a household member: the
+        // flag must not let him read the rest of the household.
+        $bobAdmin = Scope::forMember($this->bob, true, $this->household, Role::Editor, IsolationMode::Isolated);
+
+        self::assertSame(['Bob music'], $this->namesVisibleTo($bobAdmin));
+        self::assertSame(1, $this->subscriptions->countForList($bobAdmin, new SubscriptionFilter()));
+    }
+
+    public function testInstanceAdminContributorStillWritesOnlyTheirOwnRows(): void
+    {
+        $alicesRow = $this->createSubscription($this->scope($this->alice, IsolationMode::Shared), 'Alice streaming');
+
+        $bobAdmin = Scope::forMember($this->bob, true, $this->household, Role::Contributor, IsolationMode::Shared);
+
+        // Reads are the household's in SHARED mode, writes only his own.
+        self::assertSame(['Alice streaming'], $this->namesVisibleTo($bobAdmin));
+        self::assertTrue($bobAdmin->restrictsWritesToOwner());
+
+        $this->expectException(ScopeViolationException::class);
+        $this->subscriptions->update($bobAdmin, $alicesRow, ['name' => 'Changed'], []);
+    }
+
     public function testCategoriesAreHouseholdScoped(): void
     {
         $categories = new CategoryRepository($this->db);
