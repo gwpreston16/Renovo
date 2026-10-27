@@ -54,8 +54,6 @@ final class Session implements SessionInterface
             'use_strict_mode' => 1,
             'use_only_cookies' => 1,
             'cookie_httponly' => 1,
-            'sid_length' => 48,
-            'sid_bits_per_character' => 5,
         ]);
     }
 
