@@ -115,11 +115,11 @@ None.
 ## Decisions & assumptions (confirm or correct before build)
 
 - **K39** makes the code do what `docs/api.md` already says: an impossible date
-  is a `422`.
+  is a `422`. *Confirmed 2026-10-27.*
 - **K91** assumes the 422 names the field that was sent wrongly, as every other
   field error does.
 - **K90** assumes a type that is not recurring has no end to keep, as the form
-  already hides it.
+  already hides it. *Confirmed 2026-10-27.*
 - **K86** *Decided 2026-10-26:* refuse with `422`. Not chosen: accept and let
   the catch-up end the term again.
 - **How it ships.** *Decided 2026-10-26:* as its own patch release once merged
