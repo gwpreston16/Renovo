@@ -434,6 +434,31 @@ final class BackupRestoreTest extends DatabaseTestCase
         );
     }
 
+    public function testTheTagCapCountsDistinctTagsNotSpellings(): void
+    {
+        $this->subscriptions->create($this->source, [
+            'name' => 'Tagged',
+            'price' => '9.99',
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-12-01',
+        ]);
+        $archive = $this->export();
+
+        // 26 entries, but one is a spelling of another and one is blank: 24 tags.
+        $names = array_map(static fn (int $i): string => 'tag-' . $i, range(1, 24));
+        $data = $this->readArchiveJson($archive, 'data.json');
+        $data['subscriptions'][0]['tags'] = [...$names, 'TAG-1', '  '];
+        $this->rewriteData($archive, $data);
+
+        $summary = $this->backups->restore($this->target, $this->targetUser, $archive);
+
+        self::assertSame(0, $summary['tags_trimmed']);
+        $restored = $this->subscriptions->allForStats($this->target, activeOnly: false)[0];
+        self::assertCount(24, $restored->tags);
+    }
+
     public function testARestoreSkipsATagOverFiftyCharacters(): void
     {
         $this->subscriptions->create($this->source, [

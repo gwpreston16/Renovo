@@ -17,10 +17,12 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   25 tags of a row that has more and leaves out a tag name over 50 characters,
   and says so, instead of skipping the subscription or failing the restore.
   *Phase 54.*
-- **"Straße" and "Strasse" are one tag name on both engines.** PostgreSQL kept
-  two tags where MySQL refused the second with a server error. *Phase 54.*
+- **"Straße" and "Strasse" are one name on both engines.** For tags, PostgreSQL
+  kept two where MySQL refused the second with a server error; category and
+  payment-method names now agree across engines too. *Phase 54.*
 - **Two saves creating the same new tag at once both succeed.** The second now
-  uses the tag the first made instead of failing with a server error. *Phase 54.*
+  uses the tag the first made, on MySQL as well as PostgreSQL, instead of
+  failing with a server error. *Phase 54.*
 - **The category section of the API reference is complete.** `POST` and `PUT
   /api/v1/categories` now say a null or absent `colour` leaves the category
   uncoloured (a `PUT` without it clears the colour) and that the name is unique

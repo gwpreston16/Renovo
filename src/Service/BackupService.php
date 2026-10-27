@@ -569,15 +569,18 @@ final class BackupService
     {
         $names = [];
         foreach (is_array($tags) ? $tags : [] as $name) {
-            if (!is_string($name)) {
+            if (!is_string($name) || trim($name) === '') {
                 continue;
             }
+            $name = trim($name);
             if (!TagLimits::nameFits($name)) {
                 $summary['skipped']++;
                 continue;
             }
-            $names[] = $name;
+            // One tag however it is spelt, so the cap counts tags, not spellings.
+            $names[NameKey::of($name)] ??= $name;
         }
+        $names = array_values($names);
 
         if (count($names) > TagLimits::MAX_PER_SUBSCRIPTION) {
             $summary['tags_trimmed']++;

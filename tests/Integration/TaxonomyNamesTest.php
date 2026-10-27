@@ -338,13 +338,36 @@ final class TaxonomyNamesTest extends DatabaseTestCase
         self::assertSame($ids[0], $this->tags->findByName($this->scope, 'shared')?->id);
     }
 
+    /**
+     * The other request is a second connection that commits between this
+     * transaction's first read and its insert. On MySQL that first read fixed
+     * the snapshot, so only a locking lookup finds the tag; PostgreSQL would
+     * also abort the transaction at the failed insert without a savepoint.
+     */
     public function testALostRaceInsideATransactionLeavesItUsable(): void
     {
-        $racing = new class ($this->db, $this->scope) extends TagRepository {
+        $config = [
+            'driver' => $this->env('DB_DRIVER', 'pgsql'),
+            'host' => $this->env('DB_HOST', '127.0.0.1'),
+            'port' => (int) $this->env('DB_PORT', $this->env('DB_DRIVER', 'pgsql') === 'mysql' ? '3306' : '5432'),
+            'name' => $this->env('DB_NAME', 'renovo'),
+            'user' => $this->env('DB_USER', 'renovo'),
+            'password' => $this->env('DB_PASSWORD', 'renovo'),
+            'charset' => $this->env('DB_CHARSET', 'utf8'),
+        ];
+        $other = new TagRepository(new \App\Persistence\Database(
+            $config,
+            \App\Persistence\PlatformFactory::create($config['driver']),
+        ));
+
+        $racing = new class ($this->db, $other, $this->scope) extends TagRepository {
             private bool $raced = false;
 
-            public function __construct(\App\Persistence\Database $db, private readonly Scope $racer)
-            {
+            public function __construct(
+                \App\Persistence\Database $db,
+                private readonly TagRepository $other,
+                private readonly Scope $racer,
+            ) {
                 parent::__construct($db);
             }
 
@@ -353,7 +376,7 @@ final class TaxonomyNamesTest extends DatabaseTestCase
                 $found = parent::findAll($scope);
                 if (!$this->raced) {
                     $this->raced = true;
-                    $this->create($this->racer, 'shared');
+                    $this->other->create($this->racer, 'shared');
                 }
 
                 return $found;

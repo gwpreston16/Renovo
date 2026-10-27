@@ -855,8 +855,8 @@ Create, or rename and recolour. Body:
 ```
 
 `name` is required, maximum 60 characters, and unique in the household ignoring
-case and accents. `colour` is nullable and must match `^#[0-9a-fA-F]{6}$`. A
-null or absent `colour` leaves the category uncoloured, so a `PUT` without
+case and accents (and "ß" is read as "ss"). `colour` is nullable and must match
+`^#[0-9a-fA-F]{6}$`. A null or absent `colour` leaves the category uncoloured, so a `PUT` without
 `colour` clears the one the category had: send it back to keep it.
 
 Responses: `201`/`200`, `401`, `403`, `404` (on `PUT`), `422`.
@@ -881,8 +881,8 @@ Create, or rename and recolour. Body:
 ```
 
 The same rules as a category: `name` is required, maximum 60 characters, and
-unique in the household ignoring case and accents; `colour` is nullable and must match
-`^#[0-9a-fA-F]{6}$`. A null colour takes the theme's palette in the breakdown.
+unique in the household ignoring case and accents (and "ß" is read as "ss");
+`colour` is nullable and must match `^#[0-9a-fA-F]{6}$`. A null colour takes the theme's palette in the breakdown.
 A logo doesn't travel in this body; it has an endpoint of its own, below.
 
 Responses: `201`/`200`, `401`, `403`, `404` (on `PUT`), `422`.

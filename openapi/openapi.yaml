@@ -972,7 +972,7 @@ paths:
               type: object
               required: [name]
               properties:
-                name: { type: string, maxLength: 60, description: "Unique in the household, ignoring case and accents." }
+                name: { type: string, maxLength: 60, description: "Unique in the household, ignoring case and accents (ß is read as ss)." }
                 colour:
                   type: string
                   nullable: true
@@ -1023,7 +1023,7 @@ paths:
               type: object
               required: [name]
               properties:
-                name: { type: string, maxLength: 60, description: "Unique in the household, ignoring case and accents." }
+                name: { type: string, maxLength: 60, description: "Unique in the household, ignoring case and accents (ß is read as ss)." }
                 colour:
                   type: string
                   nullable: true

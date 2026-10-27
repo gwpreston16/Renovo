@@ -111,13 +111,35 @@ class TagRepository extends AbstractScopedRepository
                 throw $exception;
             }
 
-            $existing = $this->findByName($scope, $name);
+            $existing = $this->lockedLookup($scope, $name);
             if ($existing === null) {
                 throw $exception;
             }
 
-            return $existing->id;
+            return $existing;
         }
+    }
+
+    /**
+     * The id of the tag a lost race left behind, read as it is now.
+     *
+     * A plain SELECT would not do: MySQL's transactions read a snapshot taken
+     * at their first read, which cannot hold a tag another request committed
+     * since, so the lookup would find nothing and the failure this exists to
+     * absorb would stand. A locking read sees the latest committed row.
+     */
+    private function lockedLookup(Scope $scope, string $name): ?int
+    {
+        if ($scope->householdId === null) {
+            return null;
+        }
+
+        $id = $this->db->fetchValue(
+            'SELECT id FROM tags WHERE household_id = :household AND name = :name FOR UPDATE',
+            ['household' => $scope->householdId, 'name' => $name],
+        );
+
+        return $id === null || $id === false ? null : (int) $id;
     }
 
     public function create(Scope $scope, string $name): int

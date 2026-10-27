@@ -183,12 +183,13 @@ back with an error.
 A subscription takes up to 25 tags of up to 50 characters each; more is an
 error, not a quiet cut. Names of tags, categories and payment methods are
 matched whole, ignoring case and accents: "tv" is "TV", "Cafe" is "Café",
-"Straße" is "Strasse", and "TV" is not "Apple TV". Bulk **Add tag** keeps to the
-same limits: a name over 50 characters is refused, and a subscription that
-already has 25 tags is left as it is and counted in a message after the action.
-Restoring a backup keeps the first 25 tags of a row that has more, leaves out a
-tag name over 50 characters, and says so. In Settings a category's colour can be left on
-**Automatic colour**, which takes the theme's palette.
+"Straße" is "Strasse", and "TV" is not "Apple TV". Bulk **Add tag** keeps to
+the same limits: a name over 50 characters is refused, and a subscription that
+already has 25 tags is left as it is and counted in a message after the
+action. Restoring a backup keeps the first 25 tags of a row that has more,
+leaves out a tag name over 50 characters, and says so. In Settings a
+category's colour can be left on **Automatic colour**, which takes the theme's
+palette.
 
 The split is saved with the row, in one transaction, so a save is both or
 neither. "Only me" and a split cannot both be chosen; whichever is set rules the
