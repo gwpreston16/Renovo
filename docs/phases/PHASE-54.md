@@ -98,7 +98,8 @@ None.
 
 - **K128** Makes the code do what the docs and the subscription form already
   say: no more than 25 tags. Assumes skipping (not failing the whole bulk
-  action) matches how unchangeable rows are already treated.
+  action) matches how unchangeable rows are already treated. *Confirmed
+  2026-10-27.*
 - **K129, K131, K132, K135** Make the code and the documents match what
   Phase 51 specified.
 - **K130** *Decided 2026-10-27:* fold `ß` to `ss` in `NameKey`, so both engines
