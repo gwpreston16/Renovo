@@ -108,7 +108,10 @@ final class LogoFetchTest extends DatabaseTestCase
      */
     public function testFaviconPngIsUsedWhenTheIcoIsRefused(): void
     {
-        $client = FakeGuardedClient::serving(['/favicon.ico' => $this->icoBytes(), '/favicon.png' => $this->pngBytes()]);
+        $client = FakeGuardedClient::serving([
+            '/favicon.ico' => $this->icoBytes(),
+            '/favicon.png' => $this->pngBytes(),
+        ]);
 
         $path = TestLogoFetcher::with($client, $this->db, $this->clock)->fetchFor('https://both.example');
 

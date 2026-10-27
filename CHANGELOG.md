@@ -8,6 +8,27 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **A failed upload leaves no logo behind.** A Contributor's logo upload to
+  another member's subscription through the API, and a web create or edit that
+  fails validation or is refused, now delete the file they had stored. *Phase 56.*
+- **Deleting a subscription never removes a logo another row uses.** Deleting a
+  row, replacing its logo or removing it keeps the file when another
+  subscription or payment method still names it. *Phase 56.*
+- **A site with a `/favicon.png` gets its logo.** The fetcher no longer stops at
+  `/favicon.ico`, which logo storage never accepts; an ICO-only site is
+  remembered as having no icon, like any other. *Phase 56.*
+- **A passkey sign-in to an unverified account is audited.** It is recorded as a
+  failed sign-in (reason `unverified`) and counts toward lockout, as a password
+  sign-in does. *Phase 56.*
+- **Starting a session raises no deprecation notice on PHP 8.5.** The 48-character
+  session id moved from `session_start()` to `docker/php/php.ini`; installs
+  without the image keep PHP's default id length. *Phase 56.*
+- **The payment-method race logo cleanup is tested.** A create or update that
+  loses a race to the unique index deletes the logo it stored. No behaviour
+  changes. *Phase 56.*
+
 ## [1.24.0] - 2026-10-27
 
 ### Fixed

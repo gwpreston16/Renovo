@@ -50,7 +50,8 @@ JavaScript off loses the convenience and none of the function.
 
 Upload one on the subscription form, or give the subscription its **Website**
 and Renovo will ask that site for its own icon — `/apple-touch-icon.png`,
-`/favicon.ico` and the two other conventional paths, in that order.
+`/apple-touch-icon-precomposed.png` and `/favicon.png`, in that order. An
+ICO-only site gets no logo: Renovo stores PNG, JPEG, GIF and WebP only.
 
 It asks the site, never a logo service: every icon service works by being told
 which brands you are interested in, and a household's list of subscriptions is

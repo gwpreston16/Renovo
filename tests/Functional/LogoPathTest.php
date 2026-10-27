@@ -337,7 +337,8 @@ final class LogoPathTest extends ApiTestCase
         self::assertFileExists($file, 'Replacing keeps the file the other row uses.');
 
         $this->nameLogo($mine, $this->logoOf($theirs));
-        self::assertSame(204, $this->api('DELETE', '/api/v1/subscriptions/' . $mine . '/logo', $this->ownerToken)->getStatusCode());
+        $removed = $this->api('DELETE', '/api/v1/subscriptions/' . $mine . '/logo', $this->ownerToken);
+        self::assertSame(204, $removed->getStatusCode());
         self::assertFileExists($file, 'Removing keeps it too.');
         self::assertNotNull($this->logoOf($theirs));
     }

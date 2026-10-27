@@ -113,16 +113,16 @@ None.
 
 ## Status
 
-- [ ] K31: a failed upload leaves no logo behind
-- [ ] K57: `/favicon.png` is tried and ICO-only sites are cached as misses
-- [ ] K120: deleting a row keeps a file another row uses
-- [ ] K133: the payment-method race logo cleanup tested
-- [ ] K136: passkey sign-in to an unverified account audited
-- [ ] K137: session start raises no notice on PHP 8.5
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 56 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K31: a failed upload leaves no logo behind
+- [x] K57: `/favicon.png` is tried and ICO-only sites are cached as misses
+- [x] K120: deleting a row keeps a file another row uses
+- [x] K133: the payment-method race logo cleanup tested
+- [x] K136: passkey sign-in to an unverified account audited
+- [x] K137: session start raises no notice on PHP 8.5
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 56 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
