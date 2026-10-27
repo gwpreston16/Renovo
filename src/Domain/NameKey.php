@@ -12,7 +12,8 @@ use Normalizer;
  * Category, tag and payment-method names are unique per household, and the
  * MySQL unique indexes (`utf8mb4_unicode_ci`) already treat "Café", "cafe" and
  * "CAFÉ" as one name. PostgreSQL's would not, so the check is made here, on
- * both engines, by comparing this key: accents dropped, case folded.
+ * both engines, by comparing this key: accents dropped, case folded, and
+ * "ß" read as "ss", which is how MySQL's collation reads it too.
  */
 final class NameKey
 {
@@ -21,7 +22,7 @@ final class NameKey
         $decomposed = Normalizer::normalize(trim($name), Normalizer::FORM_D);
         $stripped = preg_replace('/\p{Mn}+/u', '', $decomposed === false ? $name : $decomposed);
 
-        return mb_strtolower($stripped ?? $name);
+        return str_replace('ß', 'ss', mb_strtolower($stripped ?? $name));
     }
 
     public static function same(string $a, string $b): bool

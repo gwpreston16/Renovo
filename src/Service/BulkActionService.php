@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Domain\Currency;
 use App\Domain\NameKey;
 use App\Domain\PriceChangeSource;
+use App\Domain\TagLimits;
 use App\Persistence\Database;
 use App\Repository\CategoryRepository;
 use App\Repository\MembershipRepository;
@@ -80,11 +81,15 @@ final class BulkActionService
      * Apply one action to a selection.
      *
      * @param array<string, mixed> $input
+     * @param int                  $skippedFull Set to the rows "Add tag" left alone because they
+     *                                          already carry the most tags a subscription may.
      * @return int Number of subscriptions actually changed.
      * @throws ValidationException
      */
-    public function apply(Scope $scope, array $input): int
+    public function apply(Scope $scope, array $input, int &$skippedFull = 0): int
     {
+        $skippedFull = 0;
+
         $ids = $this->ids($input);
         if ($ids === []) {
             throw new ValidationException(['ids' => 'error.bulk.no_subscriptions']);
@@ -94,8 +99,8 @@ final class BulkActionService
 
         return match ($action) {
             self::ACTION_CATEGORY => $this->setCategory($scope, $ids, $input),
-            self::ACTION_ADD_TAG => $this->changeTag($scope, $ids, $input, true),
-            self::ACTION_REMOVE_TAG => $this->changeTag($scope, $ids, $input, false),
+            self::ACTION_ADD_TAG => $this->changeTag($scope, $ids, $input, true, $skippedFull),
+            self::ACTION_REMOVE_TAG => $this->changeTag($scope, $ids, $input, false, $skippedFull),
             self::ACTION_OWNER => $this->setMember($scope, $ids, $input, 'owner_user_id'),
             self::ACTION_PAYER => $this->setMember($scope, $ids, $input, 'payer_user_id'),
             self::ACTION_CURRENCY => $this->convertCurrency($scope, $ids, $input),
@@ -183,14 +188,17 @@ final class BulkActionService
      * @param list<int>            $ids
      * @param array<string, mixed> $input
      */
-    private function changeTag(Scope $scope, array $ids, array $input, bool $add): int
+    private function changeTag(Scope $scope, array $ids, array $input, bool $add, int &$skippedFull): int
     {
         $name = trim(is_scalar($input['tag'] ?? null) ? (string) $input['tag'] : '');
         if ($name === '') {
             throw new ValidationException(['tag' => 'error.tag.required']);
         }
+        if (!TagLimits::nameFits($name)) {
+            throw new ValidationException(['tag' => 'error.tag.too_long_50']);
+        }
 
-        return $this->db->transactional(function () use ($scope, $ids, $name, $add): int {
+        return $this->db->transactional(function () use ($scope, $ids, $name, $add, &$skippedFull): int {
             $changed = 0;
 
             foreach ($ids as $id) {
@@ -210,6 +218,13 @@ final class BulkActionService
                 if ($add) {
                     $tagIds = $this->tags->resolveOrCreate($scope, [$name]);
                     $next = array_values(array_unique([...$current, ...$tagIds]));
+
+                    if (count($next) > TagLimits::MAX_PER_SUBSCRIPTION) {
+                        // A row the form could not save again: left alone,
+                        // like one the caller cannot change, and counted.
+                        $skippedFull++;
+                        continue;
+                    }
                 } else {
                     $removing = array_map(
                         static fn ($tag): int => $tag->id,

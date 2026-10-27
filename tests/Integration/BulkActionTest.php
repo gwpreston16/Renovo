@@ -172,6 +172,102 @@ final class BulkActionTest extends DatabaseTestCase
         self::assertSame(['shared'], $this->tagNames($second));
     }
 
+    public function testAddTagSkipsARowThatAlreadyHasTwentyFiveTags(): void
+    {
+        $full = $this->createWithTags('Full', 25);
+
+        $skipped = 0;
+        $changed = $this->bulk->apply($this->scope(), [
+            'action' => BulkActionService::ACTION_ADD_TAG,
+            'ids' => [$full],
+            'tag' => 'one-too-many',
+        ], $skipped);
+
+        self::assertSame(0, $changed);
+        self::assertSame(1, $skipped);
+        self::assertCount(25, $this->tagNames($full));
+        self::assertNotContains('one-too-many', $this->tagNames($full));
+    }
+
+    public function testAMixedSelectionSkipsOnlyTheFullRows(): void
+    {
+        $full = $this->createWithTags('Full', 25);
+        $room = $this->createWithTags('Room', 24);
+        $empty = $this->create('Empty');
+
+        $skipped = 0;
+        $changed = $this->bulk->apply($this->scope(), [
+            'action' => BulkActionService::ACTION_ADD_TAG,
+            'ids' => [$full, $room, $empty],
+            'tag' => 'extra',
+        ], $skipped);
+
+        self::assertSame(2, $changed);
+        self::assertSame(1, $skipped);
+        self::assertCount(25, $this->tagNames($full));
+        self::assertContains('extra', $this->tagNames($room));
+        self::assertCount(25, $this->tagNames($room));
+        self::assertSame(['extra'], $this->tagNames($empty));
+    }
+
+    public function testAddingATagAlreadyOnAFullRowIsNotASkip(): void
+    {
+        $full = $this->createWithTags('Full', 25);
+
+        $skipped = 0;
+        $changed = $this->bulk->apply($this->scope(), [
+            'action' => BulkActionService::ACTION_ADD_TAG,
+            'ids' => [$full],
+            'tag' => 'TAG-1',
+        ], $skipped);
+
+        self::assertSame(0, $changed);
+        self::assertSame(0, $skipped);
+    }
+
+    public function testAddTagOverFiftyCharactersIsRefused(): void
+    {
+        $id = $this->create('One');
+
+        try {
+            $this->bulk->apply($this->scope(), [
+                'action' => BulkActionService::ACTION_ADD_TAG,
+                'ids' => [$id],
+                'tag' => str_repeat('x', 51),
+            ]);
+            self::fail('A 51-character tag should be refused.');
+        } catch (ValidationException $exception) {
+            self::assertSame('error.tag.too_long_50', $exception->errors()['tag']->key);
+        }
+
+        self::assertSame([], $this->tagNames($id));
+        self::assertSame(1, $this->bulk->apply($this->scope(), [
+            'action' => BulkActionService::ACTION_ADD_TAG,
+            'ids' => [$id],
+            'tag' => str_repeat('x', 50),
+        ]));
+    }
+
+    public function testSharpSAndSSAreOneTagInABulkAdd(): void
+    {
+        $first = $this->create('One');
+        $second = $this->create('Two');
+
+        $this->bulk->apply($this->scope(), [
+            'action' => BulkActionService::ACTION_ADD_TAG,
+            'ids' => [$first],
+            'tag' => 'Strasse',
+        ]);
+        $this->bulk->apply($this->scope(), [
+            'action' => BulkActionService::ACTION_ADD_TAG,
+            'ids' => [$second],
+            'tag' => 'Straße',
+        ]);
+
+        self::assertCount(1, (new TagRepository($this->db))->findAll($this->scope()));
+        self::assertSame(['Strasse'], $this->tagNames($second));
+    }
+
     public function testAddingATagContainedInAnotherTagsNameUsesTheWholeName(): void
     {
         $id = $this->create('One');
@@ -464,6 +560,24 @@ final class BulkActionTest extends DatabaseTestCase
         return $subscription === null
             ? []
             : array_map(static fn ($tag): string => $tag->name, $subscription->tags);
+    }
+
+    private function createWithTags(string $name, int $count): int
+    {
+        $tags = [];
+        for ($i = 1; $i <= $count; $i++) {
+            $tags[] = 'tag-' . $i;
+        }
+
+        return $this->subscriptions->create($this->scope(), [
+            'name' => $name,
+            'price_minor' => 999,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-12-01',
+            'is_active' => true,
+        ], (new TagRepository($this->db))->resolveOrCreate($this->scope(), $tags));
     }
 
     private function create(

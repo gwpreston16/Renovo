@@ -62,7 +62,7 @@ can be moved.
 | 51 | [Tag and category names, from the known-issues log](docs/phases/PHASE-51.md) | — | None | ✅ done |
 | 52 | [API input and fixed terms, from the known-issues log](docs/phases/PHASE-52.md) | — | None | ✅ done |
 | 53 | [Dev tooling, docs and test gaps, from the known-issues log](docs/phases/PHASE-53.md) | — | None | ✅ done |
-| 54 | [Tag integrity, from the known-issues log](docs/phases/PHASE-54.md) | — | None | 📋 planned |
+| 54 | [Tag integrity, from the known-issues log](docs/phases/PHASE-54.md) | — | None | ✅ done |
 | 55 | [Security and backup test gaps, from the known-issues log](docs/phases/PHASE-55.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos

@@ -15,6 +15,7 @@ use App\Domain\BillingCycle;
 use App\Domain\Currency;
 use App\Domain\Money;
 use App\Domain\NameKey;
+use App\Domain\TagLimits;
 use App\Domain\Entity\Attachment;
 use App\Domain\Entity\Budget;
 use App\Domain\Entity\Category;
@@ -64,7 +65,7 @@ use ZipArchive;
  * magic bytes exactly as an upload would be.
  *
  * @phpstan-type RestoreSummary array{subscriptions: int, categories: int, payment_methods: int, tags: int,
- *     budgets: int, attachments: int, charges: int, skipped: int}
+ *     budgets: int, attachments: int, charges: int, skipped: int, tags_trimmed: int}
  */
 final class BackupService
 {
@@ -344,6 +345,7 @@ final class BackupService
             'attachments' => 0,
             'charges' => 0,
             'skipped' => 0,
+            'tags_trimmed' => 0,
         ];
 
         $categoryIds = $this->restoreCategories($scope, $data['categories'] ?? [], $summary);
@@ -356,7 +358,7 @@ final class BackupService
             $written,
             $summary,
         );
-        $summary['tags'] = $this->restoreTags($scope, $data['tags'] ?? []);
+        $summary['tags'] = $this->restoreTags($scope, $data['tags'] ?? [], $summary);
         $owners = $this->memberIdsByEmail($scope);
 
         /** @var array<int, int> $subscriptionIds Archive index => new id. */
@@ -377,6 +379,8 @@ final class BackupService
                 $summary['skipped']++;
                 continue;
             }
+
+            $input['tags'] = $this->restorableTags($input['tags'] ?? [], $summary);
 
             $logo = $this->restoreLogo($zip, $row, $written);
             if ($logo !== null) {
@@ -525,13 +529,21 @@ final class BackupService
      * makes, so an existing tag is matched rather than duplicated.
      *
      * @param mixed $rows
+     * @param array<string, int> $summary
      */
-    private function restoreTags(Scope $scope, mixed $rows): int
+    private function restoreTags(Scope $scope, mixed $rows, array &$summary): int
     {
         $names = [];
         foreach (is_array($rows) ? $rows : [] as $row) {
             if (is_array($row) && is_string($row['name'] ?? null) && trim($row['name']) !== '') {
-                $names[] = trim($row['name']);
+                $name = trim($row['name']);
+                if (!TagLimits::nameFits($name)) {
+                    // A tag no screen could have made: left out and counted,
+                    // not allowed to fail the whole restore.
+                    $summary['skipped']++;
+                    continue;
+                }
+                $names[] = $name;
             }
         }
 
@@ -543,6 +555,39 @@ final class BackupService
         $this->tagRepository->resolveOrCreate($scope, $names);
 
         return count($this->tags->all($scope)) - $before;
+    }
+
+    /**
+     * A row's tags as the subscription form would hold them: a name over the
+     * limit is dropped (and counted as skipped), and the first 25 are kept
+     * with the row reported in `tags_trimmed` rather than the row lost.
+     *
+     * @param array<string, int> $summary
+     * @return list<string>
+     */
+    private function restorableTags(mixed $tags, array &$summary): array
+    {
+        $names = [];
+        foreach (is_array($tags) ? $tags : [] as $name) {
+            if (!is_string($name) || trim($name) === '') {
+                continue;
+            }
+            $name = trim($name);
+            if (!TagLimits::nameFits($name)) {
+                $summary['skipped']++;
+                continue;
+            }
+            // One tag however it is spelt, so the cap counts tags, not spellings.
+            $names[NameKey::of($name)] ??= $name;
+        }
+        $names = array_values($names);
+
+        if (count($names) > TagLimits::MAX_PER_SUBSCRIPTION) {
+            $summary['tags_trimmed']++;
+            $names = array_slice($names, 0, TagLimits::MAX_PER_SUBSCRIPTION);
+        }
+
+        return $names;
     }
 
     /**

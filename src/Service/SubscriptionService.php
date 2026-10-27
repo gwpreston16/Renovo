@@ -14,6 +14,7 @@ use App\Domain\PriceChangeSource;
 use App\Domain\PromoOffer;
 use App\Domain\SubscriptionFilter;
 use App\Domain\SubscriptionType;
+use App\Domain\TagLimits;
 use App\Domain\Visibility;
 use App\Persistence\Database;
 use App\Repository\CategoryRepository;
@@ -1401,9 +1402,9 @@ final class SubscriptionService
     {
         $names = $this->tagNames($input);
 
-        if (count($names) > 25) {
+        if (count($names) > TagLimits::MAX_PER_SUBSCRIPTION) {
             $errors['tags'] = 'error.tags.too_many_25';
-        } elseif (array_filter($names, static fn (string $name): bool => mb_strlen($name) > 50) !== []) {
+        } elseif (array_filter($names, static fn (string $name): bool => !TagLimits::nameFits($name)) !== []) {
             $errors['tags'] = 'error.tag.too_long_50';
         }
     }

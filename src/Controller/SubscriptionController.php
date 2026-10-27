@@ -219,8 +219,10 @@ final class SubscriptionController extends Controller
     {
         $body = $this->body($request);
 
+        $skippedFull = 0;
+
         try {
-            $changed = $this->bulkActions->apply($this->scope($request), $body);
+            $changed = $this->bulkActions->apply($this->scope($request), $body, $skippedFull);
         } catch (ValidationException $exception) {
             $this->flashErrors($exception);
 
@@ -228,6 +230,9 @@ final class SubscriptionController extends Controller
         }
 
         $this->flash('success', 'flash.bulk_updated', ['count' => $changed]);
+        if ($skippedFull > 0) {
+            $this->flash('warning', 'flash.bulk_tags_full', ['count' => $skippedFull]);
+        }
 
         return $this->redirectAfterWrite($request, $response, '/subscriptions');
     }

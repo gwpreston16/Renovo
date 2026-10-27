@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Domain\Entity\Tag;
+use App\Domain\TagLimits;
 use App\Persistence\Database;
 use App\Repository\TagRepository;
 use App\Security\Scope;
@@ -83,7 +84,7 @@ final class TagService
         }
 
         // The column's width. Tags typed on a subscription are held to it too.
-        if (mb_strlen($name) > 50) {
+        if (!TagLimits::nameFits($name)) {
             throw ValidationException::field('name', 'error.tag.too_long');
         }
 

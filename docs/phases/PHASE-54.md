@@ -98,7 +98,8 @@ None.
 
 - **K128** Makes the code do what the docs and the subscription form already
   say: no more than 25 tags. Assumes skipping (not failing the whole bulk
-  action) matches how unchangeable rows are already treated.
+  action) matches how unchangeable rows are already treated. *Confirmed
+  2026-10-27.*
 - **K129, K131, K132, K135** Make the code and the documents match what
   Phase 51 specified.
 - **K130** *Decided 2026-10-27:* fold `ß` to `ss` in `NameKey`, so both engines
@@ -110,16 +111,16 @@ None.
 
 ## Status
 
-- [ ] K128: bulk Add tag respects the 25-tag limit
-- [ ] K129: an over-long tag name is refused, and a restore skips it
-- [ ] K130: `ß` and `ss` are one name on both engines
-- [ ] K131: a concurrent create of one tag resolves to it
-- [ ] K132: the Settings race message is tested
-- [ ] K135: the category API notes are complete
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 54 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K128: bulk Add tag respects the 25-tag limit
+- [x] K129: an over-long tag name is refused, and a restore skips it
+- [x] K130: `ß` and `ss` are one name on both engines
+- [x] K131: a concurrent create of one tag resolves to it
+- [x] K132: the Settings race message is tested
+- [x] K135: the category API notes are complete
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 54 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

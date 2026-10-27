@@ -849,6 +849,9 @@ return [
     'flash.subscription_paused' => 'Subscription paused.',
     'flash.subscription_resumed' => 'Subscription resumed.',
     'flash.bulk_updated' => '{count, plural, one {# subscription} other {# subscriptions}} updated.',
+    'flash.bulk_tags_full' =>
+        '{count, plural, one {# subscription was left as it is} other {# subscriptions were left as they are}}'
+        . ' because it already has 25 tags.',
     'flash.price_change_scheduled' => 'Price change scheduled.',
     'flash.split_updated' => 'Cost split updated.',
     'flash.usage_reset' => 'Usage count reset.',
@@ -913,6 +916,8 @@ return [
         . ' {budgets, plural, one {# budget} other {# budgets}},'
         . ' {attachments, plural, one {# attachment} other {# attachments}}'
         . ' and {charges, plural, one {# payment} other {# payments}}.',
+    'flash.restore_tags_trimmed' =>
+        '{count, plural, one {# subscription had} other {# subscriptions had}} more than 25 tags, so only the first 25 were restored.',
     'flash.restore_skipped' => '{count, plural, one {# item was} other {# items were}} skipped.',
 
     'flash.household_saved' => 'Household settings saved.',
