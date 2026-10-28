@@ -31,6 +31,13 @@ final class SpendFiguresTest extends DatabaseTestCase
         'calendar inline' => "{% import 'calendar/_figures.twig' as figures %}{{ figures.inline(f) }}",
     ];
 
+    /**
+     * A day cell's corner: one figure. Its combined figure is always "≈",
+     * because it is converted (`dashboard.approx`); the other shapes follow
+     * the rule.
+     */
+    private const COMPACT = "{% import 'calendar/_figures.twig' as figures %}{{ figures.compact(f) }}";
+
     /** @var App<ContainerInterface> */
     private App $app;
 
@@ -109,6 +116,19 @@ final class SpendFiguresTest extends DatabaseTestCase
             $html = $this->render($template, $this->figures(['GBP' => 5800], 5800, ['GBP']));
             self::assertStringContainsString('≈ £58.00', $html, $name);
         }
+    }
+
+    public function testADayCellFollowsTheRule(): void
+    {
+        $varying = $this->figures(['GBP' => 5800], 5800, ['GBP']);
+        self::assertSame('≈ £58.00', trim($this->render(self::COMPACT, $varying)));
+        self::assertSame('£58.00', trim($this->render(self::COMPACT, $this->figures(['GBP' => 5800], 5800, []))));
+
+        // No rate: the subtotals stacked, only the varying one marked.
+        $html = $this->render(self::COMPACT, $this->figures(['GBP' => 5800, 'EUR' => 1299], null, ['GBP']));
+        self::assertStringContainsString('≈ £58.00', $html);
+        self::assertStringNotContainsString('≈ €12.99', $html);
+        self::assertStringContainsString('€12.99', $html);
     }
 
     public function testTheRuleItself(): void

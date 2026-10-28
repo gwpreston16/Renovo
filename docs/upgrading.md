@@ -400,7 +400,12 @@ exactly, and its migration does nothing.
 with its case, as the WebAuthn specification intends. The values are base64url,
 which is ASCII, so nothing stored changes, and no two that were distinct can
 collide. Both tables are rebuilt, which on a household-sized instance is quick.
-Rolling it back puts the table's own collation back.
+Rolling it back puts the table's own collation back. It refuses, and says which
+column, if two ids or two handles have since come to differ only by case (the
+old collation would hold them equal): find them with
+`SELECT credential_id FROM webauthn_credentials GROUP BY LOWER(credential_id) HAVING COUNT(*) > 1`
+(or the same on `users.webauthn_handle`), remove one passkey of each pair, and
+roll back again.
 
 **A token named a case variant of "Calendar feed".** The Phase 42 upgrade took
 a read token with no expiry for the calendar feed's when its name matched

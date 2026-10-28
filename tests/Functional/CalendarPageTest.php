@@ -296,6 +296,10 @@ final class CalendarPageTest extends DatabaseTestCase
         $page = $this->page('/calendar');
         self::assertSame('2 charges · ≈ £25.00 (€30.00 · ≈ £10.00)', $this->text($page, 'calendar-count'));
         self::assertSame('≈ £25.00 (€30.00 · ≈ £10.00)', $this->summary($page, 'total'));
+
+        // The day cells: the varying £ day is an estimate, the fixed € day is not.
+        self::assertSame('≈ £10.00', $this->dayTotal($page, '2026-09-20'));
+        self::assertSame('€30.00', $this->dayTotal($page, '2026-09-22'));
     }
 
     // ------------------------------------------------------------ navigation

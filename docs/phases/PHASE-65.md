@@ -22,7 +22,7 @@ Nothing to build.
   `ApiTokenRepository::countLiveWithoutExpiry()` and
   `migrations/20270701000002_backfill_api_token_scopes.php`.
 - The "≈" rule (`StatsService::includesEstimate()`, `::chargesIncludeEstimate()`),
-  `EstimateMarks` (which replaces `StatsService::includesEstimate()`), the `estimate` key the producers return, and the three Twig macros that draw it:
+  the `estimate` key the producers return, and the three Twig macros that draw it:
   `templates/partials/spend.twig`, `templates/dashboard/_charge_total.twig` and
   `templates/calendar/_figures.twig`.
 - `MySqlPlatform` and the migration tests' engine switch.
@@ -42,7 +42,8 @@ differing only by case and finds both, and looks one up by its exact case.
 ### B. K122 — the feed token's name is matched exactly everywhere
 
 The live count (`countLiveWithoutExpiry()`) and the backfill migration compare
-the token name with `BINARY` (a case-sensitive comparison on both engines), so
+the token name exactly, through `Platform::exactEquals()` (`CAST(... AS BINARY)`
+on MySQL, plain `=` on PostgreSQL, which is exact already), so
 SQL agrees with `isFeedToken()` and `docs/upgrading.md`. The Phase 42 migration
 is edited in place for the exact comparison; it changes nothing for a database
 that has already run it. Tokens already narrowed on MySQL under a case variant of
@@ -61,7 +62,10 @@ due-total callers) return the set of currencies whose rows vary
 draw a subtotal with "≈" only when its currency is in the set, and the combined
 (converted) figure with "≈" whenever any row varies, because it includes one.
 The rule is written once as a Twig macro/function the three partials share, so
-the eight screens cannot drift again. A total of fixed rows only is not marked.
+the eight screens cannot drift again. *As built:* `App\Service\EstimateMarks`
+(new) builds the set and answers the rule, Twig's `estimate_mark()` asks it, and
+`templates/partials/estimate.twig` draws the mark; it replaces
+`StatsService::includesEstimate()`, which is removed. A total of fixed rows only is not marked.
 
 ## Data-model changes
 

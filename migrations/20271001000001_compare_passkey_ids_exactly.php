@@ -18,6 +18,11 @@ use Phinx\Migration\AbstractMigration;
  *
  * PostgreSQL compares text exactly already, so there it does nothing.
  * `down()` puts back the table's own collation, which is what the columns had.
+ * It cannot while two ids, or two handles, differ only by case — the very
+ * values this allows — because the old collation's unique index would hold
+ * them equal. It checks first and stops, naming the column, before changing
+ * anything; the operator removes one of each pair (a passkey is re-registered,
+ * a handle is regenerated with its user's next passkey) and runs it again.
  */
 final class ComparePasskeyIdsExactly extends AbstractMigration
 {
@@ -50,6 +55,10 @@ final class ComparePasskeyIdsExactly extends AbstractMigration
             return;
         }
 
+        foreach (self::COLUMNS as $table => [$column]) {
+            $this->refuseCaseOnlyDuplicates($table, $column);
+        }
+
         foreach (self::COLUMNS as $table => [$column, $type, $null]) {
             // A collation names its character set, so COLLATE alone is enough.
             $this->execute(sprintf(
@@ -59,6 +68,29 @@ final class ComparePasskeyIdsExactly extends AbstractMigration
                 $type,
                 $this->tableCollation($table),
                 $null,
+            ));
+        }
+    }
+
+    private function refuseCaseOnlyDuplicates(string $table, string $column): void
+    {
+        $row = $this->fetchRow(sprintf(
+            'SELECT COUNT(*) AS n FROM (SELECT LOWER(`%2$s`) AS v FROM `%1$s` WHERE `%2$s` IS NOT NULL'
+            . ' GROUP BY LOWER(`%2$s`) HAVING COUNT(*) > 1) AS pairs',
+            $table,
+            $column,
+        ));
+        $count = is_array($row) ? (int) (array_change_key_case($row, CASE_LOWER)['n'] ?? 0) : 0;
+
+        if ($count > 0) {
+            throw new RuntimeException(sprintf(
+                'Cannot roll back: %1$d value(s) of %2$s.%3$s differ from another only by case, which the old'
+                . ' collation would hold equal. Find them with'
+                . ' SELECT %3$s FROM %2$s GROUP BY LOWER(%3$s) HAVING COUNT(*) > 1,'
+                . ' remove one of each, then roll back again.',
+                $count,
+                $table,
+                $column,
             ));
         }
     }

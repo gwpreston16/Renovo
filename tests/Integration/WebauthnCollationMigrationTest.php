@@ -71,6 +71,41 @@ final class WebauthnCollationMigrationTest extends DatabaseTestCase
         );
     }
 
+    /**
+     * Two handles differing only by case — what `up()` allows — would collide
+     * on the old collation's unique index. `down()` says so and stops before
+     * changing either column, rather than failing halfway on a duplicate key.
+     */
+    public function testDownRefusesValuesThatDifferOnlyByCase(): void
+    {
+        $this->requireMySql();
+        foreach (['one@example.test' => 'Pair-Handle', 'two@example.test' => 'pair-handle'] as $email => $handle) {
+            $this->db->execute(
+                'INSERT INTO users (email, display_name, password_hash, is_instance_admin, theme, webauthn_handle,'
+                . " created_at, updated_at) VALUES (:email, 'Pair', 'hash', 0, 'system', :handle,"
+                . " '2026-10-28 09:00:00', '2026-10-28 09:00:00')",
+                ['email' => $email, 'handle' => $handle],
+            );
+        }
+        $this->executed = [];
+
+        try {
+            $this->migrate('down');
+            self::fail('down() rolled back over a case-only pair.');
+        } catch (\RuntimeException $exception) {
+            self::assertStringContainsString('users.webauthn_handle', $exception->getMessage());
+            self::assertStringContainsString('1 value(s)', $exception->getMessage());
+        } finally {
+            $this->migrate('up');
+        }
+
+        self::assertSame([], array_values(array_filter(
+            $this->executed,
+            static fn (string $sql): bool => str_contains($sql, 'utf8mb4'),
+        )), 'Nothing was rolled back before it stopped.');
+        self::assertSame('ascii_bin', $this->columns()['credential_id']['collation']);
+    }
+
     public function testItIsANoOpOnPostgres(): void
     {
         $this->migrate('up', 'pgsql');

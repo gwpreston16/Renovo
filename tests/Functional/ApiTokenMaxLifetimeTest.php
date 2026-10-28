@@ -158,4 +158,19 @@ final class ApiTokenMaxLifetimeTest extends ApiTokenLifetimeTest
 
         self::assertSame(5, $this->tokens()->countWithoutExpiry());
     }
+
+    /**
+     * Trailing spaces count too: MySQL's collation pads them away, so
+     * "Calendar feed " used to equal the feed's name in SQL.
+     */
+    public function testATrailingSpaceMakesAnOrdinaryToken(): void
+    {
+        $this->tokens()->replaceFeedToken($this->user($this->ownerId), $this->householdId);
+        $this->db->execute(
+            "UPDATE api_tokens SET name = 'Calendar feed ' WHERE id = :id",
+            ['id' => $this->latest()->id],
+        );
+
+        self::assertSame(5, $this->tokens()->countWithoutExpiry());
+    }
 }

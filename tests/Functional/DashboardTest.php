@@ -284,9 +284,12 @@ final class DashboardTest extends DatabaseTestCase
     {
         $this->db->execute("UPDATE subscriptions SET amount_varies = TRUE WHERE name = 'Streaming'");
 
-        $monthly = $this->overview($this->ownerId)['kpis']['monthly'];
-        self::assertSame(['GBP'], $monthly['estimate_currencies']);
-        self::assertTrue($monthly['estimate']);
+        $kpis = $this->overview($this->ownerId)['kpis'];
+        self::assertSame(['GBP'], $kpis['monthly']['estimate_currencies']);
+        self::assertTrue($kpis['monthly']['estimate']);
+        self::assertSame(['GBP'], $kpis['yearly']['estimate_currencies']);
+        // Streaming is due on Thursday, inside the seven days.
+        self::assertSame(['GBP'], $kpis['due']['estimate_currencies']);
 
         $body = $this->body($this->get('/', $this->ownerId));
         $start = strpos($body, '<section class="metric-grid"');
