@@ -149,6 +149,35 @@ final class CalendarFeedTest extends ApiTestCase
         self::assertStringContainsString('trial ends', $this->unfold($body));
     }
 
+    public function testATrialsRenewalsAfterConversionAreInTheFeed(): void
+    {
+        // Converts on the 1st of next month and renews monthly after it, so
+        // the feed holds the conversion and each renewal that follows (K53).
+        $conversion = new \DateTimeImmutable('first day of next month');
+        $this->createSubscription([
+            'name' => 'Trial service',
+            'is_trial' => true,
+            'trial_end_date' => $conversion->format('Y-m-d'),
+            'converts_to_price_minor' => 1500,
+            'converts_to_billing_cycle' => 'monthly',
+            'next_payment_date' => null,
+        ]);
+
+        $body = $this->unfold($this->feed());
+
+        self::assertStringContainsString('trial ends', $body);
+        self::assertSame(1, substr_count($body, 'DTSTART;VALUE=DATE:' . $conversion->format('Ymd')));
+
+        $renewals = 0;
+        for ($month = 1; $month <= 6; $month++) {
+            $date = $conversion->modify('+' . $month . ' months')->format('Ymd');
+            if (str_contains($body, 'DTSTART;VALUE=DATE:' . $date)) {
+                $renewals++;
+            }
+        }
+        self::assertSame(6, $renewals, 'Each monthly renewal after the conversion is an event.');
+    }
+
     public function testACancelByDeadlineAppears(): void
     {
         // A month's notice on a payment due on the 1st of December means the

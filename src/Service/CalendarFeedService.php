@@ -200,9 +200,10 @@ final class CalendarFeedService
      * Every payment between today and the horizon, at the amount that will be
      * taken.
      *
-     * A trial that has not converted yet contributes none: it has no payment
-     * date, and inventing one would put a charge in somebody's diary that is
-     * not going to happen. Its conversion is already an event of its own.
+     * A trial that has not converted yet has no payment until it does. Its
+     * conversion is an event of its own, so the forecast's conversion charge
+     * is left out here; the renewals after it are projected as the forecast
+     * has them (K53).
      *
      * @param list<array{subscription: Subscription, date: DateTimeImmutable, amount: Money, reason: string}> $charges
      * @return list<array{date: DateTimeImmutable, amount: Money}>
@@ -213,12 +214,14 @@ final class CalendarFeedService
         DateTimeImmutable $horizon,
         array $charges,
     ): array {
-        if ($subscription->isTrialActiveOn($today)) {
-            return [];
-        }
+        $trialActive = $subscription->isTrialActiveOn($today);
 
         $payments = [];
         foreach ($charges as $charge) {
+            if ($trialActive && $charge['reason'] === 'trial_conversion') {
+                continue;
+            }
+
             if ($charge['date'] > $horizon || count($payments) >= self::MAX_OCCURRENCES) {
                 break;
             }
