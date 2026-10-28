@@ -135,8 +135,8 @@ No table, column or index is added or removed, and PostgreSQL is untouched.
 - [x] D: upgrading and install docs
 - [x] K110 marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 62 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green, on PostgreSQL, MySQL
+- [x] ROADMAP: Phase 62 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green, on PostgreSQL, MySQL
       and the flag-off MySQL leg
 
 ## Definition of done
