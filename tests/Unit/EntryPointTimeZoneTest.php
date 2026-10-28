@@ -78,6 +78,66 @@ final class EntryPointTimeZoneTest extends TestCase
         self::assertSame($zone . ' UTC', trim($out), 'PHP started in ' . $zone . ' and ' . $file . ' pinned it');
     }
 
+    /**
+     * The real entry points, run as PHP would run them, in a zone ahead of UTC.
+     * A probe prepended to the script reports, as the process ends, the zone
+     * PHP started in and the one it ended in, so a pin that is never reached
+     * fails here though its text is present.
+     *
+     * @return array<string, array{list<string>, array<string, string>}>
+     */
+    public static function runnableEntryPoints(): array
+    {
+        return [
+            'bin/console' => [['bin/console'], []],
+            'public/index.php' => [['public/index.php'], ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/health']],
+        ];
+    }
+
+    /**
+     * @param list<string> $arguments
+     * @param array<string, string> $server
+     */
+    #[DataProvider('runnableEntryPoints')]
+    public function testRunningTheEntryPointEndsInUtc(array $arguments, array $server): void
+    {
+        $probe = tempnam(sys_get_temp_dir(), 'tz-probe');
+        self::assertIsString($probe);
+        file_put_contents($probe, '<?php register_shutdown_function(static function (): void {'
+            . ' fwrite(STDERR, "\nZONE " . ini_get("date.timezone") . " " . date_default_timezone_get() . "\n"); });');
+
+        try {
+            $process = proc_open(
+                [
+                    PHP_BINARY,
+                    '-d',
+                    'date.timezone=Pacific/Auckland',
+                    '-d',
+                    'auto_prepend_file=' . $probe,
+                    ...$arguments,
+                ],
+                [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+                $pipes,
+                $this->root,
+                [...getenv(), ...$server],
+            );
+            self::assertIsResource($process);
+
+            stream_get_contents($pipes[1]);
+            $err = (string) stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            proc_close($process);
+        } finally {
+            unlink($probe);
+        }
+
+        self::assertMatchesRegularExpression('/^ZONE (\S+) (\S+)$/m', $err, $err);
+        preg_match('/^ZONE (\S+) (\S+)$/m', $err, $zones);
+        self::assertSame('Pacific/Auckland', $zones[1], 'PHP started in Auckland');
+        self::assertSame('UTC', $zones[2], $arguments[0] . ' ended in UTC');
+    }
+
     public function testEveryEntryPointPinsTheZone(): void
     {
         $bootstrap = (string) file_get_contents($this->root . '/config/bootstrap.php');

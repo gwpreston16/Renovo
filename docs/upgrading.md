@@ -341,33 +341,35 @@ UPDATE subscriptions SET created_at = (created_at AT TIME ZONE 'America/Los_Ange
                          updated_at = (updated_at AT TIME ZONE 'America/Los_Angeles') AT TIME ZONE 'UTC';
 ```
 
-MySQL / MariaDB: first check that the server has its time zone tables. Run
-this exactly as written, with `America/Los_Angeles` whatever your own zone was;
-it must return `2026-01-01 08:00:00`, not `NULL`:
+MySQL / MariaDB: first check that the server knows **your** old zone. With
+your zone name in place of `America/Los_Angeles`, this must return a date and
+time, not `NULL`:
 
 ```sql
 SELECT CONVERT_TZ('2026-01-01 00:00:00', 'America/Los_Angeles', '+00:00');
 ```
 
-If it returns `NULL`, the server's time zone tables are not loaded: load them
-(`mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`, or
-`mariadb-tzinfo-to-sql` on MariaDB) and check again. **Do not run the UPDATE
-while it returns `NULL`:** depending on the server's settings, a `NULL` written
-to these columns is silently replaced with the current time, and the old values
-are lost. A fixed offset such as `'-08:00'` instead of the zone name is only
-right for a zone without daylight saving time; for any other zone it leaves
-half the year's rows an hour out. Then, in the same session:
+`NULL` means the name is mistyped or the server's time zone tables are not
+loaded. Load them (`mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root
+mysql` on MySQL; `mariadb-tzinfo-to-sql /usr/share/zoneinfo | mariadb -u root
+mysql` on MariaDB) and check again. A fixed offset such as `'-08:00'` instead
+of the zone name is only right for a zone without daylight saving time; for any
+other zone it leaves half the year's rows an hour out. Then, in the same
+session:
 
 ```sql
-SET SESSION time_zone = '+00:00', explicit_defaults_for_timestamp = 1, sql_mode = 'STRICT_ALL_TABLES';
+SET SESSION time_zone = '+00:00';
 UPDATE subscriptions SET created_at = CONVERT_TZ(created_at, 'America/Los_Angeles', '+00:00'),
-                         updated_at = CONVERT_TZ(updated_at, 'America/Los_Angeles', '+00:00');
+                         updated_at = CONVERT_TZ(updated_at, 'America/Los_Angeles', '+00:00')
+ WHERE CONVERT_TZ('2026-01-01 00:00:00', 'America/Los_Angeles', '+00:00') IS NOT NULL;
 ```
 
-The `SET` makes a `NULL` an error rather than a silent overwrite. (On MySQL 8,
-setting `explicit_defaults_for_timestamp` per session can need the
-`SESSION_VARIABLES_ADMIN` privilege; if the `SET` is refused, run it as an
-account that has it.)
+Keep the `WHERE` line, with the same zone name in it. A `NULL` written to these
+columns is replaced with the current time without an error on MariaDB (and on
+MySQL, depending on its settings), so the old values would be lost; with the
+`WHERE`, a zone the server does not know updates no rows (`0 rows affected`)
+instead. If the `UPDATE` reports 0 rows on a table that has rows, go back to the
+check above.
 
 The tables are `budget_alert_state`, `budgets`, `categories`,
 `household_memberships`, `households`, `instance_settings`, `payment_methods`,
