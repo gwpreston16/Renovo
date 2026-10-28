@@ -26,6 +26,11 @@ The unit suite needs nothing:
 vendor/bin/phpunit --testsuite unit
 ```
 
+`TimeZoneSiteListTest` fails when `src/` gains a place that parses a date, until
+someone has looked at which kind it is: run `bin/time-zone-sites` to see the
+list by class, and `bin/time-zone-sites --write` to refresh
+`tests/fixtures/time-zone-sites.tsv`. It needs the dev dependencies.
+
 The functional suite renders real pages, so it needs the assets built once —
 `npm install && npm run build`, or just let `./bin/dev-setup.sh` do it. CI
 builds them before running the suite.

@@ -1,0 +1,89 @@
+Application/Twig/AppExtension.php	one-zone	$date = $value instanceof DateTimeInterface ? $value : new DateTimeImmutable($value);
+Controller/ApiTokenController.php	date-only	$date = $raw === '' ? false : DateTimeImmutable::createFromFormat('!Y-m-d', $raw);
+Domain/BillingCycle.php	one-zone	$daysInMonth = (int) (new DateTimeImmutable(sprintf('%04d-%02d-01', $year, $month)))->format('t');
+Domain/CalendarGrid.php	one-zone	$first = new DateTimeImmutable(sprintf('%04d-%02d-01 00:00:00', $year, $month));
+Domain/CalendarGrid.php	one-zone	$reference = new DateTimeImmutable('2024-01-07 00:00:00');
+Persistence/PdoSessionHandler.php	one-zone	$expires = date(
+Persistence/PdoSessionHandler.php	one-zone	return date('Y-m-d H:i:s');
+Repository/ApiTokenRepository.php	user-facing	$date = new DateTimeImmutable($value);
+Repository/AttachmentRepository.php	date-only	? new DateTimeImmutable((string) $row['period_date'])
+Repository/AttachmentRepository.php	timestamp	createdAt: new DateTimeImmutable((string) $row['created_at']),
+Repository/AuditLogRepository.php	user-facing	occurredAt: new DateTimeImmutable((string) $row['occurred_at']),
+Repository/AuthAttemptRepository.php	one-zone	$times[] = new DateTimeImmutable((string) $row['attempted_at'], $timezone);
+Repository/BackupCopyRepository.php	user-facing	$out[(int) $row['destination']] = new DateTimeImmutable($row['at']);
+Repository/BackupCopyRepository.php	user-facing	? new DateTimeImmutable($value)
+Repository/BackupCopyRepository.php	user-facing	return is_string($value) && $value !== '' ? new DateTimeImmutable($value) : null;
+Repository/BackupDestinationRepository.php	user-facing	? new DateTimeImmutable($row['created_at'])
+Repository/BackupDestinationRepository.php	user-facing	return is_string($value) && $value !== '' ? new DateTimeImmutable($value) : null;
+Repository/BackupRehearsalRepository.php	user-facing	$out[(int) $row['destination']] = new DateTimeImmutable($row['at']);
+Repository/BackupRehearsalRepository.php	user-facing	? new DateTimeImmutable($value)
+Repository/BackupRehearsalRepository.php	user-facing	return is_string($value) && $value !== '' ? new DateTimeImmutable($value) : null;
+Repository/BackupRunRepository.php	user-facing	? new DateTimeImmutable($value)
+Repository/BackupRunRepository.php	user-facing	return is_string($value) && $value !== '' ? new DateTimeImmutable($value) : null;
+Repository/BackupRunRepository.php	user-facing	startedAt: new DateTimeImmutable((string) $row['started_at']),
+Repository/BudgetAlertStateRepository.php	timestamp	: new DateTimeImmutable((string) $row['last_alert_at']),
+Repository/ChargeRepository.php	date-only	$date = (new DateTimeImmutable((string) $row['due_date']))->format('Y-m-d');
+Repository/ChargeRepository.php	date-only	'any' => new DateTimeImmutable((string) $row['first_any']),
+Repository/ChargeRepository.php	date-only	'written' => is_string($written) && $written !== '' ? new DateTimeImmutable($written) : null,
+Repository/ChargeRepository.php	date-only	dueDate: new DateTimeImmutable((string) $row['due_date']),
+Repository/ChargeRepository.php	date-only	return is_string($value) && $value !== '' ? new DateTimeImmutable($value) : null;
+Repository/ChargeRepository.php	timestamp	createdAt: new DateTimeImmutable((string) $row['created_at']),
+Repository/ChargeRepository.php	timestamp	updatedAt: new DateTimeImmutable((string) $row['updated_at']),
+Repository/ExchangeRateRepository.php	timestamp	return is_string($value) && $value !== '' ? new DateTimeImmutable($value) : null;
+Repository/ExchangeRateRepository.php	timestamp	return is_string($value) && $value !== '' ? new DateTimeImmutable($value) : null;
+Repository/LogoCacheRepository.php	timestamp	'failed_at' => is_string($failedAt) && $failedAt !== '' ? new DateTimeImmutable($failedAt) : null,
+Repository/LogoCacheRepository.php	timestamp	'fetched_at' => is_string($fetchedAt) && $fetchedAt !== '' ? new DateTimeImmutable($fetchedAt) : null,
+Repository/MembershipRepository.php	timestamp	return is_string($value) && $value !== '' ? new DateTimeImmutable($value) : null;
+Repository/MigrationRepository.php	timestamp	return is_string($value) && $value !== '' ? new DateTimeImmutable($value) : null;
+Repository/NotificationChannelRepository.php	user-facing	$row['last_success_at'] === null ? null : new DateTimeImmutable((string) $row['last_success_at']),
+Repository/NotificationChannelRepository.php	user-facing	new DateTimeImmutable((string) $row['created_at']),
+Repository/NotificationChannelRepository.php	user-facing	new DateTimeImmutable((string) $row['updated_at']),
+Repository/NotificationLogRepository.php	timestamp	return is_string($value) && $value !== '' ? new DateTimeImmutable($value) : null;
+Repository/PriceHistoryRepository.php	date-only	effectiveFrom: new DateTimeImmutable((string) $row['effective_from']),
+Repository/PriceHistoryRepository.php	timestamp	createdAt: new DateTimeImmutable((string) $row['created_at']),
+Repository/SavedViewRepository.php	timestamp	createdAt: new DateTimeImmutable((string) $row['created_at']),
+Repository/SessionRepository.php	user-facing	createdAt: is_string($created) && $created !== '' ? new DateTimeImmutable($created) : null,
+Repository/SessionRepository.php	user-facing	expiresAt: new DateTimeImmutable((string) $row['expires_at']),
+Repository/SessionRepository.php	user-facing	lastActivity: new DateTimeImmutable((string) $row['last_activity']),
+Repository/SubscriptionRepository.php	date-only	return is_string($value) && $value !== '' ? new DateTimeImmutable($value) : null;
+Repository/SubscriptionRepository.php	timestamp	createdAt: new DateTimeImmutable((string) $row['created_at']),
+Repository/SubscriptionRepository.php	timestamp	updatedAt: new DateTimeImmutable((string) $row['updated_at']),
+Repository/TotpRepository.php	timestamp	'confirmed_at' => is_string($confirmed) && $confirmed !== '' ? new DateTimeImmutable($confirmed) : null,
+Repository/TrustedHostRepository.php	timestamp	'created_at' => new DateTimeImmutable((string) $row['created_at']),
+Repository/UserRepository.php	timestamp	? new DateTimeImmutable($verifiedAt)
+Repository/UserRepository.php	timestamp	createdAt: new DateTimeImmutable((string) $row['created_at']),
+Repository/UserRepository.php	timestamp	return is_string($value) && $value !== '' ? new DateTimeImmutable($value) : null;
+Repository/WebAuthnCredentialRepository.php	user-facing	createdAt: new DateTimeImmutable((string) $row['created_at']),
+Repository/WebAuthnCredentialRepository.php	user-facing	lastUsedAt: is_string($lastUsed) && $lastUsed !== '' ? new DateTimeImmutable($lastUsed) : null,
+Service/AttachmentService.php	date-only	$date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+Service/BackupService.php	date-only	$date = DateTimeImmutable::createFromFormat('!Y-m-d', trim($value));
+Service/BackupService.php	date-only	? DateTimeImmutable::createFromFormat('!Y-m-d', $row['next_payment_date'])
+Service/BackupService.php	date-only	? DateTimeImmutable::createFromFormat('!Y-m-d', $row['promo_ends_on'])
+Service/CalendarService.php	date-only	$date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+Service/CalendarService.php	one-zone	$asked = new DateTimeImmutable(sprintf('%04d-%02d-01 00:00:00', $year, $month));
+Service/ChargeService.php	date-only	$date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+Service/ChargeService.php	date-only	$date = new DateTimeImmutable($key);
+Service/ChargeService.php	date-only	$stop = min($stop, new DateTimeImmutable($date));
+Service/ChargeService.php	one-zone	new DateTimeImmutable('0001-01-01'),
+Service/ExchangeRate/HttpRateProvider.php	date-only	$date = DateTimeImmutable::createFromFormat('!Y-m-d', substr($value, 0, 10));
+Service/FixedTermService.php	date-only	return new DateTimeImmutable($last);
+Service/ForecastScreenService.php	one-zone	$date = new DateTimeImmutable($month['month'] . '-01');
+Service/HouseholdDashboardService.php	one-zone	static fn (array $point): DateTimeImmutable => new DateTimeImmutable($point['month'] . '-01'),
+Service/Import/RowTranslator.php	date-only	$date = DateTimeImmutable::createFromFormat($format, $raw);
+Service/Import/RowTranslator.php	date-only	$parsed = date_create_immutable($raw);
+Service/InstanceSettingsService.php	timestamp	'published_at' => $published === '' ? null : new DateTimeImmutable($published),
+Service/InstanceSettingsService.php	timestamp	return $value === '' ? null : new DateTimeImmutable($value);
+Service/InstanceSettingsService.php	timestamp	return $value === '' ? null : new DateTimeImmutable($value);
+Service/InstanceSettingsService.php	timestamp	return $value === '' ? null : new DateTimeImmutable($value);
+Service/InstanceSettingsService.php	timestamp	return $value === '' ? null : new DateTimeImmutable($value);
+Service/ScenarioService.php	one-zone	$date = new DateTimeImmutable($month['month'] . '-01');
+Service/SpendChartService.php	one-zone	$monthStart = new DateTimeImmutable($previous['month'] . '-01');
+Service/SpendChartService.php	one-zone	'label' => $this->dates->format(new DateTimeImmutable($row['month'] . '-01'), 'MMM'),
+Service/SpendChartService.php	one-zone	'long_label' => $this->dates->format(new DateTimeImmutable($row['month'] . '-01'), 'MMMM y'),
+Service/SpendTrendService.php	one-zone	$months[] = new DateTimeImmutable($month['month'] . '-01');
+Service/SubscriptionService.php	date-only	$date = $submitted === null ? false : DateTimeImmutable::createFromFormat('!Y-m-d', $submitted);
+Service/SubscriptionService.php	date-only	$parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $data['start_date']);
+Service/SubscriptionService.php	date-only	$start = DateTimeImmutable::createFromFormat('!Y-m-d', $data['start_date']);
+Service/Update/UpdateCheckService.php	one-zone	return (new DateTimeImmutable($value))->setTimezone(new DateTimeZone('UTC'));
+Support/FrozenClock.php	one-zone	return new self(new DateTimeImmutable($dateTime));
+Support/IsoDate.php	date-only	$date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
