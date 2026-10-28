@@ -92,6 +92,32 @@ final class ApiContributorFenceTest extends ApiTestCase
         self::assertNull($row['logo_path']);
     }
 
+    public function testAContributorGetsTheFencesNotFoundForAOneOffMovedOntoATakenDay(): void
+    {
+        $bought = (new DateTimeImmutable('-5 days'))->format('Y-m-d');
+        $deposit = (new DateTimeImmutable('-8 days'))->format('Y-m-d');
+        $theirs = $this->createSubscription([
+            'name' => 'Desk',
+            'price_minor' => 15000,
+            'subscription_type' => 'one_off',
+            'billing_cycle' => null,
+            'next_payment_date' => null,
+            'start_date' => $bought,
+        ]);
+        $path = '/api/v1/subscriptions/' . $theirs;
+        $this->api('GET', $path . '/charges', $this->ownerToken);
+        $this->api('POST', $path . '/charges', $this->ownerToken, ['date' => $deposit, 'amount_minor' => 1000]);
+
+        // A day with a payment on it must not answer a Contributor with the
+        // ledger's 422, which would tell them a charge stands there (K74).
+        $row = $this->decode($this->api('GET', $path, $this->ownerToken))['data'];
+        foreach ([$deposit, (new DateTimeImmutable('-20 days'))->format('Y-m-d')] as $date) {
+            $response = $this->api('PUT', $path, $this->contributorToken, ['start_date' => $date] + $row);
+
+            self::assertSame(404, $response->getStatusCode(), (string) $response->getBody());
+        }
+    }
+
     /**
      * K31: the file is written before the write is refused, so a refused upload
      * must take it back out.

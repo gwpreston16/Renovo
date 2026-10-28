@@ -768,7 +768,7 @@ there is one, the expected price otherwise, and `0` when it was skipped.
 
 A subscription or charge that does not exist, or is not this token's to see,
 is a `404`. So is a write the token may not make to a row it can see — a
-Contributor's `PATCH` or `POST` on another member's row.
+Contributor's `PUT`, `PATCH` or `POST` on another member's row.
 
 #### `GET /api/v1/subscriptions/{id}/charges`
 

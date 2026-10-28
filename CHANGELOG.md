@@ -8,6 +8,26 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **A scenario's custom cycle change opens the form that can change the
+  cycle.** Every 30 days to every 14 now leads to the edit page with the new
+  cycle prefilled, not to the scheduled-price form, which kept the old one.
+  *Phase 58.*
+- **A Contributor moving another member's one-off gets the same "not found"
+  whatever the date.** A taken day no longer answers with the payment ledger's
+  422 first. *Phase 58.*
+- **Sign-in takes the same time for an unknown address as for a real account.**
+  The check made for an address with no account now uses the live algorithm and
+  cost, as `docs/security.md` says. *Phase 58.*
+- **A new category's "Automatic colour" starts ticked**, as it does for a
+  payment method, and unticks after a failed add only if it was unticked.
+  *Phase 58.*
+- **The update check's guards and wiring are tested.** Its four guards (an
+  unreadable release date, an over-long version, a release page off GitHub, the
+  banner without a link) and its console and container wiring each have a test
+  that fails without them. *Phase 58.*
+
 ## [1.26.0] - 2026-10-28
 
 ### Fixed

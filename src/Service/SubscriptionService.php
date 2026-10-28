@@ -116,6 +116,12 @@ final class SubscriptionService
         [$data, $tagIds, $offer] = $this->validate($scope, $input, $id);
 
         if ($existing !== null && is_string($data['start_date'] ?? null)) {
+            // The owner fence first: the date check reads the whole household's
+            // charges, so a row this scope can't write must not answer it (K74).
+            if ($this->subscriptions->findForWrite($scope, $id) === null) {
+                throw \App\Security\ScopeViolationException::forRow('subscriptions', $id);
+            }
+
             $start = DateTimeImmutable::createFromFormat('!Y-m-d', $data['start_date']);
             $submitted = SubscriptionType::from((string) $data['subscription_type']);
             if ($this->charges->oneOffDateTaken($scope, $existing, $submitted, $start === false ? null : $start)) {

@@ -133,16 +133,16 @@ None.
 
 ## Status
 
-- [ ] K37: a custom cycle change in a scenario opens the edit form
-- [ ] K74: a Contributor gets the fence's 404 before the ledger's 422
-- [ ] K26: the dummy password check matches the live hasher's cost
-- [ ] K134: a new category's "Automatic colour" starts ticked
-- [ ] K103: the update check's four guards are tested
-- [ ] K104: the update check's console and container wiring are tested
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 58 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K37: a custom cycle change in a scenario opens the edit form
+- [x] K74: a Contributor gets the fence's 404 before the ledger's 422
+- [x] K26: the dummy password check matches the live hasher's cost
+- [x] K134: a new category's "Automatic colour" starts ticked
+- [x] K103: the update check's four guards are tested
+- [x] K104: the update check's console and container wiring are tested
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 58 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

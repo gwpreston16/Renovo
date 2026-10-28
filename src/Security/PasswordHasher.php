@@ -18,6 +18,9 @@ final class PasswordHasher
 
     private string $algorithm;
 
+    /** The hash an absent one is checked against, made on first use. */
+    private ?string $dummyHash = null;
+
     public function __construct()
     {
         if (defined('PASSWORD_ARGON2ID') && in_array(PASSWORD_ARGON2ID, password_algos(), true)) {
@@ -44,13 +47,22 @@ final class PasswordHasher
     {
         if ($hash === '') {
             // Still spend the time, so a missing hash is not distinguishable
-            // from a wrong password by how long the response takes.
-            password_verify($plain, '$2y$12$usesomesillystringforsalt0000000000000000000000000000000');
+            // from a wrong password by how long the response takes: checked
+            // against a hash of the algorithm and cost a real account has.
+            password_verify($plain, $this->dummyHash());
 
             return false;
         }
 
         return password_verify($plain, $hash);
+    }
+
+    /**
+     * Made with the live algorithm and options, once per process.
+     */
+    public function dummyHash(): string
+    {
+        return $this->dummyHash ??= $this->hash('renovo-dummy-password');
     }
 
     public function needsRehash(string $hash): bool

@@ -87,7 +87,7 @@
                    aria-label="{{ t('categories.colour') }}">
             <label class="choice">
                 <input type="checkbox" name="colour_auto" value="1"
-                       {{ new_failed and values.colour_auto is defined ? 'checked' : '' }}>
+                       {{ not new_failed or values.colour_auto is defined ? 'checked' : '' }}>
                 {{ t('categories.colour_automatic') }}
             </label>
             <button type="submit" class="button button-outline">{{ icon('add') }}{{ t('action.add') }}</button>
