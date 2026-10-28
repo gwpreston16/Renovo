@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–59
+## Planned — Phases 30–60
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -68,6 +68,7 @@ can be moved.
 | 57 | [Screen-reader labels and estimate marks, from the known-issues log](docs/phases/PHASE-57.md) | — | None | ✅ done |
 | 58 | [Scenario cycles, one-off fences, sign-in timing and update-check tests, from the known-issues log](docs/phases/PHASE-58.md) | — | None | 📋 planned |
 | 59 | [Notification delivery and proxy client addresses, from the known-issues log](docs/phases/PHASE-59.md) | — | None | 📋 planned |
+| 60 | [Sign-in, household and calendar edges, from the known-issues log](docs/phases/PHASE-60.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -192,6 +193,7 @@ can be moved.
   hold a varying bill, and ten API doc corrections.
 - **58 — Scenario cycles, one-off fences, sign-in timing and update-check tests.** A batch from the known-issues log (K37, K74, K26, K134, K103, K104): a scenario's custom cycle change opens the edit form, a Contributor gets the fence's 404 before the ledger's 422, an unknown address takes as long to sign in as a real one, a new category's colour starts automatic, and the update check's guards and wiring are tested.
 - **59 — Notification delivery and proxy client addresses.** A batch from the known-issues log (K13, K14, K15, K7): two overlapping scheduler runs no longer send the same reminder, an empty routing grid mutes instead of enabling everything, a failed budget alert is retried and a long breach announced once, and the bundled nginx finds the real client address behind a proxy.
+- **60 — Sign-in, household and calendar edges.** A batch from the known-issues log (K138, K77, K24, K27, K49, K53): overlapping filter requests are announced, bulk Pause and Resume read once, an Owner cannot revoke an instance admin, a passkey used alone must verify the user, a removed member is cleared as payer, and the calendar feed carries renewals after a trial converts.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
