@@ -168,6 +168,7 @@ return static function (ContainerBuilder $builder, ?array $settings = null): voi
         Database::class => static fn (ContainerInterface $c): Database => new Database(
             $c->get('settings')['database'],
             $c->get(Platform::class),
+            $c->get(LoggerInterface::class),
         ),
 
         PdoSessionHandler::class => static fn (ContainerInterface $c): PdoSessionHandler => new PdoSessionHandler(

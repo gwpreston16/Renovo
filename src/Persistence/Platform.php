@@ -96,6 +96,15 @@ interface Platform
     public function initialStatements(): array;
 
     /**
+     * The statements in `initialStatements()` a server may refuse without the
+     * connection being any the worse for it: they are run, and a failure is
+     * logged and carried on from rather than raised.
+     *
+     * @return list<string>
+     */
+    public function optionalInitialStatements(): array;
+
+    /**
      * Statements that open a read-only transaction whose every read sees the
      * database as it stood at one instant — what an instance backup reads all
      * of its tables inside, so the rows agree with each other.

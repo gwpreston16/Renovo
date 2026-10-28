@@ -84,6 +84,11 @@ final class PostgresPlatform implements Platform
         return ["SET TIME ZONE 'UTC'"];
     }
 
+    public function optionalInitialStatements(): array
+    {
+        return [];
+    }
+
     public function snapshotStatements(): array
     {
         return ['BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY'];

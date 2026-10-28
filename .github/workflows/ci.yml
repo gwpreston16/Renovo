@@ -113,11 +113,25 @@ jobs:
           - engine: postgres
             driver: pgsql
             port: 5432
+            mysql_port: 3306
             other_driver: mysql
             other_port: 3306
           - engine: mysql
             driver: mysql
             port: 3306
+            mysql_port: 3306
+            other_driver: pgsql
+            other_port: 5432
+          # MySQL the way MariaDB 10.6-10.9 is by default (Phase 62, K110):
+          # `explicit_defaults_for_timestamp` off, so the first `timestamp NOT
+          # NULL` column of a table rewrites itself on every UPDATE unless the
+          # migrations and the application turn it on for their sessions. The
+          # server is started by the step below, because a service container
+          # cannot be given server flags.
+          - engine: mysql-flag-off
+            driver: mysql
+            port: 3308
+            mysql_port: 3308
             other_driver: pgsql
             other_port: 5432
 
@@ -201,6 +215,21 @@ jobs:
 
       - uses: ramsey/composer-install@v4
 
+      - name: Start MySQL with explicit_defaults_for_timestamp off
+        if: matrix.engine == 'mysql-flag-off'
+        run: |
+          docker run -d --name mysql-flag-off -p 3308:3306 \
+            -e MYSQL_DATABASE=renovo_test -e MYSQL_USER=renovo -e MYSQL_PASSWORD=renovo \
+            -e MYSQL_ROOT_PASSWORD=renovo-root mysql:8.4 \
+            --explicit-defaults-for-timestamp=0 \
+            --sql-mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION \
+            --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+          until docker exec mysql-flag-off mysqladmin ping -h 127.0.0.1 -u root -prenovo-root --silent; do sleep 2; done
+          until docker exec mysql-flag-off mysql -u renovo -prenovo renovo_test -e 'SELECT 1' >/dev/null 2>&1; do sleep 2; done
+          # The leg proves nothing if the server flag did not take: the schema
+          # test would pass without anything to catch.
+          test "$(docker exec mysql-flag-off mysql -u root -prenovo-root -N -e 'SELECT @@global.explicit_defaults_for_timestamp' 2>/dev/null)" = "0"
+
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
@@ -237,7 +266,7 @@ jobs:
         run: |
           php -r '$pg = new PDO("pgsql:host=127.0.0.1;port=5432;dbname=renovo_test", "renovo", "renovo");
             $pg->exec("CREATE DATABASE renovo_rehearsal_test");
-            $my = new PDO("mysql:host=127.0.0.1;port=3306", "root", "renovo-root");
+            $my = new PDO("mysql:host=127.0.0.1;port=${{ matrix.mysql_port }}", "root", "renovo-root");
             $my->exec("CREATE DATABASE renovo_rehearsal_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
             $my->exec("GRANT ALL ON renovo_rehearsal_test.* TO \"renovo\"@\"%\"");'
 

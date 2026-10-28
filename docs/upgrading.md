@@ -267,3 +267,31 @@ Rolling back the migration (`20270201000001_add_reference_minor_to_subscription_
 drops that price from every payment, and with it the payments members marked
 **This was a discount**; the backfill can fill the offers' again, but not the
 discounts.
+
+## After upgrading to the timestamp fix (Phase 62)
+
+This only matters on **MySQL or MariaDB**, and only on a server with
+`explicit_defaults_for_timestamp` off, which is the default on MariaDB
+10.6–10.9. There, the first `timestamp NOT NULL` column of each table the
+migrations made was created as `ON UPDATE CURRENT_TIMESTAMP`, so any later
+UPDATE of a row replaced it with the time of the update: a backup run's
+`started_at` became the time it finished or was pruned, which skews the
+due-check, the history order and retention, and a household's or a
+subscription's `created_at` became the time it was last changed.
+
+**Back up your database first.** One migration
+(`20270901000001_stop_timestamps_updating_themselves`) finds those columns in
+`information_schema` and alters each to a plain `NOT NULL DEFAULT
+CURRENT_TIMESTAMP` (or `NULL DEFAULT NULL`, if it allowed null), one `ALTER` per
+table, about 25 tables in all. On current servers that changes the column's
+definition without rewriting the rows, so it takes a moment; an older server
+may rebuild each table, which on a household-sized instance is still quick.
+PostgreSQL, and a MySQL or MariaDB server with the setting on, have nothing to
+change and the migration does nothing.
+
+**Values that were already overwritten are gone.** A `created_at` or
+`started_at` that took the time of a later update cannot be recovered from the
+database; the repair stops it happening again. Rolling the migration back does
+nothing, because putting the auto-update back would only put the fault back.
+If a table must be repaired by hand, `SHOW CREATE TABLE <table>` names the
+columns that say `ON UPDATE`.

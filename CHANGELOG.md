@@ -8,6 +8,18 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Timestamp columns no longer rewrite themselves on MariaDB 10.6–10.9.**
+  On a MySQL or MariaDB server with `explicit_defaults_for_timestamp` off, the
+  first `timestamp NOT NULL` column of each table was created with `ON UPDATE
+  CURRENT_TIMESTAMP`, so a backup run's start time became its finish time, and a
+  household's or subscription's created time the time it was last changed.
+  A migration repairs an existing database (back up first; values already
+  overwritten cannot be recovered), and the migrations and the application now
+  turn the setting on for their own connections where the account may. CI gains
+  a MySQL leg with the setting off. *Phase 62.*
+
 ## [1.26.4] - 2026-10-28
 
 ### Fixed

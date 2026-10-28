@@ -51,6 +51,29 @@ failing silently, when no database is reachable at all; in CI it fails instead.
 
 CI runs the whole suite against **both** PostgreSQL and MySQL.
 
+A third leg runs MySQL the way MariaDB 10.6–10.9 is by default, with
+`explicit_defaults_for_timestamp` off, so that a timestamp column which rewrites
+itself on every UPDATE (K110) cannot come back unnoticed. Locally:
+
+```bash
+docker run -d --name renovo-mysql-flag-off -p 127.0.0.1:3318:3306 \
+  -e MYSQL_DATABASE=renovo_test -e MYSQL_USER=renovo -e MYSQL_PASSWORD=renovo \
+  -e MYSQL_ROOT_PASSWORD=renovo-root mysql:8.4 \
+  --explicit-defaults-for-timestamp=0 \
+  --sql-mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION \
+  --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+DB_DRIVER=mysql DB_PORT=3318 DB_NAME=renovo_test DB_USER=renovo DB_PASSWORD=renovo \
+  vendor/bin/phinx migrate
+DB_DRIVER=mysql DB_PORT=3318 DB_NAME=renovo_test DB_USER=renovo DB_PASSWORD=renovo \
+  vendor/bin/phpunit
+```
+
+The `sql_mode` is relaxed as well because MySQL 8.4's default refuses the first
+migration on a server with the setting off (`NO_ZERO_DATE`); MariaDB's default
+does not. `docker-compose.mysql-flag-off.yml` is the same server as a Compose
+variant, layered after `docker-compose.mysql.yml`.
+
 One test restores an instance backup taken on one engine into the other. It
 runs when `CROSS_ENGINE_DB_DRIVER` (with `_HOST`, `_PORT`, `_NAME`, `_USER`,
 `_PASSWORD`) names the other engine's test database, migrated to the same
