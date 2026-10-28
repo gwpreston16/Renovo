@@ -6,6 +6,7 @@ namespace App\Persistence;
 
 use PDO;
 use PDOException;
+use Psr\Log\LoggerInterface;
 use PDOStatement;
 use Throwable;
 
@@ -31,6 +32,7 @@ final class Database
     public function __construct(
         private readonly array $config,
         private readonly Platform $platform,
+        private readonly ?LoggerInterface $logger = null,
     ) {
     }
 
@@ -76,8 +78,21 @@ final class Database
             $options,
         );
 
+        $optional = $this->platform->optionalInitialStatements();
         foreach ($this->platform->initialStatements() as $statement) {
-            $pdo->exec($statement);
+            try {
+                $pdo->exec($statement);
+            } catch (PDOException $exception) {
+                if (!in_array($statement, $optional, true)) {
+                    throw $exception;
+                }
+
+                // One line per connection, and the application opens one.
+                $this->logger?->debug('The server refused a session setting; carrying on without it.', [
+                    'statement' => $statement,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
         }
 
         return $this->pdo = $pdo;

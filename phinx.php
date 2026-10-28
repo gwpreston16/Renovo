@@ -33,6 +33,30 @@ $connection = [
 
 if ($adapter === 'mysql') {
     $connection['collation'] = 'utf8mb4_unicode_ci';
+
+    // Phinx opens its own connection and runs nothing on it, so the session
+    // setting the application asks for (see MySqlPlatform) is made here, on a
+    // connection handed to Phinx. Without it, a table a migration creates on
+    // MariaDB 10.6-10.9 gets a timestamp column that rewrites itself. Only the
+    // setting that may be refused is run: the migrations keep the server's own
+    // sql_mode. If the server cannot be reached, Phinx is left to say so.
+    try {
+        $platform = new App\Persistence\MySqlPlatform();
+        $pdo = new PDO(
+            $platform->dsn($connection),
+            $connection['user'],
+            $connection['pass'],
+        );
+        foreach ($platform->optionalInitialStatements() as $statement) {
+            try {
+                $pdo->exec($statement);
+            } catch (PDOException) {
+                // Refused: nothing is lost that the server did not already have.
+            }
+        }
+        $connection['connection'] = $pdo;
+    } catch (PDOException) {
+    }
 }
 
 return [

@@ -6,6 +6,8 @@ namespace App\Persistence;
 
 final class MySqlPlatform implements Platform
 {
+    public const EXPLICIT_TIMESTAMP_DEFAULTS = 'SET SESSION explicit_defaults_for_timestamp = 1';
+
     public function name(): string
     {
         return 'mysql';
@@ -109,7 +111,21 @@ final class MySqlPlatform implements Platform
             // sloppy queries PostgreSQL already rejects, so bugs surface on
             // both engines rather than only in production.
             "SET SESSION sql_mode = 'STRICT_ALL_TABLES,ONLY_FULL_GROUP_BY,NO_ENGINE_SUBSTITUTION'",
+            // With this off (the default on MariaDB 10.6-10.9), the first
+            // `timestamp NOT NULL` column of any table made in this session
+            // quietly becomes `ON UPDATE CURRENT_TIMESTAMP`. See
+            // optionalInitialStatements().
+            self::EXPLICIT_TIMESTAMP_DEFAULTS,
         ];
+    }
+
+    public function optionalInitialStatements(): array
+    {
+        // MySQL 8 lets only an account holding SESSION_VARIABLES_ADMIN set
+        // this per session. An account without it is no worse off than one
+        // on a server where the variable is already on, which is every
+        // current MySQL, so a refusal is not worth stopping for.
+        return [self::EXPLICIT_TIMESTAMP_DEFAULTS];
     }
 
     public function snapshotStatements(): array
