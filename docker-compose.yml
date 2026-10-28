@@ -179,7 +179,11 @@ services:
     command: ["vendor/bin/phinx", "migrate", "--configuration", "phinx.php"]
     restart: "no"
 
-  # Runs the reminder sweep and the housekeeping once a day.
+  # Runs the reminder sweep and the housekeeping once a day: a pass starts about
+  # 24 hours after the previous one started, so a long pass (a stalled off-site
+  # transfer) shortens the sleep instead of pushing every later pass back. A pass
+  # longer than a day is followed at once by the next. `$$` is compose's escape
+  # for a literal `$`.
   #
   # A sleep loop rather than cron, so the deployment needs no cron daemon in the
   # image and no second place to configure a schedule. Running it more often
@@ -256,11 +260,13 @@ services:
     command:
       - |
         while true; do
+          started=$$(date +%s)
           php bin/console reminders:run || true
           php bin/console maintenance:prune || true
           php bin/console backup:run || true
           php bin/console backup:rehearse || true
-          sleep 86400
+          elapsed=$$(( $$(date +%s) - started ))
+          if [ "$$elapsed" -lt 86400 ]; then sleep $$(( 86400 - elapsed )); else sleep 0; fi
         done
 
   # An empty database for restore rehearsals (Phase 39), never the one above.

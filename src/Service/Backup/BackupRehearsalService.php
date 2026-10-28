@@ -70,6 +70,7 @@ final class BackupRehearsalService
         private readonly AppVersion $version,
         private readonly Clock $clock,
         private readonly LoggerInterface $logger,
+        private readonly BackupDumperFactory $dumpers,
     ) {
     }
 
@@ -244,7 +245,7 @@ final class BackupRehearsalService
 
             $step = self::STEP_RESTORING;
             $db = $this->scratch->database();
-            $dumper = new BackupDumper($db);
+            $dumper = $this->dumpers->forDatabase($db);
             $files = new BackupFiles([
                 'attachments' => $work . '/files/attachments',
                 'avatars' => $work . '/files/avatars',
