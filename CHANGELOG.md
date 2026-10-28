@@ -8,6 +8,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.26.4] - 2026-10-28
+
 ### Fixed
 
 - **The scheduler keeps a daily cadence.** It sleeps the rest of 24 hours
@@ -1052,7 +1054,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.26.3...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.26.4...HEAD
+[1.26.4]: https://github.com/gwpreston16/Renovo/compare/v1.26.3...v1.26.4
 [1.26.3]: https://github.com/gwpreston16/Renovo/compare/v1.26.2...v1.26.3
 [1.26.2]: https://github.com/gwpreston16/Renovo/compare/v1.26.1...v1.26.2
 [1.26.1]: https://github.com/gwpreston16/Renovo/compare/v1.26.0...v1.26.1

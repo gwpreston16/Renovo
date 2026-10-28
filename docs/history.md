@@ -671,6 +671,13 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   renewals after it converts. The API behaves differently in one case (saving
   a row whose payer was removed no longer fails with 422), so the contract
   moves to 1.9.5. No migrations. See [Tracking](features/tracking.md).
+- **Phase 61 — scheduler cadence and restore-rehearsal test, from the
+  known-issues log — complete (1.26.4).** The scheduler container now sleeps
+  the rest of 24 hours after each pass, so a slow pass, such as an off-site
+  transfer that stalls, no longer pushes later passes back or skips a day's
+  reminders. The restore rehearsal's row-count check is now tested. No API
+  changes, so the contract stays 1.9.5. No migrations. See
+  [Operations](operations.md#running-the-scheduler-from-cron-instead).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
