@@ -57,4 +57,29 @@ final class NotificationLogRepositoryTest extends NotificationTestCase
         self::assertSame($id, $this->claim($channel));
         self::assertNull($this->claim($channel), 'a second run reading the same failed row is refused');
     }
+
+    public function testAClaimJustInsideTheLeaseIsStillRefused(): void
+    {
+        $channel = $this->addChannel($this->alice);
+        $this->claim($channel);
+
+        $this->clock->advanceTo(
+            $this->clock->now()->modify('+' . (NotificationLogRepository::CLAIM_LEASE_SECONDS - 1) . ' seconds'),
+        );
+
+        self::assertNull($this->claim($channel));
+    }
+
+    public function testAFailedRowAtTheAttemptCapIsRefused(): void
+    {
+        $channel = $this->addChannel($this->alice);
+
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            $id = $this->claim($channel);
+            self::assertNotNull($id, 'attempt ' . $attempt);
+            $this->log->markFailed($id, 'channel down');
+        }
+
+        self::assertNull($this->claim($channel));
+    }
 }

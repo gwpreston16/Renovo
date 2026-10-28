@@ -116,6 +116,19 @@ None.
   not with the next minor: none of the rows touches code a planned phase is
   changing.
 
+- **Changed during the build (2026-10-28):**
+  - K15's retry is raised only while the ledger holds a row for the crossing
+    that is not `sent` (`NotificationLogRepository::hasUndelivered`), so a
+    breach recorded while budget alerts are off is not announced when they are
+    turned back on (the existing `testBudgetAlertsTurnedOffAreNotSentButTheBreachIsStillRecorded`).
+  - `maintenance:prune` keeps ledger rows at least the retry window plus one
+    day, whatever `NOTIFY_LOG_RETENTION_DAYS` says, so the 180-day guarantee
+    cannot be configured away.
+  - K7: nginx's settings are written to `conf.d/real-ip.conf` by an entrypoint
+    script, `docker/nginx/30-real-ip.sh`, from `WEB_TRUSTED_PROXIES`;
+    `default.conf` is unchanged.
+  - The K14 screen test is `NotificationsPageTest::testAnUntickedGridComesBackUnticked`.
+
 ## Status
 
 - [x] K13: a live claim is refused, a stale one is taken over
@@ -140,7 +153,7 @@ in `translations/`. Then mark it ✅ in `ROADMAP.md`.
   `::testAStalePendingClaimIsTakenOver`, `::testAFailedRowIsClaimedOnce`.
 - **K14:** `NotificationSettingsServiceTest::testAnEmptyGridMutesEveryChannel`,
   `::testDeletingARoutedChannelKeepsAMutedOneMuted` and
-  `NotificationScreenTest::testAnUntickedGridComesBackUnticked`.
+  `NotificationsPageTest::testAnUntickedGridComesBackUnticked`.
 - **K15:** `AlertScannerTest::testAFailedBreachAlertIsRetriedOnTheNextRun`,
   `::testASentBreachAlertIsNotRepeated` and
   `::testALongBreachIsNotAnnouncedAgainAfterThePrune`.

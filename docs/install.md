@@ -150,7 +150,7 @@ nginx then takes the client's address from `X-Forwarded-For`, but only when the
 request came from a listed proxy, and hands it to Renovo. The list is written
 into nginx's configuration each time the container starts, so nothing needs
 editing; an entry that is not an address or a range stops the container with a
-message. Left empty (the default), no forwarded address is trusted, which is
+message. List only your own proxies, never `0.0.0.0/0`: any listed address can claim to be any client. Left empty (the default), no forwarded address is trusted, which is
 right when nothing sits in front of the container, and wrong when something
 does: an install that leaves it empty behind a proxy sees the proxy's address
 and shares one sign-in limit.

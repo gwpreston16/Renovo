@@ -81,4 +81,26 @@ final class AlertScannerTest extends NotificationTestCase
 
         self::assertSame(1, $this->breachAlerts(), 'a breach that has lasted months is announced once');
     }
+
+    public function testAFailedAlertIsRetriedUntilTheWindowClosesWithTheLedgerIntact(): void
+    {
+        $this->notifier->failNext();
+        $this->runner->run();
+        $this->notifier->failNext(false);
+
+        // Just inside the window: still owed, and sent.
+        $this->runOn('2026-09-' . (15 + AlertScanner::BREACH_RETRY_WINDOW_DAYS - 1));
+        self::assertSame(1, $this->breachAlerts());
+    }
+
+    public function testAFailedAlertIsNotRetriedOnceTheCrossingIsPastTheWindow(): void
+    {
+        $this->notifier->failNext();
+        $this->runner->run();
+        $this->notifier->failNext(false);
+
+        // The failed row is still in the ledger; only the window stops it.
+        $this->runOn('2026-09-' . (15 + AlertScanner::BREACH_RETRY_WINDOW_DAYS + 1));
+        self::assertSame(0, $this->breachAlerts());
+    }
 }
