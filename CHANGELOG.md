@@ -8,6 +8,16 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **The scheduler keeps a daily cadence.** It sleeps the rest of 24 hours
+  after each pass instead of a fixed 24 hours, so a slow pass, such as an
+  off-site transfer that stalls, no longer pushes every later pass back and
+  can no longer skip a day's reminders. *Phase 61.*
+- **A restore rehearsal's row-count check is tested.** A restored table whose
+  count disagrees with the manifest fails the rehearsal at the checking step;
+  no change in behaviour. *Phase 61.*
+
 ## [1.26.3] - 2026-10-28
 
 ### Fixed

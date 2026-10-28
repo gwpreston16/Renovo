@@ -66,12 +66,12 @@ None.
 
 ## Status
 
-- [ ] K114: the scheduler sleeps only the rest of the day
-- [ ] K115: the row-count check is tested
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 61 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K114: the scheduler sleeps only the rest of the day
+- [x] K115: the row-count check is tested
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 61 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

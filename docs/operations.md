@@ -31,7 +31,10 @@ php bin/console demo:seed           # the demonstration household and its two ac
 ```
 
 The `scheduler` container runs `reminders:run`, `maintenance:prune`,
-`backup:run` and `backup:rehearse` once a day. `backup:run` takes no backup
+`backup:run` and `backup:rehearse` once a day. The cadence is start to start:
+the loop sleeps what is left of 24 hours after a pass, so a slow pass (an
+off-site transfer that stalls, say) does not push later days back. A pass that
+takes longer than a day is followed by the next at once. `backup:run` takes no backup
 until an instance administrator turns scheduled backups on (see [Instance backups](#instance-backups)), but every pass it still sends what is waiting to go to a
 destination and tells instance administrators about backup failures;
 `backup:rehearse` does nothing until a destination holds a copy. `reminders:run` also checks for a newer release, as its own step, when

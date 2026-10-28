@@ -8,11 +8,14 @@ use App\Domain\BackupDestinationType;
 use App\Domain\BackupRehearsalSchedule;
 use App\Domain\Entity\BackupRehearsal;
 use App\Domain\Entity\BackupRun;
+use App\Persistence\Database;
 use App\Repository\BackupDestinationRepository;
+use App\Repository\BackupDumper;
 use App\Repository\BackupRunRepository;
 use App\Repository\ScratchDatabase;
 use App\Repository\UserRepository;
 use App\Security\KeyRing;
+use App\Service\Backup\BackupDumperFactory;
 use App\Service\Backup\BackupRehearsalService;
 use App\Service\Backup\BackupRetention;
 use App\Service\Backup\InstanceBackupService;
@@ -121,6 +124,38 @@ final class BackupRehearsalTest extends DatabaseTestCase
         self::assertNotNull($rehearsal);
         self::assertSame(BackupRehearsalService::STEP_CHECKING, $rehearsal->step);
         self::assertSame('backup.reason.password_hash', $rehearsal->errorKey());
+        self::assertSame([], $container->get(ScratchDatabase::class)->tables());
+    }
+
+    public function testARestoredCountThatDisagreesFailsTheRehearsal(): void
+    {
+        $container = $this->container();
+        $this->backupTo($container, ['nas']);
+        // The restored users table reads back one row short of the manifest.
+        $container->set(BackupDumperFactory::class, new class extends BackupDumperFactory {
+            public function forDatabase(Database $db): BackupDumper
+            {
+                return new class ($db) extends BackupDumper {
+                    public function count(string $table): int
+                    {
+                        $count = parent::count($table);
+
+                        // Only once rows are in: the restore itself counts the empty tables first.
+                        return $table === 'users' && $count > 0 ? $count + 1 : $count;
+                    }
+                };
+            }
+        });
+
+        $rehearsal = $container->get(BackupRehearsalService::class)->run(true);
+
+        self::assertNotNull($rehearsal);
+        self::assertFalse($rehearsal->passed());
+        self::assertSame(BackupRehearsalService::STEP_CHECKING, $rehearsal->step);
+        self::assertSame('backup.reason.row_count', $rehearsal->errorKey());
+        $logger = $container->get(LoggerInterface::class);
+        self::assertInstanceOf(CapturingLogger::class, $logger);
+        self::assertStringContainsString('users holds', implode("\n", $logger->lines));
         self::assertSame([], $container->get(ScratchDatabase::class)->tables());
     }
 
