@@ -73,6 +73,44 @@ final class ApiTokenScopeBackfillTest extends ApiTestCase
         self::assertSame(200, $this->api('GET', '/api/v1/subscriptions', $this->readOnlyToken)->getStatusCode());
     }
 
+    /**
+     * K122: a read token named a case variant of the feed's name is not the
+     * feed's, on MySQL as on PostgreSQL, so it keeps everything it read.
+     */
+    public function testACaseVariantKeepsFullRead(): void
+    {
+        $id = $this->legacy($this->readOnlyToken, 'read');
+        $this->db->execute(
+            "UPDATE api_tokens SET name = 'calendar feed', expires_at = NULL WHERE id = :id",
+            ['id' => $id],
+        );
+
+        $this->migrate('up');
+
+        self::assertSame('subscriptions:read catalogue:read calendar:read', $this->scopesOf($id));
+        self::assertSame(200, $this->api('GET', '/api/v1/subscriptions', $this->readOnlyToken)->getStatusCode());
+    }
+
+    /**
+     * And rolling back revokes a Calendar-only token under a case variant of
+     * the name, as it does any other: read back, it would read everything.
+     */
+    public function testRollingBackRevokesACaseVariantCalendarToken(): void
+    {
+        $service = $this->container()->get(ApiTokenService::class);
+        $service->issue($this->owner(), $this->householdId, 'calendar feed', TokenScopes::calendarOnly());
+
+        $output = $this->migrate('down');
+
+        self::assertSame(
+            0,
+            (int) $this->db->fetchValue(
+                "SELECT COUNT(*) FROM api_tokens WHERE name = 'calendar feed' AND revoked_at IS NULL",
+            ),
+        );
+        self::assertStringContainsString('Revoked 1 API token(s)', $output);
+    }
+
     public function testTheFeedTokenStillReadsTheFeed(): void
     {
         $token = $this->container()->get(ApiTokenService::class)
@@ -182,6 +220,7 @@ final class ApiTokenScopeBackfillTest extends ApiTestCase
         };
 
         $adapter = $this->createMock(AdapterInterface::class);
+        $adapter->method('getAdapterType')->willReturn($this->db->platform()->name());
         $adapter->method('execute')->willReturnCallback(
             static fn (string $sql, array $params = []): int => $prepare($sql, $params)->rowCount(),
         );

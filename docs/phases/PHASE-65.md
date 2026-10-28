@@ -108,7 +108,7 @@ is to an existing migration's SQL, not a new one.
 ## Status
 
 - [x] K32: passkey ids and handles compared case-sensitively on MySQL
-- [ ] K122: the feed token's name matched exactly in SQL
+- [x] K122: the feed token's name matched exactly in SQL
 - [ ] K87: per-currency "≈", one shared rule
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed

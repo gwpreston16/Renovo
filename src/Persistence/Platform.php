@@ -69,6 +69,14 @@ interface Platform
     public function caseInsensitiveLike(string $quotedColumn, string $placeholder): string;
 
     /**
+     * An equality predicate that matches the exact bytes: case and trailing
+     * spaces count. PostgreSQL's `=` already does; MySQL's compares under the
+     * column's collation, which here is case-insensitive and pads spaces, so
+     * "calendar feed" would equal "Calendar feed" (K122).
+     */
+    public function exactEquals(string $quotedColumn, string $placeholder): string;
+
+    /**
      * An ORDER BY term that sorts NULLs last, whichever direction is asked
      * for.
      *

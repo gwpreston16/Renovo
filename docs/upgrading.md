@@ -175,6 +175,9 @@ feed link loses access it never needed:
   more, but if you also used that token against the API, issue a token for that.
   A read token you named "Calendar feed" yourself, with no expiry, is taken for
   the feed link and narrowed the same way; reissue it as **Read everything**.
+  Only that exact name counts. Before Phase 65, on MySQL and MariaDB, a case
+  variant such as "calendar feed" was narrowed too; see
+  [Phase 65](#after-upgrading-to-exact-passkey-and-feed-token-matching-phase-65).
 - **A script making more than 120 requests a minute with one token now gets
   `429`.** Raise `API_RATE_LIMIT_PER_MINUTE` if one genuinely needs more, or
   have it honour `Retry-After`. See [Rate limits](api.md#rate-limits).
@@ -384,3 +387,36 @@ date chosen under *Expires* (rather than a number of days) was set to end at
 the zone's offset longer, and on a zone behind UTC it ends that much sooner.
 Tokens with a number of days, or no expiry, are not affected. Where the extra
 hours matter, revoke such a token and issue a new one.
+
+## After upgrading to exact passkey and feed-token matching (Phase 65)
+
+This only matters on **MySQL or MariaDB**. PostgreSQL already compared both
+exactly, and its migration does nothing.
+
+**Back up your database first.** One migration
+(`20271001000001_compare_passkey_ids_exactly`) changes two columns,
+`webauthn_credentials.credential_id` and `users.webauthn_handle`, to
+`CHARACTER SET ascii COLLATE ascii_bin`, so a passkey id or handle is compared
+with its case, as the WebAuthn specification intends. The values are base64url,
+which is ASCII, so nothing stored changes, and no two that were distinct can
+collide. Both tables are rebuilt, which on a household-sized instance is quick.
+Rolling it back puts the table's own collation back.
+
+**A token named a case variant of "Calendar feed".** The Phase 42 upgrade took
+a read token with no expiry for the calendar feed's when its name matched
+"Calendar feed" in any case, and narrowed it to **Calendar only**; the app
+itself only ever treated the exact name as the feed's. From this release the
+name is matched exactly everywhere: Instance status now counts such a token
+among those that never expire, and a rollback of Phase 42 revokes it like any
+other Calendar-only token. A token already narrowed is left as it is, since
+there is no telling which were meant to read only the calendar. To find them:
+
+```sql
+SELECT id, user_id, name FROM api_tokens
+WHERE revoked_at IS NULL AND scopes = 'calendar:read' AND expires_at IS NULL
+  AND LOWER(name) = 'calendar feed'
+  AND CAST(name AS BINARY) <> CAST('Calendar feed' AS BINARY);
+```
+
+If one of them was meant to read everything, its owner reissues it from
+**Settings → Data & integrations → API tokens** as **Read everything**.

@@ -64,6 +64,13 @@ final class MySqlPlatform implements Platform
         return sprintf('LOWER(%s) LIKE %s', $quotedColumn, $placeholder);
     }
 
+    public function exactEquals(string $quotedColumn, string $placeholder): string
+    {
+        // CAST(... AS BINARY) rather than the BINARY operator, which MySQL 8
+        // deprecates; both sides, so neither falls back to the collation.
+        return sprintf('CAST(%s AS BINARY) = CAST(%s AS BINARY)', $quotedColumn, $placeholder);
+    }
+
     public function orderByNullsLast(string $quotedColumn, string $direction): string
     {
         // MySQL has no NULLS LAST, so the sort is done in two terms: a boolean
