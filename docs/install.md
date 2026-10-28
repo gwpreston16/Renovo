@@ -127,6 +127,24 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml \
 # Or just: ./bin/dev-setup.sh --mysql
 ```
 
+Renovo expects the server's `explicit_defaults_for_timestamp` setting to be
+**on**, which is the default on MySQL 8 and MariaDB 10.10 and later. MariaDB
+10.6–10.9 ship with it off, and a timestamp column made on such a server
+rewrites itself with the time of every later UPDATE of its row. The application
+and the migrations turn it on for their own connections where the account is
+allowed to (MySQL 8 asks for `SESSION_VARIABLES_ADMIN` to set it per session;
+without it the attempt is skipped and the connection carries on), so nothing has
+to be configured. To be sure on MariaDB 10.6–10.9, set it in the server's
+configuration as well:
+
+```ini
+[mysqld]
+explicit_defaults_for_timestamp = 1
+```
+
+An instance that ran its migrations on such a server earlier is repaired by
+upgrading; see [After upgrading to the timestamp fix](upgrading.md#after-upgrading-to-the-timestamp-fix-phase-62).
+
 ### Behind a reverse proxy
 
 `SESSION_COOKIE_SECURE` defaults to true and the bundled `web` container serves

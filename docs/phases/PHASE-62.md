@@ -73,7 +73,7 @@ recovered, and `docs/upgrading.md` says so.
 ### D. Document it
 
 `docs/upgrading.md` gets the fix's note (back up first; it alters columns in
-about 30 tables, quickly and without rewriting data on current servers; values
+about 25 tables, quickly and without rewriting data on current servers; values
 already overwritten are gone). `docs/install.md`'s MySQL/MariaDB section says
 which server setting is expected and that the app turns it on where it can.
 The K110 row in `known-issues.md` is marked Fixed.
@@ -104,6 +104,15 @@ No table, column or index is added or removed, and PostgreSQL is untouched.
   Assumption: the flag-off behaviour on MySQL matches MariaDB 10.6–10.9's
   default; the work starts by confirming that against a MariaDB 10.6 container
   once, by hand, and noting the result in the brief.
+  *Confirmed and changed 2026-10-28:* MariaDB 10.6.28 reproduces K110 (the
+  first `timestamp NOT NULL` column of a table becomes `DEFAULT
+  current_timestamp() ON UPDATE current_timestamp()`; later ones get `DEFAULT
+  '0000-00-00 00:00:00'`). MySQL 8.4 with only the flag off does **not** get
+  that far: its default `sql_mode` includes `NO_ZERO_DATE`, so the second
+  timestamp of the first table (`users.updated_at`) is refused and
+  `phinx migrate` stops at the first migration. The leg therefore also sets
+  `--sql-mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION` (MariaDB's default
+  shape); with that, a full migrate leaves 24 self-updating columns.
 - **Release — Decided 2026-10-28:** its own patch release once merged, with a
   back-up-first note and the line that overwritten values cannot be recovered.
 - **Assumption:** the corrective migration runs inside the upgrade window on
@@ -111,14 +120,21 @@ No table, column or index is added or removed, and PostgreSQL is untouched.
   timestamp default is metadata-only on current servers; the upgrade note says
   to expect a table rebuild on older ones.
 
+- **Reproduction tables — Changed 2026-10-28:** `users` is not affected (its
+  nullable `email_verified_at` is the first timestamp, so `created_at` is not),
+  which the first column rule also explains for every table that opens with
+  one. The reproduction uses `households.created_at` (rename) and
+  `backup_runs.started_at` (finish, prune) instead of
+  `UserRepositoryTest::testChangingAPasswordKeepsCreatedAt`.
+
 ## Status
 
-- [ ] A: the flag-off leg reproduces the bug in a failing test
-- [ ] B: the corrective migration, with a working no-op `down()`
-- [ ] C: the session setting and the schema-scan test
-- [ ] D: upgrading and install docs
-- [ ] K110 marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
+- [x] A: the flag-off leg reproduces the bug in a failing test
+- [x] B: the corrective migration, with a working no-op `down()`
+- [x] C: the session setting and the schema-scan test
+- [x] D: upgrading and install docs
+- [x] K110 marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
 - [ ] ROADMAP: Phase 62 row marked ✅ done
 - [ ] composer check, coverage and the API doc tests green, on PostgreSQL, MySQL
       and the flag-off MySQL leg
@@ -135,10 +151,11 @@ covered and the suite at least 85%; the migration has a working (no-op)
 
 - `TimestampColumnsTest::testNoTimestampColumnUpdatesItself` (the schema scan,
   every table).
-- `UserRepositoryTest::testChangingAPasswordKeepsCreatedAt` and
+- `HouseholdRepositoryTest::testRenamingAHouseholdKeepsCreatedAt` and
   `BackupRunRepositoryTest::testFinishingARunKeepsStartedAt` (the reproduction).
 - `CorrectiveTimestampMigrationTest::testItRepairsAnAffectedSchema`,
   `::testItIsIdempotent`, `::testItKeepsNullability` and
   `::testItIsANoOpOnPostgres`.
-- `MySqlPlatformTest::testInitialStatementsTurnOnExplicitDefaults` and
-  `::testARefusedSessionSettingIsNotFatal`.
+- `MySqlPlatformTest::testInitialStatementsTurnOnExplicitDefaults`, and
+  `DatabaseSessionSettingTest::testARefusedSessionSettingIsNotFatal` (the
+  refusal is `Database`'s to handle, so it is tested there).
