@@ -142,7 +142,7 @@ None.
 - [x] Rows marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed
 - [x] ROADMAP: Phase 58 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

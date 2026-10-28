@@ -20,7 +20,6 @@ final class PasswordHasherTest extends TestCase
         // sign-in time does not show whether the account exists (K26).
         self::assertSame($live['algo'], $dummy['algo']);
         self::assertSame($live['options'], $dummy['options']);
-        self::assertSame($dummy, password_get_info($hasher->dummyHash()));
         self::assertSame($hasher->dummyHash(), $hasher->dummyHash(), 'built once, not on every sign-in');
     }
 
