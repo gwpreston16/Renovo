@@ -130,6 +130,9 @@ final class ScenarioServiceTest extends DatabaseTestCase
         self::assertStringContainsString('€20.00 · ≈ £50.00', $row);
         self::assertStringContainsString('€20.00 · ≈ £40.00', $row);
         self::assertStringNotContainsString('≈ €', $row);
+        // The Difference: the gym's £10, in the currency that holds a varying
+        // bill in either picture; the € part is exact.
+        self::assertStringContainsString('€0.00 · ≈ £10.00', $row);
     }
 
     public function testWithNothingVaryingNothingIsMarked(): void

@@ -21,8 +21,10 @@ use Phinx\Migration\AbstractMigration;
  * It cannot while two ids, or two handles, differ only by case — the very
  * values this allows — because the old collation's unique index would hold
  * them equal. It checks first and stops, naming the column, before changing
- * anything; the operator removes one of each pair (a passkey is re-registered,
- * a handle is regenerated with its user's next passkey) and runs it again.
+ * anything. For a credential pair the operator deletes one of the two passkeys
+ * (its owner registers it again); for a handle pair, one user's passkeys are
+ * deleted and their `webauthn_handle` set to NULL, and a new one is made with
+ * their next passkey. Both are random, so a pair is all but impossible.
  */
 final class ComparePasskeyIdsExactly extends AbstractMigration
 {
@@ -85,9 +87,9 @@ final class ComparePasskeyIdsExactly extends AbstractMigration
         if ($count > 0) {
             throw new RuntimeException(sprintf(
                 'Cannot roll back: %1$d value(s) of %2$s.%3$s differ from another only by case, which the old'
-                . ' collation would hold equal. Find them with'
-                . ' SELECT %3$s FROM %2$s GROUP BY LOWER(%3$s) HAVING COUNT(*) > 1,'
-                . ' remove one of each, then roll back again.',
+                . ' collation would hold equal. Find them with SELECT LOWER(%3$s), GROUP_CONCAT(id) FROM %2$s'
+                . ' WHERE %3$s IS NOT NULL GROUP BY LOWER(%3$s) HAVING COUNT(*) > 1, clear one of each pair'
+                . ' (docs/upgrading.md says how), then roll back again.',
                 $count,
                 $table,
                 $column,

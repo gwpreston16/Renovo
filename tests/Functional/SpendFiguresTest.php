@@ -131,6 +131,39 @@ final class SpendFiguresTest extends DatabaseTestCase
         self::assertStringContainsString('€12.99', $html);
     }
 
+    /**
+     * The scenario's "costs more": a single currency's net asks about that
+     * currency, so a fixed € rise is not marked though £ holds a varying bill
+     * elsewhere; a combined net is marked when any currency varies.
+     */
+    public function testACostlierScenarioFollowsTheRule(): void
+    {
+        $template = "{% import 'forecast/_scenario_results.twig' as s %}{{ s.saving(f, 'GBP', m) }}";
+        $euroRise = [
+            'totals' => [['currency' => 'EUR', 'amount_minor' => -500]],
+            'combined' => ['currency' => 'GBP', 'amount_minor' => -250, 'unconvertible' => []],
+            'net' => ['currency' => 'EUR', 'amount_minor' => -500],
+        ];
+        $render = fn (array $figures, array $marks): string => (string) preg_replace(
+            '/\s+/u',
+            ' ',
+            html_entity_decode(
+                $this->environment()->createTemplate($template)->render(['f' => $figures, 'm' => $marks]),
+            ),
+        );
+
+        self::assertStringNotContainsString('≈', $render($euroRise, EstimateMarks::keys(['GBP'])));
+        self::assertStringContainsString('≈ €5.00', $render($euroRise, EstimateMarks::keys(['EUR'])));
+
+        $combined = [
+            'totals' => [['currency' => 'EUR', 'amount_minor' => -500], ['currency' => 'GBP', 'amount_minor' => -100]],
+            'combined' => ['currency' => 'GBP', 'amount_minor' => -350, 'unconvertible' => []],
+            'net' => ['currency' => 'GBP', 'amount_minor' => -350],
+        ];
+        self::assertStringContainsString('≈ £3.50', $render($combined, EstimateMarks::keys(['GBP'])));
+        self::assertStringNotContainsString('≈', $render($combined, EstimateMarks::keys()));
+    }
+
     public function testTheRuleItself(): void
     {
         $marks = EstimateMarks::keys(['GBP'], ['EUR', 'GBP'], []);
@@ -168,15 +201,20 @@ final class SpendFiguresTest extends DatabaseTestCase
         ] + EstimateMarks::keys($varying);
     }
 
+    private function environment(): \Twig\Environment
+    {
+        $container = $this->app->getContainer();
+        self::assertNotNull($container);
+
+        return $container->get(Twig::class)->getEnvironment();
+    }
+
     /**
      * @param array<string, mixed> $figures
      */
     private function render(string $template, array $figures): string
     {
-        $container = $this->app->getContainer();
-        self::assertNotNull($container);
-
-        $html = $container->get(Twig::class)->getEnvironment()->createTemplate($template)->render(['f' => $figures]);
+        $html = $this->environment()->createTemplate($template)->render(['f' => $figures]);
 
         return (string) preg_replace('/\s+/u', ' ', html_entity_decode($html));
     }

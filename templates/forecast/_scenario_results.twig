@@ -43,9 +43,12 @@
     {%- import _self as self -%}
     {%- if figures.net is not null and figures.net.amount_minor < 0 -%}
         {%- set amount = figures.net.amount_minor|abs|money(figures.net.currency) -%}
-        {# Inside a string, so the rule is asked directly: the net is combined. #}
+        {# Inside a string, so the rule is asked directly. The net is one
+           currency's subtotal when there is one total, else the combined
+           figure (whose currency is the base, so not the one to ask about). #}
+        {%- set currency = figures.totals|length == 1 ? figures.totals[0].currency : null -%}
         <span class="scenario-costs-more">{{ t('scenario.costs_more', {
-            'amount': estimate_mark(marks) ? t('subscriptions_list.approximately', {'amount': amount}) : amount,
+            'amount': estimate_mark(marks, currency) ? t('subscriptions_list.approximately', {'amount': amount}) : amount,
         }) }}</span>
     {%- else -%}
         {{ self.amount(figures, base_currency, marks) }}

@@ -402,9 +402,19 @@ which is ASCII, so nothing stored changes, and no two that were distinct can
 collide. Both tables are rebuilt, which on a household-sized instance is quick.
 Rolling it back puts the table's own collation back. It refuses, and says which
 column, if two ids or two handles have since come to differ only by case (the
-old collation would hold them equal): find them with
-`SELECT credential_id FROM webauthn_credentials GROUP BY LOWER(credential_id) HAVING COUNT(*) > 1`
-(or the same on `users.webauthn_handle`), remove one passkey of each pair, and
+old collation would hold them equal). Both are random, so this should never
+happen; if it does, find the pairs (the ids listed are row ids):
+
+```sql
+SELECT LOWER(credential_id), GROUP_CONCAT(id) FROM webauthn_credentials
+GROUP BY LOWER(credential_id) HAVING COUNT(*) > 1;
+SELECT LOWER(webauthn_handle), GROUP_CONCAT(id) FROM users
+WHERE webauthn_handle IS NOT NULL GROUP BY LOWER(webauthn_handle) HAVING COUNT(*) > 1;
+```
+
+For a credential pair, delete one of the two passkeys (its owner registers it
+again). For a handle pair, delete one user's passkeys and set their
+`webauthn_handle` to NULL; a new handle is made with their next passkey. Then
 roll back again.
 
 **A token named a case variant of "Calendar feed".** The Phase 42 upgrade took

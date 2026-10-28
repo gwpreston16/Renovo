@@ -98,7 +98,7 @@ final class ApiTokenScopeBackfillTest extends ApiTestCase
     public function testRollingBackRevokesACaseVariantCalendarToken(): void
     {
         $service = $this->container()->get(ApiTokenService::class);
-        $feed = $service->replaceFeedToken($this->owner(), $this->householdId);
+        $service->replaceFeedToken($this->owner(), $this->householdId);
         $feedId = (int) $this->db->fetchValue('SELECT MAX(id) FROM api_tokens');
         $service->issue($this->owner(), $this->householdId, 'calendar feed', TokenScopes::calendarOnly());
         $variant = (int) $this->db->fetchValue('SELECT MAX(id) FROM api_tokens');
@@ -109,7 +109,6 @@ final class ApiTokenScopeBackfillTest extends ApiTestCase
         self::assertNotNull($revokedAt, 'The case variant is revoked.');
         // The real feed link stays: it is the one token that keeps Calendar only.
         self::assertNull($this->db->fetchValue('SELECT revoked_at FROM api_tokens WHERE id = :id', ['id' => $feedId]));
-        self::assertNotSame('', $feed);
         self::assertStringContainsString('Revoked 1 API token(s)', $output);
     }
 

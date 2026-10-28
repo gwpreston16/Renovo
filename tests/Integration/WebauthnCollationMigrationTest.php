@@ -95,6 +95,9 @@ final class WebauthnCollationMigrationTest extends DatabaseTestCase
         } catch (\RuntimeException $exception) {
             self::assertStringContainsString('users.webauthn_handle', $exception->getMessage());
             self::assertStringContainsString('1 value(s)', $exception->getMessage());
+            // The query it gives runs (MySQL 8's ONLY_FULL_GROUP_BY) and finds the pair.
+            self::assertSame(1, preg_match('/with (SELECT .+? > 1),/', $exception->getMessage(), $query));
+            self::assertCount(1, $this->db->fetchAll($query[1]));
         } finally {
             $this->migrate('up');
         }

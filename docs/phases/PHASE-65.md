@@ -42,8 +42,9 @@ differing only by case and finds both, and looks one up by its exact case.
 ### B. K122 — the feed token's name is matched exactly everywhere
 
 The live count (`countLiveWithoutExpiry()`) and the backfill migration compare
-the token name exactly, through `Platform::exactEquals()` (`CAST(... AS BINARY)`
-on MySQL, plain `=` on PostgreSQL, which is exact already), so
+the token name exactly — the count through `Platform::exactEquals()`
+(`CAST(... AS BINARY)` on MySQL, plain `=` on PostgreSQL, which is exact
+already), the migration by the same expressions chosen on its adapter type — so
 SQL agrees with `isFeedToken()` and `docs/upgrading.md`. The Phase 42 migration
 is edited in place for the exact comparison; it changes nothing for a database
 that has already run it. Tokens already narrowed on MySQL under a case variant of

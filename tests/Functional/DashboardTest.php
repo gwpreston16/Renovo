@@ -303,6 +303,12 @@ final class DashboardTest extends DatabaseTestCase
         self::assertStringContainsString('€10.00 · ≈ £24.99', $totals);
         self::assertStringContainsString('≈ £29.99', $totals);
         self::assertStringNotContainsString('≈ €', $totals);
+
+        // A paused varying bill is in no running figure, so it marks nothing.
+        $this->db->execute(
+            "UPDATE subscriptions SET amount_varies = TRUE, is_active = FALSE WHERE name = 'European thing'",
+        );
+        self::assertSame(['GBP'], $this->overview($this->ownerId)['kpis']['monthly']['estimate_currencies']);
     }
 
     public function testComingUpIsTheNextThirtyDaysOfTheForecast(): void
