@@ -12,11 +12,16 @@ declare(strict_types=1);
 
 use App\Support\BuildFingerprint;
 use App\Support\Environment;
+use App\Support\ProcessTimeZone;
 use App\Support\Settings;
 use DI\ContainerBuilder;
 use Slim\App;
 use Slim\Factory\AppFactory;
 use Slim\Handlers\Strategies\RequestResponseNamedArgs;
+
+// Pinned when this file is loaded, before anything reads a date: PHP's
+// `date.timezone` is ignored, so the process runs in the clock's zone (K68).
+ProcessTimeZone::pin();
 
 return static function (bool $withMiddleware = true, array $overrides = []): App {
     $root = dirname(__DIR__);

@@ -36,31 +36,30 @@ use App\Service\SplitService;
 use App\Service\SubscriptionService;
 use App\Support\FrozenClock;
 use App\Support\IsoDate;
+use App\Support\ProcessTimeZone;
 use App\Tests\Support\FakeHttpClient;
 use App\Tests\Support\TestKeys;
 use App\Tests\Support\TestLogoFetcher;
 use DateTimeImmutable;
 use DateTimeZone;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\ExpectationFailedException;
 use Psr\Log\NullLogger;
 use Slim\Psr7\Factory\RequestFactory;
 
 /**
- * What PHP's default time zone does to the dates the application reads (Phase
- * 63, K68).
+ * What PHP's start-up time zone does to the dates the application reads (Phase
+ * 63 measured it, Phase 64 fixed it: K68).
  *
- * The application's clock is UTC. On an install without Docker, whose PHP
- * `date.timezone` may be anything, a date read from the database is parsed in
- * that zone, so the same string is a different instant from the clock's. Each
- * test runs one class of site (`tests/fixtures/time-zone-sites.tsv`) under three
- * zones, a negative offset and two positive ones, and states what should hold:
- * the date read from the database is the instant the clock calls that day.
- *
- * Where it does not hold, the case is listed in {@see self::KNOWN_WRONG} against
- * the zones it fails in, and the test expects the failure, so the suite is
- * green and a fix (Phase 64) turns the expectation red until its mark is
- * removed. The measured results are in the *Findings* of PHASE-63.md.
+ * The application's clock is UTC. On an install without Docker, PHP's
+ * `date.timezone` may be anything, and a date read from the database is parsed
+ * in PHP's default zone, so before the fix the same string was a different
+ * instant from the clock's. Each test runs one class of site
+ * (`tests/fixtures/time-zone-sites.tsv`) as if PHP had started in each of three
+ * zones, a negative offset and two positive ones, then runs the pin every entry
+ * point runs ({@see ProcessTimeZone::pin()}), and states what should hold: the
+ * date read from the database is the instant the clock calls that day. That
+ * the entry points do run the pin is `EntryPointTimeZoneTest`'s job. The
+ * measured results before the fix are in the *Findings* of PHASE-63.md.
  */
 final class TimeZoneSweepTest extends DatabaseTestCase
 {
@@ -70,31 +69,13 @@ final class TimeZoneSweepTest extends DatabaseTestCase
     private const NON_UTC = [self::LOS_ANGELES, self::AUCKLAND, self::KOLKATA];
 
     /**
-     * UTC is the control: no case is ever marked wrong there, so a case that
-     * fails for a reason other than the zone is not hidden by its mark.
+     * UTC is the control: a case that fails there fails for a reason other
+     * than the zone.
      */
     private const ZONES = ['UTC', ...self::NON_UTC];
 
-    /**
-     * Case => the zones where it is wrong today (K68), so the test expects
-     * the failure there. A date read from the database is midnight in PHP's
-     * zone and the clock's midnight is UTC, so every non-UTC zone is off by its
-     * own offset, and what that does depends on the comparison: a negative
-     * offset reads a date as later than it is (a change dated today has not
-     * started), a positive one as earlier (a contract ending today has ended).
-     */
-    private const KNOWN_WRONG = [
-        'forecast-last-day' => [self::LOS_ANGELES],
-        'change-dated-today' => [self::LOS_ANGELES],
-        'contract-ends-today' => [self::AUCKLAND, self::KOLKATA],
-        'session-listed' => [self::LOS_ANGELES],
-        'date-column-instant' => self::NON_UTC,
-        'form-date-instant' => self::NON_UTC,
-        'timestamp-utc' => self::NON_UTC,
-        'audit-entry-instant' => self::NON_UTC,
-    ];
-
     private string $originalZone;
+    private string|false $originalIniZone;
     private FrozenClock $clock;
     private SubscriptionRepository $subscriptions;
     private PriceHistoryRepository $historyRepository;
@@ -109,7 +90,8 @@ final class TimeZoneSweepTest extends DatabaseTestCase
         parent::setUp();
 
         $this->originalZone = date_default_timezone_get();
-        date_default_timezone_set('UTC');
+        $this->originalIniZone = ini_get('date.timezone');
+        ProcessTimeZone::pin();
 
         $users = new UserRepository($this->db);
         $households = new HouseholdRepository($this->db);
@@ -181,6 +163,7 @@ final class TimeZoneSweepTest extends DatabaseTestCase
 
     protected function tearDown(): void
     {
+        ini_set('date.timezone', (string) $this->originalIniZone);
         date_default_timezone_set($this->originalZone);
         parent::tearDown();
     }
@@ -196,7 +179,7 @@ final class TimeZoneSweepTest extends DatabaseTestCase
     {
         $id = $this->subscriptionWithChange('2026-12-14');
 
-        $this->inZone($zone, 'forecast-last-day', function () use ($id): void {
+        $this->inZone($zone, function () use ($id): void {
             $rows = $this->forecast->scheduledChanges($this->scope(), [$id => $this->subscription($id)], 3);
 
             self::assertCount(1, $rows, 'the change on the last day of the horizon is listed');
@@ -219,7 +202,7 @@ final class TimeZoneSweepTest extends DatabaseTestCase
     {
         $id = $this->subscriptionWithChange('2026-09-14');
 
-        $this->inZone($zone, 'change-dated-today', function () use ($id): void {
+        $this->inZone($zone, function () use ($id): void {
             $changes = $this->historyRepository->findAllBySubscription($this->scope())[$id];
             $change = $changes[array_key_last($changes)];
 
@@ -236,7 +219,7 @@ final class TimeZoneSweepTest extends DatabaseTestCase
     {
         $id = $this->subscriptionWithChange('2026-09-14');
 
-        $this->inZone($zone, 'date-column-instant', function () use ($id): void {
+        $this->inZone($zone, function () use ($id): void {
             $changes = $this->historyRepository->findAllBySubscription($this->scope())[$id];
             $change = $changes[array_key_last($changes)];
 
@@ -269,7 +252,7 @@ final class TimeZoneSweepTest extends DatabaseTestCase
             'is_active' => true,
         ], []);
 
-        $this->inZone($zone, 'contract-ends-today', function () use ($id): void {
+        $this->inZone($zone, function () use ($id): void {
             self::assertFalse($this->subscription($id)->isOutOfContract($this->clock->today()));
         });
     }
@@ -280,7 +263,7 @@ final class TimeZoneSweepTest extends DatabaseTestCase
     #[DataProvider('zones')]
     public function testADateTypedIntoAFormIsTheClocksMidnight(string $zone): void
     {
-        $this->inZone($zone, 'form-date-instant', function (): void {
+        $this->inZone($zone, function (): void {
             $parsed = IsoDate::parse('2026-09-14');
 
             self::assertNotNull($parsed);
@@ -302,7 +285,7 @@ final class TimeZoneSweepTest extends DatabaseTestCase
         );
         $utc = new DateTimeImmutable('2026-09-14 10:00:00', new DateTimeZone('UTC'));
 
-        $this->inZone($zone, 'timestamp-utc', function () use ($id, $utc): void {
+        $this->inZone($zone, function () use ($id, $utc): void {
             self::assertSame($utc->getTimestamp(), $this->subscription($id)->createdAt->getTimestamp());
         });
     }
@@ -327,7 +310,7 @@ final class TimeZoneSweepTest extends DatabaseTestCase
             [],
         );
 
-        $this->inZone($zone, 'audit-entry-instant', function () use ($audit): void {
+        $this->inZone($zone, function () use ($audit): void {
             $entries = $audit->findForHousehold($this->scope());
 
             self::assertCount(1, $entries);
@@ -345,7 +328,7 @@ final class TimeZoneSweepTest extends DatabaseTestCase
         $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
         $sessions = new SessionRepository($this->db);
 
-        $this->inZone($zone, 'session-listed', function () use ($sessions, $zone, $now): void {
+        $this->inZone($zone, function () use ($sessions, $zone, $now): void {
             $id = 'tz' . bin2hex(random_bytes(12));
             $handler = new PdoSessionHandler($this->db, 86400 * 30, 3600);
             $handler->associateUser($this->alice);
@@ -365,7 +348,7 @@ final class TimeZoneSweepTest extends DatabaseTestCase
     #[DataProvider('zones')]
     public function testAMonthLabelIsTheSameInEveryZone(string $zone): void
     {
-        $this->inZone($zone, 'month-label', function (): void {
+        $this->inZone($zone, function (): void {
             $month = new DateTimeImmutable('2026-12' . '-01');
 
             self::assertSame('2026-12-01', $month->format('Y-m-d'));
@@ -383,30 +366,22 @@ final class TimeZoneSweepTest extends DatabaseTestCase
     }
 
     /**
-     * Run an assertion with PHP's default zone set, and restore it.
-     *
-     * A case listed in KNOWN_WRONG for the zone must fail there: if it passes,
-     * the mark is out of date and the test says so.
+     * Run an assertion as if PHP had started in a zone: `date.timezone` and the
+     * default set to it, then the entry points' pin. Restored to UTC after.
      *
      * @param callable(): void $assertion
      */
-    private function inZone(string $zone, string $case, callable $assertion): void
+    private function inZone(string $zone, callable $assertion): void
     {
+        ini_set('date.timezone', $zone);
         date_default_timezone_set($zone);
         try {
-            if (in_array($zone, self::KNOWN_WRONG[$case] ?? [], true)) {
-                try {
-                    $assertion();
-                } catch (ExpectationFailedException) {
-                    self::addToAssertionCount(1);
-
-                    return;
-                }
-                self::fail(sprintf('%s now holds in %s: remove it from KNOWN_WRONG (K68 is fixed).', $case, $zone));
-            }
+            ProcessTimeZone::pin();
+            self::assertSame('UTC', date_default_timezone_get(), 'the pin overrides ' . $zone);
 
             $assertion();
         } finally {
+            ini_set('date.timezone', 'UTC');
             date_default_timezone_set('UTC');
         }
     }
