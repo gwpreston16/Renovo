@@ -200,6 +200,13 @@ services:
     depends_on:
       database:
         condition: service_healthy
+      # Not for anything the app serves: both containers mount the `appvar`
+      # volume, and Docker fills an empty volume from the image as each
+      # container is created. Created together, the second copy fails on a
+      # directory the first just made ("mkdir .../backups: file exists"), so
+      # the scheduler waits until the app has filled it.
+      app:
+        condition: service_started
     environment:
       DB_DRIVER: ${DB_DRIVER:-pgsql}
       DB_HOST: database
