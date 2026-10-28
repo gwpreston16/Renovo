@@ -661,6 +661,16 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   container see each client's address, so sign-in limits and the audit log stop
   treating everyone as the proxy. No API changes, so the contract stays 1.9.4.
   No migrations. See [Behind a reverse proxy](install.md#behind-a-reverse-proxy).
+- **Phase 60 — sign-in, household and calendar edges, from the known-issues
+  log — complete (1.26.3).** Typing in a filter and then changing it announces
+  the final result count to a screen reader, and bulk Pause and Resume read
+  the selection once instead of twice per subscription. A household Owner can
+  no longer revoke an instance administrator's login. A passkey used on its
+  own must prove user verification. Removing a member clears them as payer on
+  every subscription that named them, and the calendar feed carries a trial's
+  renewals after it converts. The API behaves differently in one case (saving
+  a row whose payer was removed no longer fails with 422), so the contract
+  moves to 1.9.5. No migrations. See [Tracking](features/tracking.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
