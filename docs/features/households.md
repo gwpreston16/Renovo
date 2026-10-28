@@ -47,7 +47,7 @@ it cannot lock itself out, and leaving a row behind that belongs to nobody. On
 removal, what the departing member owned is handed to the Owner doing the
 removing. Where they own rows nobody else has seen — everything on an ISOLATED
 instance, their "only me" subscriptions on a SHARED one — you must choose
-whether to reassign or delete them, and a removal that does not say is refused.
+whether to reassign or delete them, and a removal that does not say is refused. Wherever a removed member was named as the payer of a subscription, the payer is cleared.
 
 Everything an Owner does to somebody else's account is written to the audit log
 with both the actor and the target.

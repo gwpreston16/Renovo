@@ -589,6 +589,29 @@ final class MemberAdministrationTest extends DatabaseTestCase
         self::assertSame($this->ownerId, $this->ownerOfBudget($ownersOwn));
     }
 
+    public function testRemovingAMemberClearsThemAsPayer(): void
+    {
+        // A shared row the Owner owns, that the editor pays for, and one the
+        // editor owns and pays for: neither may keep naming them (K49).
+        $ownersRow = $this->subscriptionOwnedBy($this->ownerId);
+        $editorsRow = $this->subscriptionOwnedBy($this->editorId);
+        $paidByOwner = $this->subscriptionOwnedBy($this->ownerId);
+        foreach ([$ownersRow => $this->editorId, $editorsRow => $this->editorId, $paidByOwner => $this->ownerId] as $id => $payer) {
+            $this->db->execute(
+                'UPDATE ' . $this->q('subscriptions') . ' SET ' . $this->q('payer_user_id') . ' = :payer'
+                . ' WHERE ' . $this->q('id') . ' = :id',
+                ['payer' => $payer, 'id' => $id],
+            );
+        }
+
+        $this->signIn($this->ownerId);
+        $this->request('POST', '/settings/members/' . $this->editorId . '/remove', ['data' => 'reassign']);
+
+        self::assertNull($this->payerOf($ownersRow));
+        self::assertNull($this->payerOf($editorsRow));
+        self::assertSame($this->ownerId, $this->payerOf($paidByOwner), 'Somebody still here keeps their name.');
+    }
+
     public function testASharedRemovalAsksAboutPrivateSubscriptionsAndCanDeleteThem(): void
     {
         $public = $this->subscriptionOwnedBy($this->editorId);
@@ -1150,6 +1173,17 @@ final class MemberAdministrationTest extends DatabaseTestCase
         }
 
         return $total;
+    }
+
+    private function payerOf(int $subscriptionId): ?int
+    {
+        $row = $this->db->fetchOne(
+            'SELECT ' . $this->q('payer_user_id') . ' FROM ' . $this->q('subscriptions')
+            . ' WHERE ' . $this->q('id') . ' = :id',
+            ['id' => $subscriptionId],
+        );
+
+        return $row === null || $row['payer_user_id'] === null ? null : (int) $row['payer_user_id'];
     }
 
     private function ownerOf(int $subscriptionId): ?int

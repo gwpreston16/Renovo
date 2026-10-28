@@ -115,7 +115,7 @@ None.
 - [x] K77: bulk Pause and Resume load the selection once
 - [x] K24: an Owner cannot revoke an instance admin
 - [x] K27: usernameless passkey sign-in requires user verification
-- [ ] K49: a removed member is cleared as payer
+- [x] K49: a removed member is cleared as payer
 - [ ] K53: the calendar feed projects renewals after a conversion
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed
