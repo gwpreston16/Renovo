@@ -1,0 +1,41 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Lists every place in src/ that parses a date or reads PHP's default time
+ * zone, by class (Phase 63, K68). See App\Tests\Support\TimeZoneSites.
+ *
+ *   bin/time-zone-sites            the sites, grouped by class, with counts
+ *   bin/time-zone-sites --write    rewrite tests/fixtures/time-zone-sites.tsv
+ *
+ * It needs the dev dependencies (the scanner lives with the tests), so it runs
+ * from a checkout, not from the production image.
+ */
+
+use App\Tests\Support\TimeZoneSites;
+
+$root = dirname(__DIR__);
+require $root . '/vendor/autoload.php';
+
+$sites = TimeZoneSites::scan($root);
+
+if (in_array('--write', $argv, true)) {
+    $path = $root . '/tests/fixtures/time-zone-sites.tsv';
+    if (!is_dir(dirname($path))) {
+        mkdir(dirname($path), 0o775, true);
+    }
+    file_put_contents($path, implode("\n", TimeZoneSites::lines($sites)) . "\n");
+    fwrite(STDOUT, sprintf("Wrote %d sites to %s\n", count($sites), $path));
+    exit(0);
+}
+
+foreach (TimeZoneSites::CLASSES as $class) {
+    $group = array_filter($sites, static fn (array $site): bool => $site['class'] === $class);
+    fwrite(STDOUT, sprintf("\n== %s (%d)\n", $class, count($group)));
+    foreach ($group as $site) {
+        fwrite(STDOUT, sprintf("  src/%s:%d  %s\n", $site['file'], $site['line'], $site['code']));
+    }
+}
+fwrite(STDOUT, sprintf("\n%d sites in all.\n", count($sites)));

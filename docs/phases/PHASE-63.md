@@ -106,23 +106,76 @@ entry.
 
 ## Findings
 
-*(Filled in during the phase.)*
+*Measured 2026-10-28* with `bin/time-zone-sites` and
+`tests/Integration/TimeZoneSweepTest.php`, under `America/Los_Angeles` (UTC-7
+in September), `Pacific/Auckland` (UTC+12) and `Asia/Kolkata` (UTC+5:30), on
+Postgres and MySQL. The application's clock is UTC throughout.
+
+**The mechanism.** PHP parses a date string in `date.timezone`. A `Y-m-d` read
+from the database becomes *midnight in that zone*, which is not the clock's
+midnight: it is later than it by the zone's offset where the offset is negative
+and earlier where it is positive. Anything that compares the two is wrong by up
+to a day, in opposite directions on either side of UTC.
 
 | Class | Sites | Wrong under non-UTC | Size of the error | Reaches |
 |---|---|---|---|---|
-| date-only column read and compared with the clock | | | | |
-| timestamp column (UTC) | | | | |
-| one-zone formatting or comparison | | | | |
-| user-facing time | | | | |
+| date-only column or form input, compared with the clock | 25 | Yes, both directions | The zone's offset, which moves a whole day at a boundary | Forecast (price changes, charges), price history "has taken effect", contract end, charge due dates, the calendar, imports, API token expiry input |
+| timestamp column | 25 | Only against a UTC stamp | The zone's offset, in hours | Created and updated times; wrong only where compared with something the clock wrote |
+| user-facing time | 21 | Yes where the clock wrote it; the session list in negative zones | The zone's offset, in hours | Session list, audit log, backup runs, copies and rehearsals, API tokens, passkeys, notification channels |
+| one-zone formatting or comparison | 18 | No | None | Month labels and grids built from a year and a month, the session table's own writes and reads, the update check |
+
+What the tests measured, each over the three zones (a **✘** is a case that is
+wrong today and is marked in `KNOWN_WRONG`, so Phase 64 removes the mark):
+
+| Case | Los Angeles | Auckland | Kolkata |
+|---|---|---|---|
+| K68: a 3-month forecast leaves out a price change on its last day | ✘ omitted | ✔ | ✔ |
+| A price change dated today has taken effect today | ✘ not yet | ✔ | ✔ |
+| A contract ending today is not yet out of contract | ✔ | ✘ already over | ✘ already over |
+| A date read from a column is the clock's midnight (the instant) | ✘ +7 h | ✘ -12 h | ✘ -5 h 30 m |
+| A date typed into a form is the clock's midnight | ✘ | ✘ | ✘ |
+| A timestamp written in UTC reads back as that instant | ✘ | ✘ | ✘ |
+| An audit entry written from the clock reads back as that instant | ✘ | ✘ | ✘ |
+| The current session is listed as active | ✘ not listed | ✔ | ✔ |
+| A month label built from a year and month | ✔ | ✔ | ✔ |
+
+So the K68 reproduction holds, and it is the first of two failure modes, not the
+only one. **Negative offsets** push a date later than the clock's day (a change
+dated today has not started, a forecast drops its last day, a session that ends
+in an hour is not listed, because it was written as `date('Y-m-d H:i:s')` in the
+local zone and compared with a UTC `now`). **Positive offsets** pull it earlier
+(a contract that ends today reads as over). Nothing here is a *day* wrong for a
+date shown on its own: formatted back in the same zone the string is the same
+day, which is why month labels and the calendar grid are unaffected.
+
+**What the scan cannot see.** 43 places in 13 repositories stamp `created_at`
+and `updated_at` with `new DateTimeImmutable()` (no clock), so on a non-UTC
+install those columns hold *local* time, while the audit log, backup runs and
+the session list's `now` hold UTC. A column read back by the repository that
+wrote it is self-consistent, which is why those are not wrong on their own; the
+mixing is what makes the two comparisons above fail. This also means pinning the
+zone to UTC *changes how existing rows on a non-UTC install are read*: a
+timestamp written in Los Angeles time is afterwards read as UTC, seven or eight
+hours out. That is a decision for Phase 64, not something to do silently.
+
+**Documentation.** `docs/install.md` has no note on the PHP time zone, although
+K68 and this brief both say it does; the only pin is `docker/php/php.ini`. An
+install without Docker has nothing telling it to set `date.timezone = UTC`.
+
+**How big a fix.** The 89 sites are not 89 fixes. Every wrong case above has one
+cause, PHP's default zone not being the clock's, and one setting removes it. The
+fix is batch-sized (one decision about existing rows, the pin at three entry
+points, a guard test, a docs note), not a per-site rewrite. Phase 64 is drafted
+on that footing.
 
 ## Status
 
-- [ ] A: every site found and classified, with a re-runnable script
-- [ ] B: tests run each class under three non-UTC zones
-- [ ] C: Findings table filled in
-- [ ] Phase 64 draft brief written (📋 planned) with its ROADMAP row
-- [ ] K68 Status stays Scheduled; Phase 64 takes it
-- [ ] ROADMAP: Phase 63 row marked ✅ done
+- [x] A: every site found and classified, with a re-runnable script (`bin/time-zone-sites`)
+- [x] B: tests run each class under three non-UTC zones
+- [x] C: Findings table filled in
+- [x] Phase 64 draft brief written (📋 planned) with its ROADMAP row
+- [x] K68 Status stays Scheduled; Phase 64 takes it
+- [x] ROADMAP: Phase 63 row marked ✅ done
 - [ ] composer check, coverage and the docs tests green
 
 ## Definition of done
