@@ -100,6 +100,10 @@ None.
   `date_default_timezone_set()`; any code that caches a zone at construction
   is noted as a finding.
 
+*Confirmed 2026-10-28* by the owner: build Phase 63 now (Phase 65 was also
+ready); spike first, not a direct K68 fix; three non-UTC zones; no CHANGELOG
+entry.
+
 ## Findings
 
 *(Filled in during the phase.)*
