@@ -180,7 +180,7 @@ case that fails for another reason is not hidden by its mark.
 - [x] Phase 64 draft brief written (📋 planned) with its ROADMAP row
 - [x] K68 Status stays Scheduled; Phase 64 takes it
 - [x] ROADMAP: Phase 63 row marked ✅ done
-- [ ] composer check, coverage and the docs tests green
+- [x] composer check, coverage and the docs tests green (Postgres and MySQL)
 
 ## Definition of done
 
