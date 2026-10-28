@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–61
+## Planned — Phases 30–62
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -70,6 +70,7 @@ can be moved.
 | 59 | [Notification delivery and proxy client addresses, from the known-issues log](docs/phases/PHASE-59.md) | — | None | 📋 planned |
 | 60 | [Sign-in, household and calendar edges, from the known-issues log](docs/phases/PHASE-60.md) | — | None | 📋 planned |
 | 61 | [Scheduler cadence and restore-rehearsal test, from the known-issues log](docs/phases/PHASE-61.md) | — | None | 📋 planned |
+| 62 | [MySQL/MariaDB timestamp columns that rewrite themselves, from the known-issues log](docs/phases/PHASE-62.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -196,6 +197,7 @@ can be moved.
 - **59 — Notification delivery and proxy client addresses.** A batch from the known-issues log (K13, K14, K15, K7): two overlapping scheduler runs no longer send the same reminder, an empty routing grid mutes instead of enabling everything, a failed budget alert is retried and a long breach announced once, and the bundled nginx finds the real client address behind a proxy.
 - **60 — Sign-in, household and calendar edges.** A batch from the known-issues log (K138, K77, K24, K27, K49, K53): overlapping filter requests are announced, bulk Pause and Resume read once, an Owner cannot revoke an instance admin, a passkey used alone must verify the user, a removed member is cleared as payer, and the calendar feed carries renewals after a trial converts.
 - **61 — Scheduler cadence and restore-rehearsal test.** A batch from the known-issues log (K114, K115): the compose scheduler sleeps the rest of the day rather than a fixed 24 hours after a slow pass, and the restore rehearsal's row-count check is tested.
+- **62 — MySQL/MariaDB timestamp columns that rewrite themselves.** Fixes K110: on MariaDB 10.6–10.9 or a server with `explicit_defaults_for_timestamp=OFF`, `created_at`-style columns gain `ON UPDATE CURRENT_TIMESTAMP`. A corrective migration repairs installed databases, the session turns the setting on where it can, and a flag-off CI leg and schema scan keep it from returning.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
