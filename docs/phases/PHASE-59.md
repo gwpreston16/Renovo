@@ -118,7 +118,7 @@ None.
 
 ## Status
 
-- [ ] K13: a live claim is refused, a stale one is taken over
+- [x] K13: a live claim is refused, a stale one is taken over
 - [ ] K14: an empty routing grid mutes and stays muted
 - [ ] K15: a failed breach alert is retried, a long breach is announced once
 - [ ] K7: the bundled nginx finds the real client address, documented
