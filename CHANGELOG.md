@@ -17,9 +17,9 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   had not started, in Auckland a contract ending today showed as ended, and
   the current session could be missing from the session list. The web app, the
   console and the migrations now all run in UTC whatever `date.timezone` says.
-  Rows written before the upgrade on such an install keep `created_at` and
-  `updated_at` in the old local zone; `docs/upgrading.md` explains what moves
-  and how to correct it. Docker installs are not affected. *Phase 64.*
+  On such an install, sign everyone out once after upgrading (`DELETE FROM
+  sessions`), and correct the old `created_at`/`updated_at` values, which were
+  stamped in the local zone; `docs/upgrading.md` gives the steps. Docker installs are not affected. *Phase 64.*
 
 ## [1.26.7] - 2026-10-28
 

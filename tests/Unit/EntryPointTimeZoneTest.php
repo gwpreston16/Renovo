@@ -88,13 +88,57 @@ final class EntryPointTimeZoneTest extends TestCase
         self::assertContains('bin/console', $entryPoints, 'and the console');
 
         foreach ($entryPoints as $file) {
-            $source = (string) file_get_contents($this->root . '/' . $file);
-            self::assertTrue(
-                str_contains($source, "/config/bootstrap.php'") || str_contains($source, 'ProcessTimeZone::pin();'),
+            $source = self::code((string) file_get_contents($this->root . '/' . $file));
+            self::assertMatchesRegularExpression(
+                '~^\s*(\$\w+\s*=\s*)?require(_once)?\s[^;]*/config/bootstrap\.php\'\s*;'
+                . '|^\s*[\w\\\\]*ProcessTimeZone::pin\(\);~m',
+                $source,
                 $file . ' neither loads config/bootstrap.php nor calls ProcessTimeZone::pin(), so it runs'
                 . ' in whatever zone PHP started in (K68)',
             );
         }
+    }
+
+    /**
+     * The pin holds only if nothing moves the zone again after start-up, so
+     * the one place in src/ that may set it is the pin.
+     */
+    public function testNothingInSrcSetsTheZoneButThePin(): void
+    {
+        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($this->root . '/src'));
+        $offenders = [];
+        foreach ($files as $path) {
+            if (!$path->isFile() || $path->getExtension() !== 'php') {
+                continue;
+            }
+            $file = substr($path->getPathname(), strlen($this->root) + 1);
+            if ($file === 'src/Support/ProcessTimeZone.php') {
+                continue;
+            }
+            $source = self::code((string) file_get_contents($path->getPathname()));
+            if (preg_match('/date_default_timezone_set\s*\(|ini_set\s*\(\s*[\'"]date\.timezone/', $source) === 1) {
+                $offenders[] = $file;
+            }
+        }
+
+        self::assertSame([], $offenders, 'only ProcessTimeZone may set PHP\'s zone (K68)');
+    }
+
+    /**
+     * The source with its comments removed, so a mention in a comment neither
+     * satisfies nor trips a check.
+     */
+    private static function code(string $source): string
+    {
+        $code = '';
+        foreach (token_get_all($source) as $token) {
+            if (is_array($token) && in_array($token[0], [T_COMMENT, T_DOC_COMMENT], true)) {
+                continue;
+            }
+            $code .= is_array($token) ? $token[1] : $token;
+        }
+
+        return $code;
     }
 
     /**

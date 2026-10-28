@@ -305,30 +305,71 @@ read a day out: a forecast that left out a price change on its last day, a
 change dated today that had not started, a contract ending today shown as
 ended, the current session missing from the session list.
 
-Nothing to run, and no migration. One thing moves: `created_at` and
-`updated_at` on rows written before the upgrade were stamped in the old local
-zone, and are now read as UTC, so they show up out by that zone's offset (seven
-or eight hours for Los Angeles). They are bookkeeping times; no amount, due
-date, reminder or expiry depends on them. Leaving them is fine. To correct
-them, **back up your database first**, then for each table below run, with
-your old zone in place of `America/Los_Angeles`:
+There is no migration. Rows written before the upgrade were stamped in the old
+local zone and are now read as UTC, so they are out by that zone's offset
+(seven or eight hours for Los Angeles, twelve or thirteen for Auckland). Two
+things to do, and one to consider.
+
+**Sign everyone out once.** Sessions store their expiry in the old zone too. On
+a zone ahead of UTC (Europe, Asia, Australia, New Zealand), a session that had
+already timed out but not yet been cleaned up would read as live again after
+the upgrade. Clear the table straight after upgrading; everyone signs in again:
 
 ```sql
--- PostgreSQL
+DELETE FROM sessions;
+```
+
+On a zone behind UTC (the Americas) this is optional: sessions open at the
+upgrade only end sooner than they would have.
+
+**Correct the old `created_at` and `updated_at` values** (recommended).
+Most are bookkeeping times, but `subscription_price_history.created_at`
+decides which price changes a daily or weekly digest carries: left as it is,
+the first digest after the upgrade can leave out a change recorded just before
+it (zones behind UTC) or repeat one the last digest already sent (zones ahead).
+Correct at least that table before the next digest goes out.
+
+**Back up your database first.** Then, before anyone uses the upgraded
+instance, run the statement below **once** for each table listed after it, with
+your old zone in place of `America/Los_Angeles`. A second run shifts the rows
+again, and rows written after the upgrade are already UTC.
+
+PostgreSQL:
+
+```sql
 UPDATE subscriptions SET created_at = (created_at AT TIME ZONE 'America/Los_Angeles') AT TIME ZONE 'UTC',
                          updated_at = (updated_at AT TIME ZONE 'America/Los_Angeles') AT TIME ZONE 'UTC';
--- MySQL / MariaDB (named zones need the server's time zone tables loaded;
--- otherwise use offsets, such as '-07:00', '+00:00')
+```
+
+MySQL / MariaDB: first check that the server knows the zone. This must return
+`2026-01-01 08:00:00`, not `NULL`:
+
+```sql
+SELECT CONVERT_TZ('2026-01-01 00:00:00', 'America/Los_Angeles', '+00:00');
+```
+
+If it returns `NULL`, the server's time zone tables are not loaded: load them
+(`mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`, or
+`mariadb-tzinfo-to-sql` on MariaDB) and check again. **Do not run the UPDATE
+while it returns `NULL`:** depending on the server's settings, a `NULL` written
+to these columns is silently replaced with the current time, and the old values
+are lost. A fixed offset such as `'-08:00'` instead of the zone name is only
+right for a zone without daylight saving time; for any other zone it leaves
+half the year's rows an hour out. Then, in the same session:
+
+```sql
+SET SESSION time_zone = '+00:00', explicit_defaults_for_timestamp = 1, sql_mode = 'STRICT_ALL_TABLES';
 UPDATE subscriptions SET created_at = CONVERT_TZ(created_at, 'America/Los_Angeles', '+00:00'),
                          updated_at = CONVERT_TZ(updated_at, 'America/Los_Angeles', '+00:00');
 ```
 
+The `SET` makes a `NULL` an error rather than a silent overwrite. (On MySQL 8,
+setting `explicit_defaults_for_timestamp` per session can need the
+`SESSION_VARIABLES_ADMIN` privilege; if the `SET` is refused, run it as an account that has it.)
+
 The tables are `budget_alert_state`, `budgets`, `categories`,
 `household_memberships`, `households`, `instance_settings`, `payment_methods`,
 `subscription_splits`, `subscriptions`, `tags`, `users`, and
-`subscription_price_history` (`created_at` only). Run it **once**: a second run
-shifts the rows again. Leave `subscription_charges` alone: charges the
-scheduler recorded were already stamped in UTC, and they cannot be told apart
-from the ones recorded by hand. Rows written after the upgrade are UTC and must
-not be shifted, so run it before anyone uses the upgraded instance, or not at
-all.
+`subscription_price_history` (`created_at` only). Leave `subscription_charges`
+alone: charges the scheduler recorded were already stamped in UTC, and they
+cannot be told apart from the ones recorded by hand.
