@@ -308,6 +308,61 @@ final class BulkActionTest extends DatabaseTestCase
         self::assertTrue($this->activeState($id));
     }
 
+    public function testPauseAndResumeReadTheSelectionOnce(): void
+    {
+        $few = [$this->create('A'), $this->create('B')];
+        $many = $few;
+        for ($i = 0; $i < 8; $i++) {
+            $many[] = $this->create('Row ' . $i);
+        }
+
+        $statements = function (array $ids, string $action): int {
+            $before = $this->db->statementCount();
+            $this->bulk->apply($this->scope(), ['action' => $action, 'ids' => $ids]);
+
+            return $this->db->statementCount() - $before;
+        };
+
+        // The update still runs once per row (and no more); the read of the
+        // selection, which used to add two statements per row, runs once.
+        $extraRows = count($many) - count($few);
+        $pauseFew = $statements($few, BulkActionService::ACTION_DEACTIVATE);
+        $pauseMany = $statements($many, BulkActionService::ACTION_DEACTIVATE);
+        self::assertLessThanOrEqual($extraRows, $pauseMany - $pauseFew);
+
+        $resumeFew = $statements($few, BulkActionService::ACTION_ACTIVATE);
+        $this->bulk->apply($this->scope(), ['action' => BulkActionService::ACTION_DEACTIVATE, 'ids' => $many]);
+        $resumeMany = $statements($many, BulkActionService::ACTION_ACTIVATE);
+        self::assertLessThanOrEqual($extraRows, $resumeMany - $resumeFew);
+        self::assertTrue($this->activeState($many[9]));
+    }
+
+    public function testABulkPauseDropsIdsTheActorCannotWrite(): void
+    {
+        $mine = $this->create('Mine');
+        $outsider = (new UserRepository($this->db))->create('eve@example.test', 'Eve', 'hash');
+        $otherHousehold = (new HouseholdRepository($this->db))->create('Elsewhere', $outsider);
+        $foreignScope = Scope::forMember($outsider, false, $otherHousehold, Role::OwnerAdmin, IsolationMode::Shared);
+        $foreign = $this->subscriptions->create($foreignScope, [
+            'name' => 'Theirs',
+            'price_minor' => 500,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-12-01',
+            'is_active' => true,
+        ], []);
+
+        $changed = $this->bulk->apply($this->scope(), [
+            'action' => BulkActionService::ACTION_DEACTIVATE,
+            'ids' => [$mine, $foreign],
+        ]);
+
+        self::assertSame(1, $changed);
+        self::assertFalse($this->activeState($mine));
+        self::assertTrue($this->subscriptions->find($foreignScope, $foreign)?->isActive);
+    }
+
     public function testABulkResumeAcceptsAnEndOnTheFirstBillingDate(): void
     {
         // Today is 15 Jan 2026, so the first billing date from today is 1 Feb.
