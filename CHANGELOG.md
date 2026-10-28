@@ -8,6 +8,18 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.26.6] - 2026-10-28
+
+### Fixed
+
+- **A first `docker compose up` no longer fails on a new volume.** On a new
+  install, or after the volumes were removed (`./bin/dev-setup.sh --reset`,
+  `docker compose down -v`), the app and scheduler containers could be created
+  at the same moment and both fill the same empty volume, and the second
+  stopped the stack with `mkdir .../backups: file exists`. The scheduler now
+  waits for the app, so each volume is filled once. Running the same command
+  again worked before and still does; nothing was lost. *Phase 62.1.*
+
 ## [1.26.5] - 2026-10-28
 
 ### Fixed
@@ -1068,7 +1080,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.26.5...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.26.6...HEAD
+[1.26.6]: https://github.com/gwpreston16/Renovo/compare/v1.26.5...v1.26.6
 [1.26.5]: https://github.com/gwpreston16/Renovo/compare/v1.26.4...v1.26.5
 [1.26.4]: https://github.com/gwpreston16/Renovo/compare/v1.26.3...v1.26.4
 [1.26.3]: https://github.com/gwpreston16/Renovo/compare/v1.26.2...v1.26.3

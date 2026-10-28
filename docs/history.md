@@ -689,6 +689,11 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   their own connections where the account may, and CI gains a MySQL leg with
   the setting off. No API changes, so the contract stays 1.9.5. One migration.
   See [Upgrading](upgrading.md#after-upgrading-to-the-timestamp-fix-phase-62).
+- **Phase 62.1 — the app and scheduler containers racing to fill a new
+  volume — hotfix (1.26.6).** A first `docker compose up` on new volumes could
+  stop with `mkdir .../backups: file exists`, because the app and scheduler
+  containers were created together and both filled the same empty volume. The
+  scheduler now waits for the app. No migrations.
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
