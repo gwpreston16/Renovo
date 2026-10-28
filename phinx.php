@@ -10,6 +10,10 @@ declare(strict_types=1);
  * engines are described; DB_DRIVER picks between them.
  */
 
+// Phinx does not load config/bootstrap.php, so it pins the zone itself: a
+// migration that writes a date runs in UTC like the application (K68).
+App\Support\ProcessTimeZone::pin();
+
 App\Support\Environment::loadDotenv(__DIR__);
 
 $env = static function (string $key, string $default = ''): string {

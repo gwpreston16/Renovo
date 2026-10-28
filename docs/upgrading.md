@@ -295,3 +295,92 @@ database; the repair stops it happening again. Rolling the migration back does
 nothing, because putting the auto-update back would only put the fault back.
 If a table must be repaired by hand, `SHOW CREATE TABLE <table>` names the
 columns that say `ON UPDATE`.
+
+## After upgrading to the UTC pin (Phase 64)
+
+This only matters on an install **without Docker** whose PHP `date.timezone`
+was not UTC. (The Docker image has always run in UTC, and there is nothing to
+do.) Renovo now runs in UTC whatever `date.timezone` says, which fixes dates
+read a day out: a forecast that left out a price change on its last day, a
+change dated today that had not started, a contract ending today shown as
+ended, the current session missing from the session list.
+
+There is no migration. Rows written before the upgrade were stamped in the old
+local zone and are now read as UTC, so they are out by that zone's offset
+(seven or eight hours for Los Angeles, twelve or thirteen for Auckland). Two
+things to do, and one to consider.
+
+**Sign everyone out once.** Sessions store their expiry in the old zone too. On
+a zone ahead of UTC (Europe, Asia, Australia, New Zealand), a session that had
+already timed out but not yet been cleaned up would read as live again after
+the upgrade. Clear the table straight after upgrading; everyone signs in again:
+
+```sql
+DELETE FROM sessions;
+```
+
+On a zone behind UTC (the Americas) this is optional: sessions open at the
+upgrade only end sooner than they would have.
+
+**Correct the old `created_at` and `updated_at` values** (recommended).
+Most are bookkeeping times, but `subscription_price_history.created_at`
+decides which price changes a daily or weekly digest carries: left as it is,
+the first digest after the upgrade can leave out a change recorded just before
+it (zones behind UTC) or repeat one the last digest already sent (zones ahead).
+Correct at least that table before the next digest goes out.
+
+**Back up your database first.** Then, before anyone uses the upgraded
+instance, run the statement below **once** for each table listed after it, with
+your old zone in place of `America/Los_Angeles`. A second run shifts the rows
+again, and rows written after the upgrade are already UTC.
+
+PostgreSQL:
+
+```sql
+UPDATE subscriptions SET created_at = (created_at AT TIME ZONE 'America/Los_Angeles') AT TIME ZONE 'UTC',
+                         updated_at = (updated_at AT TIME ZONE 'America/Los_Angeles') AT TIME ZONE 'UTC';
+```
+
+MySQL / MariaDB: first check that the server knows **your** old zone. With
+your zone name in place of `America/Los_Angeles`, this must return a date and
+time, not `NULL`:
+
+```sql
+SELECT CONVERT_TZ('2026-01-01 00:00:00', 'America/Los_Angeles', '+00:00');
+```
+
+`NULL` means the name is mistyped or the server's time zone tables are not
+loaded. Load them (`mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root
+mysql` on MySQL; `mariadb-tzinfo-to-sql /usr/share/zoneinfo | mariadb -u root
+mysql` on MariaDB) and check again. A fixed offset such as `'-08:00'` instead
+of the zone name is only right for a zone without daylight saving time; for any
+other zone it leaves half the year's rows an hour out. Then, in the same
+session:
+
+```sql
+SET SESSION time_zone = '+00:00';
+UPDATE subscriptions SET created_at = CONVERT_TZ(created_at, 'America/Los_Angeles', '+00:00'),
+                         updated_at = CONVERT_TZ(updated_at, 'America/Los_Angeles', '+00:00')
+ WHERE CONVERT_TZ('2026-01-01 00:00:00', 'America/Los_Angeles', '+00:00') IS NOT NULL;
+```
+
+Keep the `WHERE` line, with the same zone name in it. A `NULL` written to these
+columns is replaced with the current time without an error on MariaDB (and on
+MySQL, depending on its settings), so the old values would be lost; with the
+`WHERE`, a zone the server does not know updates no rows (`0 rows affected`)
+instead. If the `UPDATE` reports 0 rows on a table that has rows, go back to the
+check above.
+
+The tables are `budget_alert_state`, `budgets`, `categories`,
+`household_memberships`, `households`, `instance_settings`, `payment_methods`,
+`subscription_splits`, `subscriptions`, `tags`, `users`, and
+`subscription_price_history` (`created_at` only). Leave `subscription_charges`
+alone: charges the scheduler recorded were already stamped in UTC, and they
+cannot be told apart from the ones recorded by hand.
+
+**API tokens given an expiry date.** A token created before the upgrade with a
+date chosen under *Expires* (rather than a number of days) was set to end at
+23:59:59 on that day in the old zone. On a zone ahead of UTC it now lasts up to
+the zone's offset longer, and on a zone behind UTC it ends that much sooner.
+Tokens with a number of days, or no expiry, are not affected. Where the extra
+hours matter, revoke such a token and issue a new one.

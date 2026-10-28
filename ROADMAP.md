@@ -72,7 +72,7 @@ can be moved.
 | 61 | [Scheduler cadence and restore-rehearsal test, from the known-issues log](docs/phases/PHASE-61.md) | — | None | ✅ done |
 | 62 | [MySQL/MariaDB timestamp columns that rewrite themselves, from the known-issues log](docs/phases/PHASE-62.md) | — | None | ✅ done |
 | 63 | [Measure the PHP time zone problem (K68), then plan its fix](docs/phases/PHASE-63.md) | — | None | ✅ done |
-| 64 | [Pin PHP's time zone to UTC (K68)](docs/phases/PHASE-64.md) | 63 | None | 📋 planned |
+| 64 | [Pin PHP's time zone to UTC (K68)](docs/phases/PHASE-64.md) | 63 | None | ✅ done |
 | 65 | [MySQL case rules and per-currency estimate marks, from the known-issues log](docs/phases/PHASE-65.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
