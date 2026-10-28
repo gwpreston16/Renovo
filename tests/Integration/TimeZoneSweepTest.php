@@ -75,7 +75,7 @@ final class TimeZoneSweepTest extends DatabaseTestCase
     private const ZONES = ['UTC', ...self::NON_UTC];
 
     private string $originalZone;
-    private string|false $originalIniZone;
+    private string $originalIniZone;
     private FrozenClock $clock;
     private SubscriptionRepository $subscriptions;
     private PriceHistoryRepository $historyRepository;
@@ -163,7 +163,7 @@ final class TimeZoneSweepTest extends DatabaseTestCase
 
     protected function tearDown(): void
     {
-        ini_set('date.timezone', (string) $this->originalIniZone);
+        ini_set('date.timezone', $this->originalIniZone);
         date_default_timezone_set($this->originalZone);
         parent::tearDown();
     }

@@ -54,7 +54,8 @@ final class EntryPointTimeZoneTest extends TestCase
     public function testLoadingTheFileLeavesPhpInUtc(string $file, string $zone): void
     {
         $code = sprintf(
-            'require %s; $before = date_default_timezone_get(); require %s; echo $before, " ", date_default_timezone_get();',
+            'require %s; $before = date_default_timezone_get(); require %s;'
+            . ' echo $before, " ", date_default_timezone_get();',
             var_export($this->root . '/vendor/autoload.php', true),
             var_export($this->root . '/' . $file, true),
         );
