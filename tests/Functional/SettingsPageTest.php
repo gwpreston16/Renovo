@@ -476,6 +476,38 @@ final class SettingsPageTest extends DatabaseTestCase
         self::assertSame('#4f7df0', $categories->findByName($this->ownerScope(), 'Blue')?->colour);
     }
 
+    public function testNewCategoryColourIsAutomaticByDefault(): void
+    {
+        $this->signIn($this->ownerId);
+        $box = static function (string $html): string {
+            $page = (string) preg_replace('/\s+/', ' ', $html);
+            self::assertSame(
+                1,
+                preg_match('~action="/categories" class="setting-add".*?(<input type="checkbox" name="colour_auto"[^>]*>)~', $page, $found),
+            );
+
+            return $found[1];
+        };
+
+        // The add form starts with Automatic ticked, as the payment-method one does.
+        self::assertStringContainsString('checked', $box($this->body($this->request('GET', '/settings'))));
+
+        // A failed add that was submitted unticked comes back unticked…
+        (new CategoryRepository($this->db))->create($this->ownerScope(), 'Streaming', null);
+        $unticked = $this->request('POST', '/categories', ['name' => 'streaming', 'colour' => '#112233']);
+        self::assertSame(422, $unticked->getStatusCode());
+        self::assertStringNotContainsString('checked', $box($this->body($unticked)));
+
+        // …and one submitted ticked stays ticked.
+        $ticked = $this->request('POST', '/categories', ['name' => 'streaming', 'colour_auto' => '1']);
+        self::assertSame(422, $ticked->getStatusCode());
+        self::assertStringContainsString('checked', $box($this->body($ticked)));
+
+        // Saved with the box ticked, it gets a generated colour.
+        $this->request('POST', '/categories', ['name' => 'Gaming', 'colour' => '#4f7df0', 'colour_auto' => '1']);
+        self::assertNull((new CategoryRepository($this->db))->findByName($this->ownerScope(), 'Gaming')?->colour);
+    }
+
     public function testARenameThatFailsComesBackOpenBesideItsRow(): void
     {
         $this->signIn($this->ownerId);
