@@ -703,6 +703,17 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   today as over; Docker installs are unaffected, as the image pins UTC. This
   release also carries the `symfony/mime` security update. No API changes, so
   the contract stays 1.9.5. No migrations.
+- **Phase 64 — Pin PHP's time zone to UTC (K68) — complete (1.26.8).** The web
+  app, the console and the migrations now run in UTC whatever PHP's
+  `date.timezone` says, so on an install without Docker in another zone dates
+  are no longer read a day out: a forecast keeps a price change on its last
+  day, a change dated today is in force, a contract ending today has not
+  ended, and the current session is listed. An install that ran in another
+  zone signs everyone out once after upgrading and may correct the old
+  created and updated times, with steps that are safe on MySQL and MariaDB.
+  Docker installs are unaffected. No API changes, so the contract stays
+  1.9.5. No migrations. See
+  [Upgrading](upgrading.md#after-upgrading-to-the-utc-pin-phase-64).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says

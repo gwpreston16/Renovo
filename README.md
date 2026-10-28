@@ -185,8 +185,8 @@ uses it, and a deployment from the published image never installs it. See
 ## What's new
 
 Release notes are in [CHANGELOG.md](CHANGELOG.md), and what each phase built is
-in [docs/history.md](docs/history.md). The latest phase is **Phase 63, Measure the PHP time zone problem (K68), then plan its fix**
-([brief](docs/phases/PHASE-63.md)); the [roadmap](ROADMAP.md) shows what is in
+in [docs/history.md](docs/history.md). The latest phase is **Phase 64, Pin PHP's time zone to UTC (K68)**
+([brief](docs/phases/PHASE-64.md)); the [roadmap](ROADMAP.md) shows what is in
 progress and what is planned.
 
 ## Contributing
