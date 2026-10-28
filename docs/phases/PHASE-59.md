@@ -97,7 +97,7 @@ None.
 
 ## Decisions & assumptions (confirm or correct before build)
 
-- **K13:** the dispatcher's own comment, `bin/console` and `docs/operations.md`
+- **K13 — Confirmed 2026-10-28** (15-minute lease): the dispatcher's own comment, `bin/console` and `docs/operations.md`
   all say running `reminders:run` twice is safe. A conditional claim makes the
   code do that. The 15-minute lease is an assumption: longer than any single
   send (the HTTP client's timeouts are seconds), short enough that a crashed
@@ -106,13 +106,13 @@ None.
   an empty save. The stored form is a `none` sentinel row per channel
   (assumption, no migration); a column or setting would be the alternative if
   the sentinel proves awkward.
-- **K15:** repeating the alert request every run and letting the ledger decide
+- **K15 — Confirmed 2026-10-28** (7-day retry window): repeating the alert request every run and letting the ledger decide
   reuses the idempotency the ledger was built for. The retry window (assumed 7
   days) and `$maxAttempts` bound the retries.
 - **K7 — Decided 2026-10-28:** nginx `real_ip` plus documentation, not an
   application setting. An empty variable keeps today's behaviour, so nothing
   changes for an install that does not sit behind a proxy.
-- **Decided 2026-10-28:** ships as its own patch release once merged (v1.26.1),
+- **Decided 2026-10-28:** ships as its own patch release once merged (Changed 2026-10-28: master is already at 1.26.1, so the next patch, 1.26.2),
   not with the next minor: none of the rows touches code a planned phase is
   changing.
 
