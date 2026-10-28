@@ -8,6 +8,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.26.0] - 2026-10-28
+
 ### Fixed
 
 - **Keyboard focus stays on the control you used.** After a filter chip, a sort
@@ -972,7 +974,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.25.0...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.26.0...HEAD
+[1.26.0]: https://github.com/gwpreston16/Renovo/compare/v1.25.0...v1.26.0
 [1.25.0]: https://github.com/gwpreston16/Renovo/compare/v1.24.0...v1.25.0
 [1.24.0]: https://github.com/gwpreston16/Renovo/compare/v1.23.0...v1.24.0
 [1.23.0]: https://github.com/gwpreston16/Renovo/compare/v1.22.0...v1.23.0

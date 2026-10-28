@@ -629,6 +629,16 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   toward lockout, and starting a session no longer raises a deprecation notice
   on PHP 8.5. The payment-method race logo cleanup is tested. The OpenAPI
   document is unchanged. No migrations. See [Customising](features/customising.md).
+- **Phase 57 — screen-reader labels and estimate marks, from the known-issues
+  log — complete (1.26.0).** Keyboard focus stays on the filter chip, sort
+  header, pager or calendar control you used after its region swaps, and a
+  screen reader is told what the region now shows. The sorted column, the usage
+  rating and a cost-per-use dash are announced, and member actions and category
+  colour pickers name their row. A scenario's "With changes" figures and the
+  forecast's month parts carry "≈" only where a varying bill is. The API
+  reference and OpenAPI contract now match the code in ten places; no endpoint
+  changes, so the contract stays 1.9.4. No migrations. See
+  [Tracking](features/tracking.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
