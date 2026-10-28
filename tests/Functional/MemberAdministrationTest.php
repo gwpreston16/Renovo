@@ -1017,6 +1017,51 @@ final class MemberAdministrationTest extends DatabaseTestCase
         self::assertStringContainsString('<span class="badge badge-bad">Login revoked</span>', $html);
     }
 
+    public function testAnOwnerCannotRevokeAnInstanceAdmin(): void
+    {
+        $adminId = $this->addInstanceAdminOwner();
+
+        $this->signIn($this->ownerId);
+        $page = (string) $this->request('GET', '/settings/members')->getBody();
+        self::assertStringNotContainsString('/settings/members/' . $adminId . '/revoke', $page);
+        self::assertStringContainsString('/settings/members/' . $this->editorId . '/revoke', $page);
+
+        $this->request('POST', '/settings/members/' . $adminId . '/revoke');
+
+        $admin = (new UserRepository($this->db))->findById($adminId);
+        self::assertNotNull($admin);
+        self::assertFalse($admin->isDisabled(), 'A household Owner must not be able to disable an instance admin.');
+    }
+
+    public function testAnInstanceAdminMayRevokeAnotherOwner(): void
+    {
+        $adminId = $this->addInstanceAdminOwner();
+
+        $this->signIn($adminId);
+        $page = (string) $this->request('GET', '/settings/members')->getBody();
+        self::assertStringContainsString('/settings/members/' . $this->ownerId . '/revoke', $page);
+
+        $this->request('POST', '/settings/members/' . $this->ownerId . '/revoke');
+
+        $owner = (new UserRepository($this->db))->findById($this->ownerId);
+        self::assertNotNull($owner);
+        self::assertTrue($owner->isDisabled());
+    }
+
+    private function addInstanceAdminOwner(): int
+    {
+        $adminId = (new UserRepository($this->db))->create(
+            'root@example.test',
+            'Rhea Root',
+            'hash',
+            true,
+            new DateTimeImmutable(),
+        );
+        (new MembershipRepository($this->db))->create($this->householdId, $adminId, Role::OwnerAdmin);
+
+        return $adminId;
+    }
+
     private function grantWord(CapabilityGrant $grant): string
     {
         return match ($grant) {

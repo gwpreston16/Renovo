@@ -199,6 +199,7 @@ final class MembershipRepository extends AbstractRepository
             . ' u.' . $this->quote('disabled_at') . ' AS disabled_at,'
             . ' u.' . $this->quote('avatar_path') . ' AS avatar_path,'
             . ' u.' . $this->quote('must_change_password') . ' AS must_change_password,'
+            . ' u.' . $this->quote('is_instance_admin') . ' AS is_instance_admin,'
             . ' m.' . $this->quote('role') . ' AS role,'
             . ' m.' . $this->quote('status') . ' AS status,'
             . ' s.' . $this->quote('last_seen_at') . ' AS last_seen_at'
@@ -229,6 +230,7 @@ final class MembershipRepository extends AbstractRepository
                 hasAvatar: isset($row['avatar_path']) && (string) $row['avatar_path'] !== '',
                 canReceiveMail: !str_ends_with((string) $row['email'], User::UNREACHABLE_EMAIL_DOMAIN),
                 mustChangePassword: $this->db->platform()->toBoolean($row['must_change_password'] ?? false),
+                isInstanceAdmin: $this->db->platform()->toBoolean($row['is_instance_admin'] ?? false),
             ),
             $rows,
         );

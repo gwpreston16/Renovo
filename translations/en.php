@@ -299,6 +299,8 @@ return [
     'error.email_change.invalid_token' =>
         'That confirmation link has expired or has already been used.',
     'error.invite.invalid_token' => 'That invitation has expired or has already been used.',
+    'error.member.instance_admin' =>
+        'That account administers the whole instance, so only an instance administrator can revoke its login.',
     'error.member.last_owner' =>
         'This is the household\'s last Owner. Make somebody else an Owner first — a household with '
         . 'nobody able to administer it cannot be put right from inside.',

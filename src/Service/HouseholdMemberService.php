@@ -295,6 +295,12 @@ final class HouseholdMemberService
             throw ValidationException::field('member', 'error.member.not_yourself');
         }
 
+        // An account that signs in to the whole instance is not a household's
+        // to switch off: only an instance administrator may revoke another (K24).
+        if ($member->isInstanceAdmin && !$actor->isInstanceAdmin) {
+            throw ValidationException::field('member', 'error.member.instance_admin');
+        }
+
         // An Owner may be revoked, but not the last one: a household whose only
         // administrator cannot sign in is a household nobody can administer.
         $this->assertOwnersRemain($householdId, $member->id);

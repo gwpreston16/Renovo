@@ -39,6 +39,7 @@ use App\Security\Scope;
  *     roles: list<Role>,
  *     matrix: list<Row>,
  *     isolation_mode: IsolationMode,
+ *     viewer_is_instance_admin: bool,
  *     may_change_isolation: bool
  * }
  */
@@ -82,6 +83,7 @@ final class MembersScreenService
             'isolation_mode' => $scope->isolationMode,
             // The mode is the instance's, so the way to change it is an
             // instance administrator's — shown to them and nobody else.
+            'viewer_is_instance_admin' => $scope->isInstanceAdmin,
             'may_change_isolation' => $this->permissions->allows($scope, Permission::ManageInstance),
         ];
     }
