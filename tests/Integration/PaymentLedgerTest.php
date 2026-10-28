@@ -15,6 +15,7 @@ use App\Repository\MembershipRepository;
 use App\Repository\SubscriptionRepository;
 use App\Repository\UserRepository;
 use App\Security\Scope;
+use App\Security\ScopeViolationException;
 use App\Service\BulkActionService;
 use App\Service\CatchUpService;
 use App\Service\ChargeService;
@@ -1171,6 +1172,43 @@ final class PaymentLedgerTest extends DatabaseTestCase
         }
 
         self::assertSame($before, $this->dueAndExpected($id));
+    }
+
+    public function testContributorMovingAnotherMembersOneOffGetsTheFenceFirst(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-03-01 08:00:00'));
+        $id = $this->create('Gym', '10.00', '2026-03-15', '2026-03-15');
+        $this->clock->advanceTo(new DateTimeImmutable('2026-06-01 09:00:00'));
+        $this->catchUp->run($this->alice);
+
+        $oneOff = fn (string $date): array => [
+            'name' => 'Gym',
+            'price' => '10.00',
+            'currency' => 'GBP',
+            'subscription_type' => 'one_off',
+            'start_date' => $date,
+        ];
+        $this->subscriptions->update($this->alice, $id, $oneOff('2026-03-10'));
+        $bob = $this->scope($this->bobId, Role::Contributor);
+
+        // A taken day (a payment stands on 15 April) and a free one answer the
+        // same: the fence's refusal, never the ledger's.
+        foreach (['2026-04-15', '2026-03-20'] as $date) {
+            try {
+                $this->subscriptions->update($bob, $id, $oneOff($date));
+                self::fail('A Contributor moved somebody else\'s one-off.');
+            } catch (ScopeViolationException) {
+                // Refused with the same 404 whatever the date.
+            }
+        }
+
+        // The row's owner still gets the ledger's refusal on a taken day.
+        try {
+            $this->subscriptions->update($this->alice, $id, $oneOff('2026-04-15'));
+            self::fail('Moved a one-off onto a day that already has a payment.');
+        } catch (ValidationException $exception) {
+            self::assertSame('error.charge.one_off_date_taken', $exception->errors()['start_date']->key ?? null);
+        }
     }
 
     private function fileInvoice(int $subscriptionId, int $chargeId, string $period): void
