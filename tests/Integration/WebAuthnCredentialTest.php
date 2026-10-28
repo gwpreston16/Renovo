@@ -25,6 +25,7 @@ use App\Support\FrozenClock;
 use App\Tests\Support\ArraySession;
 use App\Tests\Support\VirtualAuthenticator;
 use Psr\Log\NullLogger;
+use Webauthn\PublicKeyCredentialRequestOptions;
 
 /**
  * Passkey registration, authentication and revocation, through the real
@@ -179,6 +180,56 @@ final class WebAuthnCredentialTest extends DatabaseTestCase
         $result = $this->webAuthn->completeAuthentication(
             $authenticator->authenticate($this->challengeOf($this->webAuthn->serializeOptions($options)), $handle),
             $options,
+        );
+
+        self::assertSame($this->userId, $result['user']->id);
+    }
+
+    public function testUsernamelessAssertionWithoutUserVerificationIsRefused(): void
+    {
+        $authenticator = $this->registeredAuthenticator();
+        $handle = $this->users->webauthnHandle($this->userId);
+
+        $options = $this->webAuthn->authenticationOptions();
+        self::assertSame(
+            PublicKeyCredentialRequestOptions::USER_VERIFICATION_REQUIREMENT_REQUIRED,
+            $options->userVerification,
+        );
+
+        try {
+            $this->webAuthn->completeAuthentication(
+                $authenticator->authenticate(
+                    $this->challengeOf($this->webAuthn->serializeOptions($options)),
+                    $handle,
+                    false,
+                ),
+                $options,
+            );
+            self::fail('A presence-only assertion must not sign anyone in on its own.');
+        } catch (ValidationException $exception) {
+            self::assertSame('error.passkey.user_verification_required', $exception->errors()['credential']->key);
+        }
+    }
+
+    public function testSecondFactorAssertionStillAcceptsPresenceOnly(): void
+    {
+        $authenticator = $this->registeredAuthenticator();
+        $handle = $this->users->webauthnHandle($this->userId);
+
+        $options = $this->webAuthn->authenticationOptions($this->user());
+        self::assertSame(
+            PublicKeyCredentialRequestOptions::USER_VERIFICATION_REQUIREMENT_PREFERRED,
+            $options->userVerification,
+        );
+
+        $result = $this->webAuthn->completeAuthentication(
+            $authenticator->authenticate(
+                $this->challengeOf($this->webAuthn->serializeOptions($options)),
+                $handle,
+                false,
+            ),
+            $options,
+            $this->userId,
         );
 
         self::assertSame($this->userId, $result['user']->id);

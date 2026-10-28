@@ -165,11 +165,12 @@ final class MemberDataRepository extends AbstractRepository
                 ['household' => $householdId, 'user' => $userId],
             );
 
+            $this->clearAsPayer($householdId, $userId);
+
             if ($deleteData) {
                 $paths = $this->purge($householdId, $userId);
             } else {
                 $paths = $deletePrivate ? $this->purgePrivate($householdId, $userId) : [];
-                $this->releasePrivatePayer($householdId, $userId);
                 $this->reassign($householdId, $userId, $reassignTo);
             }
 
@@ -239,18 +240,20 @@ final class MemberDataRepository extends AbstractRepository
     }
 
     /**
-     * A private subscription is paid by its owner or by nobody named. When it
-     * changes hands the departing payer's name comes off it, so the rule still
-     * holds for the member it passes to.
+     * Take the departing member's name off every subscription in the household
+     * that names them as payer, whoever owns it (K49). Otherwise "Paid by"
+     * keeps showing someone who is no longer a member, and saving such a row
+     * through the API fails because the payer is not in the household. For a
+     * private subscription that changes hands it also keeps the rule that it is
+     * paid by its owner or by nobody named.
      */
-    private function releasePrivatePayer(int $householdId, int $userId): void
+    private function clearAsPayer(int $householdId, int $userId): void
     {
         $this->db->execute(
             'UPDATE ' . $this->quote('subscriptions') . ' SET ' . $this->quote('payer_user_id') . ' = NULL'
             . ' WHERE ' . $this->quote('household_id') . ' = :household'
-            . ' AND ' . $this->quote('owner_user_id') . ' = :user'
-            . ' AND ' . $this->quote('visibility') . ' = :private',
-            ['household' => $householdId, 'user' => $userId, 'private' => Visibility::Payer->value],
+            . ' AND ' . $this->quote('payer_user_id') . ' = :user',
+            ['household' => $householdId, 'user' => $userId],
         );
     }
 

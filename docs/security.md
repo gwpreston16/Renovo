@@ -24,7 +24,9 @@ be replayed inside its own window.
 **Passkeys and security keys.** Register as many as you like — a phone, a
 laptop, a hardware key — and name them so a lost one can be revoked without
 touching the others. A passkey signs you in on its own, and satisfies the second
-factor when you sign in with a password.
+factor when you sign in with a password. Signing in on its own requires user
+verification, so the passkey must be unlocked with its PIN or biometric; a
+touch alone is enough only as a second factor.
 
 Passkeys are bound to the host in `APP_URL`, which is the relying-party id.
 Changing that host invalidates every registered passkey; that is the mechanism

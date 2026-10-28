@@ -31,6 +31,7 @@ final class HouseholdMember
         public readonly bool $hasAvatar,
         public readonly bool $canReceiveMail,
         public readonly bool $mustChangePassword,
+        public readonly bool $isInstanceAdmin = false,
     ) {
     }
 

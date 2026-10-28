@@ -589,6 +589,48 @@ final class MemberAdministrationTest extends DatabaseTestCase
         self::assertSame($this->ownerId, $this->ownerOfBudget($ownersOwn));
     }
 
+    public function testRemovingAMemberClearsThemAsPayer(): void
+    {
+        // A shared row the Owner owns, that the editor pays for, and one the
+        // editor owns and pays for: neither may keep naming them (K49).
+        $ownersRow = $this->subscriptionOwnedBy($this->ownerId);
+        $editorsRow = $this->subscriptionOwnedBy($this->editorId);
+        $paidByOwner = $this->subscriptionOwnedBy($this->ownerId);
+        $payers = [$ownersRow => $this->editorId, $editorsRow => $this->editorId, $paidByOwner => $this->ownerId];
+        foreach ($payers as $id => $payer) {
+            $this->db->execute(
+                'UPDATE ' . $this->q('subscriptions') . ' SET ' . $this->q('payer_user_id') . ' = :payer'
+                . ' WHERE ' . $this->q('id') . ' = :id',
+                ['payer' => $payer, 'id' => $id],
+            );
+        }
+
+        $this->signIn($this->ownerId);
+        $this->request('POST', '/settings/members/' . $this->editorId . '/remove', ['data' => 'reassign']);
+
+        self::assertNull($this->payerOf($ownersRow));
+        self::assertNull($this->payerOf($editorsRow));
+        self::assertSame($this->ownerId, $this->payerOf($paidByOwner), 'Somebody still here keeps their name.');
+    }
+
+    public function testRemovingAMemberWithTheirDataDeletedStillClearsThemAsPayer(): void
+    {
+        $this->setIsolated();
+        $ownersRow = $this->subscriptionOwnedBy($this->ownerId);
+        $this->db->execute(
+            'UPDATE ' . $this->q('subscriptions') . ' SET ' . $this->q('payer_user_id') . ' = :payer'
+            . ' WHERE ' . $this->q('id') . ' = :id',
+            ['payer' => $this->editorId, 'id' => $ownersRow],
+        );
+        $this->subscriptionOwnedBy($this->editorId);
+
+        $this->signIn($this->ownerId);
+        $this->request('POST', '/settings/members/' . $this->editorId . '/remove', ['data' => 'delete']);
+
+        self::assertNull($this->payerOf($ownersRow));
+        self::assertSame($this->ownerId, $this->ownerOf($ownersRow), 'The Owner keeps their own row.');
+    }
+
     public function testASharedRemovalAsksAboutPrivateSubscriptionsAndCanDeleteThem(): void
     {
         $public = $this->subscriptionOwnedBy($this->editorId);
@@ -1017,6 +1059,51 @@ final class MemberAdministrationTest extends DatabaseTestCase
         self::assertStringContainsString('<span class="badge badge-bad">Login revoked</span>', $html);
     }
 
+    public function testAnOwnerCannotRevokeAnInstanceAdmin(): void
+    {
+        $adminId = $this->addInstanceAdminOwner();
+
+        $this->signIn($this->ownerId);
+        $page = (string) $this->request('GET', '/settings/members')->getBody();
+        self::assertStringNotContainsString('/settings/members/' . $adminId . '/revoke', $page);
+        self::assertStringContainsString('/settings/members/' . $this->editorId . '/revoke', $page);
+
+        $this->request('POST', '/settings/members/' . $adminId . '/revoke');
+
+        $admin = (new UserRepository($this->db))->findById($adminId);
+        self::assertNotNull($admin);
+        self::assertFalse($admin->isDisabled(), 'A household Owner must not be able to disable an instance admin.');
+    }
+
+    public function testAnInstanceAdminMayRevokeAnotherOwner(): void
+    {
+        $adminId = $this->addInstanceAdminOwner();
+
+        $this->signIn($adminId);
+        $page = (string) $this->request('GET', '/settings/members')->getBody();
+        self::assertStringContainsString('/settings/members/' . $this->ownerId . '/revoke', $page);
+
+        $this->request('POST', '/settings/members/' . $this->ownerId . '/revoke');
+
+        $owner = (new UserRepository($this->db))->findById($this->ownerId);
+        self::assertNotNull($owner);
+        self::assertTrue($owner->isDisabled());
+    }
+
+    private function addInstanceAdminOwner(): int
+    {
+        $adminId = (new UserRepository($this->db))->create(
+            'root@example.test',
+            'Rhea Root',
+            'hash',
+            true,
+            new DateTimeImmutable(),
+        );
+        (new MembershipRepository($this->db))->create($this->householdId, $adminId, Role::OwnerAdmin);
+
+        return $adminId;
+    }
+
     private function grantWord(CapabilityGrant $grant): string
     {
         return match ($grant) {
@@ -1105,6 +1192,17 @@ final class MemberAdministrationTest extends DatabaseTestCase
         }
 
         return $total;
+    }
+
+    private function payerOf(int $subscriptionId): ?int
+    {
+        $row = $this->db->fetchOne(
+            'SELECT ' . $this->q('payer_user_id') . ' FROM ' . $this->q('subscriptions')
+            . ' WHERE ' . $this->q('id') . ' = :id',
+            ['id' => $subscriptionId],
+        );
+
+        return $row === null || $row['payer_user_id'] === null ? null : (int) $row['payer_user_id'];
     }
 
     private function ownerOf(int $subscriptionId): ?int

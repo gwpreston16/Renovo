@@ -87,7 +87,7 @@
                         <a id="price-history-{{ step.page > history.page ? 'next' : 'previous' }}" class="button button-quiet"
                            href="/stats?history_page={{ step.page }}#analytics-price-history"
                            hx-get="/stats?history_page={{ step.page }}"
-                           hx-target="#analytics-price-history" hx-select="#analytics-price-history"
+                           hx-target="#analytics-price-history" hx-sync="#analytics-price-history:replace" hx-select="#analytics-price-history"
                            hx-swap="outerHTML">{{ step.label }}</a>
                     {% endif %}
                     {% if loop.first %}

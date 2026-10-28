@@ -27,7 +27,7 @@
         <div class="list-search-bar">
             <form id="list-search" class="list-search" role="search" method="get" action="/subscriptions"
                   hx-get="/subscriptions"
-                  hx-target="#subscription-list"
+                  hx-target="#subscription-list" hx-sync="#subscription-list:replace"
                   hx-select="#subscription-list"
                   hx-swap="outerHTML"
                   hx-push-url="true"

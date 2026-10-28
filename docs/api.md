@@ -947,6 +947,8 @@ Responses: `204`, `401`, `403`, `404`.
 Renewals, trial conversions and cancellation deadlines as an iCalendar
 document, for subscribing in a calendar client. A fixed term's renewals stop at
 its last payment (`payments_end_on`), and no deadline is published after it.
+A trial that has not converted yet shows its conversion, then the renewals that
+follow it.
 
 This is **the only endpoint that takes its token in the query string**, and it
 is a separate middleware rather than a condition inside the shared one — so a
@@ -1010,7 +1012,7 @@ stored value) or an explicit `null` has a meaning there.
 | `category_id` | integer, null | |
 | `payment_method_id` | integer, null | An absent key leaves the current assignment alone — unlike the other fields, so a client written before it existed does not clear it. Send `null` to clear it. |
 | `owner_user_id` | integer, null | Must be a household member. Ignored when the token's user is fenced to their own rows: in ISOLATED mode, and for a Contributor in SHARED mode too. They own only what they make. |
-| `payer_user_id` | integer, null | |
+| `payer_user_id` | integer, null | Must be a household member. Reads back `null` once that member has left the household. |
 | `tags` | string[] | Max 25, each max 50 chars; more is a `422` on `tags`, never cut. Created by name if they do not exist, matched whole ignoring case and accents. |
 
 ### Subscription

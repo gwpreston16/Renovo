@@ -41,7 +41,7 @@
             <nav class="segmented" aria-label="{{ t('dashboard.spend_trend_choice') }}">
                 {% for choice in ['category', 'member'] %}
                     <a id="trend-range-{{ choice }}" class="segmented-option" href="/?trend={{ choice }}#spend-trend"
-                       hx-get="/?trend={{ choice }}" hx-target="#spend-trend" hx-swap="outerHTML"
+                       hx-get="/?trend={{ choice }}" hx-target="#spend-trend" hx-sync="#spend-trend:replace" hx-swap="outerHTML"
                        hx-push-url="/?trend={{ choice }}"
                        aria-current="{{ trend.by == choice ? 'true' : 'false' }}">
                         {{ t('dashboard.spend_trend_by_' ~ choice) }}

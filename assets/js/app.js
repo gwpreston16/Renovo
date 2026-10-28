@@ -119,22 +119,44 @@ document.addEventListener('htmx:afterSwap', enhanceArrived);
  * line is cleared and refilled so a polite live region, which a screen reader
  * reads only when its text changes, announces the new results.
  */
-let swapTargetId = null;
-let swapFocusId = null;
+/*
+ * Kept per target region, so two requests in flight at once (typing "net", a
+ * pause, then "flix"; choosing Active and then a sort) each keep their own
+ * focus id. The triggers that share a region sync on it (`hx-sync` with
+ * `:replace`), so the older request is cancelled and only the newest settles.
+ */
+const pendingSwaps = new Map();
 
 document.addEventListener('htmx:beforeRequest', (event) => {
     const target = event.detail.target;
-    swapTargetId = target instanceof Element ? target.id : null;
-    swapFocusId = document.activeElement instanceof Element && document.activeElement.id !== ''
+    if (!(target instanceof Element) || target.id === '') {
+        return;
+    }
+    pendingSwaps.set(target.id, document.activeElement instanceof Element && document.activeElement.id !== ''
         ? document.activeElement.id
-        : null;
+        : null);
 });
 
-document.addEventListener('htmx:afterSettle', () => {
-    const region = swapTargetId === null ? null : document.getElementById(swapTargetId);
-    const focusId = swapFocusId;
-    swapTargetId = null;
-    swapFocusId = null;
+// A request that fails or is cancelled never settles: forget it, unless a
+// newer one has already taken its place.
+const forgetSwap = (event) => {
+    const target = event.detail.target;
+    if (target instanceof Element && target.id !== '' && !document.querySelector('.htmx-request')) {
+        pendingSwaps.delete(target.id);
+    }
+};
+document.addEventListener('htmx:responseError', forgetSwap);
+document.addEventListener('htmx:sendError', forgetSwap);
+
+document.addEventListener('htmx:afterSettle', (event) => {
+    const settled = event.detail.target instanceof Element ? event.detail.target.id : '';
+    if (settled === '' || !pendingSwaps.has(settled)) {
+        return;
+    }
+
+    const focusId = pendingSwaps.get(settled);
+    pendingSwaps.delete(settled);
+    const region = document.getElementById(settled);
 
     if (region === null) {
         return;

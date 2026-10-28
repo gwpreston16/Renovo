@@ -178,7 +178,7 @@
                                                 {{ t('members.restore_login') }}
                                             </button>
                                         </form>
-                                    {% else %}
+                                    {% elseif not member.isInstanceAdmin or viewer_is_instance_admin %}
                                         <form method="post" action="/settings/members/{{ member.userId }}/revoke" class="inline">
                                             {{ csrf_field() }}
                                             <button type="submit" class="button button-outline member-action"

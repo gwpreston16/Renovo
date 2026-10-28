@@ -870,6 +870,32 @@ final class SubscriptionRepository extends AbstractScopedRepository
     }
 
     /**
+     * The subscriptions among these ids the caller may write to, with their
+     * tags, in one read — what a bulk action needs before it changes them. Ids
+     * the scope cannot write are absent, as `findForWrite()` returns null.
+     *
+     * @param list<int> $ids
+     * @return array<int, Subscription> Keyed by id.
+     */
+    public function findManyForWrite(Scope $scope, array $ids): array
+    {
+        $ids = array_values(array_unique($ids));
+        if ($ids === []) {
+            return [];
+        }
+
+        $params = [];
+        $sql = $this->selectWithJoins() . $this->writableWhere($scope, Criteria::new()->in('id', $ids), $params);
+
+        $found = [];
+        foreach ($this->hydrateAll($scope, $this->db->fetchAll($sql, $params)) as $subscription) {
+            $found[$subscription->id] = $subscription;
+        }
+
+        return $found;
+    }
+
+    /**
      * Whether this scope may *change* the subscription, as opposed to see it.
      *
      * The two differ by exactly one case, and it is the case that matters here:

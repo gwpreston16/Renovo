@@ -120,11 +120,8 @@ final class BulkActionService
      */
     private function pause(Scope $scope, array $ids): int
     {
-        foreach ($ids as $id) {
-            $subscription = $this->subscriptions->findForWrite($scope, $id);
-            if ($subscription !== null) {
-                $this->catchUp->settlePassedDates($scope, $subscription);
-            }
+        foreach ($this->subscriptions->findManyForWrite($scope, $ids) as $subscription) {
+            $this->catchUp->settlePassedDates($scope, $subscription);
         }
 
         return $this->subscriptions->updateMany($scope, $ids, ['is_active' => false]);
@@ -141,8 +138,9 @@ final class BulkActionService
         return $this->db->transactional(function () use ($scope, $ids): int {
             $today = $this->clock->today();
             $resumable = [];
+            $selected = $this->subscriptions->findManyForWrite($scope, $ids);
             foreach ($ids as $id) {
-                $subscription = $this->subscriptions->findForWrite($scope, $id);
+                $subscription = $selected[$id] ?? null;
                 // A fixed term with no billing date left stays paused, like a
                 // cancelled row (K86): the catch-up would end it again.
                 if (

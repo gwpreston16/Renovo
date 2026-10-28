@@ -203,7 +203,7 @@
                     <a id="pager-previous" class="button button-quiet"
                        href="/subscriptions?{{ filter.toQueryString({'page': filter.page - 1}) }}"
                        hx-get="/subscriptions?{{ filter.toQueryString({'page': filter.page - 1}) }}"
-                       hx-target="#subscription-list" hx-select="#subscription-list"
+                       hx-target="#subscription-list" hx-sync="#subscription-list:replace" hx-select="#subscription-list"
                        hx-swap="outerHTML" hx-push-url="true">{{ t('action.previous') }}</a>
                 {% endif %}
                 <span class="muted">{{ t('subscriptions_list.pager', {
@@ -215,7 +215,7 @@
                     <a id="pager-next" class="button button-quiet"
                        href="/subscriptions?{{ filter.toQueryString({'page': filter.page + 1}) }}"
                        hx-get="/subscriptions?{{ filter.toQueryString({'page': filter.page + 1}) }}"
-                       hx-target="#subscription-list" hx-select="#subscription-list"
+                       hx-target="#subscription-list" hx-sync="#subscription-list:replace" hx-select="#subscription-list"
                        hx-swap="outerHTML" hx-push-url="true">{{ t('action.next') }}</a>
                 {% endif %}
             </nav>
@@ -470,7 +470,7 @@
     {% set query = filter.toQueryString({'sort': key, 'dir': direction, 'page': null}) %}
     <a id="sort-{{ key }}" href="/subscriptions?{{ query }}"
        hx-get="/subscriptions?{{ query }}"
-       hx-target="#subscription-list"
+       hx-target="#subscription-list" hx-sync="#subscription-list:replace"
        hx-select="#subscription-list"
        hx-swap="outerHTML"
        hx-push-url="true">

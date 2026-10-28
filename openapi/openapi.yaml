@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.4"
+  version: "1.9.5"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -1499,7 +1499,9 @@ paths:
       summary: Renewals, trial conversions and cancellation deadlines as iCalendar.
       description: |
         A read-only feed for a calendar client. A fixed term's renewals stop
-        at its last payment, and no deadline is published after it. Because
+        at its last payment, and no deadline is published after it. A trial
+        that has not converted yet shows its conversion, then the renewals that
+        follow it. Because
         such a client cannot
         send an `Authorization` header, this endpoint — and only this endpoint —
         takes its token in the `token` query parameter. The token needs the
