@@ -39,7 +39,9 @@ final class TimeZoneSiteListTest extends TestCase
             array_values(array_diff($listed, $found)),
             'The list names a site that is gone or has changed class. Run bin/time-zone-sites --write.',
         );
-        self::assertCount(count($listed), $found);
+        // Same lines, same number of each: one of two identical lines may have changed class.
+        sort($listed);
+        self::assertSame($listed, $found);
     }
 
     public function testEverySiteIsInOneKnownClass(): void

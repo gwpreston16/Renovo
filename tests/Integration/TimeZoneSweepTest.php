@@ -67,7 +67,13 @@ final class TimeZoneSweepTest extends DatabaseTestCase
     private const LOS_ANGELES = 'America/Los_Angeles';
     private const AUCKLAND = 'Pacific/Auckland';
     private const KOLKATA = 'Asia/Kolkata';
-    private const ZONES = [self::LOS_ANGELES, self::AUCKLAND, self::KOLKATA];
+    private const NON_UTC = [self::LOS_ANGELES, self::AUCKLAND, self::KOLKATA];
+
+    /**
+     * UTC is the control: no case is ever marked wrong there, so a case that
+     * fails for a reason other than the zone is not hidden by its mark.
+     */
+    private const ZONES = ['UTC', ...self::NON_UTC];
 
     /**
      * Case => the zones where it is wrong today (K68), so the test expects
@@ -82,10 +88,10 @@ final class TimeZoneSweepTest extends DatabaseTestCase
         'change-dated-today' => [self::LOS_ANGELES],
         'contract-ends-today' => [self::AUCKLAND, self::KOLKATA],
         'session-listed' => [self::LOS_ANGELES],
-        'date-column-instant' => self::ZONES,
-        'form-date-instant' => self::ZONES,
-        'timestamp-utc' => self::ZONES,
-        'audit-entry-instant' => self::ZONES,
+        'date-column-instant' => self::NON_UTC,
+        'form-date-instant' => self::NON_UTC,
+        'timestamp-utc' => self::NON_UTC,
+        'audit-entry-instant' => self::NON_UTC,
     ];
 
     private string $originalZone;

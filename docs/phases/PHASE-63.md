@@ -21,8 +21,9 @@ Nothing to build.
 
 - The `Clock` interface (`now()`, `today()`), the app's UTC clock, and the test
   clock.
-- `docker/php/php.ini` (`date.timezone = UTC`) and `docs/install.md`'s note on
-  the time zone for installs without Docker.
+- `docker/php/php.ini` (`date.timezone = UTC`), which is the only pin there is:
+  `docs/install.md` has no note on the time zone for installs without Docker
+  (see *Findings*).
 - The K68 reproduction in the log: `PriceHistoryRepository.php:423`,
   `ForecastService.php:316-337`, `SessionRepository.php:68-69`.
 
@@ -119,7 +120,7 @@ to a day, in opposite directions on either side of UTC.
 
 | Class | Sites | Wrong under non-UTC | Size of the error | Reaches |
 |---|---|---|---|---|
-| date-only column or form input, compared with the clock | 25 | Yes, both directions | The zone's offset, which moves a whole day at a boundary | Forecast (price changes, charges), price history "has taken effect", contract end, charge due dates, the calendar, imports, API token expiry input |
+| date-only column or form input, compared with the clock | 25 | Yes, both directions | The zone's offset, which moves a whole day at a boundary | Forecast (price changes, charges), price history "has taken effect", contract end, charge due dates, the calendar, imports, API token expiry input. API fields: the forecast's and calendar's charge `date`s and the price-change `effective_from`, whatever they hold when a change falls on today or on the last day of a window; no field changes shape |
 | timestamp column | 25 | Only against a UTC stamp | The zone's offset, in hours | Created and updated times; wrong only where compared with something the clock wrote |
 | user-facing time | 21 | Yes where the clock wrote it; the session list in negative zones | The zone's offset, in hours | Session list, audit log, backup runs, copies and rehearsals, API tokens, passkeys, notification channels |
 | one-zone formatting or comparison | 18 | No | None | Month labels and grids built from a year and a month, the session table's own writes and reads, the update check |
@@ -167,6 +168,9 @@ cause, PHP's default zone not being the clock's, and one setting removes it. The
 fix is batch-sized (one decision about existing rows, the pin at three entry
 points, a guard test, a docs note), not a per-site rewrite. Phase 64 is drafted
 on that footing.
+
+**Controls.** Every case also runs under UTC, where none is marked wrong, so a
+case that fails for another reason is not hidden by its mark.
 
 ## Status
 

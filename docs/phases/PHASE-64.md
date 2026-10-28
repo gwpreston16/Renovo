@@ -31,9 +31,11 @@ Phase 63's findings and its known-wrong marks in
 ### A. Pin the process zone to UTC
 
 `date_default_timezone_set('UTC')` once, at the start of `config/bootstrap.php`,
-which `public/index.php`, `bin/console` and the migration entry point already
-load, so a web request, the scheduler and Phinx all run in UTC whatever
-`date.timezone` says. Nothing at a call site changes.
+which `public/index.php` and `bin/console` load, so a web request and the
+scheduler run in UTC whatever `date.timezone` says. **Phinx does not load the
+bootstrap** (`phinx.php` only loads the environment), so it needs the same line
+of its own, or `vendor/bin/phinx migrate` on a non-UTC install still runs in
+the local zone. Nothing at a call site changes.
 
 ### B. A guard
 
