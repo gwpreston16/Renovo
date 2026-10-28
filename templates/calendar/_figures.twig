@@ -6,20 +6,20 @@
     would be a wrong number rather than an approximate one.
 
     `figures`  {totals: [{currency, amount_minor}], combined: {currency, amount_minor, unconvertible}},
-               and `estimate` when a bill whose amount varies is among them.
+               and `estimate_currencies`, the currencies holding a bill whose
+               amount varies, which are drawn "≈" (`partials/estimate.twig`).
 #}
 {% macro inline(figures) %}
+    {%- import 'partials/estimate.twig' as estimate -%}
     {%- if figures is null or figures.totals is empty -%}
         {{ t('common.none_symbol') }}
     {%- elseif figures.totals|length == 1 -%}
-        {%- set amount = figures.totals[0].amount_minor|money(figures.totals[0].currency) -%}
-        {{ figures.estimate|default(false) ? t('subscriptions_list.approximately', {'amount': amount}) : amount }}
+        {{ estimate.mark(figures, figures.totals[0].amount_minor|money(figures.totals[0].currency), figures.totals[0].currency) }}
     {%- elseif figures.combined.amount_minor is not null -%}
-        {%- set amount = figures.combined.amount_minor|money(figures.combined.currency) -%}
-        {{ figures.estimate|default(false) ? t('subscriptions_list.approximately', {'amount': amount}) : amount }}
-        <span class="muted">({% for total in figures.totals %}{% set part = total.amount_minor|money(total.currency) %}{{ figures.estimate|default(false) ? t('subscriptions_list.approximately', {'amount': part}) : part }}{{ not loop.last ? ' · ' : '' }}{% endfor %})</span>
+        {{ estimate.mark(figures, figures.combined.amount_minor|money(figures.combined.currency)) }}
+        <span class="muted">({% for total in figures.totals %}{{ estimate.mark(figures, total.amount_minor|money(total.currency), total.currency) }}{{ not loop.last ? ' · ' : '' }}{% endfor %})</span>
     {%- else -%}
-        {% for total in figures.totals %}{% set part = total.amount_minor|money(total.currency) %}{{ figures.estimate|default(false) ? t('subscriptions_list.approximately', {'amount': part}) : part }}{{ not loop.last ? ' · ' : '' }}{% endfor %}
+        {% for total in figures.totals %}{{ estimate.mark(figures, total.amount_minor|money(total.currency), total.currency) }}{{ not loop.last ? ' · ' : '' }}{% endfor %}
     {%- endif -%}
 {% endmacro %}
 
@@ -28,12 +28,12 @@
     the amount, the combined figure, or the subtotals stacked.
 #}
 {% macro compact(figures) %}
+    {%- import 'partials/estimate.twig' as estimate -%}
     {%- if figures.totals|length == 1 -%}
-        {%- set amount = figures.totals[0].amount_minor|money(figures.totals[0].currency) -%}
-        {{ figures.estimate|default(false) ? t('subscriptions_list.approximately', {'amount': amount}) : amount }}
+        {{ estimate.mark(figures, figures.totals[0].amount_minor|money(figures.totals[0].currency), figures.totals[0].currency) }}
     {%- elseif figures.combined.amount_minor is not null -%}
         {{ t('dashboard.approx', {'amount': figures.combined.amount_minor|money(figures.combined.currency)}) }}
     {%- else -%}
-        {% for total in figures.totals %}{% set part = total.amount_minor|money(total.currency) %}{{ figures.estimate|default(false) ? t('subscriptions_list.approximately', {'amount': part}) : part }}{{ not loop.last ? ' ' : '' }}{% endfor %}
+        {% for total in figures.totals %}{{ estimate.mark(figures, total.amount_minor|money(total.currency), total.currency) }}{{ not loop.last ? ' ' : '' }}{% endfor %}
     {%- endif -%}
 {% endmacro %}

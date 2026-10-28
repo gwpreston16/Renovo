@@ -54,7 +54,8 @@ use DateTimeImmutable;
  * @phpstan-type Figures array{
  *     totals: list<array{currency: string, amount_minor: int}>,
  *     combined: array<string, mixed>,
- *     estimate: bool
+ *     estimate: bool,
+ *     estimate_currencies: list<string>
  * }
  * @phpstan-type CalendarDay array{
  *     date: DateTimeImmutable,
@@ -437,8 +438,10 @@ final class CalendarService
         return [
             'totals' => $totals,
             'combined' => $this->stats->combine($byCurrency),
-            'estimate' => in_array(true, array_column($charges, 'estimate'), true),
-        ];
+        ] + EstimateMarks::keys(array_values(array_unique(array_map(
+            static fn (array $charge): string => $charge['amount']->currency,
+            array_filter($charges, static fn (array $charge): bool => $charge['estimate']),
+        ))));
     }
 
     /**

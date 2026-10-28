@@ -283,6 +283,21 @@ final class CalendarPageTest extends DatabaseTestCase
         self::assertNull($this->find($page, '//*[@data-summary="heaviest"]'));
     }
 
+    /**
+     * K87: a varying £ bill beside a fixed € one. The £ subtotal and the
+     * combined figure are drawn "≈"; the € subtotal is exact and is not.
+     */
+    public function testOnlyTheVaryingCurrencyIsMarked(): void
+    {
+        $id = $this->monthly('Energy', 1000, '2026-09-20');
+        $this->db->execute('UPDATE subscriptions SET amount_varies = TRUE WHERE id = :id', ['id' => $id]);
+        $this->monthly('Euros', 3000, '2026-09-22', currency: 'EUR');
+
+        $page = $this->page('/calendar');
+        self::assertSame('2 charges · ≈ £25.00 (€30.00 · ≈ £10.00)', $this->text($page, 'calendar-count'));
+        self::assertSame('≈ £25.00 (€30.00 · ≈ £10.00)', $this->summary($page, 'total'));
+    }
+
     // ------------------------------------------------------------ navigation
 
     public function testPreviousIsDisabledOnTheCurrentMonth(): void

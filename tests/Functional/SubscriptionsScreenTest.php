@@ -294,6 +294,32 @@ final class SubscriptionsScreenTest extends DatabaseTestCase
         self::assertStringContainsString($money->formatMinor($combined, 'GBP'), $strip);
     }
 
+    /**
+     * K87: Streaming's amount varies, the €10 row's does not. The strip's
+     * combined figure and its £ subtotal are drawn "≈"; the € one is exact.
+     * The list summary, a combined figure, is marked too.
+     */
+    public function testOnlyTheVaryingCurrencyIsMarkedInTheStrip(): void
+    {
+        $this->db->execute(
+            'UPDATE subscriptions SET amount_varies = TRUE WHERE id = :id',
+            ['id' => $this->streamingId],
+        );
+        $money = $this->container()->get(MoneyFormatter::class);
+
+        $page = $this->body($this->get('/subscriptions', $this->ownerId));
+        $strip = html_entity_decode($this->section($page, 'subscription-strip'));
+
+        self::assertMatchesRegularExpression('/≈ £[\d.,]+\s*<span class="stat-unit/u', $strip);
+        self::assertStringContainsString($money->formatMinor(1000, 'EUR'), $strip);
+        self::assertStringNotContainsString('≈ €', $strip);
+        self::assertMatchesRegularExpression('/· ≈ £[\d.,]+/u', (string) preg_replace('/\s+/u', ' ', $strip));
+        self::assertMatchesRegularExpression(
+            '/≈ £[\d.,]+\/mo/u',
+            html_entity_decode($this->section($page, 'list-summary')),
+        );
+    }
+
     public function testPerMonthLeavesOutOneOffLifetimePausedAndCancelledRows(): void
     {
         $container = $this->container();

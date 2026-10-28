@@ -1,0 +1,12 @@
+{#
+    One amount, drawn "≈" when a bill whose amount varies is in it — the one
+    rule every per-currency figure follows (K87), so no screen keeps a copy.
+
+    `figures`   the figure's data, carrying `estimate_currencies`
+    `amount`    the amount, already formatted
+    `currency`  the subtotal's currency; null for the combined figure, which
+                is marked whenever any currency holds a varying bill
+#}
+{% macro mark(figures, amount, currency = null) %}
+    {{- estimate_mark(figures, currency) ? t('subscriptions_list.approximately', {'amount': amount}) : amount -}}
+{% endmacro %}

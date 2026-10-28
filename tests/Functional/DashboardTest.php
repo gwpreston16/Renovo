@@ -276,6 +276,32 @@ final class DashboardTest extends DatabaseTestCase
         self::assertStringNotContainsString('class="spend-bars"', $body);
     }
 
+    /**
+     * K87: a varying £ bill beside the fixed €10 row. The £ subtotal and the
+     * combined figure hold an estimate and are drawn "≈"; the € one is exact.
+     */
+    public function testOnlyTheVaryingCurrencyIsMarkedInTheTotals(): void
+    {
+        $this->db->execute("UPDATE subscriptions SET amount_varies = TRUE WHERE name = 'Streaming'");
+
+        $monthly = $this->overview($this->ownerId)['kpis']['monthly'];
+        self::assertSame(['GBP'], $monthly['estimate_currencies']);
+        self::assertTrue($monthly['estimate']);
+
+        $body = $this->body($this->get('/', $this->ownerId));
+        $start = strpos($body, '<section class="metric-grid"');
+        self::assertNotFalse($start);
+        $totals = (string) preg_replace(
+            '/\s+/u',
+            ' ',
+            html_entity_decode(substr($body, $start, (int) strpos($body, '</section>', $start) - $start)),
+        );
+
+        self::assertStringContainsString('€10.00 · ≈ £24.99', $totals);
+        self::assertStringContainsString('≈ £29.99', $totals);
+        self::assertStringNotContainsString('≈ €', $totals);
+    }
+
     public function testComingUpIsTheNextThirtyDaysOfTheForecast(): void
     {
         $body = $this->body($this->get('/', $this->ownerId));

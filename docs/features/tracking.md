@@ -137,7 +137,9 @@ row that uses none behaves exactly as before.
 - **The amount varies** — gas, electricity, water. The price becomes an
   **estimate**: the form calls it *Estimated amount*, and the row's price and
   every forward-looking figure that includes it — totals, forecast, budgets —
-  are shown with "≈". A total of fixed rows only is not. Past spend read from
+  are shown with "≈". A total of fixed rows only is not: where a figure is
+  split by currency, only the currencies that hold a varying bill are marked,
+  and the combined total is marked when any of them does. Past spend read from
   amounts you recorded is exact. The Payments card shows each recorded bill
   against the estimate, and the average of up to the last three with **Use as
   estimate**, which records a price change like any other. When the last three

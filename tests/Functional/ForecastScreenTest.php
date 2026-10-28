@@ -158,6 +158,30 @@ final class ForecastScreenTest extends DatabaseTestCase
         self::assertSame(1500, $bars['2026-07']['regular_minor']);
     }
 
+    /**
+     * K87: varying £ bills beside fixed € ones. The headline figures mark the
+     * £ subtotals and the combined figure; the € subtotals are exact.
+     */
+    public function testOnlyTheVaryingCurrencyIsMarkedInTheHeadlines(): void
+    {
+        $owner = $this->scopeFor($this->ownerId, Role::OwnerAdmin);
+        $this->createVarying($owner, 'Monthly energy', 2000, 'monthly', '2026-06-01');
+        $this->createVarying($owner, 'Yearly water', 6000, 'yearly', '2026-05-05');
+        $this->create($owner, 'Euro streaming', 1299, 'monthly', '2026-04-10', 'EUR');
+        $this->create($owner, 'Euro insurance', 24000, 'yearly', '2026-07-01', 'EUR');
+
+        $kpis = $this->overview()['kpis'];
+        foreach (['total', 'average', 'long'] as $figure) {
+            self::assertSame(['GBP'], $kpis[$figure]['estimate_currencies'], $figure);
+        }
+
+        $html = (string) $this->get('/forecast', $this->ownerId)->getBody();
+        $section = (string) preg_replace('/\s+/u', ' ', html_entity_decode($this->section($html, 'forecast-kpis')));
+        self::assertStringContainsString('≈ £', $section);
+        self::assertStringContainsString('€', $section);
+        self::assertStringNotContainsString('≈ €', $section);
+    }
+
     public function testMonthPartsAreMarkedWhereTheVaryingBillIs(): void
     {
         $owner = $this->scopeFor($this->ownerId, Role::OwnerAdmin);

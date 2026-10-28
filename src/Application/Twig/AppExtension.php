@@ -26,6 +26,7 @@ use App\Security\CspNonce;
 use App\Security\PermissionService;
 use App\Security\Scope;
 use App\Service\AuthService;
+use App\Service\EstimateMarks;
 use App\Service\NavigationService;
 use App\Service\ShellService;
 use App\Service\ValidationError;
@@ -103,6 +104,7 @@ final class AppExtension extends AbstractExtension
             new TwigFunction('csp_nonce', fn (): string => $this->cspNonce->value()),
             new TwigFunction('csrf_field', $this->csrfField(...), ['is_safe' => ['html']]),
             new TwigFunction('can', $this->can(...)),
+            new TwigFunction('estimate_mark', EstimateMarks::marks(...)),
             new TwigFunction('can_edit_row', $this->canEditRow(...)),
             new TwigFunction('navigation', $this->navigationFor(...)),
             new TwigFunction('shell', $this->shell->forScope(...)),
