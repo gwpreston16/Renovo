@@ -639,6 +639,17 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   reference and OpenAPI contract now match the code in ten places; no endpoint
   changes, so the contract stays 1.9.4. No migrations. See
   [Tracking](features/tracking.md).
+- **Phase 58 — scenario cycles, one-off fences, sign-in timing and
+  update-check tests, from the known-issues log — complete (1.26.1).** A
+  scenario that changes a custom cycle, such as every 30 days to every 14,
+  opens the edit form with the new cycle instead of the scheduled-price form.
+  A Contributor moving another member's one-off gets the same "not found"
+  whatever the date. Sign-in takes the same time for an unknown address as for
+  a real account, and a new category's "Automatic colour" starts ticked. The
+  update check's guards, console commands and narrowed client are tested. The
+  API answers one case with 404 instead of 422, as its reference already says,
+  so the contract stays 1.9.4. No migrations. See
+  [Tracking](features/tracking.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
