@@ -161,6 +161,8 @@ final class SpendFiguresTest extends DatabaseTestCase
             'net' => ['currency' => 'GBP', 'amount_minor' => -350],
         ];
         self::assertStringContainsString('≈ £3.50', $render($combined, EstimateMarks::keys(['GBP'])));
+        // Only € varies: the combined net, in £, still holds it.
+        self::assertStringContainsString('≈ £3.50', $render($combined, EstimateMarks::keys(['EUR'])));
         self::assertStringNotContainsString('≈', $render($combined, EstimateMarks::keys()));
     }
 
