@@ -129,6 +129,28 @@ final class NotificationsPageTest extends DatabaseTestCase
         }
     }
 
+    public function testAnUntickedGridComesBackUnticked(): void
+    {
+        $ids = $this->oneOfEveryType();
+        $email = $ids['email'];
+
+        // Nothing ticked: the browser posts no routes at all.
+        $this->request('POST', '/settings/notifications/preferences', [
+            'lead_days' => ['', '7'],
+            'digest_mode' => 'immediate',
+            'digest_day' => '1',
+        ]);
+
+        $page = $this->body($this->request('GET', '/settings/notifications'));
+        $grid = substr($page, (int) strpos($page, 'id="routing"'));
+
+        self::assertMatchesRegularExpression(
+            '~name="routes\[' . $email . '\]\[\]" value="renewal"(?![^>]*checked)~',
+            $grid,
+        );
+        self::assertStringNotContainsString('checked', substr($grid, 0, (int) strpos($grid, '</table>')));
+    }
+
     public function testNoChannelSecretAppearsInTheRenderedPage(): void
     {
         $this->oneOfEveryType();
