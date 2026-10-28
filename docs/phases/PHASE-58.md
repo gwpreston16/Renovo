@@ -138,7 +138,7 @@ None.
 - [x] K26: the dummy password check matches the live hasher's cost
 - [x] K134: a new category's "Automatic colour" starts ticked
 - [x] K103: the update check's four guards are tested
-- [ ] K104: the update check's console and container wiring are tested
+- [x] K104: the update check's console and container wiring are tested
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed
 - [ ] ROADMAP: Phase 58 row marked ✅ done
