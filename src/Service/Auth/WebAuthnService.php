@@ -228,7 +228,12 @@ final class WebAuthnService
             challenge: random_bytes(32),
             rpId: $this->relyingPartyId(),
             allowCredentials: $allow,
-            userVerification: PublicKeyCredentialRequestOptions::USER_VERIFICATION_REQUIREMENT_PREFERRED,
+            // On its own a passkey is the whole sign-in, so it must prove the
+            // person (a PIN or biometric), not only the key's presence (K27).
+            // After a password it is a second factor and presence will do.
+            userVerification: $user === null
+                ? PublicKeyCredentialRequestOptions::USER_VERIFICATION_REQUIREMENT_REQUIRED
+                : PublicKeyCredentialRequestOptions::USER_VERIFICATION_REQUIREMENT_PREFERRED,
             timeout: self::TIMEOUT_MS,
         );
     }
@@ -269,6 +274,16 @@ final class WebAuthnService
         $user = $this->users->findById($stored->userId);
         if ($user === null) {
             throw ValidationException::field('credential', 'error.passkey.unknown');
+        }
+
+        // Checked against the options this server issued, not the browser's
+        // claim: a usernameless sign-in with no user-verified flag is refused.
+        if (
+            $expectedUserId === null
+            && $options->userVerification === PublicKeyCredentialRequestOptions::USER_VERIFICATION_REQUIREMENT_REQUIRED
+            && !$response->authenticatorData->isUserVerified()
+        ) {
+            throw ValidationException::field('credential', 'error.passkey.user_verification_required');
         }
 
         $record = $this->deserializeRecord($stored->record);

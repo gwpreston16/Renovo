@@ -676,6 +676,8 @@ return [
     'error.passkey.not_registration' => 'That is not a registration response.',
     'error.passkey.registration_failed' => 'That security key could not be registered: {reason}',
     'error.passkey.verification_failed' => 'That key could not be verified: {reason}',
+    'error.passkey.user_verification_required' =>
+        'To sign in with a passkey on its own, unlock it with its PIN or biometric, then try again.',
     'error.passkey.already_registered' => 'That key is already registered.',
     'error.passkey.not_authentication' => 'That is not an authentication response.',
     'error.passkey.unknown' => 'That key is not registered on this instance.',
