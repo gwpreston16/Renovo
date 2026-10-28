@@ -226,6 +226,9 @@ jobs:
             --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
           until docker exec mysql-flag-off mysqladmin ping -h 127.0.0.1 -u root -prenovo-root --silent; do sleep 2; done
           until docker exec mysql-flag-off mysql -u renovo -prenovo renovo_test -e 'SELECT 1' >/dev/null 2>&1; do sleep 2; done
+          # The leg proves nothing if the server flag did not take: the schema
+          # test would pass without anything to catch.
+          test "$(docker exec mysql-flag-off mysql -u root -prenovo-root -N -e 'SELECT @@global.explicit_defaults_for_timestamp' 2>/dev/null)" = "0"
 
       - uses: actions/setup-node@v7
         with:
