@@ -650,6 +650,17 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   API answers one case with 404 instead of 422, as its reference already says,
   so the contract stays 1.9.4. No migrations. See
   [Tracking](features/tracking.md).
+- **Phase 59 — notification delivery and proxy client addresses, from the
+  known-issues log — complete (1.26.2).** Two overlapping `reminders:run`
+  processes no longer send the same reminder twice. Unticking every box in the
+  notification routing grid mutes every channel instead of sending everything
+  everywhere, and a muted channel stays muted when another is deleted. A budget
+  breach alert that failed to send is retried for seven days, and a breach that
+  lasts for months is announced once, not again after the ledger is pruned.
+  Behind a TLS reverse proxy, `WEB_TRUSTED_PROXIES` lets the bundled web
+  container see each client's address, so sign-in limits and the audit log stop
+  treating everyone as the proxy. No API changes, so the contract stays 1.9.4.
+  No migrations. See [Behind a reverse proxy](install.md#behind-a-reverse-proxy).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
