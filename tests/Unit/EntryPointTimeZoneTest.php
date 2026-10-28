@@ -101,27 +101,49 @@ final class EntryPointTimeZoneTest extends TestCase
 
     /**
      * The pin holds only if nothing moves the zone again after start-up, so
-     * the one place in src/ that may set it is the pin.
+     * the one place that may set it is the pin: not src/, not the container
+     * or settings every request builds, not an entry point after its pin, and
+     * not a migration or seed.
      */
-    public function testNothingInSrcSetsTheZoneButThePin(): void
+    public function testNothingSetsTheZoneButThePin(): void
     {
-        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($this->root . '/src'));
         $offenders = [];
-        foreach ($files as $path) {
-            if (!$path->isFile() || $path->getExtension() !== 'php') {
-                continue;
-            }
-            $file = substr($path->getPathname(), strlen($this->root) + 1);
+        foreach ($this->appSources() as $file) {
             if ($file === 'src/Support/ProcessTimeZone.php') {
                 continue;
             }
-            $source = self::code((string) file_get_contents($path->getPathname()));
+            $source = self::code((string) file_get_contents($this->root . '/' . $file));
             if (preg_match('/date_default_timezone_set\s*\(|ini_set\s*\(\s*[\'"]date\.timezone/', $source) === 1) {
                 $offenders[] = $file;
             }
         }
 
+        self::assertContains('config/container.php', $this->appSources(), 'the scan reaches config/');
         self::assertSame([], $offenders, 'only ProcessTimeZone may set PHP\'s zone (K68)');
+    }
+
+    /**
+     * Every PHP file the application runs: src/, config/, migrations/,
+     * seeds/ and the entry points.
+     *
+     * @return list<string>
+     */
+    private function appSources(): array
+    {
+        $files = $this->entryPoints();
+        foreach (['src', 'config', 'migrations', 'seeds'] as $directory) {
+            if (!is_dir($this->root . '/' . $directory)) {
+                continue;
+            }
+            $paths = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($this->root . '/' . $directory));
+            foreach ($paths as $path) {
+                if ($path->isFile() && $path->getExtension() === 'php') {
+                    $files[] = substr($path->getPathname(), strlen($this->root) + 1);
+                }
+            }
+        }
+
+        return $files;
     }
 
     /**

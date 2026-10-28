@@ -68,6 +68,15 @@ install that was running in another zone they move by the zone's offset.
   *Confirmed 2026-10-28:* leave them, with the upgrading note. Checked on
   starting: the clockless writes set only `created_at` and `updated_at` (and
   the session table, whose rows expire); no reminder, lock or expiry column.
+  *Changed 2026-10-28 (merge review):* still no migration, but the note is
+  more than a one-line SQL. Three things turned out to depend on the old
+  zone: session expiry (ahead of UTC, a timed-out session reads as live
+  again), `subscription_price_history.created_at` (it decides what a digest
+  carries), and API tokens given an expiry date (they end up to the offset
+  late or early). `docs/upgrading.md` now asks for a one-off sign-out
+  (`DELETE FROM sessions`), recommends correcting the stamps (with the MySQL
+  steps made safe against a `NULL` from `CONVERT_TZ`), and explains the
+  tokens.
 - **Per-user or per-household zones** stay out; they are a product feature.
   *Confirmed 2026-10-28.*
 - **How the sweep proves the pin** (found while starting it). `TimeZoneSweepTest`

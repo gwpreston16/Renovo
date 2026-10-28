@@ -341,8 +341,9 @@ UPDATE subscriptions SET created_at = (created_at AT TIME ZONE 'America/Los_Ange
                          updated_at = (updated_at AT TIME ZONE 'America/Los_Angeles') AT TIME ZONE 'UTC';
 ```
 
-MySQL / MariaDB: first check that the server knows the zone. This must return
-`2026-01-01 08:00:00`, not `NULL`:
+MySQL / MariaDB: first check that the server has its time zone tables. Run
+this exactly as written, with `America/Los_Angeles` whatever your own zone was;
+it must return `2026-01-01 08:00:00`, not `NULL`:
 
 ```sql
 SELECT CONVERT_TZ('2026-01-01 00:00:00', 'America/Los_Angeles', '+00:00');
@@ -365,7 +366,8 @@ UPDATE subscriptions SET created_at = CONVERT_TZ(created_at, 'America/Los_Angele
 
 The `SET` makes a `NULL` an error rather than a silent overwrite. (On MySQL 8,
 setting `explicit_defaults_for_timestamp` per session can need the
-`SESSION_VARIABLES_ADMIN` privilege; if the `SET` is refused, run it as an account that has it.)
+`SESSION_VARIABLES_ADMIN` privilege; if the `SET` is refused, run it as an
+account that has it.)
 
 The tables are `budget_alert_state`, `budgets`, `categories`,
 `household_memberships`, `households`, `instance_settings`, `payment_methods`,
@@ -373,3 +375,10 @@ The tables are `budget_alert_state`, `budgets`, `categories`,
 `subscription_price_history` (`created_at` only). Leave `subscription_charges`
 alone: charges the scheduler recorded were already stamped in UTC, and they
 cannot be told apart from the ones recorded by hand.
+
+**API tokens given an expiry date.** A token created before the upgrade with a
+date chosen under *Expires* (rather than a number of days) was set to end at
+23:59:59 on that day in the old zone. On a zone ahead of UTC it now lasts up to
+the zone's offset longer, and on a zone behind UTC it ends that much sooner.
+Tokens with a number of days, or no expiry, are not affected. Where the extra
+hours matter, revoke such a token and issue a new one.
