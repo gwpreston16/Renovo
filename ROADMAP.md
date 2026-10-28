@@ -68,7 +68,7 @@ can be moved.
 | 57 | [Screen-reader labels and estimate marks, from the known-issues log](docs/phases/PHASE-57.md) | — | None | ✅ done |
 | 58 | [Scenario cycles, one-off fences, sign-in timing and update-check tests, from the known-issues log](docs/phases/PHASE-58.md) | — | None | ✅ done |
 | 59 | [Notification delivery and proxy client addresses, from the known-issues log](docs/phases/PHASE-59.md) | — | None | ✅ done |
-| 60 | [Sign-in, household and calendar edges, from the known-issues log](docs/phases/PHASE-60.md) | — | None | 🚧 in progress |
+| 60 | [Sign-in, household and calendar edges, from the known-issues log](docs/phases/PHASE-60.md) | — | None | ✅ done |
 | 61 | [Scheduler cadence and restore-rehearsal test, from the known-issues log](docs/phases/PHASE-61.md) | — | None | 📋 planned |
 | 62 | [MySQL/MariaDB timestamp columns that rewrite themselves, from the known-issues log](docs/phases/PHASE-62.md) | — | None | 📋 planned |
 | 63 | [Measure the PHP time zone problem (K68), then plan its fix](docs/phases/PHASE-63.md) | — | None | 📋 planned |

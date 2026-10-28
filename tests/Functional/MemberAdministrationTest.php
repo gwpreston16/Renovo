@@ -596,7 +596,8 @@ final class MemberAdministrationTest extends DatabaseTestCase
         $ownersRow = $this->subscriptionOwnedBy($this->ownerId);
         $editorsRow = $this->subscriptionOwnedBy($this->editorId);
         $paidByOwner = $this->subscriptionOwnedBy($this->ownerId);
-        foreach ([$ownersRow => $this->editorId, $editorsRow => $this->editorId, $paidByOwner => $this->ownerId] as $id => $payer) {
+        $payers = [$ownersRow => $this->editorId, $editorsRow => $this->editorId, $paidByOwner => $this->ownerId];
+        foreach ($payers as $id => $payer) {
             $this->db->execute(
                 'UPDATE ' . $this->q('subscriptions') . ' SET ' . $this->q('payer_user_id') . ' = :payer'
                 . ' WHERE ' . $this->q('id') . ' = :id',

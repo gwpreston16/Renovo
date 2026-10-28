@@ -117,9 +117,9 @@ None.
 - [x] K27: usernameless passkey sign-in requires user verification
 - [x] K49: a removed member is cleared as payer
 - [x] K53: the calendar feed projects renewals after a conversion
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 60 row marked ✅ done
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 60 row marked ✅ done
 - [ ] composer check, coverage and the API doc tests green
 
 ## Definition of done
