@@ -147,6 +147,25 @@ final class ScenarioServiceTest extends DatabaseTestCase
         self::assertSame('price.manage', $row['action_permission']);
     }
 
+    public function testATrialsCustomCycleChangeAfterConversionLeadsToTheEditForm(): void
+    {
+        $id = $this->create('Trial', 0, '2026-03-01', [
+            'is_trial' => true,
+            'trial_end_date' => '2026-03-01',
+            'converts_to_price_minor' => 1000,
+            'converts_to_billing_cycle' => 'custom_days',
+            'converts_to_cycle_days' => 30,
+        ]);
+
+        $changed = $this->rowFor($id, ['price' => '10.00', 'cycle' => 'custom_days', 'days' => '14']);
+        self::assertStringContainsString('converts_to_cycle_days=14', $changed['action_url']);
+        self::assertSame('subscription.update', $changed['action_permission']);
+
+        $same = $this->rowFor($id, ['price' => '12.00', 'cycle' => 'custom_days', 'days' => '30']);
+        self::assertStringContainsString('scheduled_price=12.00', $same['action_url']);
+        self::assertSame('price.manage', $same['action_permission']);
+    }
+
     /**
      * @param array<string, string> $change
      * @return array<string, mixed>
