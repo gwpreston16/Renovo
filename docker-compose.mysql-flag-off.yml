@@ -1,0 +1,18 @@
+# MySQL with `explicit_defaults_for_timestamp` off: the setting MariaDB
+# 10.6-10.9 ships with, and the one K110 (Phase 62) was about. Layer it on top
+# of the MySQL variant to see what an affected server does:
+#   docker compose -f docker-compose.yml -f docker-compose.mysql.yml \
+#                  -f docker-compose.mysql-flag-off.yml up
+#
+# `sql_mode` is relaxed as well, to MariaDB's own default shape. MySQL 8.4's
+# default includes NO_ZERO_DATE, which refuses the second timestamp of the
+# first table the migrations make before the first one has had a chance to
+# misbehave.
+
+services:
+  database:
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --explicit-defaults-for-timestamp=0
+      - --sql-mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION
