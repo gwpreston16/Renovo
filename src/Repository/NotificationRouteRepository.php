@@ -17,6 +17,14 @@ use App\Support\Clock;
  */
 final class NotificationRouteRepository extends AbstractRepository
 {
+    /**
+     * Stored for a channel the user has ticked nothing for. It is not an
+     * `AlertType`, so it never matches an alert; its job is to keep the
+     * channel's mute in the table, so an empty grid is not read as "never
+     * configured" and deleting another channel does not turn this one back on.
+     */
+    public const NONE = 'none';
+
     public function __construct(Database $db, private readonly Clock $clock)
     {
         parent::__construct($db);
@@ -33,7 +41,9 @@ final class NotificationRouteRepository extends AbstractRepository
     }
 
     /**
-     * Every route for a user, as channel id => list of alert types.
+     * Every route for a user, as channel id => list of alert types. A channel
+     * the user muted entirely is present with an empty list, so "nothing
+     * stored" and "everything switched off" stay distinguishable.
      *
      * @return array<int, list<string>>
      */
@@ -48,7 +58,12 @@ final class NotificationRouteRepository extends AbstractRepository
 
         $routes = [];
         foreach ($rows as $row) {
-            $routes[(int) $row['channel_id']][] = (string) $row['alert_type'];
+            $channelId = (int) $row['channel_id'];
+            $routes[$channelId] ??= [];
+
+            if ((string) $row['alert_type'] !== self::NONE) {
+                $routes[$channelId][] = (string) $row['alert_type'];
+            }
         }
 
         return $routes;
@@ -62,7 +77,8 @@ final class NotificationRouteRepository extends AbstractRepository
      * half-applied change leaving somebody subscribed to something they just
      * turned off.
      *
-     * @param array<int, list<AlertType>> $routes Channel id => alert types.
+     * @param array<int, list<AlertType>> $routes Channel id => alert types. A
+     *        channel with an empty list is stored as muted.
      */
     public function replaceForUser(int $userId, array $routes): void
     {
@@ -76,6 +92,17 @@ final class NotificationRouteRepository extends AbstractRepository
             $now = $this->clock->now()->format('Y-m-d H:i:s');
 
             foreach ($routes as $channelId => $types) {
+                if ($types === []) {
+                    $this->db->insert($this->table(), [
+                        'user_id' => $userId,
+                        'channel_id' => $channelId,
+                        'alert_type' => self::NONE,
+                        'created_at' => $now,
+                    ]);
+
+                    continue;
+                }
+
                 foreach ($types as $type) {
                     $this->db->insert($this->table(), [
                         'user_id' => $userId,

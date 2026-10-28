@@ -537,6 +537,13 @@ With checks off — the switch, `UPDATE_CHECK=false`, or an
 `UPDATE_CHECK_REPOSITORY` that is not an `owner/name` — no request is made to
 GitHub at all. `UPDATE_CHECK=false` greys the switch out and says why.
 
+## The web container behind a proxy
+
+At start the bundled `web` container writes nginx's real-IP settings from
+`WEB_TRUSTED_PROXIES`. An entry that is not an address or CIDR range stops the
+container with a message in its log. See
+[Behind a reverse proxy](install.md#behind-a-reverse-proxy).
+
 ## Outbound requests
 
 Everything Renovo sends over HTTP goes through one client: logo fetches,

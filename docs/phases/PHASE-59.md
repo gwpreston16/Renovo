@@ -97,7 +97,7 @@ None.
 
 ## Decisions & assumptions (confirm or correct before build)
 
-- **K13:** the dispatcher's own comment, `bin/console` and `docs/operations.md`
+- **K13 — Confirmed 2026-10-28** (15-minute lease): the dispatcher's own comment, `bin/console` and `docs/operations.md`
   all say running `reminders:run` twice is safe. A conditional claim makes the
   code do that. The 15-minute lease is an assumption: longer than any single
   send (the HTTP client's timeouts are seconds), short enough that a crashed
@@ -106,26 +106,39 @@ None.
   an empty save. The stored form is a `none` sentinel row per channel
   (assumption, no migration); a column or setting would be the alternative if
   the sentinel proves awkward.
-- **K15:** repeating the alert request every run and letting the ledger decide
+- **K15 — Confirmed 2026-10-28** (7-day retry window): repeating the alert request every run and letting the ledger decide
   reuses the idempotency the ledger was built for. The retry window (assumed 7
   days) and `$maxAttempts` bound the retries.
 - **K7 — Decided 2026-10-28:** nginx `real_ip` plus documentation, not an
   application setting. An empty variable keeps today's behaviour, so nothing
   changes for an install that does not sit behind a proxy.
-- **Decided 2026-10-28:** ships as its own patch release once merged (v1.26.1),
+- **Decided 2026-10-28:** ships as its own patch release once merged (Changed 2026-10-28: master is already at 1.26.1, so the next patch, 1.26.2),
   not with the next minor: none of the rows touches code a planned phase is
   changing.
 
+- **Changed during the build (2026-10-28):**
+  - K15's retry is raised only while the ledger holds a row for the crossing
+    that is not `sent` (`NotificationLogRepository::hasUndelivered`), so a
+    breach recorded while budget alerts are off is not announced when they are
+    turned back on (the existing `testBudgetAlertsTurnedOffAreNotSentButTheBreachIsStillRecorded`).
+  - `maintenance:prune` keeps ledger rows at least the retry window plus one
+    day, whatever `NOTIFY_LOG_RETENTION_DAYS` says, so the 180-day guarantee
+    cannot be configured away.
+  - K7: nginx's settings are written to `conf.d/real-ip.conf` by an entrypoint
+    script, `docker/nginx/30-real-ip.sh`, from `WEB_TRUSTED_PROXIES`;
+    `default.conf` is unchanged.
+  - The K14 screen test is `NotificationsPageTest::testAnUntickedGridComesBackUnticked`.
+
 ## Status
 
-- [ ] K13: a live claim is refused, a stale one is taken over
-- [ ] K14: an empty routing grid mutes and stays muted
-- [ ] K15: a failed breach alert is retried, a long breach is announced once
-- [ ] K7: the bundled nginx finds the real client address, documented
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 59 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K13: a live claim is refused, a stale one is taken over
+- [x] K14: an empty routing grid mutes and stays muted
+- [x] K15: a failed breach alert is retried, a long breach is announced once
+- [x] K7: the bundled nginx finds the real client address, documented
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 59 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
@@ -140,7 +153,7 @@ in `translations/`. Then mark it ✅ in `ROADMAP.md`.
   `::testAStalePendingClaimIsTakenOver`, `::testAFailedRowIsClaimedOnce`.
 - **K14:** `NotificationSettingsServiceTest::testAnEmptyGridMutesEveryChannel`,
   `::testDeletingARoutedChannelKeepsAMutedOneMuted` and
-  `NotificationScreenTest::testAnUntickedGridComesBackUnticked`.
+  `NotificationsPageTest::testAnUntickedGridComesBackUnticked`.
 - **K15:** `AlertScannerTest::testAFailedBreachAlertIsRetriedOnTheNextRun`,
   `::testASentBreachAlertIsNotRepeated` and
   `::testALongBreachIsNotAnnouncedAgainAfterThePrune`.

@@ -152,4 +152,9 @@ ARG ALPINE_REFRESH=none
 RUN apk upgrade --no-cache
 
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+
+# Writes conf.d/real-ip.conf from WEB_TRUSTED_PROXIES each time the container
+# starts (K7), so the config needs no editing to sit behind a TLS proxy.
+COPY docker/nginx/30-real-ip.sh /docker-entrypoint.d/30-real-ip.sh
+RUN chmod 0755 /docker-entrypoint.d/30-real-ip.sh
 COPY --from=app /var/www/html/public /var/www/html/public

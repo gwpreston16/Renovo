@@ -8,6 +8,25 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Two overlapping `reminders:run` processes no longer send the same
+  reminder twice.** A live claim on a notification is refused; one left by a
+  crashed run is taken over after 15 minutes. *Phase 59.*
+- **Unticking every box in the notification routing grid now mutes every
+  channel**, and the grid comes back unticked. Deleting a routed channel no
+  longer turns a muted one back on. *Phase 59.*
+- **A budget breach alert that failed to send is retried** on the next runs
+  (for up to 7 days after the crossing), and a budget that stays over for
+  months is announced once, not again when the ledger is pruned.
+  `maintenance:prune` now keeps notification records at least 8 days whatever
+  `NOTIFY_LOG_RETENTION_DAYS` says. *Phase 59.*
+- **Behind a TLS reverse proxy, the bundled web container can find the real
+  client address.** Set `WEB_TRUSTED_PROXIES` to the proxies' addresses and
+  sign-in limits and the audit log see each client instead of the proxy; see
+  [Behind a reverse proxy](docs/install.md#behind-a-reverse-proxy). Empty by
+  default, as before. *Phase 59.*
+
 ## [1.26.1] - 2026-10-28
 
 ### Fixed

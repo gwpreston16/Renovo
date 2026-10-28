@@ -83,7 +83,13 @@ the estimate, and a fixed term's renewals stop at its last payment.
 
 A budget alert fires on the crossing, not on the state: a budget that stays
 over its limit for three weeks says so once, and only speaks again if it drops
-back under and then goes over afresh.
+back under and then goes over afresh. If the alert could not be sent (the
+channel was down), it is tried again on each daily run for up to seven days
+after the crossing.
+
+Unticking every box in the routing grid and saving mutes every channel: nothing
+is sent until a box is ticked again. A channel you have never routed is not the
+same thing: with no routing saved at all, every alert goes to every channel.
 
 ### Where notifications may be sent
 

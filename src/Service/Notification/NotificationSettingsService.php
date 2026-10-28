@@ -264,16 +264,21 @@ final class NotificationSettingsService
      * everybody to it. (The one type that arrived on by default — price
      * changes — did so through a migration copying each renewal route.)
      *
+     * A grid with nothing ticked mutes every channel; it is not "unconfigured".
+     *
      * @param array<int|string, mixed> $input routes[channelId][] = alertType
      */
     public function saveRoutes(int $userId, array $input): void
     {
         $known = [];
+        $routes = [];
         foreach ($this->channels->findAllForUser($userId) as $channel) {
             $known[$channel->id] = true;
+            // Every channel owns a row: one with nothing ticked is stored as
+            // muted rather than as nothing, which would read as "not set up".
+            $routes[$channel->id] = [];
         }
 
-        $routes = [];
         foreach ($input as $channelId => $types) {
             $channelId = (int) $channelId;
             if (!isset($known[$channelId]) || !is_array($types)) {

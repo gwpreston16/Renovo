@@ -29,15 +29,27 @@ use PDOException;
  *    occurrence. This is the idempotency guarantee.
  *  - `failed` — the channel was down. Retried, up to a limit, because a webhook
  *    that was unreachable for an hour should not cost the user the alert.
- *  - `pending` — a previous run claimed it and did not finish, which means it
- *    crashed mid-send. Treated as a failure and retried: a duplicate is a
- *    nuisance, a silently dropped cancellation deadline is not.
+ *  - `pending` — another run claimed it. While the claim is younger than the
+ *    lease it is that run's, and this one is refused; past the lease the run
+ *    is presumed to have crashed mid-send, and the row is taken over: a
+ *    duplicate is a nuisance, a silently dropped cancellation deadline is not.
+ *
+ * Taking a row over is one conditional UPDATE whose affected-row count decides
+ * who won, so two runs reading the same `failed` or stale `pending` row cannot
+ * both claim it.
  */
 final class NotificationLogRepository extends AbstractRepository
 {
     public const STATUS_PENDING = 'pending';
     public const STATUS_SENT = 'sent';
     public const STATUS_FAILED = 'failed';
+
+    /**
+     * How long a `pending` claim is believed to belong to a live run. Longer
+     * than any single send (the HTTP client's timeouts are seconds), short
+     * enough that a crashed run's rows go out on the next daily run.
+     */
+    public const CLAIM_LEASE_SECONDS = 900;
 
     public function __construct(Database $db, private readonly Clock $clock)
     {
@@ -152,18 +164,55 @@ final class NotificationLogRepository extends AbstractRepository
         }
 
         $id = (int) $row['id'];
+        $stale = $this->clock->now()->modify('-' . self::CLAIM_LEASE_SECONDS . ' seconds')->format('Y-m-d H:i:s');
 
-        $this->db->execute(
+        $taken = $this->db->execute(
             'UPDATE ' . $this->quote($this->table())
             . ' SET ' . $this->quote('attempts') . ' = ' . $this->quote('attempts') . ' + 1,'
             . ' ' . $this->quote('status') . ' = :status,'
             . ' ' . $this->quote('updated_at') . ' = :now'
             . ' WHERE ' . $this->quote('id') . ' = :id'
-            . ' AND ' . $this->quote('status') . ' <> :sent',
-            ['status' => self::STATUS_PENDING, 'now' => $now, 'id' => $id, 'sent' => self::STATUS_SENT],
+            . ' AND ' . $this->quote('attempts') . ' < :max'
+            . ' AND (' . $this->quote('status') . ' = :failed'
+            . ' OR (' . $this->quote('status') . ' = :pending AND ' . $this->quote('updated_at') . ' <= :stale))',
+            [
+                'status' => self::STATUS_PENDING,
+                'now' => $now,
+                'id' => $id,
+                'max' => $maxAttempts,
+                'failed' => self::STATUS_FAILED,
+                'pending' => self::STATUS_PENDING,
+                'stale' => $stale,
+            ],
         );
 
-        return $id;
+        // Zero rows: another run holds a live claim, or already took this one.
+        return $taken === 1 ? $id : null;
+    }
+
+    /**
+     * Whether an occurrence has a ledger row on any channel that is not
+     * `sent`: an attempt was made and did not land, so it is worth raising
+     * again. No row at all means nothing was attempted (the member had the
+     * alert switched off, say), which is not a failure to retry.
+     */
+    public function hasUndelivered(int $userId, string $subjectType, int $subjectId, string $occurrenceKey): bool
+    {
+        return (int) $this->db->fetchValue(
+            'SELECT COUNT(*) FROM ' . $this->quote($this->table())
+            . ' WHERE ' . $this->quote('user_id') . ' = :user'
+            . ' AND ' . $this->quote('subject_type') . ' = :subject_type'
+            . ' AND ' . $this->quote('subject_id') . ' = :subject_id'
+            . ' AND ' . $this->quote('occurrence_key') . ' = :occurrence'
+            . ' AND ' . $this->quote('status') . ' <> :sent',
+            [
+                'user' => $userId,
+                'subject_type' => $subjectType,
+                'subject_id' => $subjectId,
+                'occurrence' => mb_substr($occurrenceKey, 0, 64),
+                'sent' => self::STATUS_SENT,
+            ],
+        ) > 0;
     }
 
     public function markSent(int $id): void
