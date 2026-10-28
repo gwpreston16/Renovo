@@ -111,7 +111,7 @@ None.
 
 ## Status
 
-- [ ] K138: the last overlapping request is announced
+- [x] K138: the last overlapping request is announced
 - [ ] K77: bulk Pause and Resume load the selection once
 - [ ] K24: an Owner cannot revoke an instance admin
 - [ ] K27: usernameless passkey sign-in requires user verification

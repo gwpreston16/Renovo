@@ -16,6 +16,7 @@ use function preg_quote;
 use function preg_replace;
 use function sprintf;
 use function str_repeat;
+use function str_contains;
 use function substr_count;
 
 /**
@@ -239,6 +240,35 @@ final class TemplateConventionsTest extends TestCase
                 basename($path),
             ),
         );
+    }
+
+    /**
+     * Two requests into one announced region would overlap (K138): the older
+     * must be cancelled so the newest result is the one a screen reader hears.
+     */
+    public function testEveryTriggerOfAnAnnouncedRegionSyncsOnIt(): void
+    {
+        $unsynced = [];
+        $triggers = 0;
+
+        foreach (self::templates() as $name => [$path]) {
+            preg_match_all(
+                '/hx-target="#(subscription-list|calendar-month|spend-trend|analytics-price-history)"([^>]*)/s',
+                $this->source($path),
+                $matches,
+                PREG_SET_ORDER,
+            );
+
+            foreach ($matches as $match) {
+                $triggers++;
+                if (!str_contains($match[0], sprintf('hx-sync="#%s:replace"', $match[1]))) {
+                    $unsynced[] = $name . ' (#' . $match[1] . ')';
+                }
+            }
+        }
+
+        self::assertGreaterThan(0, $triggers);
+        self::assertSame([], $unsynced, 'Triggers that target an announced region must set hx-sync="#region:replace".');
     }
 
     /** The template as written, comments removed. */

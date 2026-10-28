@@ -35,7 +35,7 @@
                 <a id="calendar-today" class="button button-outline calendar-today"
                    href="/calendar{{ mine_only ? '?mine=1' : '' }}"
                    hx-get="/calendar{{ mine_only ? '?mine=1' : '' }}"
-                   hx-target="#calendar-month" hx-swap="outerHTML" hx-push-url="true">{{ t('state.today') }}</a>
+                   hx-target="#calendar-month" hx-sync="#calendar-month:replace" hx-swap="outerHTML" hx-push-url="true">{{ t('state.today') }}</a>
 
                 {#
                     Previous is drawn disabled at the earliest month, rather
@@ -47,7 +47,7 @@
                     <a id="calendar-prev" class="icon-button"
                        href="/calendar?month={{ calendar.previous }}{{ mine_query }}"
                        hx-get="/calendar?month={{ calendar.previous }}{{ mine_query }}"
-                       hx-target="#calendar-month" hx-swap="outerHTML" hx-push-url="true"
+                       hx-target="#calendar-month" hx-sync="#calendar-month:replace" hx-swap="outerHTML" hx-push-url="true"
                        rel="prev">{{ icon('chevron-left', 'icon icon-button-icon') }}<span class="visually-hidden">{{ t('calendar.previous_month') }}</span></a>
                 {% else %}
                     <button type="button" class="icon-button" disabled>{{ icon('chevron-left', 'icon icon-button-icon') }}<span class="visually-hidden">{{ t('calendar.previous_month') }}</span></button>
@@ -57,7 +57,7 @@
                     <a id="calendar-next" class="icon-button"
                        href="/calendar?month={{ calendar.next }}{{ mine_query }}"
                        hx-get="/calendar?month={{ calendar.next }}{{ mine_query }}"
-                       hx-target="#calendar-month" hx-swap="outerHTML" hx-push-url="true"
+                       hx-target="#calendar-month" hx-sync="#calendar-month:replace" hx-swap="outerHTML" hx-push-url="true"
                        rel="next">{{ icon('chevron-right', 'icon icon-button-icon') }}<span class="visually-hidden">{{ t('calendar.next_month') }}</span></a>
                 {% else %}
                     <button type="button" class="icon-button" disabled>{{ icon('chevron-right', 'icon icon-button-icon') }}<span class="visually-hidden">{{ t('calendar.next_month') }}</span></button>
@@ -95,7 +95,7 @@
                                     <a id="calendar-day-{{ day.key }}" class="calendar-day-link"
                                        href="/calendar?month={{ month_key }}&amp;day={{ day.key }}{{ mine_query }}"
                                        hx-get="/calendar?month={{ month_key }}&amp;day={{ day.key }}{{ mine_query }}"
-                                       hx-target="#calendar-month" hx-swap="outerHTML" hx-push-url="true"
+                                       hx-target="#calendar-month" hx-sync="#calendar-month:replace" hx-swap="outerHTML" hx-push-url="true"
                                        {{ day.is_today ? 'aria-current="date"' : '' }}>
                                         <span class="calendar-day-head">
                                             <span class="calendar-date" data-weekday="{{ day.date|local_date('EEE') }}">

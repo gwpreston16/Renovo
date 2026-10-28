@@ -156,7 +156,7 @@
 {% macro link(query, label, active, class, id) %}
     <a id="{{ id }}" class="{{ class }}" href="/subscriptions{{ query ? '?' ~ query : '' }}"
        hx-get="/subscriptions{{ query ? '?' ~ query : '' }}"
-       hx-target="#subscription-list" hx-select="#subscription-list"
+       hx-target="#subscription-list" hx-sync="#subscription-list:replace" hx-select="#subscription-list"
        hx-swap="outerHTML" hx-push-url="true"
        {% if active %}aria-current="true"{% endif %}>{{ label }}</a>
 {% endmacro %}
