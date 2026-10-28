@@ -694,6 +694,15 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   stop with `mkdir .../backups: file exists`, because the app and scheduler
   containers were created together and both filled the same empty volume. The
   scheduler now waits for the app. No migrations.
+- **Phase 63 — Measure the PHP time zone problem (K68), then plan its fix —
+  complete (1.26.7).** A spike, so nothing changes for a user: every place in
+  the code that parses a date was counted and sorted by kind (89), each kind
+  was run under three non-UTC PHP time zones, and the results, with the fix
+  drafted as Phase 64, are in the brief. A negative offset drops a price change
+  on the last day of a forecast, and a positive one reads a contract ending
+  today as over; Docker installs are unaffected, as the image pins UTC. This
+  release also carries the `symfony/mime` security update. No API changes, so
+  the contract stays 1.9.5. No migrations.
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says

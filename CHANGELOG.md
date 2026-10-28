@@ -8,6 +8,16 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.26.7] - 2026-10-28
+
+### Security
+
+- **`symfony/mime` is updated to 7.4.22** for CVE-2026-45070, an email header
+  injection through non-token characters in a MIME parameter name. Renovo
+  builds its messages with `symfony/mailer`, which uses it, and the dependency
+  audit fails on the advisory, so the image now carries the patched release.
+  No change in behaviour. *Phase 63.*
+
 ## [1.26.6] - 2026-10-28
 
 ### Fixed
@@ -1080,7 +1090,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.26.6...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.26.7...HEAD
+[1.26.7]: https://github.com/gwpreston16/Renovo/compare/v1.26.6...v1.26.7
 [1.26.6]: https://github.com/gwpreston16/Renovo/compare/v1.26.5...v1.26.6
 [1.26.5]: https://github.com/gwpreston16/Renovo/compare/v1.26.4...v1.26.5
 [1.26.4]: https://github.com/gwpreston16/Renovo/compare/v1.26.3...v1.26.4

@@ -185,8 +185,8 @@ uses it, and a deployment from the published image never installs it. See
 ## What's new
 
 Release notes are in [CHANGELOG.md](CHANGELOG.md), and what each phase built is
-in [docs/history.md](docs/history.md). The latest phase is **Phase 62, MySQL/MariaDB timestamp columns that rewrite themselves, from the known-issues log**
-([brief](docs/phases/PHASE-62.md)); the [roadmap](ROADMAP.md) shows what is in
+in [docs/history.md](docs/history.md). The latest phase is **Phase 63, Measure the PHP time zone problem (K68), then plan its fix**
+([brief](docs/phases/PHASE-63.md)); the [roadmap](ROADMAP.md) shows what is in
 progress and what is planned.
 
 ## Contributing
