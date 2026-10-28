@@ -35,7 +35,7 @@ element or the target id) instead of one module-level pair, so a second
 `htmx:beforeRequest` no longer overwrites the first and the first
 `htmx:afterSettle` no longer clears the second. The final swap is announced and
 a vanished trigger still gets the focus fallback. Where a request replaces
-another on the same target, the trigger also sets `hx-sync="this:replace"` so
+another on the same target, the triggers also set `hx-sync="this:replace"` so
 the earlier one is cancelled rather than settling after the newer.
 
 ### B. K77 — bulk Pause and Resume load the selection once
@@ -109,6 +109,18 @@ None.
 - **Release (assumed, not asked):** its own patch release once merged, the next
   patch after whichever of Phases 59 and this ships first.
 
+## Notes from the build
+
+- **K138:** each trigger sets `hx-sync="#<region>:replace"` (the shared target)
+  rather than `this:replace`, so requests from different triggers (a filter
+  chip, then a sort) also cancel each other. The test is
+  `TemplateConventionsTest::testEveryTriggerOfAnAnnouncedRegionSyncsOnIt`; there
+  is no JS test for the per-region map, as the repository has no JS test
+  runner.
+- **K77:** the update still runs once per row (`updateMany`); only the reads
+  are batched.
+- **OpenAPI** is 1.9.5 (behaviour only: the feed and a cleared payer).
+
 ## Status
 
 - [x] K138: the last overlapping request is announced
@@ -120,7 +132,7 @@ None.
 - [x] Rows marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed
 - [x] ROADMAP: Phase 60 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

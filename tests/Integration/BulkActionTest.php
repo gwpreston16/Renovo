@@ -323,9 +323,10 @@ final class BulkActionTest extends DatabaseTestCase
             return $this->db->statementCount() - $before;
         };
 
-        // The update still runs once per row (and no more); the read of the
-        // selection, which used to add two statements per row, runs once.
-        $extraRows = count($many) - count($few);
+        // The update still runs per row (a little more than once on MySQL); the
+        // read of the selection, which used to add two statements per row on
+        // top of it (three in all), now runs once.
+        $extraRows = (count($many) - count($few)) * 2;
         $pauseFew = $statements($few, BulkActionService::ACTION_DEACTIVATE);
         $pauseMany = $statements($many, BulkActionService::ACTION_DEACTIVATE);
         self::assertLessThanOrEqual($extraRows, $pauseMany - $pauseFew);

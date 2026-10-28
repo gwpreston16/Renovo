@@ -613,6 +613,24 @@ final class MemberAdministrationTest extends DatabaseTestCase
         self::assertSame($this->ownerId, $this->payerOf($paidByOwner), 'Somebody still here keeps their name.');
     }
 
+    public function testRemovingAMemberWithTheirDataDeletedStillClearsThemAsPayer(): void
+    {
+        $this->setIsolated();
+        $ownersRow = $this->subscriptionOwnedBy($this->ownerId);
+        $this->db->execute(
+            'UPDATE ' . $this->q('subscriptions') . ' SET ' . $this->q('payer_user_id') . ' = :payer'
+            . ' WHERE ' . $this->q('id') . ' = :id',
+            ['payer' => $this->editorId, 'id' => $ownersRow],
+        );
+        $this->subscriptionOwnedBy($this->editorId);
+
+        $this->signIn($this->ownerId);
+        $this->request('POST', '/settings/members/' . $this->editorId . '/remove', ['data' => 'delete']);
+
+        self::assertNull($this->payerOf($ownersRow));
+        self::assertSame($this->ownerId, $this->ownerOf($ownersRow), 'The Owner keeps their own row.');
+    }
+
     public function testASharedRemovalAsksAboutPrivateSubscriptionsAndCanDeleteThem(): void
     {
         $public = $this->subscriptionOwnedBy($this->editorId);

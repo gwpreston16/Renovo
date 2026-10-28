@@ -24,7 +24,9 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   alone; as a second factor after a password it is unchanged. *Phase 60.*
 - **Removing a member clears them as payer** on every subscription in the
   household that named them, so "Paid by" no longer shows them and saving
-  such a row through the API no longer fails with 422. *Phase 60.*
+  such a row through the API no longer fails with 422. Rows that already name
+  someone removed earlier are not changed. OpenAPI 1.9.5, behaviour only.
+  *Phase 60.*
 - **The calendar feed includes a trial's renewals after it converts**, as the
   in-app calendar and forecast do, alongside the conversion event.
   *Phase 60.*
