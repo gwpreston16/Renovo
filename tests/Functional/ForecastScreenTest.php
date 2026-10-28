@@ -158,6 +158,49 @@ final class ForecastScreenTest extends DatabaseTestCase
         self::assertSame(1500, $bars['2026-07']['regular_minor']);
     }
 
+    public function testMonthPartsAreMarkedWhereTheVaryingBillIs(): void
+    {
+        $owner = $this->scopeFor($this->ownerId, Role::OwnerAdmin);
+        $marks = static fn (array $bar): array => [
+            'regular' => $bar['regular_estimate'],
+            'long' => $bar['long_estimate'],
+            'total' => $bar['estimate'],
+        ];
+
+        // Neither: the household's own rows are all fixed.
+        $bars = $this->barsByMonth($this->overview()['chart']);
+        self::assertSame(['regular' => false, 'long' => false, 'total' => false], $marks($bars['2026-03']));
+
+        // A varying yearly bill lands in May: the lump part and the total.
+        $this->createVarying($owner, 'Yearly energy', 6000, 'yearly', '2026-05-05');
+        $bars = $this->barsByMonth($this->overview()['chart']);
+        self::assertSame(['regular' => false, 'long' => true, 'total' => true], $marks($bars['2026-05']));
+        self::assertSame(['regular' => false, 'long' => false, 'total' => false], $marks($bars['2026-04']));
+
+        // A varying monthly bill from June: the regular part and the total,
+        // but not the long part, which holds nothing varying that month.
+        $this->createVarying($owner, 'Monthly energy', 2000, 'monthly', '2026-06-01');
+        $bars = $this->barsByMonth($this->overview()['chart']);
+        self::assertSame(['regular' => true, 'long' => false, 'total' => true], $marks($bars['2026-06']));
+        self::assertSame(['regular' => false, 'long' => false, 'total' => false], $marks($bars['2026-03']));
+
+        // The month table draws the mark in the part cells the flags name.
+        $html = (string) $this->get('/forecast', $this->ownerId)->getBody();
+        $cells = static function (string $month) use ($html): array {
+            self::assertSame(
+                1,
+                preg_match('~<th scope="row">' . $month . '</th>(.*?)</tr>~s', $html, $row),
+                $month . ' has no row in the month table.',
+            );
+            preg_match_all('~<td class="numeric num">(.*?)</td>~s', $row[1], $tds);
+
+            return array_map(static fn (string $cell): bool => str_contains($cell, '≈'), $tds[1]);
+        };
+        self::assertSame([false, true, true], $cells('May 2026'));
+        self::assertSame([true, false, true], $cells('June 2026'));
+        self::assertSame([false, false, false], $cells('March 2026'));
+    }
+
     public function testTheTwoPartsOfEveryMonthAddUpToTheForecastsOwnMonth(): void
     {
         $chart = $this->overview()['chart'];
@@ -389,6 +432,22 @@ final class ForecastScreenTest extends DatabaseTestCase
             'anchor_day' => (int) (new DateTimeImmutable($nextPayment))->format('j'),
             'start_date' => '2025-01-01',
             'is_active' => true,
+        ], []);
+    }
+
+    private function createVarying(Scope $scope, string $name, int $priceMinor, string $cycle, string $nextPayment): int
+    {
+        return (new SubscriptionRepository($this->db))->create($scope, [
+            'name' => $name,
+            'price_minor' => $priceMinor,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => $cycle,
+            'next_payment_date' => $nextPayment,
+            'anchor_day' => (int) (new DateTimeImmutable($nextPayment))->format('j'),
+            'start_date' => '2025-01-01',
+            'is_active' => true,
+            'amount_varies' => true,
         ], []);
     }
 

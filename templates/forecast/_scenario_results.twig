@@ -91,20 +91,20 @@
             <tbody>
             <tr>
                 <th scope="row">{{ t('scenario.run_rate_monthly') }}</th>
-                <td class="numeric num">{{ scenario.amount(r.run_rate.current.monthly, base_currency, r.estimate) }}</td>
-                <td class="numeric num">{{ scenario.amount(r.run_rate.scenario.monthly, base_currency, r.estimate) }}</td>
+                <td class="numeric num">{{ scenario.amount(r.run_rate.current.monthly, base_currency, r.estimate_current) }}</td>
+                <td class="numeric num">{{ scenario.amount(r.run_rate.scenario.monthly, base_currency, r.estimate_scenario) }}</td>
                 <td class="numeric num">{{ scenario.saving(r.run_rate.saving.monthly, base_currency, r.estimate) }}</td>
             </tr>
             <tr>
                 <th scope="row">{{ t('scenario.run_rate_yearly') }}</th>
-                <td class="numeric num">{{ scenario.amount(r.run_rate.current.yearly, base_currency, r.estimate) }}</td>
-                <td class="numeric num">{{ scenario.amount(r.run_rate.scenario.yearly, base_currency, r.estimate) }}</td>
+                <td class="numeric num">{{ scenario.amount(r.run_rate.current.yearly, base_currency, r.estimate_current) }}</td>
+                <td class="numeric num">{{ scenario.amount(r.run_rate.scenario.yearly, base_currency, r.estimate_scenario) }}</td>
                 <td class="numeric num">{{ scenario.saving(r.run_rate.saving.yearly, base_currency, r.estimate) }}</td>
             </tr>
             <tr>
                 <th scope="row">{{ t('scenario.next_months', {'months': r.horizon_months}) }}</th>
-                <td class="numeric num">{{ scenario.amount(r.twelve_months.current, base_currency, r.estimate) }}</td>
-                <td class="numeric num">{{ scenario.amount(r.twelve_months.scenario, base_currency, r.estimate) }}</td>
+                <td class="numeric num">{{ scenario.amount(r.twelve_months.current, base_currency, r.estimate_current) }}</td>
+                <td class="numeric num">{{ scenario.amount(r.twelve_months.scenario, base_currency, r.estimate_scenario) }}</td>
                 <td class="numeric num">{{ scenario.saving(r.twelve_months.saving, base_currency, r.estimate) }}</td>
             </tr>
             </tbody>

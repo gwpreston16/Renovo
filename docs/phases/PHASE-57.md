@@ -150,16 +150,16 @@ None.
 
 ## Status
 
-- [ ] K18: focus stays on the activated control; swaps announced
-- [ ] K59: `aria-sort`, rated stars as an image, "no uses" announced
-- [ ] K60: member actions and colour pickers named per row
-- [ ] K88: scenario columns marked "≈" only when they hold a varying bill
-- [ ] K89: forecast month table marks the part that holds the varying bill
-- [ ] K47: ten API doc and OpenAPI corrections
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 57 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K18: focus stays on the activated control; swaps announced
+- [x] K59: `aria-sort`, rated stars as an image, "no uses" announced
+- [x] K60: member actions and colour pickers named per row
+- [x] K88: scenario columns marked "≈" only when they hold a varying bill
+- [x] K89: forecast month table marks the part that holds the varying bill
+- [x] K47: ten API doc and OpenAPI corrections
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 57 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
@@ -183,3 +183,14 @@ in `translations/`. Then mark it ✅ in `ROADMAP.md`.
   (monthly, yearly and neither).
 - **K47:** `OpenApiCoverageTest` and `ApiDocCoverageTest`, plus
   `ApiDocCoverageTest::testSplitModeEnumContributorRoleAndTagFilterAreDescribed`.
+
+## Browser check (2026-10-27)
+
+No JS test harness exists, so K18's focus behaviour was checked in a browser
+(the working tree served against the demo data, Chromium pane): at 1280 px,
+activating the sort link and Next month each left focus on the same control
+after the swap; when Previous month disappeared at the earliest month, focus
+fell to `#calendar-heading`; the region's status line read "November 2026: 12
+charges"; the list status read "19 subscriptions match". At 375 px in dark the
+scenario screen drew unchanged. The list pager's last-page fallback was not
+reached: the demo data fits on one page.

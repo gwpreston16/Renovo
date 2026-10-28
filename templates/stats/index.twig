@@ -140,18 +140,21 @@
                                     {% if signal.cost_per_use_minor is not null %}
                                         {{ signal.cost_per_use_minor|money(subscription.price.currency) }}
                                     {% else %}
-                                        <span class="muted" title="{{ t('stats.no_uses_recorded') }}">{{ t('common.none_symbol') }}</span>
+                                        <span class="muted" title="{{ t('stats.no_uses_recorded') }}" aria-hidden="true">{{ t('common.none_symbol') }}</span>
+                                        <span class="visually-hidden">{{ t('stats.no_uses_recorded') }}</span>
                                     {% endif %}
                                 </td>
                                 <td>
                                     {% if subscription.usageRating %}
-                                        <span aria-label="{{ t('stats.rating_label', {
+                                        <span role="img" aria-label="{{ t('stats.rating_label', {
                                             'rating': subscription.usageRating,
                                             'max': max_rating,
                                         }) }}">
+                                            <span aria-hidden="true">
                                             {%- for star in 1..max_rating -%}
                                                 {{ star <= subscription.usageRating ? '★' : '☆' }}
                                             {%- endfor -%}
+                                            </span>
                                         </span>
                                     {% else %}
                                         <span class="muted">{{ t('common.none_symbol') }}</span>

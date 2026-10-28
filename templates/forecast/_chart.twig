@@ -83,8 +83,8 @@
                 {% for bar in chart.bars %}
                     <tr>
                         <th scope="row">{{ bar.long_label }}</th>
-                        <td class="numeric num">{{ bar.regular_display }}</td>
-                        <td class="numeric num">{{ bar.long_display }}</td>
+                        <td class="numeric num">{{ bar.regular_estimate ? t('subscriptions_list.approximately', {'amount': bar.regular_display}) : bar.regular_display }}</td>
+                        <td class="numeric num">{{ bar.long_estimate ? t('subscriptions_list.approximately', {'amount': bar.long_display}) : bar.long_display }}</td>
                         <td class="numeric num">
                             {{ bar.estimate ? t('subscriptions_list.approximately', {'amount': bar.total_display}) : bar.total_display }}
                             {% if bar.is_busiest %}<span class="badge badge-warn">{{ t('dashboard.busiest_month') }}</span>{% endif %}

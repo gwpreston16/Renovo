@@ -18,9 +18,13 @@
 
 <div id="calendar-month" class="calendar-month">
     <section id="calendar" class="card calendar" aria-labelledby="calendar-heading">
+        <p class="visually-hidden" role="status" data-swap-status>{{ t('calendar.status', {
+            'month': calendar.month|local_date('MMMM y'),
+            'count': calendar.count,
+        }) }}</p>
         <header class="calendar-header">
             <div>
-                <h2 id="calendar-heading">{{ calendar.month|local_date('MMMM y') }}</h2>
+                <h2 id="calendar-heading" tabindex="-1" data-focus-fallback>{{ calendar.month|local_date('MMMM y') }}</h2>
                 <p class="muted calendar-count">
                     {{ t('calendar.charges_count', {'count': calendar.count}) }}
                     {%- if calendar.count > 0 %} · <span class="num">{{ figures.inline(calendar.totals) }}</span>{% endif %}
@@ -28,7 +32,7 @@
             </div>
 
             <nav class="calendar-nav" aria-label="{{ t('calendar.month_navigation') }}">
-                <a class="button button-outline calendar-today"
+                <a id="calendar-today" class="button button-outline calendar-today"
                    href="/calendar{{ mine_only ? '?mine=1' : '' }}"
                    hx-get="/calendar{{ mine_only ? '?mine=1' : '' }}"
                    hx-target="#calendar-month" hx-swap="outerHTML" hx-push-url="true">{{ t('state.today') }}</a>
@@ -40,7 +44,7 @@
                     recorded payment.
                 #}
                 {% if calendar.previous %}
-                    <a class="icon-button"
+                    <a id="calendar-prev" class="icon-button"
                        href="/calendar?month={{ calendar.previous }}{{ mine_query }}"
                        hx-get="/calendar?month={{ calendar.previous }}{{ mine_query }}"
                        hx-target="#calendar-month" hx-swap="outerHTML" hx-push-url="true"
@@ -50,7 +54,7 @@
                 {% endif %}
 
                 {% if calendar.next %}
-                    <a class="icon-button"
+                    <a id="calendar-next" class="icon-button"
                        href="/calendar?month={{ calendar.next }}{{ mine_query }}"
                        hx-get="/calendar?month={{ calendar.next }}{{ mine_query }}"
                        hx-target="#calendar-month" hx-swap="outerHTML" hx-push-url="true"
@@ -88,7 +92,7 @@
                             {% else %}
                                 <td class="calendar-day{{ day.is_today ? ' is-today' : '' }}{{
                                     day.is_selected ? ' is-selected' : '' }}{{ day.items ? '' : ' is-quiet' }}">
-                                    <a class="calendar-day-link"
+                                    <a id="calendar-day-{{ day.key }}" class="calendar-day-link"
                                        href="/calendar?month={{ month_key }}&amp;day={{ day.key }}{{ mine_query }}"
                                        hx-get="/calendar?month={{ month_key }}&amp;day={{ day.key }}{{ mine_query }}"
                                        hx-target="#calendar-month" hx-swap="outerHTML" hx-push-url="true"

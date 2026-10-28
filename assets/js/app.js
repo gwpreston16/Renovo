@@ -108,6 +108,56 @@ function enhanceArrived(event) {
 }
 
 document.addEventListener('htmx:afterSwap', enhanceArrived);
+
+/*
+ * Keyboard and screen-reader continuity across an htmx swap.
+ *
+ * Every trigger that swaps a region has a stable `id`, and htmx puts focus back
+ * on the element with the id it had before. A trigger that is gone after the
+ * swap (Next on the last page) leaves focus on the page, so focus falls back to
+ * the region's `data-focus-fallback` element. The region's `data-swap-status`
+ * line is cleared and refilled so a polite live region, which a screen reader
+ * reads only when its text changes, announces the new results.
+ */
+let swapTargetId = null;
+let swapFocusId = null;
+
+document.addEventListener('htmx:beforeRequest', (event) => {
+    const target = event.detail.target;
+    swapTargetId = target instanceof Element ? target.id : null;
+    swapFocusId = document.activeElement instanceof Element && document.activeElement.id !== ''
+        ? document.activeElement.id
+        : null;
+});
+
+document.addEventListener('htmx:afterSettle', () => {
+    const region = swapTargetId === null ? null : document.getElementById(swapTargetId);
+    const focusId = swapFocusId;
+    swapTargetId = null;
+    swapFocusId = null;
+
+    if (region === null) {
+        return;
+    }
+
+    if (focusId !== null && document.getElementById(focusId) === null) {
+        const fallback = region.matches('[data-focus-fallback]')
+            ? region
+            : region.querySelector('[data-focus-fallback]');
+        if (fallback instanceof HTMLElement) {
+            fallback.focus();
+        }
+    }
+
+    const status = region.querySelector('[data-swap-status]');
+    if (status instanceof HTMLElement) {
+        const text = status.textContent ?? '';
+        status.textContent = '';
+        window.setTimeout(() => {
+            status.textContent = text;
+        }, 50);
+    }
+});
 // Back and Forward through an hx-push-url history: htmx restores the markup
 // itself and fires no afterSwap, so the sizes have to be applied again.
 document.addEventListener('htmx:historyRestore', () => applyGeometry(document));

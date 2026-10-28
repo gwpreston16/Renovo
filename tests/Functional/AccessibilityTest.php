@@ -320,6 +320,210 @@ final class AccessibilityTest extends DatabaseTestCase
     }
 
     /**
+     * @return list<array{0: string}>
+     */
+    public static function htmxTriggerTemplates(): array
+    {
+        return [
+            ['subscriptions/_toolbar.twig'],
+            ['subscriptions/_list.twig'],
+            ['calendar/_month.twig'],
+            ['dashboard/cards/household/spend_trend.twig'],
+            ['stats/_price_history.twig'],
+        ];
+    }
+
+    /**
+     * Focus survives an htmx swap only on an element htmx can find again, so
+     * every link that swaps a region carries an id built from what it is.
+     *
+     * @dataProvider htmxTriggerTemplates
+     */
+    public function testHtmxTriggersHaveStableIds(string $template): void
+    {
+        $source = (string) file_get_contents(dirname(__DIR__, 2) . '/templates/' . $template);
+        // A Twig expression can hold a `>`, which would end the tag early.
+        $source = (string) preg_replace('/\{\{.*?\}\}|\{%.*?%\}/s', 'X', $source);
+        self::assertSame(1, preg_match('/hx-get=/', $source), $template . ' has no hx-get trigger.');
+
+        preg_match_all('/<a\b[^>]*\bhx-get=[^>]*>/s', $source, $triggers);
+        self::assertNotEmpty($triggers[0], $template);
+
+        foreach ($triggers[0] as $tag) {
+            self::assertMatchesRegularExpression('/\sid="[^"]+"/', $tag, $template . ': ' . substr($tag, 0, 80));
+        }
+
+        // Rendered, no id is repeated on the page the user is on.
+        foreach (['/subscriptions', '/calendar', 'household:/', '/stats'] as $path) {
+            $html = $this->get($path);
+            preg_match_all('/\sid="([^"]+)"/', $html, $ids);
+            self::assertSame(
+                [],
+                array_keys(array_filter(array_count_values($ids[1]), static fn (int $n): bool => $n > 1)),
+                $path . ' repeats an id.',
+            );
+        }
+    }
+
+    /**
+     * @return list<array{0: string, 1: string}>
+     */
+    public static function swappedRegions(): array
+    {
+        return [
+            ['/subscriptions', 'id="subscription-list"'],
+            ['/calendar', 'id="calendar-month"'],
+            ['household:/', 'id="spend-trend"'],
+            ['/stats', 'id="analytics-price-history"'],
+        ];
+    }
+
+    /**
+     * @dataProvider swappedRegions
+     */
+    public function testSwappedRegionsHaveStatus(string $path, string $region): void
+    {
+        $html = $this->get($path);
+
+        $start = strpos($html, $region);
+        self::assertNotFalse($start, $path . ' does not draw ' . $region);
+
+        // The status is the region's own, so it arrives with each swap.
+        self::assertMatchesRegularExpression(
+            '~<p class="visually-hidden" role="status" data-swap-status>[^<]+</p>~',
+            substr($html, $start, 600),
+            $path . ' announces nothing when ' . $region . ' is swapped.',
+        );
+    }
+
+    public function testTheListAndCalendarStatusesNameTheResults(): void
+    {
+        self::assertStringContainsString('1 subscription matches</p>', $this->get('/subscriptions'));
+        self::assertMatchesRegularExpression(
+            '~role="status" data-swap-status>[A-Z][a-z]+ \d{4}: \d+ charges?</p>~',
+            $this->get('/calendar'),
+        );
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: string}>
+     */
+    public static function sortChoices(): array
+    {
+        $choices = [];
+        foreach (['name', 'price', 'next_payment'] as $key) {
+            foreach (['asc', 'desc'] as $direction) {
+                $choices[$key . ' ' . $direction] = [$key, $direction];
+            }
+        }
+
+        return $choices;
+    }
+
+    /**
+     * @dataProvider sortChoices
+     */
+    public function testSortedColumnHasAriaSort(string $key, string $direction): void
+    {
+        $html = $this->get('/subscriptions?sort=' . $key . '&dir=' . $direction);
+
+        preg_match_all('/<th\b[^>]*\baria-sort="([^"]+)"[^>]*>(.*?)<\/th>/s', $html, $sorted, PREG_SET_ORDER);
+
+        self::assertCount(1, $sorted, 'Exactly one column says it is sorted.');
+        self::assertSame($direction === 'asc' ? 'ascending' : 'descending', $sorted[0][1]);
+        self::assertStringContainsString('id="sort-' . $key . '"', $sorted[0][2]);
+    }
+
+    public function testUsageRatingIsAnImage(): void
+    {
+        $this->addRatedSubscription();
+        $html = $this->get('/stats');
+
+        self::assertMatchesRegularExpression(
+            '~<span role="img" aria-label="[^"]+">\s*<span aria-hidden="true">★★★★☆\s*</span>~u',
+            $html,
+        );
+        self::assertStringNotContainsString('<span aria-label="Rated', $html);
+    }
+
+    public function testNoUsesIsAnnounced(): void
+    {
+        $html = $this->get('/stats');
+
+        self::assertMatchesRegularExpression(
+            '~<span class="muted"[^>]*aria-hidden="true">—</span>\s*'
+            . '<span class="visually-hidden">[^<]*[Nn]o uses[^<]*</span>~u',
+            $html,
+        );
+    }
+
+    public function testMemberActionsNameTheMember(): void
+    {
+        $users = new UserRepository($this->db);
+        $second = $users->create('second@example.test', 'Second Member', 'hash', false, new DateTimeImmutable());
+        (new MembershipRepository($this->db))->create($this->householdId, $second, Role::Editor);
+
+        $html = $this->get('/settings/members');
+
+        preg_match_all(
+            '/<button\b[^>]*class="[^"]*member-action[^"]*"[^>]*>(.*?)<\/button>/s',
+            $html,
+            $buttons,
+            PREG_SET_ORDER,
+        );
+        self::assertGreaterThanOrEqual(4, count($buttons));
+
+        $names = [];
+        foreach ($buttons as $button) {
+            self::assertSame(
+                1,
+                preg_match('/aria-label="([^"]+)"/', $button[0], $label),
+                'A member action has no aria-label.',
+            );
+            $names[] = $label[1];
+        }
+
+        self::assertSame($names, array_values(array_unique($names)), 'Two member actions share a name.');
+        self::assertContains('Revoke login for Second Member', $names);
+        self::assertContains('Revoke login for Editor', $names);
+    }
+
+    public function testCategoryColourPickersAreNamed(): void
+    {
+        $scope = Scope::forMember($this->userId, true, $this->householdId, Role::OwnerAdmin, IsolationMode::Shared);
+        (new \App\Repository\CategoryRepository($this->db))->create($scope, 'Music', '#445566');
+
+        $html = $this->get('/settings');
+
+        preg_match_all('/<input type="color"[^>]*aria-label="([^"]+)"/', $html, $labels);
+        // The add forms' own pickers are labelled "Colour"; the rows' are the ones to tell apart.
+        $names = array_values(array_filter($labels[1], static fn (string $name): bool => $name !== 'Colour'));
+
+        self::assertContains('Colour of Streaming', $names);
+        self::assertContains('Colour of Music', $names);
+        self::assertSame($names, array_values(array_unique($names)), 'Two colour pickers share a name.');
+    }
+
+    private function addRatedSubscription(): void
+    {
+        $scope = Scope::forMember($this->userId, true, $this->householdId, Role::OwnerAdmin, IsolationMode::Shared);
+        (new SubscriptionRepository($this->db))->create(
+            $scope,
+            [
+                'name' => 'Rated one',
+                'price_minor' => 500,
+                'currency' => 'GBP',
+                'subscription_type' => 'recurring',
+                'billing_cycle' => 'monthly',
+                'next_payment_date' => '2026-12-02',
+                'is_active' => true,
+                'usage_rating' => 4,
+            ],
+            [],
+        );
+    }
+
+    /**
      * @dataProvider pages
      */
     public function testEveryTableHeaderSaysWhichWayItRuns(string $path): void

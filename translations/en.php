@@ -393,14 +393,18 @@ return [
         'They keep {count, plural, one {# subscription} other {# subscriptions}} to themselves, which '
         . 'nobody else has seen. What should happen to {count, plural, one {it} other {them}}?',
     'members.remove_private_reassign' => 'Give them to me. They stay private — to me.',
+    'members.resend_invite_for' => 'Resend invite to {name}',
     'members.resend_invite' => 'Resend invite',
     'members.role_description_contributor' =>
         'Adds and edits their own subscriptions, prices, splits and budget.',
     'members.role_description_editor' => 'Can change anything the household has.',
     'members.role_description_viewer' => 'Sees subscriptions and totals. Changes nothing.',
+    'members.restore_login_for' => 'Restore login for {name}',
     'members.restore_login' => 'Restore login',
+    'members.revoke_login_for' => 'Revoke login for {name}',
     'members.revoke_login' => 'Revoke login',
     'members.send_invitation' => 'Send invitation',
+    'members.send_reset_for' => 'Send reset to {name}',
     'members.send_reset' => 'Send reset',
     'members.subtitle' => '{household} · {count, plural, one {# person} other {# people}}',
     'members.table_heading' => 'Members',
@@ -1189,6 +1193,7 @@ return [
     // calendar
     'calendar.caption' => 'Charges, trial ends and cancel-by deadlines in {month}',
     'calendar.charges' => 'Charges',
+    'calendar.status' => '{month}: {count, plural, one {# charge} other {# charges}}',
     'calendar.charges_count' => '{count, plural, one {# charge} other {# charges}}',
     'calendar.feed_copy' => 'Copy',
     'calendar.feed_create' => 'Create a link',
@@ -1250,8 +1255,8 @@ return [
         '{days, plural, one {# day ago} other {# days ago}} — this renewal is already committed.',
 
     // categories
-    'categories.category_colour' => 'Category colour',
     'categories.colour' => 'Colour',
+    'categories.colour_of' => 'Colour of {name}',
     'categories.colour_automatic' => 'Automatic colour',
     'categories.colour_automatic_of' => 'Automatic colour for {name}',
     'categories.new_category' => 'New category',
@@ -1395,6 +1400,7 @@ return [
     'dashboard.spend_trend' => 'Spend over time',
     'dashboard.spend_trend_by_category' => 'By category',
     'dashboard.spend_trend_by_member' => 'By member',
+    'dashboard.spend_trend_status' => 'Spend trend, drawn {choice}',
     'dashboard.spend_trend_choice' => 'Draw a line for each',
     'dashboard.spend_trend_empty' => 'Nothing was charged in the last {count} months.',
     'dashboard.spend_trend_latest' => 'The figure beside each name is last month’s.',
@@ -1982,6 +1988,7 @@ return [
     'stats.price_history_note' =>
         'Every recorded change, newest first, in each subscription\'s own currency. A free trial ending '
         . 'is not a price change, and a currency conversion changes the currency, not the price.',
+    'stats.price_history_status' => 'Price history, page {page} of {pages}',
     'stats.price_history_pages' => 'Price history pages',
     'stats.today' => 'Today',
     'stats.yoy_alt' => 'Spend in {currency} for each month of this year and last.',
@@ -2283,6 +2290,7 @@ return [
     'subscriptions_list.split_custom' => 'Custom split',
     'subscriptions_list.split_equally_with' => 'Split equally with {name}',
     'subscriptions_list.split_ways' => 'Split {count, plural, one {# way} other {# ways}}',
+    'subscriptions_list.status' => '{count, plural, one {# subscription matches} other {# subscriptions match}}',
     'subscriptions_list.summary' => '{matched, plural, other {#}} of {of, plural, other {#}}',
     'subscriptions_list.trial_ends' => 'Trial ends',
     'subscriptions_list.uncancel' => 'Undo cancel',

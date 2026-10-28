@@ -42,7 +42,7 @@
                                            value="{{ is_failed ? values.name|default(category.name) : category.name }}"
                                            aria-label="{{ t('settings.rename_category', {'name': category.name}) }}">
                                     <input type="color" name="colour" value="{{ category.colour|default('#888888') }}" data-clears="colour_auto"
-                                           aria-label="{{ t('categories.category_colour') }}">
+                                           aria-label="{{ t('categories.colour_of', {'name': category.name}) }}">
                                     <label class="choice">
                                         <input type="checkbox" name="colour_auto" value="1"
                                                aria-label="{{ t('categories.colour_automatic_of', {'name': category.name}) }}"

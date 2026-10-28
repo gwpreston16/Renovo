@@ -14,7 +14,9 @@
 
 {% set can_bulk = can(scope, 'subscription.bulk_edit') %}
 
-<section id="subscription-list" class="card subscription-list">
+<section id="subscription-list" class="card subscription-list" tabindex="-1" data-focus-fallback>
+    {# Read out after a filter, sort or page swaps the list in (`app.js`). #}
+    <p class="visually-hidden" role="status" data-swap-status>{{ t('subscriptions_list.status', {'count': summary.matched}) }}</p>
     {{ list.summary(summary) }}
 
     {% if subscriptions is empty %}
@@ -105,12 +107,12 @@
                                aria-label="{{ t('subscriptions_list.select_all') }}">
                         <span class="visually-hidden">{{ t('subscriptions_list.select') }}</span>
                     </th>
-                    <th scope="col">{{ list.sort_link('name', t('subscriptions_list.service'), filter) }}</th>
+                    <th scope="col"{{ list.aria_sort('name', filter) }}>{{ list.sort_link('name', t('subscriptions_list.service'), filter) }}</th>
                     <th scope="col">{{ t('field.category') }}</th>
                     <th scope="col">{{ t('subscriptions_form.paid_by') }}</th>
-                    <th scope="col" class="numeric">{{ list.sort_link('price', t('field.price'), filter) }}</th>
+                    <th scope="col" class="numeric"{{ list.aria_sort('price', filter) }}>{{ list.sort_link('price', t('field.price'), filter) }}</th>
                     <th scope="col" class="numeric">{{ t('subscriptions_list.monthly_in', {'currency': base_currency}) }}</th>
-                    <th scope="col">{{ list.sort_link('next_payment', t('field.next_charge'), filter) }}</th>
+                    <th scope="col"{{ list.aria_sort('next_payment', filter) }}>{{ list.sort_link('next_payment', t('field.next_charge'), filter) }}</th>
                     <th scope="col">{{ t('field.status') }}</th>
                     <th scope="col" class="actions-column">{{ t('field.actions') }}</th>
                 </tr>
@@ -198,7 +200,7 @@
         {% if page_count > 1 %}
             <nav class="pager" aria-label="{{ t('subscriptions_list.pagination') }}">
                 {% if filter.page > 1 %}
-                    <a class="button button-quiet"
+                    <a id="pager-previous" class="button button-quiet"
                        href="/subscriptions?{{ filter.toQueryString({'page': filter.page - 1}) }}"
                        hx-get="/subscriptions?{{ filter.toQueryString({'page': filter.page - 1}) }}"
                        hx-target="#subscription-list" hx-select="#subscription-list"
@@ -210,7 +212,7 @@
                     'total': total,
                 }) }}</span>
                 {% if filter.page < page_count %}
-                    <a class="button button-quiet"
+                    <a id="pager-next" class="button button-quiet"
                        href="/subscriptions?{{ filter.toQueryString({'page': filter.page + 1}) }}"
                        hx-get="/subscriptions?{{ filter.toQueryString({'page': filter.page + 1}) }}"
                        hx-target="#subscription-list" hx-select="#subscription-list"
@@ -455,10 +457,18 @@
     </div>
 {% endmacro %}
 
+{#
+    The sorted column's header says which way it runs; the arrow beside the
+    label is hidden from a screen reader, so this is what it is told.
+#}
+{% macro aria_sort(key, filter) %}
+    {%- if filter.sort == key %} aria-sort="{{ filter.direction == 'asc' ? 'ascending' : 'descending' }}"{% endif -%}
+{% endmacro %}
+
 {% macro sort_link(key, label, filter) %}
     {% set direction = (filter.sort == key and filter.direction == 'asc') ? 'desc' : 'asc' %}
     {% set query = filter.toQueryString({'sort': key, 'dir': direction, 'page': null}) %}
-    <a href="/subscriptions?{{ query }}"
+    <a id="sort-{{ key }}" href="/subscriptions?{{ query }}"
        hx-get="/subscriptions?{{ query }}"
        hx-target="#subscription-list"
        hx-select="#subscription-list"
