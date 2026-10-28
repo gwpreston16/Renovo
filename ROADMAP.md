@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–63
+## Planned — Phases 30–65
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -72,6 +72,7 @@ can be moved.
 | 61 | [Scheduler cadence and restore-rehearsal test, from the known-issues log](docs/phases/PHASE-61.md) | — | None | 📋 planned |
 | 62 | [MySQL/MariaDB timestamp columns that rewrite themselves, from the known-issues log](docs/phases/PHASE-62.md) | — | None | 📋 planned |
 | 63 | [Measure the PHP time zone problem (K68), then plan its fix](docs/phases/PHASE-63.md) | — | None | 📋 planned |
+| 65 | [MySQL case rules and per-currency estimate marks, from the known-issues log](docs/phases/PHASE-65.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -200,6 +201,7 @@ can be moved.
 - **61 — Scheduler cadence and restore-rehearsal test.** A batch from the known-issues log (K114, K115): the compose scheduler sleeps the rest of the day rather than a fixed 24 hours after a slow pass, and the restore rehearsal's row-count check is tested.
 - **62 — MySQL/MariaDB timestamp columns that rewrite themselves.** Fixes K110: on MariaDB 10.6–10.9 or a server with `explicit_defaults_for_timestamp=OFF`, `created_at`-style columns gain `ON UPDATE CURRENT_TIMESTAMP`. A corrective migration repairs installed databases, the session turns the setting on where it can, and a flag-off CI leg and schema scan keep it from returning.
 - **63 — Measure the PHP time zone problem.** A spike on K68: count and classify every place that builds a date from a database string, prove each class under three non-UTC zones, and write the fix as Phase 64. No behaviour changes.
+- **65 — MySQL case rules and per-currency estimate marks.** A batch from the known-issues log (K32, K122, K87): passkey ids and handles compare case-sensitively on MySQL, the feed token's name is matched exactly in SQL, and only a currency holding a varying bill is drawn "≈". (64 is reserved for the K68 fix.)
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
