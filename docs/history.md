@@ -678,6 +678,17 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   reminders. The restore rehearsal's row-count check is now tested. No API
   changes, so the contract stays 1.9.5. No migrations. See
   [Operations](operations.md#running-the-scheduler-from-cron-instead).
+- **Phase 62 — MySQL/MariaDB timestamp columns that rewrite themselves, from
+  the known-issues log — complete (1.26.5).** On MariaDB 10.6–10.9, or any
+  MySQL/MariaDB with `explicit_defaults_for_timestamp` off, the first
+  `timestamp NOT NULL` column of many tables rewrote itself on every update:
+  a backup run's start time became its finish time, and a household's or
+  subscription's created time the time it was last changed. One migration
+  repairs an existing database (values already overwritten cannot be
+  recovered), the application and the migrations now turn the setting on for
+  their own connections where the account may, and CI gains a MySQL leg with
+  the setting off. No API changes, so the contract stays 1.9.5. One migration.
+  See [Upgrading](upgrading.md#after-upgrading-to-the-timestamp-fix-phase-62).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
