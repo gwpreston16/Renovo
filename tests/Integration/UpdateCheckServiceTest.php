@@ -384,6 +384,56 @@ final class UpdateCheckServiceTest extends DatabaseTestCase
         self::assertNull($this->reload($admin)->dismissedUpdateVersion);
     }
 
+    public function testUnreadablePublishedAtDoesNotBreakTheCheck(): void
+    {
+        // A date PHP can't parse is dropped, not thrown: the release is still
+        // news, and the admin's dashboard and `reminders:run` don't fail on it.
+        $service = $this->service($this->release('v1.8.0', ['published_at' => 'the day after tomorrow-ish']));
+
+        self::assertSame(CheckNowResult::Checked, $service->check());
+
+        $status = $service->status();
+        self::assertSame('1.8.0', $status->latestVersion);
+        self::assertNull($status->publishedAt);
+        self::assertNotNull($service->bannerFor($this->admin()));
+    }
+
+    public function testOverlongVersionIsRefused(): void
+    {
+        $service = $this->service($this->release('v1.8.0'));
+        $service->check();
+
+        // 38 characters would overflow the dismissed-version column.
+        $this->clock->advanceTo(new DateTimeImmutable('2026-10-24 10:00:00'));
+        $long = $this->service($this->release('v1.9.0-alpha.beta.gamma.delta.epsilon'));
+
+        self::assertSame(CheckNowResult::Failed, $long->check());
+        self::assertSame('1.8.0', $long->status()->latestVersion, 'Not stored; the last good result is kept.');
+    }
+
+    public function testOnlyGithubReleasePagesAreLinked(): void
+    {
+        $good = $this->service($this->release('v1.8.0'));
+        $good->check();
+        self::assertSame(
+            'https://github.com/gwpreston16/Renovo/releases/tag/v1.8.0',
+            $good->status()->releaseUrl,
+        );
+
+        foreach (
+            [
+                'https://github.com.evil.example/gwpreston16/Renovo/releases/tag/v1.8.0',
+                'http://github.com/gwpreston16/Renovo/releases/tag/v1.8.0',
+                'https://github.com@evil.example/x y',
+            ] as $url
+        ) {
+            $service = $this->service($this->release('v1.8.0', ['html_url' => $url]));
+            $service->check();
+
+            self::assertNull($service->status()->releaseUrl, $url);
+        }
+    }
+
     public function testAReleasePageOffGitHubIsNotLinked(): void
     {
         $service = $this->service($this->release('v1.8.0', ['html_url' => 'https://evil.example/releases/v1.8.0']));

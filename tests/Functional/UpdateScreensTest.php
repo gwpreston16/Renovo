@@ -222,6 +222,20 @@ final class UpdateScreensTest extends DatabaseTestCase
         self::assertStringNotContainsString('update-banner', $this->body($this->request('GET', '/')));
     }
 
+    public function testBannerShowsWithoutALinkedPage(): void
+    {
+        $this->instance->setUpdateCheckEnabled(true);
+        $this->instance->recordLatestRelease(self::NEWER, 'http://github.com/x', null, new DateTimeImmutable());
+        $this->signIn($this->adminId);
+
+        $page = $this->body($this->request('GET', '/'));
+
+        self::assertStringContainsString('Renovo 9.9.0 is available.', $page);
+        self::assertStringContainsString('id="update-banner"', $page);
+        self::assertStringNotContainsString('github.com/x', $page);
+        self::assertStringNotContainsString('target="_blank"', $page);
+    }
+
     public function testNoBannerWhenTheBannerIsOff(): void
     {
         $this->instance->setUpdateCheckEnabled(true);
