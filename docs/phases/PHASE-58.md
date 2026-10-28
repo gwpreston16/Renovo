@@ -139,9 +139,9 @@ None.
 - [x] K134: a new category's "Automatic colour" starts ticked
 - [x] K103: the update check's four guards are tested
 - [x] K104: the update check's console and container wiring are tested
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 58 row marked ✅ done
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 58 row marked ✅ done
 - [ ] composer check, coverage and the API doc tests green
 
 ## Definition of done

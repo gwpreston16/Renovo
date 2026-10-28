@@ -481,10 +481,8 @@ final class SettingsPageTest extends DatabaseTestCase
         $this->signIn($this->ownerId);
         $box = static function (string $html): string {
             $page = (string) preg_replace('/\s+/', ' ', $html);
-            self::assertSame(
-                1,
-                preg_match('~action="/categories" class="setting-add".*?(<input type="checkbox" name="colour_auto"[^>]*>)~', $page, $found),
-            );
+            $add = '~action="/categories" class="setting-add".*?(<input type="checkbox" name="colour_auto"[^>]*>)~';
+            self::assertSame(1, preg_match($add, $page, $found));
 
             return $found[1];
         };
