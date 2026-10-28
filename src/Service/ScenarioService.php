@@ -335,7 +335,14 @@ final class ScenarioService
             ? $subscription->cycleIntervalAfterConversion()
             : $subscription->cycleInterval;
 
-        return $change->cycle !== $this->cycleOf($subscription) || $interval !== 1;
+        if ($change->cycle !== $this->cycleOf($subscription) || $interval !== 1) {
+            return true;
+        }
+
+        // Every 30 days to every 14 keeps the unit and changes the cycle.
+        $days = $subscription->isTrial ? $subscription->cycleDaysAfterConversion() : $subscription->cycleDays;
+
+        return $change->cycle === BillingCycle::CustomDays && $change->cycleDays !== $days;
     }
 
     /**

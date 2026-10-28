@@ -133,7 +133,7 @@ None.
 
 ## Status
 
-- [ ] K37: a custom cycle change in a scenario opens the edit form
+- [x] K37: a custom cycle change in a scenario opens the edit form
 - [ ] K74: a Contributor gets the fence's 404 before the ledger's 422
 - [ ] K26: the dummy password check matches the live hasher's cost
 - [ ] K134: a new category's "Automatic colour" starts ticked
