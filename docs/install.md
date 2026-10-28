@@ -223,6 +223,14 @@ vendor/bin/phinx migrate      # create the schema
 php -S localhost:9090 -t public
 ```
 
+Renovo runs in **UTC** whatever PHP's `date.timezone` is set to: the web
+front controller, `bin/console` and the migrations each set the zone to UTC
+before anything reads a date, so there is nothing to configure, and changing
+`date.timezone` changes nothing. Before Phase 64 an install
+without Docker had to set `date.timezone = UTC` itself; see
+[Upgrading](upgrading.md#after-upgrading-to-the-utc-pin-phase-64) if yours did
+not.
+
 The asset build is not optional: every page resolves its stylesheet through the
 manifest that build writes, so without it you get a clear error naming the
 command above rather than an unstyled page.

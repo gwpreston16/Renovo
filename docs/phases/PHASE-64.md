@@ -92,8 +92,8 @@ None, unless the owner picks the migration above.
 
 - [x] A: the zone pinned at the bootstrap
 - [x] B: guard test for entry points
-- [ ] C: `docs/install.md` and upgrading note
-- [ ] D: decision on existing rows applied
+- [x] C: `docs/install.md` and upgrading note
+- [x] D: decision on existing rows applied
 - [ ] `KNOWN_WRONG` in `TimeZoneSweepTest` emptied; every case passes in all
       three zones, on both engines
 - [ ] K68 marked *Fixed (Phase 64)*

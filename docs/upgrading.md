@@ -295,3 +295,40 @@ database; the repair stops it happening again. Rolling the migration back does
 nothing, because putting the auto-update back would only put the fault back.
 If a table must be repaired by hand, `SHOW CREATE TABLE <table>` names the
 columns that say `ON UPDATE`.
+
+## After upgrading to the UTC pin (Phase 64)
+
+This only matters on an install **without Docker** whose PHP `date.timezone`
+was not UTC. (The Docker image has always run in UTC, and there is nothing to
+do.) Renovo now runs in UTC whatever `date.timezone` says, which fixes dates
+read a day out: a forecast that left out a price change on its last day, a
+change dated today that had not started, a contract ending today shown as
+ended, the current session missing from the session list.
+
+Nothing to run, and no migration. One thing moves: `created_at` and
+`updated_at` on rows written before the upgrade were stamped in the old local
+zone, and are now read as UTC, so they show up out by that zone's offset (seven
+or eight hours for Los Angeles). They are bookkeeping times; no amount, due
+date, reminder or expiry depends on them. Leaving them is fine. To correct
+them, **back up your database first**, then for each table below run, with
+your old zone in place of `America/Los_Angeles`:
+
+```sql
+-- PostgreSQL
+UPDATE subscriptions SET created_at = (created_at AT TIME ZONE 'America/Los_Angeles') AT TIME ZONE 'UTC',
+                         updated_at = (updated_at AT TIME ZONE 'America/Los_Angeles') AT TIME ZONE 'UTC';
+-- MySQL / MariaDB (named zones need the server's time zone tables loaded;
+-- otherwise use offsets, such as '-07:00', '+00:00')
+UPDATE subscriptions SET created_at = CONVERT_TZ(created_at, 'America/Los_Angeles', '+00:00'),
+                         updated_at = CONVERT_TZ(updated_at, 'America/Los_Angeles', '+00:00');
+```
+
+The tables are `budget_alert_state`, `budgets`, `categories`,
+`household_memberships`, `households`, `instance_settings`, `payment_methods`,
+`subscription_splits`, `subscriptions`, `tags`, `users`, and
+`subscription_price_history` (`created_at` only). Run it **once**: a second run
+shifts the rows again. Leave `subscription_charges` alone: charges the
+scheduler recorded were already stamped in UTC, and they cannot be told apart
+from the ones recorded by hand. Rows written after the upgrade are UTC and must
+not be shifted, so run it before anyone uses the upgraded instance, or not at
+all.
