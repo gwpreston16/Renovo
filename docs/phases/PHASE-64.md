@@ -1,8 +1,5 @@
 # Phase 64 — Pin PHP's time zone to UTC (K68)
 
-*Draft. Written by Phase 63 from its measurements; the shape below is a
-recommendation for the owner to confirm before it is built.*
-
 This phase fixes K68 from [the known-issues log](known-issues.md). On an install
 whose PHP `date.timezone` is not UTC, a date read from the database is parsed
 in that zone while the application's clock is UTC, so the two are not the same
@@ -68,7 +65,17 @@ install that was running in another zone they move by the zone's offset.
   zone's offset. Document it in `docs/upgrading.md` with the one-line SQL an
   operator can run. *Alternative:* a migration that shifts them, which needs
   the operator's old zone as a setting and cannot be undone safely.
+  *Confirmed 2026-10-28:* leave them, with the upgrading note. Checked on
+  starting: the clockless writes set only `created_at` and `updated_at` (and
+  the session table, whose rows expire); no reminder, lock or expiry column.
 - **Per-user or per-household zones** stay out; they are a product feature.
+  *Confirmed 2026-10-28.*
+- **How the sweep proves the pin** (found while starting it). `TimeZoneSweepTest`
+  sets PHP's zone *after* start-up, so a pin at the bootstrap could never turn
+  its marks red. Each case instead sets the zone PHP starts in (as
+  `date.timezone` would) and then runs the same pin the entry points run, one
+  function in `src/Support`; a subprocess test checks the real entry points
+  under `php -d date.timezone=…`. *Confirmed 2026-10-28* (no behaviour change).
 
 ## Data-model changes
 
