@@ -116,6 +116,12 @@ services:
       - app
     ports:
       - "${APP_PORT:-9090}:80"
+    # The reverse proxies in front of this container, whose X-Forwarded-For
+    # nginx believes (comma-separated addresses or CIDR ranges). Empty trusts
+    # none, so every request comes from the proxy; see docs/install.md,
+    # "Behind a reverse proxy".
+    environment:
+      WEB_TRUSTED_PROXIES: ${WEB_TRUSTED_PROXIES:-}
     volumes:
       - logos:/var/www/html/public/assets/logos:ro
     # Readiness, not liveness: this container is only useful once the thing

@@ -190,6 +190,31 @@ final class NotificationLogRepository extends AbstractRepository
         return $taken === 1 ? $id : null;
     }
 
+    /**
+     * Whether an occurrence has a ledger row on any channel that is not
+     * `sent`: an attempt was made and did not land, so it is worth raising
+     * again. No row at all means nothing was attempted (the member had the
+     * alert switched off, say), which is not a failure to retry.
+     */
+    public function hasUndelivered(int $userId, string $subjectType, int $subjectId, string $occurrenceKey): bool
+    {
+        return (int) $this->db->fetchValue(
+            'SELECT COUNT(*) FROM ' . $this->quote($this->table())
+            . ' WHERE ' . $this->quote('user_id') . ' = :user'
+            . ' AND ' . $this->quote('subject_type') . ' = :subject_type'
+            . ' AND ' . $this->quote('subject_id') . ' = :subject_id'
+            . ' AND ' . $this->quote('occurrence_key') . ' = :occurrence'
+            . ' AND ' . $this->quote('status') . ' <> :sent',
+            [
+                'user' => $userId,
+                'subject_type' => $subjectType,
+                'subject_id' => $subjectId,
+                'occurrence' => mb_substr($occurrenceKey, 0, 64),
+                'sent' => self::STATUS_SENT,
+            ],
+        ) > 0;
+    }
+
     public function markSent(int $id): void
     {
         $now = $this->clock->now()->format('Y-m-d H:i:s');

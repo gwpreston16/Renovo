@@ -10,6 +10,7 @@ use App\Domain\Entity\Subscription;
 use App\Domain\Money;
 use App\Notification\Alert;
 use App\Repository\BudgetAlertStateRepository;
+use App\Repository\NotificationLogRepository;
 use App\Security\Scope;
 use App\Service\BudgetService;
 use App\Service\SubscriptionService;
@@ -40,6 +41,15 @@ use DateTimeImmutable;
  */
 final class AlertScanner
 {
+    /**
+     * How long after a crossing its alert is still raised each run, so one
+     * that failed to send is retried (the ledger bounds the attempts). Kept
+     * shorter than the ledger's retention: `maintenance:prune` clamps its
+     * cutoff to stay past it, so a pruned row can never be claimed again by
+     * the same crossing.
+     */
+    public const BREACH_RETRY_WINDOW_DAYS = 7;
+
     public function __construct(
         private readonly SubscriptionService $subscriptions,
         private readonly BudgetService $budgets,
@@ -47,6 +57,7 @@ final class AlertScanner
         private readonly MoneyFormatter $money,
         private readonly Translator $translator,
         private readonly Clock $clock,
+        private readonly NotificationLogRepository $log,
         private readonly string $appUrl = '',
     ) {
     }
@@ -133,9 +144,11 @@ final class AlertScanner
      * The state machine, and the three cases that matter:
      *
      *  - **Over, and was not.** Alert, and record the breach.
-     *  - **Over, and was already.** Silence. This is what "at most one alert
-     *    per crossing" means in a model with no calendar period to reset on:
-     *    the budget stays over for weeks, and says so once.
+     *  - **Over, and was already.** An alert that was attempted and did not
+     *    land is raised again while the crossing is younger than the retry
+     *    window, and the ledger caps the retries. A sent one stays sent. After that,
+     *    silence: "at most one alert per crossing" in a model with no calendar
+     *    period to reset on, so a budget that stays over for months says so once.
      *  - **Under, and was over.** Re-arm silently, so the next crossing is
      *    announced.
      *
@@ -188,7 +201,7 @@ final class AlertScanner
 
             if ($isBreached === $wasBreached) {
                 // Still the same side of the line. Keep the figure current so
-                // the settings page can show it, but say nothing.
+                // the settings page can show it.
                 $this->budgetState->save(
                     $scope,
                     $budget->id,
@@ -197,6 +210,25 @@ final class AlertScanner
                     $projected->amountMinor,
                     null,
                 );
+
+                // A breach whose alert did not land is raised again while the
+                // crossing is young. The ledger makes the retry (and caps it);
+                // the saved state, written before dispatch, cannot say whether
+                // the owner was told. One with no attempt on record is left
+                // alone: the alert was switched off, and turning it back on
+                // must not announce the crossing as though it were new.
+                $crossedAt = $state['last_alert_at'] ?? null;
+                if (
+                    $isBreached && $crossedAt !== null && $this->withinRetryWindow($crossedAt, $now)
+                    && $this->log->hasUndelivered(
+                        $scope->userId,
+                        Alert::SUBJECT_BUDGET,
+                        $budget->id,
+                        $crossedAt->format('Y-m-d'),
+                    )
+                ) {
+                    $alerts[] = $this->budgetAlert($budget, $projected, $progress['limit'], $crossedAt);
+                }
 
                 continue;
             }
@@ -243,6 +275,7 @@ final class AlertScanner
         if (
             $state === null || !$state['is_breached'] || $state['last_alert_at'] === null
             || $state['projected_minor'] === null
+            || !$this->withinRetryWindow($state['last_alert_at'], $this->clock->now())
         ) {
             return null;
         }
@@ -253,6 +286,16 @@ final class AlertScanner
             $progress['limit'],
             $state['last_alert_at'],
         );
+    }
+
+    /**
+     * Whether a crossing is young enough to keep raising. Past the window a
+     * ledger row may already have been pruned, and raising it again would
+     * announce a long breach a second time.
+     */
+    private function withinRetryWindow(DateTimeImmutable $crossedAt, DateTimeImmutable $now): bool
+    {
+        return $crossedAt > $now->modify('-' . self::BREACH_RETRY_WINDOW_DAYS . ' days');
     }
 
     private function budgetAlert(

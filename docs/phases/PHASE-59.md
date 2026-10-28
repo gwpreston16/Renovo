@@ -120,12 +120,12 @@ None.
 
 - [x] K13: a live claim is refused, a stale one is taken over
 - [x] K14: an empty routing grid mutes and stays muted
-- [ ] K15: a failed breach alert is retried, a long breach is announced once
-- [ ] K7: the bundled nginx finds the real client address, documented
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 59 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K15: a failed breach alert is retried, a long breach is announced once
+- [x] K7: the bundled nginx finds the real client address, documented
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 59 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

@@ -127,6 +127,61 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml \
 # Or just: ./bin/dev-setup.sh --mysql
 ```
 
+### Behind a reverse proxy
+
+`SESSION_COOKIE_SECURE` defaults to true and the bundled `web` container serves
+plain HTTP on `:80`, so an https install puts a TLS proxy (Caddy, nginx,
+Traefik…) in front of it. Left as it is, every request then reaches Renovo from
+the proxy's address: the per-IP sign-in limit (`AUTH_MAX_ATTEMPTS_PER_IP`, 20
+failures in 15 minutes) is shared by everyone, so one person's typos can lock
+every user out of password and passkey sign-in, and every audit-log entry
+records the proxy as the address.
+
+Tell the `web` container which proxies to believe. In `.env`, list their
+addresses or CIDR ranges, comma-separated:
+
+```bash
+# The proxy's address as the web container sees it: its Docker network
+# (`docker network inspect <project>_default`) or the host's address.
+WEB_TRUSTED_PROXIES=172.18.0.0/16
+```
+
+nginx then takes the client's address from `X-Forwarded-For`, but only when the
+request came from a listed proxy, and hands it to Renovo. The list is written
+into nginx's configuration each time the container starts, so nothing needs
+editing; an entry that is not an address or a range stops the container with a
+message. Left empty (the default), no forwarded address is trusted, which is
+right when nothing sits in front of the container, and wrong when something
+does: an install that leaves it empty behind a proxy sees the proxy's address
+and shares one sign-in limit.
+
+The proxy has to send `X-Forwarded-For`. Caddy and Traefik do by default and
+replace anything a client sent; with nginx, set it as below.
+
+```
+# Caddy
+renovo.example.com {
+    reverse_proxy web:80
+}
+
+# nginx
+location / {
+    proxy_pass http://web:80;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+
+# Traefik (labels on the web service): routes by Host, forwards X-Forwarded-For
+# on its own. Add the proxy's network to WEB_TRUSTED_PROXIES.
+- traefik.http.routers.renovo.rule=Host(`renovo.example.com`)
+- traefik.http.services.renovo.loadbalancer.server.port=80
+```
+
+Security headers are a separate matter: see
+[Behind your own reverse proxy](security.md#behind-your-own-reverse-proxy).
+Without the bundled nginx (the PHP-FPM image behind your own web server), use
+that server's own real-IP setting; Renovo reads `REMOTE_ADDR` and nothing else.
+
 ### Building an edge image
 
 An image built from a commit rather than a release shows the commit's short id

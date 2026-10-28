@@ -208,6 +208,7 @@ abstract class NotificationTestCase extends DatabaseTestCase
             new MoneyFormatter(new LocaleContext('en_GB')),
             TestTranslator::create(),
             $this->clock,
+            $this->log,
             'https://renovo.example',
         );
 

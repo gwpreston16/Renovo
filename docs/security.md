@@ -90,9 +90,9 @@ the reset may well have been prompted by somebody else having one.
   and per IP, so neither brute-forcing one account from many addresses nor
   spraying many accounts from one address gets far. The second factor has its own
   budget rather than sharing the password's. The IP is the connection's
-  (`REMOTE_ADDR`): behind a reverse proxy that does not pass the client's address
-  on, every client shares the proxy's, and one client's failures lock out the
-  rest. The API's limits below work from the same address.
+  (`REMOTE_ADDR`): behind a reverse proxy every client shares the proxy's, and one
+  client's failures lock out the rest, unless the bundled web container is told
+  which proxies to trust ([Behind a reverse proxy](install.md#behind-a-reverse-proxy)). The API's limits below work from the same address.
 - A user who has proved their password but not their second factor is **not
   signed in**: the pending state lives under its own session key and expires, so
   no authenticated route can mistake it for a session.

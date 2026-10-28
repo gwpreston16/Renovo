@@ -159,9 +159,12 @@ switch ($command) {
         // a re-send, and an occurrence key in the past can never come round
         // again. Pruning it keeps the table from growing without limit on an
         // instance that has been running for years.
+        // Never closer than the breach retry window: a row pruned inside it
+        // could be claimed again by the crossing that made it.
         $retention = (int) $container->get('settings')['notifications']['log_retention_days'];
+        $retention = max($retention, \App\Service\Notification\AlertScanner::BREACH_RETRY_WINDOW_DAYS + 1);
         $notifications = $container->get(NotificationLogRepository::class)
-            ->purgeOlderThan($clock->now()->modify(sprintf('-%d days', max(1, $retention))));
+            ->purgeOlderThan($clock->now()->modify(sprintf('-%d days', $retention)));
 
         // The audit log is evidence with a shelf life. Kept far longer than the
         // notification ledger — an operator is asked "who changed this?" months

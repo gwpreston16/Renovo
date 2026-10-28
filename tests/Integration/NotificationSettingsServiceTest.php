@@ -20,7 +20,10 @@ final class NotificationSettingsServiceTest extends NotificationTestCase
 
         self::assertSame([], $this->notificationSettings->channelsFor($this->alice, AlertType::Renewal));
         // The grid reads back unticked, but saved: a muted channel is present, with no types.
-        self::assertEqualsCanonicalizing([$phone => [], $desktop => []], $this->notificationSettings->routes($this->alice));
+        self::assertEqualsCanonicalizing(
+            [$phone => [], $desktop => []],
+            $this->notificationSettings->routes($this->alice),
+        );
     }
 
     public function testDeletingARoutedChannelKeepsAMutedOneMuted(): void
