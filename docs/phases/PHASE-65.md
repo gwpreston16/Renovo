@@ -83,7 +83,8 @@ is to an existing migration's SQL, not a new one.
 
 - **K32:** makes the columns do what the code and the WebAuthn specification
   assume (opaque case-sensitive ids). `ascii_bin` rather than `utf8mb4_bin`
-  because the values are base64url.
+  because the values are base64url. *Confirmed 2026-10-28.* `down()` puts back
+  `utf8mb4` with the table's default collation, which is what the columns had.
 - **K122 — Decided 2026-10-28:** exact match in SQL. Not chosen: matching
   case-insensitively in the app (changes what counts as the feed token); fixing
   the query only (leaves the migration disagreeing).
@@ -94,9 +95,15 @@ is to an existing migration's SQL, not a new one.
 - **Release — Decided 2026-10-28:** its own patch release once merged, the next
   patch after whichever earlier phase ships first, with a back-up-first note for
   the migration.
-- **Assumption:** `BINARY` on the name comparison is portable enough for both
-  engines through the repository's query layer; where it is not, the platform
-  class provides the expression.
+- **Assumption — settled by the code 2026-10-28:** `BINARY` is not portable:
+  PostgreSQL has no such operator, and its `=` is already exact. So `Platform`
+  provides the exact-match expression (`BINARY` on MySQL, plain `=` on
+  PostgreSQL), and the migration picks it by adapter type.
+- **K87, scenario results — Changed 2026-10-28 (found while starting it):** the
+  forecast's scenario results (`templates/forecast/_scenario_results.twig`,
+  `ScenarioService`) draw per-currency subtotals under one flag too, so they
+  take the same shared rule. The owner chose to include them rather than log a
+  new row.
 
 ## Status
 
