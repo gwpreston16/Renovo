@@ -22,7 +22,7 @@ Nothing to build.
   `ApiTokenRepository::countLiveWithoutExpiry()` and
   `migrations/20270701000002_backfill_api_token_scopes.php`.
 - The "≈" rule (`StatsService::includesEstimate()`, `::chargesIncludeEstimate()`),
-  the `estimate` key the producers return, and the three Twig macros that draw it:
+  `EstimateMarks` (which replaces `StatsService::includesEstimate()`), the `estimate` key the producers return, and the three Twig macros that draw it:
   `templates/partials/spend.twig`, `templates/dashboard/_charge_total.twig` and
   `templates/calendar/_figures.twig`.
 - `MySqlPlatform` and the migration tests' engine switch.
@@ -110,11 +110,11 @@ is to an existing migration's SQL, not a new one.
 - [x] K32: passkey ids and handles compared case-sensitively on MySQL
 - [x] K122: the feed token's name matched exactly in SQL
 - [x] K87: per-currency "≈", one shared rule
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] `docs/upgrading.md` updated (K32 migration, K122 note)
-- [ ] ROADMAP: Phase 65 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green, on PostgreSQL and MySQL
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] `docs/upgrading.md` updated (K32 migration, K122 note)
+- [x] ROADMAP: Phase 65 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green, on PostgreSQL and MySQL
 
 ## Definition of done
 
@@ -125,14 +125,28 @@ every catalogue in `translations/`. Then mark it ✅ in `ROADMAP.md`.
 
 ## Tests
 
-- **K32:** `WebAuthnCredentialRepositoryTest::testIdsDifferingOnlyByCaseAreDistinct`,
-  `UserRepositoryTest::testHandlesDifferingOnlyByCaseAreDistinct` and
-  `WebauthnCollationMigrationTest::testUpAndDownRoundTrip` (MySQL; skipped on
-  PostgreSQL).
-- **K122:** `ApiTokenRepositoryTest::testACaseVariantOfTheFeedNameIsAnOrdinaryToken`
-  and `BackfillApiTokenScopesMigrationTest::testACaseVariantKeepsFullRead` (both
-  engines).
+As built (the names the draft gave were placeholders; these are the classes
+the tests went into):
+
+- **K32:** `PasskeyIdCaseTest::testIdsDifferingOnlyByCaseAreDistinct` and
+  `::testHandlesDifferingOnlyByCaseAreDistinct` (both engines), and
+  `WebauthnCollationMigrationTest::testUpAndDownRoundTrip` and
+  `::testItKeepsWhatIsStored` (MySQL; skipped on PostgreSQL), with
+  `::testItIsANoOpOnPostgres`.
+- **K122:** `ApiTokenMaxLifetimeTest::testACaseVariantOfTheFeedNameIsAnOrdinaryToken`,
+  `ApiTokenScopeBackfillTest::testACaseVariantKeepsFullRead` and
+  `::testRollingBackRevokesACaseVariantCalendarToken` (both engines), and
+  `MySqlPlatformTest::testExactEqualsComparesBytes` for the two engines'
+  expressions.
 - **K87:** `SpendFiguresTest::testOnlyTheVaryingCurrencyIsMarked`,
-  `::testTheCombinedFigureIsMarkedWhenAnyRowVaries` and
-  `::testFixedRowsOnlyAreNotMarked`; screen tests for the dashboard, calendar
-  and subscription strip with a varying £ row beside a fixed € row.
+  `::testTheCombinedFigureIsMarkedWhenAnyRowVaries`,
+  `::testFixedRowsOnlyAreNotMarked`,
+  `::testWithoutARateOnlyTheVaryingSubtotalIsMarked`; screen tests with a
+  varying £ row beside a fixed € row for the dashboard
+  (`DashboardTest::testOnlyTheVaryingCurrencyIsMarkedInTheTotals`), the
+  calendar (`CalendarPageTest::testOnlyTheVaryingCurrencyIsMarked`), the
+  subscription strip and list summary
+  (`SubscriptionsScreenTest::testOnlyTheVaryingCurrencyIsMarkedInTheStrip`),
+  the forecast headlines
+  (`ForecastScreenTest::testOnlyTheVaryingCurrencyIsMarkedInTheHeadlines`) and
+  the scenario results (`ScenarioServiceTest::testOnlyTheVaryingCurrencyIsMarked`).

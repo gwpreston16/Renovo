@@ -216,19 +216,9 @@ final class StatsService
     }
 
     /**
-     * Whether a running recurring row whose amount varies is among these: its
-     * price is an estimate, so a total that includes it is drawn "≈". A total
-     * of fixed rows only is not.
-     *
-     * @param iterable<Subscription> $subscriptions
-     */
-    public static function includesEstimate(iterable $subscriptions): bool
-    {
-        return EstimateMarks::ofSubscriptions($subscriptions) !== [];
-    }
-
-    /**
-     * Whether any of these forecast charges is a varying bill's: an estimate.
+     * Whether any of these forecast charges is a varying bill's: an estimate,
+     * for a figure drawn as one amount (a month's bar). A per-currency figure
+     * carries `EstimateMarks::keys()` instead.
      *
      * @param list<array{subscription: Subscription, amount: \App\Domain\Money}> $charges
      */
