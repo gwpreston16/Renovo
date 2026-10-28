@@ -70,7 +70,7 @@ can be moved.
 | 59 | [Notification delivery and proxy client addresses, from the known-issues log](docs/phases/PHASE-59.md) | — | None | ✅ done |
 | 60 | [Sign-in, household and calendar edges, from the known-issues log](docs/phases/PHASE-60.md) | — | None | ✅ done |
 | 61 | [Scheduler cadence and restore-rehearsal test, from the known-issues log](docs/phases/PHASE-61.md) | — | None | ✅ done |
-| 62 | [MySQL/MariaDB timestamp columns that rewrite themselves, from the known-issues log](docs/phases/PHASE-62.md) | — | None | 📋 planned |
+| 62 | [MySQL/MariaDB timestamp columns that rewrite themselves, from the known-issues log](docs/phases/PHASE-62.md) | — | None | 🚧 in progress |
 | 63 | [Measure the PHP time zone problem (K68), then plan its fix](docs/phases/PHASE-63.md) | — | None | 📋 planned |
 | 65 | [MySQL case rules and per-currency estimate marks, from the known-issues log](docs/phases/PHASE-65.md) | — | None | 📋 planned |
 
