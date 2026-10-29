@@ -723,6 +723,16 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   API changes, so the contract stays 1.9.5. One migration (passkey id and
   handle columns to `ascii_bin`; MySQL only). See
   [Upgrading](upgrading.md#after-upgrading-to-exact-passkey-and-feed-token-matching-phase-65).
+- **Phase 66 — API input edge cases, from the known-issues log — complete
+  (1.27.1).** The API now refuses input it used to misread: a wrongly typed id,
+  interval or notice amount, a category colour or name or a charge note sent as
+  a list or `true`, an unknown `subscription_type`, an unknown
+  `notice_period_unit`, and an impossible attachment `period_date` are each a
+  422 on that field and change nothing, where they used to clear a value, move
+  a subscription to another owner, fail with a 500 or store a different date.
+  This release also carries the K145 security fix: a trusted address range no
+  longer vouches for the rest of a name's answer. OpenAPI 1.9.6, behaviour
+  only. No migrations. See [Trusted hosts](operations.md#trusted-hosts).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
