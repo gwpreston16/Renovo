@@ -294,6 +294,32 @@ final class SubscriptionsScreenTest extends DatabaseTestCase
         self::assertStringContainsString($money->formatMinor($combined, 'GBP'), $strip);
     }
 
+    /**
+     * K87: Streaming's amount varies, the €10 row's does not. The strip's
+     * combined figure and its £ subtotal are drawn "≈"; the € one is exact.
+     * The list summary, a combined figure, is marked too.
+     */
+    public function testOnlyTheVaryingCurrencyIsMarkedInTheStrip(): void
+    {
+        $this->db->execute(
+            'UPDATE subscriptions SET amount_varies = TRUE WHERE id = :id',
+            ['id' => $this->streamingId],
+        );
+        $money = $this->container()->get(MoneyFormatter::class);
+
+        $page = $this->body($this->get('/subscriptions', $this->ownerId));
+        $strip = html_entity_decode($this->section($page, 'subscription-strip'));
+
+        self::assertMatchesRegularExpression('/≈ £[\d.,]+\s*<span class="stat-unit/u', $strip);
+        self::assertStringContainsString($money->formatMinor(1000, 'EUR'), $strip);
+        self::assertStringNotContainsString('≈ €', $strip);
+        self::assertMatchesRegularExpression('/· ≈ £[\d.,]+/u', (string) preg_replace('/\s+/u', ' ', $strip));
+        self::assertMatchesRegularExpression(
+            '/≈ £[\d.,]+\/mo/u',
+            html_entity_decode($this->section($page, 'list-summary')),
+        );
+    }
+
     public function testPerMonthLeavesOutOneOffLifetimePausedAndCancelledRows(): void
     {
         $container = $this->container();
@@ -521,6 +547,35 @@ final class SubscriptionsScreenTest extends DatabaseTestCase
         self::assertStringContainsString('No exchange rate for XOF', $this->rowOf($page, 'Unconvertible'));
         // And the summary names the currency rather than blending it away.
         self::assertStringContainsString('XOF', $this->section($page, 'list-summary'));
+    }
+
+    /**
+     * K87, the list summary with no rate for one currency: each subtotal is
+     * shown, and only the one holding a varying bill is drawn "≈".
+     */
+    public function testWithoutARateOnlyTheVaryingSubtotalIsMarkedInTheSummary(): void
+    {
+        (new SubscriptionRepository($this->db))->create($this->scopeFor($this->ownerId), [
+            'name' => 'Unconvertible',
+            'price_minor' => 5000,
+            'currency' => 'XOF',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => (new DateTimeImmutable('+30 days'))->format('Y-m-d'),
+            'is_active' => true,
+        ], []);
+        $this->db->execute(
+            'UPDATE subscriptions SET amount_varies = TRUE WHERE id = :id',
+            ['id' => $this->streamingId],
+        );
+
+        $page = $this->body($this->get('/subscriptions', $this->ownerId));
+        $summary = (string) preg_replace('/\s+/u', ' ', html_entity_decode($this->section($page, 'list-summary')));
+
+        self::assertMatchesRegularExpression('/≈ £[\d.,]+\/mo/u', $summary);
+        self::assertMatchesRegularExpression('/(?<!≈ )€10\.00\/mo/u', $summary);
+        self::assertStringNotContainsString('≈ €', $summary);
+        self::assertStringNotContainsString('≈ XOF', $summary);
     }
 
     public function testTheSplitIsDescribedBesideWhoPays(): void

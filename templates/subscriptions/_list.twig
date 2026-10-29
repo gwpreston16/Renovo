@@ -264,22 +264,23 @@
     <p class="list-summary" id="list-summary">
         <span class="num">{{ t('subscriptions_list.summary', {'matched': summary.matched, 'of': summary.of}) }}</span>
         {% set figures = summary.per_month %}
-        {% set estimate = figures.estimate|default(false) %}
+        {# Inside a `per_month` string, so the rule is asked directly rather
+           through `partials/estimate.twig`, whose output is already escaped. #}
         {% if figures.totals is not empty %}
             <span aria-hidden="true">·</span>
             {% if figures.totals|length == 1 %}
                 <span class="num">{{ t('subscriptions_list.per_month', {
-                    'amount': (estimate ? t('subscriptions_list.approximately', {'amount': figures.totals[0].amount_minor|money(figures.totals[0].currency)}) : figures.totals[0].amount_minor|money(figures.totals[0].currency)),
+                    'amount': (estimate_mark(figures, figures.totals[0].currency) ? t('subscriptions_list.approximately', {'amount': figures.totals[0].amount_minor|money(figures.totals[0].currency)}) : figures.totals[0].amount_minor|money(figures.totals[0].currency)),
                 }) }}</span>
             {% elseif figures.combined.amount_minor is not null %}
                 <span class="num">{{ t('subscriptions_list.per_month', {
-                    'amount': (estimate ? t('subscriptions_list.approximately', {'amount': figures.combined.amount_minor|money(figures.combined.currency)}) : figures.combined.amount_minor|money(figures.combined.currency)),
+                    'amount': (estimate_mark(figures) ? t('subscriptions_list.approximately', {'amount': figures.combined.amount_minor|money(figures.combined.currency)}) : figures.combined.amount_minor|money(figures.combined.currency)),
                 }) }}</span>
             {% else %}
                 {# No rate for one of them, so there is no total — only the subtotals. #}
                 <span class="num">
                     {%- for total in figures.totals -%}
-                        {{ t('subscriptions_list.per_month', {'amount': (estimate ? t('subscriptions_list.approximately', {'amount': total.amount_minor|money(total.currency)}) : total.amount_minor|money(total.currency))}) }}
+                        {{ t('subscriptions_list.per_month', {'amount': (estimate_mark(figures, total.currency) ? t('subscriptions_list.approximately', {'amount': total.amount_minor|money(total.currency)}) : total.amount_minor|money(total.currency))}) }}
                         {{- not loop.last ? ' · ' : '' -}}
                     {%- endfor -%}
                 </span>

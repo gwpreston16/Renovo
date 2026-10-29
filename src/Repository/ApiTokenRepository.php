@@ -179,7 +179,7 @@ final class ApiTokenRepository extends AbstractRepository
             'SELECT COUNT(*) FROM ' . $this->quote('api_tokens')
             . ' WHERE ' . $this->quote('revoked_at') . ' IS NULL'
             . ' AND ' . $this->quote('expires_at') . ' IS NULL'
-            . ' AND NOT (' . $this->quote('name') . ' = :feed'
+            . ' AND NOT (' . $this->db->platform()->exactEquals($this->quote('name'), ':feed')
             . ' AND ' . $this->quote('scopes') . ' = :calendar)',
             ['feed' => $feedTokenName, 'calendar' => TokenScopes::calendarOnly()->toString()],
         );

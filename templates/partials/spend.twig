@@ -12,34 +12,35 @@
     rule is the same on both screens, so it is written once: two copies of it
     would eventually be two rules.
 
-    `figures.estimate`, when set, says a bill whose amount varies is in the
-    figure: its amount is an estimate, so every number here is drawn "≈".
+    `figures.estimate_currencies` names the currencies that hold a bill whose
+    amount varies: their subtotals, and the combined figure, are drawn "≈"
+    (`partials/estimate.twig`). A currency of fixed rows only is not.
 #}
 {% macro spend(figures, unit) %}
-    {% set estimate = figures.estimate|default(false) %}
+    {% import 'partials/estimate.twig' as estimate %}
     {% if figures.totals is empty %}
         <p class="stat-value num">{{ t('common.none_symbol') }}</p>
         <p class="muted">{{ t('dashboard.recurring_empty') }}</p>
     {% elseif figures.totals|length == 1 %}
         <p class="stat-value num">
-            {{ estimate ? t('subscriptions_list.approximately', {'amount': figures.totals[0].amount_minor|money(figures.totals[0].currency)}) : figures.totals[0].amount_minor|money(figures.totals[0].currency) }}
+            {{ estimate.mark(figures, figures.totals[0].amount_minor|money(figures.totals[0].currency), figures.totals[0].currency) }}
             <span class="stat-unit num">{{ unit }}</span>
         </p>
     {% elseif figures.combined.amount_minor is not null %}
         <p class="stat-value num">
-            {{ estimate ? t('subscriptions_list.approximately', {'amount': figures.combined.amount_minor|money(figures.combined.currency)}) : figures.combined.amount_minor|money(figures.combined.currency) }}
+            {{ estimate.mark(figures, figures.combined.amount_minor|money(figures.combined.currency)) }}
             <span class="stat-unit num">{{ unit }}</span>
         </p>
         <p class="muted">
             {% for total in figures.totals %}
-                {{ estimate ? t('subscriptions_list.approximately', {'amount': total.amount_minor|money(total.currency)}) : total.amount_minor|money(total.currency) }}{{ not loop.last ? ' · ' : '' }}
+                {{ estimate.mark(figures, total.amount_minor|money(total.currency), total.currency) }}{{ not loop.last ? ' · ' : '' }}
             {% endfor %}
         </p>
     {% else %}
         {# No rate for one of them, so there is no total — only the subtotals. #}
         <ul class="plain stat-lines">
             {% for total in figures.totals %}
-                <li class="stat-value stat-line num">{{ estimate ? t('subscriptions_list.approximately', {'amount': total.amount_minor|money(total.currency)}) : total.amount_minor|money(total.currency) }}</li>
+                <li class="stat-value stat-line num">{{ estimate.mark(figures, total.amount_minor|money(total.currency), total.currency) }}</li>
             {% endfor %}
         </ul>
         <p class="hint">

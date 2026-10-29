@@ -142,4 +142,35 @@ final class ApiTokenMaxLifetimeTest extends ApiTokenLifetimeTest
         self::assertStringContainsString('4 tokens never expire', $page);
         self::assertStringContainsString('API_TOKEN_MAX_DAYS', $page);
     }
+
+    /**
+     * K122: only the exact name is the feed's. On MySQL's case-insensitive
+     * collation a plain `=` left "calendar feed" out of the count, while the
+     * app (`isFeedToken()`) treats it as an ordinary token.
+     */
+    public function testACaseVariantOfTheFeedNameIsAnOrdinaryToken(): void
+    {
+        $this->tokens()->replaceFeedToken($this->user($this->ownerId), $this->householdId);
+        $this->db->execute(
+            "UPDATE api_tokens SET name = 'calendar feed' WHERE id = :id",
+            ['id' => $this->latest()->id],
+        );
+
+        self::assertSame(5, $this->tokens()->countWithoutExpiry());
+    }
+
+    /**
+     * Trailing spaces count too: MySQL's collation pads them away, so
+     * "Calendar feed " used to equal the feed's name in SQL.
+     */
+    public function testATrailingSpaceMakesAnOrdinaryToken(): void
+    {
+        $this->tokens()->replaceFeedToken($this->user($this->ownerId), $this->householdId);
+        $this->db->execute(
+            "UPDATE api_tokens SET name = 'Calendar feed ' WHERE id = :id",
+            ['id' => $this->latest()->id],
+        );
+
+        self::assertSame(5, $this->tokens()->countWithoutExpiry());
+    }
 }

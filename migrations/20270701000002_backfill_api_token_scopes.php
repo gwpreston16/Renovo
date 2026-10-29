@@ -27,6 +27,12 @@ use Phinx\Migration\AbstractMigration;
  * Calendar only under a name of its own) would read back as its whole read
  * or write ability — wider than it was issued — so `down()` revokes those
  * first, and says how many. Their holders issue new ones.
+ *
+ * The name is matched exactly, as `ApiTokenService::isFeedToken()` matches
+ * it. Under MySQL's case-insensitive collation a plain `=` also took
+ * "calendar feed" for the feed (K122), so the comparison there is on bytes.
+ * Edited in place in Phase 65: on a database that has already run it, it
+ * changes nothing; `docs/upgrading.md` says how to find a token it narrowed.
  */
 final class BackfillApiTokenScopes extends AbstractMigration
 {
@@ -40,7 +46,7 @@ final class BackfillApiTokenScopes extends AbstractMigration
         $this->execute(
             "UPDATE api_tokens SET scopes = '" . self::CALENDAR . "'"
             . " WHERE scopes IS NULL AND abilities = 'read' AND expires_at IS NULL"
-            . " AND name = '" . self::FEED_TOKEN_NAME . "'",
+            . ' AND ' . $this->isFeedName(),
         );
         $this->execute(
             "UPDATE api_tokens SET scopes = '" . self::READ . "'"
@@ -58,7 +64,7 @@ final class BackfillApiTokenScopes extends AbstractMigration
             'UPDATE api_tokens SET revoked_at = CURRENT_TIMESTAMP'
             . ' WHERE revoked_at IS NULL AND scopes IS NOT NULL'
             . " AND scopes NOT IN ('" . self::READ . "', '" . self::WRITE . "')"
-            . " AND NOT (scopes = '" . self::CALENDAR . "' AND name = '" . self::FEED_TOKEN_NAME . "'"
+            . " AND NOT (scopes = '" . self::CALENDAR . "' AND " . $this->isFeedName()
             . ' AND expires_at IS NULL)',
         );
 
@@ -70,5 +76,16 @@ final class BackfillApiTokenScopes extends AbstractMigration
         }
 
         $this->execute('UPDATE api_tokens SET scopes = NULL');
+    }
+
+    /**
+     * `name` is exactly the feed's name: byte for byte on MySQL, whose
+     * collation ignores case; PostgreSQL's `=` is exact already.
+     */
+    private function isFeedName(): string
+    {
+        return $this->getAdapter()->getAdapterType() === 'mysql'
+            ? "CAST(name AS BINARY) = CAST('" . self::FEED_TOKEN_NAME . "' AS BINARY)"
+            : "name = '" . self::FEED_TOKEN_NAME . "'";
     }
 }

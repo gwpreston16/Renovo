@@ -42,7 +42,9 @@ differing only by case and finds both, and looks one up by its exact case.
 ### B. K122 — the feed token's name is matched exactly everywhere
 
 The live count (`countLiveWithoutExpiry()`) and the backfill migration compare
-the token name with `BINARY` (a case-sensitive comparison on both engines), so
+the token name exactly — the count through `Platform::exactEquals()`
+(`CAST(... AS BINARY)` on MySQL, plain `=` on PostgreSQL, which is exact
+already), the migration by the same expressions chosen on its adapter type — so
 SQL agrees with `isFeedToken()` and `docs/upgrading.md`. The Phase 42 migration
 is edited in place for the exact comparison; it changes nothing for a database
 that has already run it. Tokens already narrowed on MySQL under a case variant of
@@ -61,7 +63,10 @@ due-total callers) return the set of currencies whose rows vary
 draw a subtotal with "≈" only when its currency is in the set, and the combined
 (converted) figure with "≈" whenever any row varies, because it includes one.
 The rule is written once as a Twig macro/function the three partials share, so
-the eight screens cannot drift again. A total of fixed rows only is not marked.
+the eight screens cannot drift again. *As built:* `App\Service\EstimateMarks`
+(new) builds the set and answers the rule, Twig's `estimate_mark()` asks it, and
+`templates/partials/estimate.twig` draws the mark; it replaces
+`StatsService::includesEstimate()`, which is removed. A total of fixed rows only is not marked.
 
 ## Data-model changes
 
@@ -83,7 +88,8 @@ is to an existing migration's SQL, not a new one.
 
 - **K32:** makes the columns do what the code and the WebAuthn specification
   assume (opaque case-sensitive ids). `ascii_bin` rather than `utf8mb4_bin`
-  because the values are base64url.
+  because the values are base64url. *Confirmed 2026-10-28.* `down()` puts back
+  `utf8mb4` with the table's default collation, which is what the columns had.
 - **K122 — Decided 2026-10-28:** exact match in SQL. Not chosen: matching
   case-insensitively in the app (changes what counts as the feed token); fixing
   the query only (leaves the migration disagreeing).
@@ -94,20 +100,26 @@ is to an existing migration's SQL, not a new one.
 - **Release — Decided 2026-10-28:** its own patch release once merged, the next
   patch after whichever earlier phase ships first, with a back-up-first note for
   the migration.
-- **Assumption:** `BINARY` on the name comparison is portable enough for both
-  engines through the repository's query layer; where it is not, the platform
-  class provides the expression.
+- **Assumption — settled by the code 2026-10-28:** `BINARY` is not portable:
+  PostgreSQL has no such operator, and its `=` is already exact. So `Platform`
+  provides the exact-match expression (`BINARY` on MySQL, plain `=` on
+  PostgreSQL), and the migration picks it by adapter type.
+- **K87, scenario results — Changed 2026-10-28 (found while starting it):** the
+  forecast's scenario results (`templates/forecast/_scenario_results.twig`,
+  `ScenarioService`) draw per-currency subtotals under one flag too, so they
+  take the same shared rule. The owner chose to include them rather than log a
+  new row.
 
 ## Status
 
-- [ ] K32: passkey ids and handles compared case-sensitively on MySQL
-- [ ] K122: the feed token's name matched exactly in SQL
-- [ ] K87: per-currency "≈", one shared rule
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] `docs/upgrading.md` updated (K32 migration, K122 note)
-- [ ] ROADMAP: Phase 65 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green, on PostgreSQL and MySQL
+- [x] K32: passkey ids and handles compared case-sensitively on MySQL
+- [x] K122: the feed token's name matched exactly in SQL
+- [x] K87: per-currency "≈", one shared rule
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] `docs/upgrading.md` updated (K32 migration, K122 note)
+- [x] ROADMAP: Phase 65 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green, on PostgreSQL and MySQL
 
 ## Definition of done
 
@@ -118,14 +130,28 @@ every catalogue in `translations/`. Then mark it ✅ in `ROADMAP.md`.
 
 ## Tests
 
-- **K32:** `WebAuthnCredentialRepositoryTest::testIdsDifferingOnlyByCaseAreDistinct`,
-  `UserRepositoryTest::testHandlesDifferingOnlyByCaseAreDistinct` and
-  `WebauthnCollationMigrationTest::testUpAndDownRoundTrip` (MySQL; skipped on
-  PostgreSQL).
-- **K122:** `ApiTokenRepositoryTest::testACaseVariantOfTheFeedNameIsAnOrdinaryToken`
-  and `BackfillApiTokenScopesMigrationTest::testACaseVariantKeepsFullRead` (both
-  engines).
+As built (the names the draft gave were placeholders; these are the classes
+the tests went into):
+
+- **K32:** `PasskeyIdCaseTest::testIdsDifferingOnlyByCaseAreDistinct` and
+  `::testHandlesDifferingOnlyByCaseAreDistinct` (both engines), and
+  `WebauthnCollationMigrationTest::testUpAndDownRoundTrip` and
+  `::testItKeepsWhatIsStored` (MySQL; skipped on PostgreSQL), with
+  `::testItIsANoOpOnPostgres`.
+- **K122:** `ApiTokenMaxLifetimeTest::testACaseVariantOfTheFeedNameIsAnOrdinaryToken`,
+  `ApiTokenScopeBackfillTest::testACaseVariantKeepsFullRead` and
+  `::testRollingBackRevokesACaseVariantCalendarToken` (both engines), and
+  `MySqlPlatformTest::testExactEqualsComparesBytes` for the two engines'
+  expressions.
 - **K87:** `SpendFiguresTest::testOnlyTheVaryingCurrencyIsMarked`,
-  `::testTheCombinedFigureIsMarkedWhenAnyRowVaries` and
-  `::testFixedRowsOnlyAreNotMarked`; screen tests for the dashboard, calendar
-  and subscription strip with a varying £ row beside a fixed € row.
+  `::testTheCombinedFigureIsMarkedWhenAnyRowVaries`,
+  `::testFixedRowsOnlyAreNotMarked`,
+  `::testWithoutARateOnlyTheVaryingSubtotalIsMarked`; screen tests with a
+  varying £ row beside a fixed € row for the dashboard
+  (`DashboardTest::testOnlyTheVaryingCurrencyIsMarkedInTheTotals`), the
+  calendar (`CalendarPageTest::testOnlyTheVaryingCurrencyIsMarked`), the
+  subscription strip and list summary
+  (`SubscriptionsScreenTest::testOnlyTheVaryingCurrencyIsMarkedInTheStrip`),
+  the forecast headlines
+  (`ForecastScreenTest::testOnlyTheVaryingCurrencyIsMarkedInTheHeadlines`) and
+  the scenario results (`ScenarioServiceTest::testOnlyTheVaryingCurrencyIsMarked`).

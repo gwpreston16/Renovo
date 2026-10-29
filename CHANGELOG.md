@@ -8,6 +8,29 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Only a currency that holds a bill whose amount varies is drawn "≈".** A
+  varying £58 energy bill beside a fixed €12.99 streaming row used to read
+  "≈ £… · ≈ €12.99" on the dashboard totals, the subscription strip and list
+  summary, the analytics and forecast headlines, the due total, the calendar
+  summaries and the scenario planner. Now the € subtotal is shown exact, the £
+  one "≈", and the combined total "≈" because it includes the estimate. One
+  rule draws every one of them. *Phase 65.*
+- **Passkey credential ids and user handles are compared with their case on
+  MySQL and MariaDB.** They are base64url, where `a` and `A` differ, but the
+  columns compared them case-insensitively, so two ids differing only by case
+  counted as one. A migration changes the two columns to `ascii_bin`; nothing
+  stored changes. **Back up your database** before upgrading. PostgreSQL is
+  unaffected. *Phase 65.*
+- **A token named "calendar feed" (any case but the exact name) is an
+  ordinary token on MySQL and MariaDB too.** SQL compared the calendar feed's
+  name case-insensitively there, so Instance status left such a token out of
+  its count of tokens that never expire, and the Phase 42 upgrade and rollback
+  treated it as the feed's. The name is now matched exactly everywhere. A token
+  the Phase 42 upgrade already narrowed is left as it is; `docs/upgrading.md`
+  shows how to find one. *Phase 65.*
+
 ## [1.26.8] - 2026-10-28
 
 ### Fixed

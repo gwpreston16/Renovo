@@ -73,7 +73,7 @@ can be moved.
 | 62 | [MySQL/MariaDB timestamp columns that rewrite themselves, from the known-issues log](docs/phases/PHASE-62.md) | — | None | ✅ done |
 | 63 | [Measure the PHP time zone problem (K68), then plan its fix](docs/phases/PHASE-63.md) | — | None | ✅ done |
 | 64 | [Pin PHP's time zone to UTC (K68)](docs/phases/PHASE-64.md) | 63 | None | ✅ done |
-| 65 | [MySQL case rules and per-currency estimate marks, from the known-issues log](docs/phases/PHASE-65.md) | — | None | 📋 planned |
+| 65 | [MySQL case rules and per-currency estimate marks, from the known-issues log](docs/phases/PHASE-65.md) | — | None | ✅ done |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was

@@ -113,6 +113,28 @@ final class ScenarioServiceTest extends DatabaseTestCase
         self::assertDoesNotMatchRegularExpression('~≈ £0\.00~u', $row);
     }
 
+    /**
+     * K87: a fixed € row beside the varying £ Energy, with no rate for euros,
+     * so each column shows its subtotals. Only the £ one is drawn "≈".
+     */
+    public function testOnlyTheVaryingCurrencyIsMarked(): void
+    {
+        $this->create('Euro gym', 2000, '2026-02-07', ['currency' => 'EUR']);
+
+        $results = $this->results(['cancel' => [$this->gymId]]);
+        self::assertSame(['GBP'], $results['marks_current']['estimate_currencies']);
+        self::assertSame(['GBP'], $results['marks_scenario']['estimate_currencies']);
+        self::assertSame(['GBP'], $results['marks']['estimate_currencies']);
+
+        $row = (string) preg_replace('/\s+/u', ' ', $this->monthlyRow($this->scenarioPage('cancel[]=' . $this->gymId)));
+        self::assertStringContainsString('€20.00 · ≈ £50.00', $row);
+        self::assertStringContainsString('€20.00 · ≈ £40.00', $row);
+        self::assertStringNotContainsString('≈ €', $row);
+        // The Difference: the gym's £10, in the currency that holds a varying
+        // bill in either picture; the € part is exact.
+        self::assertStringContainsString('€0.00 · ≈ £10.00', $row);
+    }
+
     public function testWithNothingVaryingNothingIsMarked(): void
     {
         $this->db->execute('DELETE FROM subscriptions WHERE id = ' . $this->energyId);

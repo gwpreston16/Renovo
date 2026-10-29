@@ -106,7 +106,7 @@ final class ForecastScreenService
         $all = [];
         $long = [];
         $longCount = 0;
-        $longEstimate = false;
+        $longEstimates = [];
 
         foreach ($charges as $charge) {
             $currency = $charge['amount']->currency;
@@ -120,7 +120,9 @@ final class ForecastScreenService
             ) {
                 $long[$currency] = ($long[$currency] ?? 0) + $charge['amount']->amountMinor;
                 $longCount++;
-                $longEstimate = $longEstimate || $charge['subscription']->amountVaries;
+                if ($charge['subscription']->amountVaries) {
+                    $longEstimates[] = $currency;
+                }
             }
         }
 
@@ -136,13 +138,13 @@ final class ForecastScreenService
             ];
         }
 
-        $estimate = StatsService::chargesIncludeEstimate($charges);
+        $estimates = EstimateMarks::keys(EstimateMarks::ofCharges($charges));
 
         return [
-            'total' => $this->figures($all) + ['estimate' => $estimate],
-            'average' => $this->figures($average) + ['estimate' => $estimate],
+            'total' => $this->figures($all) + $estimates,
+            'average' => $this->figures($average) + $estimates,
             'busiest' => $busiest,
-            'long' => $this->figures($long) + ['count' => $longCount, 'estimate' => $longEstimate],
+            'long' => $this->figures($long) + ['count' => $longCount] + EstimateMarks::keys($longEstimates),
         ];
     }
 

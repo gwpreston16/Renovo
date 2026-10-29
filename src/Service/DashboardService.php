@@ -117,14 +117,13 @@ final class DashboardService
             'kpis' => [
                 'monthly' => $this->figures($stats['recurring'], 'monthly_minor', $stats['combined_monthly'])
                     + ['budget' => $this->budgetNote($stats['combined_monthly'], $monthlyBudget?->amount)]
-                    + ['estimate' => $stats['estimate']],
+                    + EstimateMarks::keys($stats['estimate_currencies']),
                 'yearly' => $this->figures($stats['recurring'], 'yearly_minor', $stats['combined_yearly'])
-                    + ['estimate' => $stats['estimate']],
+                    + EstimateMarks::keys($stats['estimate_currencies']),
                 'due' => [
                     'count' => count($dueSoon),
                     'days' => self::DUE_SOON_DAYS,
-                    'estimate' => StatsService::chargesIncludeEstimate($dueSoon),
-                ] + $this->chargeTotals($dueSoon),
+                ] + EstimateMarks::keys(EstimateMarks::ofCharges($dueSoon)) + $this->chargeTotals($dueSoon),
                 'active' => [
                     'count' => $stats['active_count'],
                     'trials' => count($trials),

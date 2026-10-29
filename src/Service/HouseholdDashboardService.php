@@ -214,16 +214,16 @@ final class HouseholdDashboardService
     public function yearAhead(Scope $scope): array
     {
         $byCurrency = [];
-        $estimate = false;
+        $estimates = [];
         foreach ($this->forecast->monthly($scope, self::YEAR_AHEAD_MONTHS) as $month) {
             foreach ($month['by_currency'] as $currency => $amount) {
                 $byCurrency[(string) $currency] = ($byCurrency[(string) $currency] ?? 0) + $amount;
             }
-            $estimate = $estimate || StatsService::chargesIncludeEstimate($month['events']);
+            $estimates[] = EstimateMarks::ofCharges($month['events']);
         }
         ksort($byCurrency);
 
-        return $this->figures($byCurrency) + ['estimate' => $estimate];
+        return $this->figures($byCurrency) + EstimateMarks::keys(...$estimates);
     }
 
     /**

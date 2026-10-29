@@ -177,8 +177,12 @@ final class ScenarioService
         $twelveNow = $this->sumByCurrency($current);
         $twelveThen = $this->sumByCurrency($planned);
 
-        $estimateNow = StatsService::includesEstimate($all) || StatsService::chargesIncludeEstimate($current);
-        $estimateThen = StatsService::includesEstimate($appliedRows) || StatsService::chargesIncludeEstimate($planned);
+        $marksNow = EstimateMarks::keys(EstimateMarks::ofSubscriptions($all), EstimateMarks::ofCharges($current));
+        $marksThen = EstimateMarks::keys(
+            EstimateMarks::ofSubscriptions($appliedRows),
+            EstimateMarks::ofCharges($planned),
+        );
+        $marks = EstimateMarks::keys($marksNow['estimate_currencies'], $marksThen['estimate_currencies']);
 
         return [
             'is_empty' => $scenario->isEmpty(),
@@ -187,9 +191,14 @@ final class ScenarioService
             // in it. Now and With changes are two pictures, and a scenario
             // that cancels the only varying bill leaves the second without
             // one; the Difference holds a varying bill from either.
-            'estimate' => $estimateNow || $estimateThen,
-            'estimate_current' => $estimateNow,
-            'estimate_scenario' => $estimateThen,
+            // Each carries the currencies that hold one, so only those
+            // subtotals are marked (K87).
+            'estimate' => $marks['estimate'],
+            'estimate_current' => $marksNow['estimate'],
+            'estimate_scenario' => $marksThen['estimate'],
+            'marks' => $marks,
+            'marks_current' => $marksNow,
+            'marks_scenario' => $marksThen,
             'run_rate' => [
                 'current' => [
                     'monthly' => $this->figures($runRateNow['monthly']),

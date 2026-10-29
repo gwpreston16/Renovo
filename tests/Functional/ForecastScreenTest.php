@@ -19,6 +19,7 @@ use App\Security\Scope;
 use App\Security\SessionInterface;
 use App\Service\ForecastScreenService;
 use App\Service\ForecastService;
+use App\Service\HouseholdDashboardService;
 use App\Service\InstanceSettingsService;
 use App\Service\PriceHistoryService;
 use App\Service\SplitService;
@@ -156,6 +157,52 @@ final class ForecastScreenTest extends DatabaseTestCase
         // The price rise counts from its own month.
         self::assertSame(1000, $bars['2026-06']['regular_minor']);
         self::assertSame(1500, $bars['2026-07']['regular_minor']);
+    }
+
+    /**
+     * K87: varying £ bills beside fixed € ones. The headline figures mark the
+     * £ subtotals and the combined figure; the € subtotals are exact.
+     */
+    public function testOnlyTheVaryingCurrencyIsMarkedInTheHeadlines(): void
+    {
+        $owner = $this->scopeFor($this->ownerId, Role::OwnerAdmin);
+        $this->createVarying($owner, 'Monthly energy', 2000, 'monthly', '2026-06-01');
+        $this->createVarying($owner, 'Yearly water', 6000, 'yearly', '2026-05-05');
+        $this->create($owner, 'Euro streaming', 1299, 'monthly', '2026-04-10', 'EUR');
+        $this->create($owner, 'Euro insurance', 24000, 'yearly', '2026-07-01', 'EUR');
+
+        $kpis = $this->overview()['kpis'];
+        foreach (['total', 'average', 'long'] as $figure) {
+            self::assertSame(['GBP'], $kpis[$figure]['estimate_currencies'], $figure);
+        }
+
+        // The year ahead elsewhere (the analytics KPI) is the same twelve
+        // months, and carries the same marks.
+        $ahead = $this->container()->get(HouseholdDashboardService::class)
+            ->yearAhead($this->scopeFor($this->ownerId, Role::OwnerAdmin));
+        self::assertSame(['GBP'], $ahead['estimate_currencies']);
+
+        $html = (string) $this->get('/forecast', $this->ownerId)->getBody();
+        $section = (string) preg_replace('/\s+/u', ' ', html_entity_decode($this->section($html, 'forecast-kpis')));
+        self::assertStringContainsString('≈ £', $section);
+        self::assertStringContainsString('€', $section);
+        self::assertStringNotContainsString('≈ €', $section);
+    }
+
+    /**
+     * The lump renewals are marked for the varying bills among them, not for
+     * one that varies month to month.
+     */
+    public function testLumpRenewalsAreMarkedOnlyForAVaryingLumpBill(): void
+    {
+        $owner = $this->scopeFor($this->ownerId, Role::OwnerAdmin);
+        $this->createVarying($owner, 'Monthly energy', 2000, 'monthly', '2026-06-01');
+        $this->create($owner, 'Yearly insurance', 24000, 'yearly', '2026-07-01');
+
+        $kpis = $this->overview()['kpis'];
+        self::assertSame(['GBP'], $kpis['total']['estimate_currencies']);
+        self::assertSame([], $kpis['long']['estimate_currencies']);
+        self::assertFalse($kpis['long']['estimate']);
     }
 
     public function testMonthPartsAreMarkedWhereTheVaryingBillIs(): void

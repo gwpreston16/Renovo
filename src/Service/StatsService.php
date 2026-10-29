@@ -97,7 +97,8 @@ final class StatsService
      *     per_period: array<string, int|null>,
      *     trials: list<Subscription>,
      *     trial_totals: list<OneOffTotals>,
-     *     estimate: bool
+     *     estimate: bool,
+     *     estimate_currencies: list<string>
      * }
      */
     public function dashboard(Scope $scope): array
@@ -211,42 +212,19 @@ final class StatsService
             'per_period' => $this->perPeriod($combinedYearly['amount_minor']),
             'trials' => $trials,
             'trial_totals' => $this->sumConvertedPrices($trials),
-            'estimate' => self::includesEstimate($all),
-        ];
+        ] + EstimateMarks::keys(EstimateMarks::ofSubscriptions($all));
     }
 
     /**
-     * Whether a running recurring row whose amount varies is among these: its
-     * price is an estimate, so a total that includes it is drawn "≈". A total
-     * of fixed rows only is not.
+     * Whether any of these forecast charges is a varying bill's: an estimate,
+     * for a figure drawn as one amount (a month's bar). A per-currency figure
+     * carries `EstimateMarks::keys()` instead.
      *
-     * @param iterable<Subscription> $subscriptions
-     */
-    public static function includesEstimate(iterable $subscriptions): bool
-    {
-        foreach ($subscriptions as $subscription) {
-            if ($subscription->amountVaries && $subscription->isActive && $subscription->monthlyMinor() !== null) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Whether any of these forecast charges is a varying bill's: an estimate.
-     *
-     * @param list<array{subscription: Subscription}> $charges
+     * @param list<array{subscription: Subscription, amount: \App\Domain\Money}> $charges
      */
     public static function chargesIncludeEstimate(array $charges): bool
     {
-        foreach ($charges as $charge) {
-            if ($charge['subscription']->amountVaries) {
-                return true;
-            }
-        }
-
-        return false;
+        return EstimateMarks::ofCharges($charges) !== [];
     }
 
     /**

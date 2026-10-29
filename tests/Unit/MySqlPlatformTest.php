@@ -26,4 +26,17 @@ final class MySqlPlatformTest extends TestCase
         // Every optional statement is one the connection actually runs.
         self::assertSame([], array_diff($platform->optionalInitialStatements(), $platform->initialStatements()));
     }
+
+    /**
+     * K122: an exact match is on bytes on MySQL, whose collation ignores case
+     * and trailing spaces; PostgreSQL's `=` is exact already.
+     */
+    public function testExactEqualsComparesBytes(): void
+    {
+        self::assertSame(
+            'CAST(`name` AS BINARY) = CAST(:feed AS BINARY)',
+            (new MySqlPlatform())->exactEquals('`name`', ':feed'),
+        );
+        self::assertSame('"name" = :feed', (new PostgresPlatform())->exactEquals('"name"', ':feed'));
+    }
 }
