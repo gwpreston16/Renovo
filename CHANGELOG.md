@@ -8,6 +8,16 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Security
+
+- **A trusted address range no longer vouches for the rest of a name's
+  answer.** With a range such as `192.168.1.0/24` or `100.64.0.0/10` in the
+  trusted hosts, a name resolving to one address inside it and also to a
+  private address outside it (the cloud metadata address, say) was trusted
+  whole and could be dialled at the unlisted address. Now every private
+  address a name answers with must be listed itself; a listed name still
+  covers whatever it resolves to. *K145.*
+
 ## [1.27.0] - 2026-10-29
 
 ### Fixed

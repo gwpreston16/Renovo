@@ -170,6 +170,47 @@ final class UrlGuardTest extends TestCase
         self::assertTrue($target->isTrusted);
     }
 
+    public function testARangeDoesNotCarryAnotherPrivateAddressOfTheSameHost(): void
+    {
+        // K145. One answer inside the trusted range must not vouch for the
+        // metadata service in the same answer, in either order.
+        foreach ([['169.254.169.254', '192.168.1.5'], ['192.168.1.5', '169.254.169.254']] as $answer) {
+            $guard = $this->guard(['evil.example' => $answer], ['192.168.1.0/24']);
+
+            try {
+                $guard->inspect($this->uri('https://evil.example/x'));
+                self::fail('A host answering with an unlisted private address was allowed.');
+            } catch (BlockedTargetException $refusal) {
+                self::assertSame(BlockedTargetException::PRIVATE_ADDRESS, $refusal->reason);
+            }
+        }
+    }
+
+    public function testATrustedBareAddressDoesNotCarryAPrivateAddressOutsideIt(): void
+    {
+        $guard = $this->guard(['evil.example' => ['169.254.169.254', '93.184.216.34']], ['93.184.216.34']);
+
+        $this->expectException(BlockedTargetException::class);
+        $guard->inspect($this->uri('http://evil.example/x'));
+    }
+
+    public function testEveryPrivateAddressInTheRangeIsAllowedAndPinned(): void
+    {
+        $guard = $this->guard(['gotify.lan' => ['192.168.1.5', '192.168.1.6']], ['192.168.1.0/24']);
+
+        $target = $guard->inspect($this->uri('http://gotify.lan/message'));
+
+        self::assertTrue($target->isTrusted);
+        self::assertSame('192.168.1.5', $target->ipAddress);
+    }
+
+    public function testAListedNameCoversAllOfItsAddresses(): void
+    {
+        $guard = $this->guard(['gotify.lan' => ['192.168.1.5', '10.0.0.9']], ['gotify.lan']);
+
+        self::assertTrue($guard->inspect($this->uri('https://gotify.lan/message'))->isTrusted);
+    }
+
     public function testATrustedHostMayBeReachedOverPlainHttp(): void
     {
         // A self-hosted Gotify on a LAN is routinely http. Having already made
