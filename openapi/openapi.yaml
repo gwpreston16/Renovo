@@ -49,7 +49,7 @@ info:
     stored value and `null` clears it. A date that does not exist is a `422`,
     never rolled over to another day. A value outside an enum, such as an
     unknown `subscription_type` or `notice_period_unit`, is a `422` on that
-    field.
+    field; an empty or absent `subscription_type` still means `recurring`.
 
     **Money is always an integer in minor units** (`price_minor: 1999` with
     `currency: GBP` is £19.99), never a decimal. JSON numbers are binary floats
@@ -636,7 +636,8 @@ paths:
                   nullable: true
                   description: |
                     The billing period this document covers, if any. A date
-                    that does not exist, or is not `YYYY-MM-DD`, is a `422`.
+                    that does not exist, or is not `YYYY-MM-DD`, is a `422`, even when a
+                    `charge_id` is sent.
                 charge_id:
                   type: integer
                   nullable: true

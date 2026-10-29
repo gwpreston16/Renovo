@@ -105,6 +105,39 @@ final class AttachmentRoutesTest extends ApiTestCase
         self::assertSame([], $this->attachmentsOf($subscriptionId));
     }
 
+    /**
+     * @dataProvider badPeriodDates
+     */
+    public function testTheWebFormRefusesAnImpossiblePeriodDateToo(string $date): void
+    {
+        $subscriptionId = $this->createSubscription();
+        $this->signIn($this->ownerId);
+
+        $response = $this->webUpload($subscriptionId, FakeUpload::png('receipt.png'), ['period_date' => $date]);
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame([], $this->attachmentsOf($subscriptionId));
+    }
+
+    public function testAListForThePeriodDateIsRefusedOnTheApi(): void
+    {
+        $subscriptionId = $this->createSubscription();
+        $request = (new ServerRequestFactory())
+            ->createServerRequest(
+                'POST',
+                'http://localhost/api/v1/subscriptions/' . $subscriptionId . '/attachments',
+                ['REMOTE_ADDR' => '127.0.0.1'],
+            )
+            ->withHeader('Authorization', 'Bearer ' . $this->ownerToken)
+            ->withUploadedFiles(['file' => FakeUpload::png('receipt.png')])
+            ->withParsedBody(['period_date' => ['2026-01-01']]);
+
+        $response = $this->app->handle($request);
+
+        self::assertSame(422, $response->getStatusCode(), (string) $response->getBody());
+        self::assertSame([], $this->attachmentsOf($subscriptionId));
+    }
+
     public function testARealLeapDayPeriodDateIsStoredAsGiven(): void
     {
         $subscriptionId = $this->createSubscription();
@@ -263,15 +296,19 @@ final class AttachmentRoutesTest extends ApiTestCase
         $this->session->set(AuthenticationMiddleware::SESSION_HOUSEHOLD_ID, $this->householdId);
     }
 
-    private function webUpload(int $subscriptionId, UploadedFileInterface $file): ResponseInterface
+    /**
+     * @param array<string, string> $body
+     */
+    private function webUpload(int $subscriptionId, UploadedFileInterface $file, array $body = []): ResponseInterface
     {
-        return $this->web('POST', '/subscriptions/' . $subscriptionId . '/attachments', ['file' => $file]);
+        return $this->web('POST', '/subscriptions/' . $subscriptionId . '/attachments', ['file' => $file], $body);
     }
 
     /**
      * @param array<string, UploadedFileInterface> $files
+     * @param array<string, string> $body
      */
-    private function web(string $method, string $path, array $files = []): ResponseInterface
+    private function web(string $method, string $path, array $files = [], array $body = []): ResponseInterface
     {
         $request = (new ServerRequestFactory())
             ->createServerRequest($method, 'http://localhost' . $path, ['REMOTE_ADDR' => '127.0.0.1'])
@@ -279,7 +316,7 @@ final class AttachmentRoutesTest extends ApiTestCase
 
         if ($method === 'POST') {
             $request = $request
-                ->withParsedBody([])
+                ->withParsedBody($body)
                 ->withHeader(CsrfTokenManager::HEADER_NAME, $this->container()->get(CsrfTokenManager::class)->token());
         }
 

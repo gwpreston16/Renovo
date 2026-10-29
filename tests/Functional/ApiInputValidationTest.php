@@ -233,7 +233,7 @@ final class ApiInputValidationTest extends ApiTestCase
     {
         $fields = [
             'category_id', 'payer_user_id', 'payment_method_id', 'owner_user_id', 'cycle_interval',
-            'notice_period_amount',
+            'notice_period_amount', 'cycle_days', 'converts_to_cycle_days', 'converts_to_cycle_interval',
         ];
         $cases = [];
         foreach ($fields as $field) {
@@ -258,6 +258,27 @@ final class ApiInputValidationTest extends ApiTestCase
         self::assertSame(422, $put->getStatusCode(), (string) $put->getBody());
         self::assertSame('Send this as a whole number.', $this->decode($put)['error']['errors'][$field]);
         self::assertSame($before, $this->show($id));
+    }
+
+    public function testANumberSentAsNumericTextOrBlankIsStillAccepted(): void
+    {
+        $id = $this->createSubscription();
+        $before = $this->show($id);
+
+        $text = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+            'cycle_interval' => '3',
+            'notice_period_amount' => '5',
+            'notice_period_unit' => 'days',
+        ] + $before);
+        self::assertSame(200, $text->getStatusCode(), (string) $text->getBody());
+        self::assertSame(3, $this->show($id)['cycle_interval']);
+
+        $blank = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+            'category_id' => '',
+            'cycle_interval' => '',
+        ] + $this->show($id));
+        self::assertSame(200, $blank->getStatusCode(), (string) $blank->getBody());
+        self::assertSame(1, $this->show($id)['cycle_interval']);
     }
 
     public function testANullOrAbsentNumberKeepsItsMeaning(): void

@@ -38,13 +38,14 @@ use App\Service\ValidationException;
  */
 final class SubscriptionPayload
 {
-    /** The fields read as text; a boolean or an array is not one. */
+    /** The fields read as whole numbers; a boolean, a list or text that is not a number is not one. */
     private const INT_FIELDS = [
         'cycle_days', 'notice_period_amount', 'converts_to_cycle_days', 'category_id',
         'owner_user_id', 'payer_user_id', 'payment_method_id', 'cycle_interval',
         'converts_to_cycle_interval',
     ];
 
+    /** The fields read as text; a boolean or an array is not one. */
     private const STRING_FIELDS = [
         'name', 'notes', 'website_url', 'currency', 'subscription_type', 'billing_cycle',
         'next_payment_date', 'start_date', 'notice_period_unit', 'trial_end_date',
