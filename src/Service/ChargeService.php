@@ -988,6 +988,12 @@ final class ChargeService
             return $default;
         }
 
+        if (is_array($input['note']) || is_bool($input['note'])) {
+            $errors['note'] = 'error.json.wrong_type';
+
+            return $default;
+        }
+
         $note = trim($this->str($input, 'note'));
         if (mb_strlen($note) > 255) {
             $errors['note'] = 'error.note.too_long_255';

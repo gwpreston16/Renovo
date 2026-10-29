@@ -12,6 +12,7 @@ use App\Domain\Entity\Tag;
 use App\Service\CategoryService;
 use App\Service\PaymentMethodService;
 use App\Service\TagService;
+use App\Service\ValidationException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\UploadedFileInterface;
@@ -268,6 +269,7 @@ final class TaxonomyApiController extends ApiController
      */
     private function string(array $body, string $key): string
     {
+        $this->refuseWrongType($body, $key);
         $value = $body[$key] ?? '';
 
         return is_scalar($value) ? trim((string) $value) : '';
@@ -278,6 +280,7 @@ final class TaxonomyApiController extends ApiController
      */
     private function nullableString(array $body, string $key): ?string
     {
+        $this->refuseWrongType($body, $key);
         $value = $body[$key] ?? null;
 
         if ($value === null || !is_scalar($value) || trim((string) $value) === '') {
@@ -285,5 +288,19 @@ final class TaxonomyApiController extends ApiController
         }
 
         return trim((string) $value);
+    }
+
+    /**
+     * A text field sent as a list or an object is refused on that field, not
+     * read as empty, which would clear a stored colour (K148).
+     *
+     * @param array<string, mixed> $body
+     * @throws ValidationException
+     */
+    private function refuseWrongType(array $body, string $key): void
+    {
+        if (array_key_exists($key, $body) && (is_array($body[$key]) || is_bool($body[$key]))) {
+            throw ValidationException::field($key, 'error.json.wrong_type');
+        }
     }
 }

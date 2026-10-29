@@ -731,7 +731,7 @@ Attach a document. `multipart/form-data`:
 | Part | Notes |
 | --- | --- |
 | `file` | **Required.** PDF, PNG, JPEG, WebP or GIF. Type determined from contents; filename and declared content type are ignored. |
-| `period_date` | Optional `YYYY-MM-DD`. The billing period this document covers. |
+| `period_date` | Optional `YYYY-MM-DD`. The billing period this document covers. A date that does not exist, or a value that is not a date, is a `422` on `period_date`, even when `charge_id` is sent. |
 | `charge_id` | Optional. The payment this is the invoice for — one of this subscription's charges. The attachment is dated to it, whatever `period_date` says. Anything that is not one of its charge ids is a `422`. |
 
 ```bash
@@ -979,7 +979,15 @@ never rolled over to another day. A text field (`name`, `notes`, `plan`, a date,
 an enum) sent as `true`, `false`, a list or an object is a `422` on that field
 ("Send this as text, not as true, false, a list or an object.") and clears
 nothing: only an absent key (keeps the
-stored value) or an explicit `null` has a meaning there.
+stored value) or an explicit `null` has a meaning there. A whole-number field
+(`category_id`, `payer_user_id`, `payment_method_id`, `owner_user_id`,
+`cycle_interval`, `notice_period_amount`, the cycle days) sent as text that is
+not a number, as `true` or `false`, or as a list is a `422` on that field
+("Send this as a whole number.") and changes nothing. An unknown
+`subscription_type` or `notice_period_unit` is a `422` on that field, never
+read as recurring or as days (an empty or absent `subscription_type` still
+means `recurring`). The same applies to the `colour` and `name` of a
+category, tag or payment method and to a charge's `note`.
 
 | Field | Type | Notes |
 | --- | --- | --- |

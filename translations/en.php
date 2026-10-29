@@ -641,6 +641,7 @@ return [
     'error.payments_end.before_next' => 'The last payment can’t come before the next one.',
     'error.payments_end.no_billing_date' =>
         'The last payment would be before the first billing date from today, so this can’t be resumed. Move the last payment date later first.',
+    'error.json.wrong_type_number' => 'Send this as a whole number.',
     'error.json.wrong_type' => 'Send this as text, not as true, false, a list or an object.',
     'error.payments_end.before_start' => 'The last payment can’t come before the start date.',
     'error.file.required' => 'Choose a file to upload.',
@@ -823,6 +824,7 @@ return [
     'error.reminder_days.too_many' => 'Use at most six reminders for one subscription.',
     'error.next_payment.required' => 'Enter the next payment date.',
     'error.notice.range' => 'Enter a notice period between 0 and 3650.',
+    'error.subscription_type.invalid' => 'Choose a subscription type: recurring, one-off or lifetime.',
     'error.notice.unit_required' => 'Choose a notice period unit.',
 
     'error.trusted_host.required' => 'Enter a host name, address or CIDR range.',

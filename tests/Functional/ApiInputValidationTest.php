@@ -227,6 +227,151 @@ final class ApiInputValidationTest extends ApiTestCase
     }
 
     /**
+     * @return array<string, array{string, mixed}>
+     */
+    public static function wrongNumbers(): array
+    {
+        $fields = [
+            'category_id', 'payer_user_id', 'payment_method_id', 'owner_user_id', 'cycle_interval',
+            'notice_period_amount', 'cycle_days', 'converts_to_cycle_days', 'converts_to_cycle_interval',
+        ];
+        $cases = [];
+        foreach ($fields as $field) {
+            $cases[$field . ' text'] = [$field, 'abc'];
+            $cases[$field . ' true'] = [$field, true];
+            $cases[$field . ' list'] = [$field, []];
+        }
+
+        return $cases;
+    }
+
+    /**
+     * @dataProvider wrongNumbers
+     */
+    public function testAWronglyTypedNumberIsRefusedAndClearsNothing(string $field, mixed $value): void
+    {
+        $id = $this->createSubscription(['cycle_interval' => 2, 'notice_period_amount' => 5]);
+        $before = $this->show($id);
+
+        $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [$field => $value] + $before);
+
+        self::assertSame(422, $put->getStatusCode(), (string) $put->getBody());
+        self::assertSame('Send this as a whole number.', $this->decode($put)['error']['errors'][$field]);
+        self::assertSame($before, $this->show($id));
+    }
+
+    public function testANumberSentAsNumericTextOrBlankIsStillAccepted(): void
+    {
+        $id = $this->createSubscription();
+        $before = $this->show($id);
+
+        $text = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+            'cycle_interval' => '3',
+            'notice_period_amount' => '5',
+            'notice_period_unit' => 'days',
+        ] + $before);
+        self::assertSame(200, $text->getStatusCode(), (string) $text->getBody());
+        self::assertSame(3, $this->show($id)['cycle_interval']);
+
+        $blank = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+            'category_id' => '',
+            'cycle_interval' => '',
+        ] + $this->show($id));
+        self::assertSame(200, $blank->getStatusCode(), (string) $blank->getBody());
+        self::assertSame(1, $this->show($id)['cycle_interval']);
+    }
+
+    public function testANullOrAbsentNumberKeepsItsMeaning(): void
+    {
+        $id = $this->createSubscription();
+        $before = $this->show($id);
+
+        $absent = $before;
+        unset($absent['cycle_interval'], $absent['category_id']);
+        $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, $absent);
+        self::assertSame(200, $put->getStatusCode(), (string) $put->getBody());
+
+        $null = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+            'category_id' => null,
+            'notice_period_amount' => null,
+        ] + $before);
+        self::assertSame(200, $null->getStatusCode(), (string) $null->getBody());
+    }
+
+    public function testABadNoticePeriodUnitWithAnAmountIs422NotA500(): void
+    {
+        $body = ['notice_period_unit' => 'bogus', 'notice_period_amount' => 3];
+        $id = $this->createSubscription();
+
+        $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, $body + $this->show($id));
+        self::assertSame(422, $put->getStatusCode(), (string) $put->getBody());
+        self::assertArrayHasKey('notice_period_unit', $this->decode($put)['error']['errors']);
+
+        $post = $this->api('POST', '/api/v1/subscriptions', $this->ownerToken, $body + [
+            'name' => 'New',
+            'price_minor' => 500,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-12-01',
+        ]);
+        self::assertSame(422, $post->getStatusCode(), (string) $post->getBody());
+        self::assertArrayHasKey('notice_period_unit', $this->decode($post)['error']['errors']);
+
+        $alone = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+            'notice_period_unit' => 'bogus',
+            'notice_period_amount' => null,
+        ] + $this->show($id));
+        self::assertSame(422, $alone->getStatusCode());
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function unknownTypes(): array
+    {
+        return ['bogus' => ['bogus'], 'a hyphen' => ['one-off']];
+    }
+
+    /**
+     * @dataProvider unknownTypes
+     */
+    public function testAnUnknownSubscriptionTypeIsRefusedNotSavedAsRecurring(string $type): void
+    {
+        $id = $this->createSubscription();
+        $oneOff = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+            'subscription_type' => 'one_off',
+            'billing_cycle' => null,
+        ] + $this->show($id));
+        self::assertSame(200, $oneOff->getStatusCode(), (string) $oneOff->getBody());
+        $before = $this->show($id);
+
+        $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+            'subscription_type' => $type,
+        ] + $before);
+        self::assertSame(422, $put->getStatusCode(), (string) $put->getBody());
+        self::assertArrayHasKey('subscription_type', $this->decode($put)['error']['errors']);
+        self::assertSame('one_off', $this->show($id)['subscription_type']);
+
+        $post = $this->api('POST', '/api/v1/subscriptions', $this->ownerToken, [
+            'name' => 'New',
+            'price_minor' => 500,
+            'currency' => 'GBP',
+            'subscription_type' => $type,
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-12-01',
+        ]);
+        self::assertSame(422, $post->getStatusCode(), (string) $post->getBody());
+    }
+
+    public function testAnEmptySubscriptionTypeStillMeansRecurring(): void
+    {
+        $id = $this->createSubscription(['subscription_type' => '']);
+
+        self::assertSame('recurring', $this->show($id)['subscription_type']);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function show(int $id): array

@@ -68,6 +68,9 @@ final class AttachmentApiController extends ApiController
         }
 
         $body = $this->payload($request);
+        if (isset($body['period_date']) && !is_scalar($body['period_date'])) {
+            throw ValidationException::field('period_date', 'error.date.invalid');
+        }
         $periodDate = isset($body['period_date']) && is_scalar($body['period_date'])
             ? (string) $body['period_date']
             : null;
