@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–65
+## Planned — Phases 30–66
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -74,6 +74,7 @@ can be moved.
 | 63 | [Measure the PHP time zone problem (K68), then plan its fix](docs/phases/PHASE-63.md) | — | None | ✅ done |
 | 64 | [Pin PHP's time zone to UTC (K68)](docs/phases/PHASE-64.md) | 63 | None | ✅ done |
 | 65 | [MySQL case rules and per-currency estimate marks, from the known-issues log](docs/phases/PHASE-65.md) | — | None | ✅ done |
+| 66 | [API input edge cases, from the known-issues log](docs/phases/PHASE-66.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -204,6 +205,7 @@ can be moved.
 - **63 — Measure the PHP time zone problem.** A spike on K68: count and classify every place that builds a date from a database string, prove each class under three non-UTC zones, and write the fix as Phase 64. No behaviour changes.
 - **64 — Pin PHP's time zone to UTC.** The K68 fix Phase 63 measured: the process runs in UTC whatever `date.timezone` says, so a date read from the database is the clock's date; one decision about existing rows on a non-UTC install, a guard test and a docs note. Draft ([brief](docs/phases/PHASE-64.md)).
 - **65 — MySQL case rules and per-currency estimate marks.** A batch from the known-issues log (K32, K122, K87): passkey ids and handles compare case-sensitively on MySQL, the feed token's name is matched exactly in SQL, and only a currency holding a varying bill is drawn "≈". (64 is reserved for the K68 fix.)
+- **66 — API input edge cases.** A batch from the known-issues log (K146, K148, K149, K150): a bad notice-period unit is a 422 rather than a 500, a wrongly typed id, number, colour or note is refused rather than read as empty, an unknown subscription type is refused rather than saved as recurring, and an attachment's impossible period date is refused rather than rolled over.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
