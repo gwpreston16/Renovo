@@ -8,6 +8,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.27.0] - 2026-10-29
+
 ### Fixed
 
 - **Only a currency that holds a bill whose amount varies is drawn "≈".** A
@@ -1131,7 +1133,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.26.8...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.27.0...HEAD
+[1.27.0]: https://github.com/gwpreston16/Renovo/compare/v1.26.8...v1.27.0
 [1.26.8]: https://github.com/gwpreston16/Renovo/compare/v1.26.7...v1.26.8
 [1.26.7]: https://github.com/gwpreston16/Renovo/compare/v1.26.6...v1.26.7
 [1.26.6]: https://github.com/gwpreston16/Renovo/compare/v1.26.5...v1.26.6

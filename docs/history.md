@@ -714,6 +714,15 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   Docker installs are unaffected. No API changes, so the contract stays
   1.9.5. No migrations. See
   [Upgrading](upgrading.md#after-upgrading-to-the-utc-pin-phase-64).
+- **Phase 65 — MySQL case rules and per-currency estimate marks, from the
+  known-issues log — complete (1.27.0).** On MySQL and MariaDB a passkey's
+  credential id and handle, and the calendar feed token's name, are now
+  compared with their case, as they always were on PostgreSQL. A bill whose
+  amount varies now marks "≈" only the currency it is in, so a fixed € row
+  beside a varying £ bill reads exact, and the combined total stays "≈". No
+  API changes, so the contract stays 1.9.5. One migration (passkey id and
+  handle columns to `ascii_bin`; MySQL only). See
+  [Upgrading](upgrading.md#after-upgrading-to-exact-passkey-and-feed-token-matching-phase-65).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
