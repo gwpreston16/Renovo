@@ -30,7 +30,9 @@ use Psr\Log\LoggerInterface;
  *      169.254.169.254 is an attack, not a dual-stack deployment.
  *   4. **Apply the allowlist, and log when it is what let a request through.**
  *      A private address is reachable only because an administrator said so,
- *      and the log is where that shows up afterwards.
+ *      and the log is where that shows up afterwards. A listed name covers all
+ *      its addresses; a listed range covers only the addresses inside it, so
+ *      every private address a name answers with must be listed itself.
  *   5. **Hand back the address that was checked**, so the connection uses it
  *      rather than resolving the name a second time. Between step 2 and the
  *      connection there is otherwise a window in which the answer can change —
@@ -128,7 +130,8 @@ final class UrlGuard
             throw BlockedTargetException::unresolvable($host);
         }
 
-        $isTrusted = $this->isTrusted($host, $addresses);
+        $trustedByName = $this->isTrustedHost($host);
+        $isTrusted = $trustedByName || $this->everyAddressIsListed($addresses);
 
         if ($scheme !== 'https' && ($httpsOnly || !$isTrusted)) {
             throw BlockedTargetException::scheme($scheme);
@@ -136,13 +139,19 @@ final class UrlGuard
 
         $blocked = [];
         foreach ($addresses as $address) {
-            if (IpAddress::isBlocked($address)) {
-                $blocked[] = $address;
+            if (!IpAddress::isBlocked($address)) {
+                continue;
             }
-        }
 
-        if ($blocked !== [] && !$isTrusted) {
-            throw BlockedTargetException::privateAddress($host);
+            // A listed name vouches for whatever it resolves to. A listed
+            // range vouches only for the addresses inside it: one answer in
+            // the range must not carry another, such as the metadata
+            // service, past the check.
+            if (!$trustedByName && !$this->addressIsListed($address)) {
+                throw BlockedTargetException::privateAddress($host);
+            }
+
+            $blocked[] = $address;
         }
 
         if ($blocked !== []) {
@@ -161,22 +170,27 @@ final class UrlGuard
     /**
      * @param list<string> $addresses
      */
-    private function isTrusted(string $host, array $addresses): bool
+    private function everyAddressIsListed(array $addresses): bool
     {
-        if ($this->isTrustedHost($host)) {
-            return true;
+        foreach ($addresses as $address) {
+            if (!$this->addressIsListed($address)) {
+                return false;
+            }
         }
 
+        return true;
+    }
+
+    /**
+     * Whether an address is itself listed, exactly or inside a listed range.
+     */
+    private function addressIsListed(string $address): bool
+    {
         foreach ($this->trusted->entries() as $entry) {
             $entry = trim($entry);
-            if ($entry === '' || !IpAddress::isValidRange($entry)) {
-                continue;
-            }
 
-            foreach ($addresses as $address) {
-                if (IpAddress::inRange($address, $entry)) {
-                    return true;
-                }
+            if ($entry !== '' && IpAddress::isValidRange($entry) && IpAddress::inRange($address, $entry)) {
+                return true;
             }
         }
 

@@ -588,8 +588,11 @@ Under **Settings → Instance → Trusted hosts** each entry says what it allows
   applies to it: https, and a public address. A name someone else controls could
   otherwise be made to resolve to an internal address.
 
-A range (`10.0.0.0/8`) matches a URL written as an address, not a name that
-resolves into it.
+A range (`10.0.0.0/8`) covers only the addresses inside it. A name that
+resolves into the range is allowed when every private address it answers with
+is listed; one unlisted private address in the answer, such as a cloud
+metadata address, refuses the whole name. A listed name covers whatever it
+resolves to.
 
 ### What is written down
 
