@@ -905,8 +905,13 @@ final class SubscriptionService
             $errors['price'] = 'error.price.invalid';
         }
 
-        $type = SubscriptionType::tryFrom($this->str($input, 'subscription_type'))
-            ?? SubscriptionType::Recurring;
+        // Empty is the form's default and means recurring; anything else that
+        // is not a type is refused, not read as recurring (K149).
+        $typeInput = trim($this->str($input, 'subscription_type'));
+        $type = SubscriptionType::tryFrom($typeInput) ?? SubscriptionType::Recurring;
+        if ($typeInput !== '' && SubscriptionType::tryFrom($typeInput) === null) {
+            $errors['subscription_type'] = 'error.subscription_type.invalid';
+        }
 
         $cycle = null;
         $cycleDays = null;
@@ -963,9 +968,11 @@ final class SubscriptionService
         if ($noticeUnit !== '' && !in_array($noticeUnit, NoticePeriod::units(), true)) {
             $errors['notice_period_unit'] = 'error.notice.unit_required';
         }
+        // An unknown unit is already an error: building the period from it
+        // would throw, turning a 422 into a 500 (K146).
         $notice = NoticePeriod::of(
-            isset($errors['notice_period_amount']) ? null : $noticeAmount,
-            $noticeUnit === '' ? NoticePeriod::UNIT_DAYS : $noticeUnit,
+            isset($errors['notice_period_amount']) || isset($errors['notice_period_unit']) ? null : $noticeAmount,
+            isset($errors['notice_period_unit']) || $noticeUnit === '' ? NoticePeriod::UNIT_DAYS : $noticeUnit,
         );
 
         $categoryId = $this->positiveInt($input['category_id'] ?? null);

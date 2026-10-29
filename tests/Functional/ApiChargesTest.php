@@ -103,6 +103,30 @@ final class ApiChargesTest extends ApiTestCase
         self::assertSame(422, $response->getStatusCode());
     }
 
+    public function testAWronglyTypedNoteIsRefusedAndDroppedNowhere(): void
+    {
+        $path = '/api/v1/charges/' . $this->chargeId;
+        $this->api('PATCH', $path, $this->editorToken, ['note' => 'Kept']);
+
+        foreach ([['x'], true] as $value) {
+            $patch = $this->api('PATCH', $path, $this->editorToken, ['note' => $value]);
+            self::assertSame(422, $patch->getStatusCode(), (string) $patch->getBody());
+            self::assertArrayHasKey('note', $this->decode($patch)['error']['errors']);
+        }
+
+        $date = (new DateTimeImmutable('-1 day'))->format('Y-m-d');
+        $post = $this->api('POST', $this->chargesPath(), $this->ownerToken, [
+            'date' => $date,
+            'amount_minor' => 1500,
+            'note' => ['x'],
+        ]);
+        self::assertSame(422, $post->getStatusCode(), (string) $post->getBody());
+
+        $list = $this->decode($this->api('GET', $this->chargesPath(), $this->ownerToken))['data'];
+        $stored = array_values(array_filter($list, fn (array $c): bool => (int) $c['id'] === $this->chargeId));
+        self::assertSame('Kept', $stored[0]['note']);
+    }
+
     public function testAPostAddsAManualCharge(): void
     {
         $date = (new DateTimeImmutable('-1 day'))->format('Y-m-d');

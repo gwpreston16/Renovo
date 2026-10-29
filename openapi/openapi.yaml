@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.5"
+  version: "1.9.6"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -43,9 +43,13 @@ info:
     scopes and expiry.
 
     **Wrong types and impossible dates are refused.** A text field sent as a
-    boolean, a list or an object is a `422` on that field and clears nothing;
-    an absent key keeps the stored value and `null` clears it. A date that does
-    not exist is a `422`, never rolled over to another day.
+    boolean, a list or an object is a `422` on that field and clears nothing,
+    and so is a whole-number field (an id, an interval, a notice amount) sent
+    as text that is not a number, a boolean or a list; an absent key keeps the
+    stored value and `null` clears it. A date that does not exist is a `422`,
+    never rolled over to another day. A value outside an enum, such as an
+    unknown `subscription_type` or `notice_period_unit`, is a `422` on that
+    field.
 
     **Money is always an integer in minor units** (`price_minor: 1999` with
     `currency: GBP` is £19.99), never a decimal. JSON numbers are binary floats
@@ -630,7 +634,9 @@ paths:
                   type: string
                   format: date
                   nullable: true
-                  description: The billing period this document covers, if any.
+                  description: |
+                    The billing period this document covers, if any. A date
+                    that does not exist, or is not `YYYY-MM-DD`, is a `422`.
                 charge_id:
                   type: integer
                   nullable: true

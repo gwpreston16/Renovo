@@ -84,6 +84,33 @@ final class ApiTaxonomyTest extends ApiTestCase
         self::assertSame(201, $limit->getStatusCode(), (string) $limit->getBody());
     }
 
+    public function testAListOrObjectForAColourOrNameIsRefusedAndClearsNothing(): void
+    {
+        $created = $this->api('POST', '/api/v1/categories', $this->ownerToken, [
+            'name' => 'Fuel',
+            'colour' => '#112233',
+        ]);
+        self::assertSame(201, $created->getStatusCode(), (string) $created->getBody());
+        $id = (int) $this->decode($created)['data']['id'];
+
+        foreach (['colour' => ['x'], 'name' => ['x']] as $field => $value) {
+            $put = $this->api('PUT', '/api/v1/categories/' . $id, $this->ownerToken, [
+                $field => $value,
+            ] + ['name' => 'Fuel', 'colour' => '#112233']);
+            self::assertSame(422, $put->getStatusCode(), (string) $put->getBody());
+            self::assertArrayHasKey($field, $this->decode($put)['error']['errors']);
+        }
+
+        $post = $this->api('POST', '/api/v1/categories', $this->ownerToken, ['name' => 'Other', 'colour' => ['x']]);
+        self::assertSame(422, $post->getStatusCode(), (string) $post->getBody());
+
+        $kept = array_values(array_filter(
+            $this->decode($this->api('GET', '/api/v1/categories', $this->ownerToken))['data'],
+            fn (array $c): bool => (int) $c['id'] === $id,
+        ));
+        self::assertSame('#112233', $kept[0]['colour']);
+    }
+
     public function testATagContainedInAnotherTagsNameIsNotADuplicate(): void
     {
         self::assertSame(

@@ -74,6 +74,56 @@ final class AttachmentRoutesTest extends ApiTestCase
         );
     }
 
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function badPeriodDates(): array
+    {
+        return ['a day that does not exist' => ['2026-02-30'], 'not a date' => ['abc']];
+    }
+
+    /**
+     * @dataProvider badPeriodDates
+     */
+    public function testAnImpossibleOrUnreadablePeriodDateIsRefusedAndNothingIsStored(string $date): void
+    {
+        $subscriptionId = $this->createSubscription();
+        $request = (new ServerRequestFactory())
+            ->createServerRequest(
+                'POST',
+                'http://localhost/api/v1/subscriptions/' . $subscriptionId . '/attachments',
+                ['REMOTE_ADDR' => '127.0.0.1'],
+            )
+            ->withHeader('Authorization', 'Bearer ' . $this->ownerToken)
+            ->withUploadedFiles(['file' => FakeUpload::png('receipt.png')])
+            ->withParsedBody(['period_date' => $date]);
+
+        $response = $this->app->handle($request);
+
+        self::assertSame(422, $response->getStatusCode(), (string) $response->getBody());
+        self::assertArrayHasKey('period_date', $this->decode($response)['error']['errors']);
+        self::assertSame([], $this->attachmentsOf($subscriptionId));
+    }
+
+    public function testARealLeapDayPeriodDateIsStoredAsGiven(): void
+    {
+        $subscriptionId = $this->createSubscription();
+        $request = (new ServerRequestFactory())
+            ->createServerRequest(
+                'POST',
+                'http://localhost/api/v1/subscriptions/' . $subscriptionId . '/attachments',
+                ['REMOTE_ADDR' => '127.0.0.1'],
+            )
+            ->withHeader('Authorization', 'Bearer ' . $this->ownerToken)
+            ->withUploadedFiles(['file' => FakeUpload::png('receipt.png')])
+            ->withParsedBody(['period_date' => '2028-02-29']);
+
+        $response = $this->app->handle($request);
+
+        self::assertSame(201, $response->getStatusCode(), (string) $response->getBody());
+        self::assertSame('2028-02-29', $this->decode($response)['data']['period_date']);
+    }
+
     public function testADownloadThroughAnotherSubscriptionsUrlIsNotFound(): void
     {
         $withFile = $this->createSubscription(['name' => 'With a file']);

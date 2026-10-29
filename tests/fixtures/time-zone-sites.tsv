@@ -55,7 +55,6 @@ Repository/UserRepository.php	timestamp	createdAt: new DateTimeImmutable((string
 Repository/UserRepository.php	timestamp	return is_string($value) && $value !== '' ? new DateTimeImmutable($value) : null;
 Repository/WebAuthnCredentialRepository.php	user-facing	createdAt: new DateTimeImmutable((string) $row['created_at']),
 Repository/WebAuthnCredentialRepository.php	user-facing	lastUsedAt: is_string($lastUsed) && $lastUsed !== '' ? new DateTimeImmutable($lastUsed) : null,
-Service/AttachmentService.php	date-only	$date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
 Service/BackupService.php	date-only	$date = DateTimeImmutable::createFromFormat('!Y-m-d', trim($value));
 Service/BackupService.php	date-only	? DateTimeImmutable::createFromFormat('!Y-m-d', $row['next_payment_date'])
 Service/BackupService.php	date-only	? DateTimeImmutable::createFromFormat('!Y-m-d', $row['promo_ends_on'])

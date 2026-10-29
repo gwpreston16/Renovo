@@ -104,6 +104,10 @@ None.
 - **K149:** only a non-empty unknown value is refused; empty keeps meaning
   "recurring", as the web form sends it.
 - **K150:** uses the shared check, not a copy, as Phase 52 decided for K39.
+- **Cycle days and the converts-to fields** (`cycle_days`, `converts_to_cycle_days`,
+  `converts_to_cycle_interval`) join the wrong-number rule in K148 so every
+  whole-number field behaves the same; a new message, `error.json.wrong_type_number`
+  ("Send this as a whole number."), names it.
 - **Release — Decided 2026-10-29:** its own patch release once merged, after
   1.27.0 (the next patch after whichever earlier release ships first). The
   K145 fix ships in the same release if it has merged by then. No migration, so
@@ -111,14 +115,14 @@ None.
 
 ## Status
 
-- [ ] K146: a bad notice-period unit is a 422
-- [ ] K148: a wrongly typed id, number, colour or note is refused
-- [ ] K149: an unknown subscription type is a 422
-- [ ] K150: an attachment's period date is validated
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 66 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K146: a bad notice-period unit is a 422
+- [x] K148: a wrongly typed id, number, colour or note is refused
+- [x] K149: an unknown subscription type is a 422
+- [x] K150: an attachment's period date is validated
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 66 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

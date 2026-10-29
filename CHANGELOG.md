@@ -8,6 +8,19 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **The API refuses what it used to misread.** A subscription saved with an
+  unknown `notice_period_unit` and an amount answers 422 on that field, not
+  500. A wrongly typed id, interval or notice amount (text that is not a
+  number, `true` or a list), a category colour or name sent as a list, and a
+  charge note sent as a list or `true` are each a 422 on that field and change
+  nothing, where they used to clear the category, move the subscription to
+  another owner or drop the note. An unknown `subscription_type` is a 422, not
+  recurring. An attachment's `period_date` of `2026-02-30` or `abc` is a 422,
+  not stored as 2 March or as no period. OpenAPI 1.9.6, behaviour only.
+  *Phase 66.*
+
 ### Security
 
 - **A trusted address range no longer vouches for the rest of a name's

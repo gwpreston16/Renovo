@@ -11,6 +11,7 @@ use App\Repository\AttachmentRepository;
 use App\Repository\ChargeRepository;
 use App\Repository\SubscriptionRepository;
 use App\Security\Scope;
+use App\Support\IsoDate;
 use DateTimeImmutable;
 use Psr\Http\Message\UploadedFileInterface;
 
@@ -120,6 +121,9 @@ final class AttachmentService
         // Filed against a payment: the charge must be one of this
         // subscription's, and the invoice is for its billing date.
         $period = $this->parseDate($periodDate);
+        if ($period === null && trim((string) $periodDate) !== '') {
+            throw ValidationException::field('period_date', 'error.date.invalid');
+        }
         if ($chargeId !== null) {
             $charge = $this->charges->find($scope, $chargeId);
             if ($charge === null || $charge->subscriptionId !== $subscriptionId) {
@@ -208,8 +212,6 @@ final class AttachmentService
             return null;
         }
 
-        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
-
-        return $date === false ? null : $date;
+        return IsoDate::parse($value);
     }
 }

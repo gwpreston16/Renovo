@@ -39,6 +39,12 @@ use App\Service\ValidationException;
 final class SubscriptionPayload
 {
     /** The fields read as text; a boolean or an array is not one. */
+    private const INT_FIELDS = [
+        'cycle_days', 'notice_period_amount', 'converts_to_cycle_days', 'category_id',
+        'owner_user_id', 'payer_user_id', 'payment_method_id', 'cycle_interval',
+        'converts_to_cycle_interval',
+    ];
+
     private const STRING_FIELDS = [
         'name', 'notes', 'website_url', 'currency', 'subscription_type', 'billing_cycle',
         'next_payment_date', 'start_date', 'notice_period_unit', 'trial_end_date',
@@ -154,6 +160,17 @@ final class SubscriptionPayload
         foreach (self::STRING_FIELDS as $key) {
             if (array_key_exists($key, $json) && (is_bool($json[$key]) || is_array($json[$key]))) {
                 $errors[$key] = 'error.json.wrong_type';
+            }
+        }
+
+        // The whole-number fields the same way (K148): `"abc"`, `true` or `[]`
+        // for `category_id` would clear the category, for `owner_user_id` move
+        // the row to the caller. A fraction is the service's to refuse (K8).
+        foreach (self::INT_FIELDS as $key) {
+            $value = $json[$key] ?? null;
+            $notANumber = is_string($value) && trim($value) !== '' && !is_numeric($value);
+            if (array_key_exists($key, $json) && (is_bool($value) || is_array($value) || $notANumber)) {
+                $errors[$key] = 'error.json.wrong_type_number';
             }
         }
 
