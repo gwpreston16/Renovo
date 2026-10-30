@@ -198,15 +198,22 @@ None.
   phone.
   *Decided 2026-10-30:* **icon only** below 600px, with the label for screen
   readers. Not chosen: wrapping the actions onto a second row.
-  *Assumption:* the icons are the ones in the table in B, all already in the
-  sprite. Calendar's checkbox is not a button and stays as it is.
+  *Confirmed 2026-10-30:* the icons are the ones in the table in B, all
+  already in the sprite. Calendar's checkbox is not a button and stays as it
+  is.
 - **K158:** follows the disabled pattern `.icon-button` and the toggle (K95)
-  already use, with no new colour.
+  already use, with no new colour. *Confirmed 2026-10-30.*
 - **K160:** treats a zero or negative id like any other id that doesn't exist,
-  as `999` already is. `""` stays "none" for the form.
+  as `999` already is. `""` stays "none" for the form. *Confirmed 2026-10-30*,
+  with what was found while starting it: a writer fenced to their own rows (a
+  Contributor, or anyone in ISOLATED) still has `owner_user_id` set to
+  themselves whatever is sent, as `999` is today, so `0` is not refused for
+  them.
 - **K161:** an API-only message, as K76 did for charges. The form shares the
-  service and keeps its wording.
+  service and keeps its wording. *Confirmed 2026-10-30*, with the wording in E.
 - **K162:** a wording fix in `translations/en.php`, the only catalogue.
+  *Confirmed 2026-10-30:* "Choose a subscription type: recurring, one_off or
+  lifetime."
 - *Decided 2026-10-30:* the rows are K156–K158 and K160–K162. K159 was dropped
   to keep the batch to six rows.
 - **Release — Decided 2026-10-30:** ships with the **next minor release**
