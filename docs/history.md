@@ -744,6 +744,17 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   for a whole number of minor units rather than a decimal, and names
   `one_off` among the subscription types it takes. OpenAPI 1.9.7, behaviour
   only. No migrations. See [Shared costs](features/money.md#shared-costs).
+- **Phase 68 — SSRF ranges and test gaps, from the known-issues log —
+  complete (1.27.3).** The outbound-request guard now refuses five more IPv6
+  ranges (IPv4-compatible, IPv4-translated, local-use NAT64, Teredo and
+  site-local), so a logo, webhook or notification URL cannot reach a private
+  IPv4 address through them; a trusted-host entry still re-opens a range.
+  Every blocked range has a test address that fails without it, and tests now
+  cover plain http to a name only partly in a trusted range, a trial
+  converting today in the calendar feed, a charge due today in a budget
+  projection, and a boolean `true` as a category, tag or payment-method name.
+  No API change. No migrations. See
+  [Security](security.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
