@@ -171,13 +171,15 @@
                                     {% endif %}
 
                                     {% if member.isDisabled %}
-                                        <form method="post" action="/settings/members/{{ member.userId }}/restore" class="inline">
-                                            {{ csrf_field() }}
-                                            <button type="submit" class="button button-quiet member-action"
-                                                    aria-label="{{ t('members.restore_login_for', {'name': member.displayName}) }}">
-                                                {{ t('members.restore_login') }}
-                                            </button>
-                                        </form>
+                                        {% if not member.isInstanceAdmin or viewer_is_instance_admin %}
+                                            <form method="post" action="/settings/members/{{ member.userId }}/restore" class="inline">
+                                                {{ csrf_field() }}
+                                                <button type="submit" class="button button-quiet member-action"
+                                                        aria-label="{{ t('members.restore_login_for', {'name': member.displayName}) }}">
+                                                    {{ t('members.restore_login') }}
+                                                </button>
+                                            </form>
+                                        {% endif %}
                                     {% elseif not member.isInstanceAdmin or viewer_is_instance_admin %}
                                         <form method="post" action="/settings/members/{{ member.userId }}/revoke" class="inline">
                                             {{ csrf_field() }}

@@ -323,6 +323,12 @@ final class HouseholdMemberService
         $householdId = $this->assertAdministers($scope);
         $member = $this->requireMember($householdId, $userId);
 
+        // The same rule as revoking (K24): a revocation only an instance
+        // administrator could make is not a household's to undo (K139).
+        if ($member->isInstanceAdmin && !$actor->isInstanceAdmin) {
+            throw ValidationException::field('member', 'error.member.instance_admin');
+        }
+
         $this->users->setDisabledAt($member->id, null);
 
         $this->audit->record(

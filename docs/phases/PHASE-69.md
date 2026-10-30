@@ -169,7 +169,7 @@ None.
 - [x] K154: the Trials and Paused tiles are counted in SQL
 - [x] K168: the due-soon badge reads only rows that can be due
 - [x] K144: "just mine" marks the 12-month figures from the member's charges
-- [ ] K139: only an instance admin may restore an instance admin's login
+- [x] K139: only an instance admin may restore an instance admin's login
 - [ ] K163: Phinx runs on Postgres in UTC
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed
