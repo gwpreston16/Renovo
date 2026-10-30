@@ -198,7 +198,8 @@ final class SubscriptionPayload
         // The converts-to price is a count of minor units like the price: `true`,
         // a list or text that is not a number would save "no price".
         $converts = $json['converts_to_price_minor'] ?? null;
-        if (is_bool($converts) || is_array($converts) || (is_string($converts) && trim($converts) !== '' && !is_numeric($converts))) {
+        $notANumber = is_string($converts) && trim($converts) !== '' && !is_numeric($converts);
+        if (is_bool($converts) || is_array($converts) || $notANumber) {
             $errors['converts_to_price_minor'] = 'error.json.wrong_type_number';
         }
 

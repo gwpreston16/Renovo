@@ -145,9 +145,6 @@ abstract class ApiTestCase extends DatabaseTestCase
     }
 
     /**
-     * @param array<string, mixed>|null $body
-     */
-    /**
      * A request whose body is sent as written, for the bodies `api()` cannot
      * build: malformed JSON, a list, or no Content-Type.
      */
@@ -169,6 +166,9 @@ abstract class ApiTestCase extends DatabaseTestCase
         return $this->app->handle($request);
     }
 
+    /**
+     * @param array<string, mixed>|null $body
+     */
     protected function api(
         string $method,
         string $path,

@@ -293,7 +293,8 @@ final class TemplateConventionsTest extends TestCase
             $source = $this->source($root . $template);
             $position = strpos($source, $anchor);
             self::assertNotFalse($position, $template);
-            $tag = substr($source, (int) strrpos(substr($source, 0, $position), '<'), $position - (int) strrpos(substr($source, 0, $position), '<'));
+            $opening = (int) strrpos(substr($source, 0, $position), '<');
+            $tag = substr($source, $opening, $position - $opening);
             self::assertStringContainsString('data-save-on-change', $tag, $template);
         }
 

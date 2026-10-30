@@ -614,10 +614,14 @@ final class ApiInputValidationTest extends ApiTestCase
         $before = $this->show($id);
 
         foreach (['false', 'no', 'off', '0', 0, false] as $off) {
-            $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, ['is_active' => $off] + $before);
+            $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+                'is_active' => $off,
+            ] + $before);
             self::assertSame(200, $put->getStatusCode(), (string) $put->getBody());
             self::assertSame('paused', $this->show($id)['status']);
-            $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, ['is_active' => 'YES'] + $before);
+            $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+                'is_active' => 'YES',
+            ] + $before);
             self::assertSame(200, $put->getStatusCode(), (string) $put->getBody());
             self::assertSame('active', $this->show($id)['status']);
         }
@@ -669,8 +673,8 @@ final class ApiInputValidationTest extends ApiTestCase
         self::assertSame(400, $patch->getStatusCode(), (string) $patch->getBody());
         self::assertSame('The request body must be a JSON object.', $this->decode($patch)['error']['message']);
 
-        $after = $this->decode($this->api('GET', '/api/v1/subscriptions/' . $id . '/charges', $this->ownerToken))['data'];
-        self::assertNotContains(900, array_column($after, 'actual_minor'));
+        $list = $this->api('GET', '/api/v1/subscriptions/' . $id . '/charges', $this->ownerToken);
+        self::assertNotContains(900, array_column($this->decode($list)['data'], 'actual_minor'));
 
         $put = $this->apiRaw('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, $raw, $contentType);
         self::assertSame(400, $put->getStatusCode(), 'not a 422 listing the required fields');
@@ -680,10 +684,11 @@ final class ApiInputValidationTest extends ApiTestCase
     {
         $id = $this->createSubscription();
         $date = (new \DateTimeImmutable('-3 days'))->format('Y-m-d');
-        $chargeId = (int) $this->decode($this->api('POST', '/api/v1/subscriptions/' . $id . '/charges', $this->ownerToken, [
+        $created = $this->api('POST', '/api/v1/subscriptions/' . $id . '/charges', $this->ownerToken, [
             'date' => $date,
             'amount_minor' => 500,
-        ]))['data']['id'];
+        ]);
+        $chargeId = (int) $this->decode($created)['data']['id'];
 
         foreach (['{}', ''] as $raw) {
             $patch = $this->apiRaw('PATCH', '/api/v1/charges/' . $chargeId, $this->ownerToken, $raw);

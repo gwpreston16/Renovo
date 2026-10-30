@@ -312,12 +312,19 @@ final class NotificationsPageTest extends DatabaseTestCase
 
             $response = $app->handle(
                 (new ServerRequestFactory())
-                    ->createServerRequest('GET', 'http://localhost/settings/notifications', ['REMOTE_ADDR' => '127.0.0.1']),
+                    ->createServerRequest(
+                        'GET',
+                        'http://localhost/settings/notifications',
+                        ['REMOTE_ADDR' => '127.0.0.1'],
+                    ),
             );
             $html = $this->body($response);
 
             self::assertSame(200, $response->getStatusCode());
-            self::assertStringContainsString('Verlängerung und Probezeit-Ende und Kündigungsfrist und Vertragsende', $html);
+            self::assertStringContainsString(
+                'Verlängerung und Probezeit-Ende und Kündigungsfrist und Vertragsende',
+                $html,
+            );
             self::assertStringNotContainsString('verlängerung', $html);
         } finally {
             unlink($directory . '/en.php');

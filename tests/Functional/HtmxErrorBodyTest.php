@@ -76,7 +76,11 @@ final class HtmxErrorBodyTest extends DatabaseTestCase
 
         // A 403 from a real route: an Editor may not change a member's role.
         $request = (new ServerRequestFactory())
-            ->createServerRequest('POST', 'http://localhost/settings/members/' . $this->ownerId . '/role', ['REMOTE_ADDR' => '127.0.0.1'])
+            ->createServerRequest(
+                'POST',
+                'http://localhost/settings/members/' . $this->ownerId . '/role',
+                ['REMOTE_ADDR' => '127.0.0.1'],
+            )
             ->withParsedBody(['role' => 'viewer'])
             ->withHeader('HX-Request', 'true')
             ->withHeader(CsrfTokenManager::HEADER_NAME, $container->get(CsrfTokenManager::class)->token());
