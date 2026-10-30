@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\IsolationMode;
+use App\Domain\Role;
+use App\Security\Scope;
+use App\Service\SubscriptionService;
+use App\Service\ValidationException;
+
 /**
  * What the API refuses instead of reading as something else: a date that does
  * not exist (K39) and a text field sent as a boolean or an array (K91).
@@ -369,6 +375,150 @@ final class ApiInputValidationTest extends ApiTestCase
         $id = $this->createSubscription(['subscription_type' => '']);
 
         self::assertSame('recurring', $this->show($id)['subscription_type']);
+    }
+
+    /**
+     * @return array<string, array{string, int}>
+     */
+    public static function idsOfZeroOrLess(): array
+    {
+        $cases = [];
+        foreach (['category_id', 'payment_method_id', 'owner_user_id', 'payer_user_id'] as $field) {
+            $cases[$field . ' 0'] = [$field, 0];
+            $cases[$field . ' -1'] = [$field, -1];
+        }
+
+        return $cases;
+    }
+
+    /**
+     * K160: read as "none", these cleared the category or moved the row to
+     * the caller. The owner case runs as the Owner, since a writer fenced to
+     * their own rows has the owner set to themselves whatever is sent.
+     *
+     * @dataProvider idsOfZeroOrLess
+     */
+    public function testAnIdOfZeroOrLessIsRefusedAndChangesNothing(string $field, int $value): void
+    {
+        $category = $this->decode($this->api('POST', '/api/v1/categories', $this->ownerToken, [
+            'name' => 'Utilities',
+        ]))['data']['id'];
+        $method = $this->decode($this->api('POST', '/api/v1/payment-methods', $this->ownerToken, [
+            'name' => 'Joint card',
+        ]))['data']['id'];
+        $id = $this->createSubscription([
+            'category_id' => $category,
+            'payment_method_id' => $method,
+            'owner_user_id' => $this->editorId,
+            'payer_user_id' => $this->editorId,
+        ]);
+        $before = $this->show($id);
+
+        $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [$field => $value] + $before);
+
+        self::assertSame(422, $put->getStatusCode(), (string) $put->getBody());
+        self::assertArrayHasKey($field, $this->decode($put)['error']['errors']);
+        self::assertSame($before, $this->show($id));
+
+        $post = $this->api('POST', '/api/v1/subscriptions', $this->ownerToken, [$field => $value] + [
+            'name' => 'New',
+            'price_minor' => 500,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-12-01',
+        ]);
+        self::assertSame(422, $post->getStatusCode(), (string) $post->getBody());
+        self::assertArrayHasKey($field, $this->decode($post)['error']['errors']);
+    }
+
+    public function testAnEmptyOrNullIdStillMeansNone(): void
+    {
+        $category = $this->decode($this->api('POST', '/api/v1/categories', $this->ownerToken, [
+            'name' => 'Utilities',
+        ]))['data']['id'];
+        $id = $this->createSubscription(['category_id' => $category, 'payer_user_id' => $this->editorId]);
+
+        foreach (['', null] as $none) {
+            $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+                'category_id' => $none,
+                'payer_user_id' => $none,
+            ] + $this->show($id));
+            self::assertSame(200, $put->getStatusCode(), (string) $put->getBody());
+            self::assertNull($this->show($id)['category_id']);
+            self::assertNull($this->show($id)['payer_user_id']);
+        }
+    }
+
+    /**
+     * @return array<string, array{string, mixed}>
+     */
+    public static function priceNotInMinorUnits(): array
+    {
+        return [
+            'price_minor fraction' => ['price_minor', 12.5],
+            'price_minor text' => ['price_minor', 'abc'],
+            'price_minor true' => ['price_minor', true],
+            'price_minor list' => ['price_minor', []],
+            'converts_to_price_minor fraction' => ['converts_to_price_minor', 12.5],
+        ];
+    }
+
+    /**
+     * K161: the API takes minor units, so it doesn't ask for a decimal.
+     *
+     * @dataProvider priceNotInMinorUnits
+     */
+    public function testAPriceNotInMinorUnitsAsksForMinorUnits(string $field, mixed $value): void
+    {
+        $id = $this->createSubscription();
+        $before = $this->show($id);
+
+        $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+            'is_trial' => true,
+            'trial_end_date' => '2026-12-01',
+            $field => $value,
+        ] + $before);
+
+        self::assertSame(422, $put->getStatusCode(), (string) $put->getBody());
+        self::assertSame(
+            'Send a whole number of minor units: 999 for 9.99.',
+            $this->decode($put)['error']['errors'][$field],
+        );
+        self::assertSame($before, $this->show($id));
+    }
+
+    public function testTheFormKeepsItsDecimalPriceMessage(): void
+    {
+        try {
+            $this->container()->get(SubscriptionService::class)->create(
+                Scope::forMember($this->ownerId, false, $this->householdId, Role::OwnerAdmin, IsolationMode::Shared),
+                [
+                    'name' => 'From the form',
+                    'price' => 'abc',
+                    'currency' => 'GBP',
+                    'subscription_type' => 'recurring',
+                    'billing_cycle' => 'monthly',
+                    'next_payment_date' => '2026-12-01',
+                ],
+            );
+            self::fail('A bad price was accepted.');
+        } catch (ValidationException $exception) {
+            self::assertSame('error.price.invalid', $exception->errors()['price']->key);
+        }
+    }
+
+    public function testTheTypeMessageNamesTheValueTheApiTakes(): void
+    {
+        $post = $this->api('POST', '/api/v1/subscriptions', $this->ownerToken, [
+            'name' => 'New',
+            'price_minor' => 500,
+            'currency' => 'GBP',
+            'subscription_type' => 'one-off',
+        ]);
+
+        self::assertSame(422, $post->getStatusCode(), (string) $post->getBody());
+        self::assertStringContainsString('one_off', $this->decode($post)['error']['errors']['subscription_type']);
     }
 
     /**

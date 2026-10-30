@@ -225,9 +225,9 @@ None.
 - [x] K156: a split follows its subscription to a new owner
 - [ ] K157: on a phone the title keeps its room
 - [ ] K158: a disabled button looks disabled
-- [ ] K160: an id of zero or less is refused
-- [ ] K161: the API asks for minor units
-- [ ] K162: the type message names the values the API takes
+- [x] K160: an id of zero or less is refused
+- [x] K161: the API asks for minor units
+- [x] K162: the type message names the values the API takes
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed
 - [ ] ROADMAP: Phase 67 row marked ✅ done

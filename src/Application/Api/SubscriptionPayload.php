@@ -175,6 +175,21 @@ final class SubscriptionPayload
             }
         }
 
+        // A price is a whole number of minor units on the wire, and a client
+        // that sends anything else is told so (K161), not asked for a decimal
+        // as the form is. Null keeps its meaning, the service's to answer.
+        $price = $json['price_minor'] ?? null;
+        if ($price !== null && self::wholeNumber($price) === null) {
+            $errors['price_minor'] = 'error.subscription.minor_invalid';
+        }
+
+        // Only a fraction here: text, a boolean or a list still reads as "no
+        // separate price" until K159 decides which loose values to keep.
+        $converts = $json['converts_to_price_minor'] ?? null;
+        if (is_numeric($converts) && self::wholeNumber($converts) === null) {
+            $errors['converts_to_price_minor'] = 'error.subscription.minor_invalid';
+        }
+
         if ($errors !== []) {
             throw new ValidationException($errors);
         }

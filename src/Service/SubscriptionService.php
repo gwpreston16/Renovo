@@ -977,7 +977,7 @@ final class SubscriptionService
 
         $categoryId = $this->positiveInt($input['category_id'] ?? null);
         if (
-            $this->isFraction($input['category_id'] ?? null)
+            $this->isNotAnId($input['category_id'] ?? null)
             || ($categoryId !== null && $this->categories->find($scope, $categoryId) === null)
         ) {
             $errors['category_id'] = 'error.category.not_found';
@@ -985,7 +985,7 @@ final class SubscriptionService
 
         $paymentMethodId = $this->positiveInt($input['payment_method_id'] ?? null);
         if (
-            $this->isFraction($input['payment_method_id'] ?? null)
+            $this->isNotAnId($input['payment_method_id'] ?? null)
             || ($paymentMethodId !== null && $this->paymentMethods->find($scope, $paymentMethodId) === null)
         ) {
             $errors['payment_method_id'] = 'error.payment_method.not_found';
@@ -1000,14 +1000,14 @@ final class SubscriptionService
         if ($scope->restrictsWritesToOwner()) {
             // Somebody fenced to their own rows may only ever own what they make.
             $ownerUserId = $scope->userId;
-        } elseif ($this->isFraction($input['owner_user_id'] ?? null) || !in_array($ownerUserId, $memberIds, true)) {
+        } elseif ($this->isNotAnId($input['owner_user_id'] ?? null) || !in_array($ownerUserId, $memberIds, true)) {
             $errors['owner_user_id'] = 'error.member.not_in_household';
             $ownerUserId = $scope->userId;
         }
 
         $payerUserId = $this->positiveInt($input['payer_user_id'] ?? null);
         if (
-            $this->isFraction($input['payer_user_id'] ?? null)
+            $this->isNotAnId($input['payer_user_id'] ?? null)
             || ($payerUserId !== null && !in_array($payerUserId, $memberIds, true))
         ) {
             $errors['payer_user_id'] = 'error.member.not_in_household';
@@ -1539,12 +1539,21 @@ final class SubscriptionService
     }
 
     /**
-     * Whether a value that should be an id is some other kind of number, such
-     * as "2.5", which `positiveInt()` would otherwise round down to a row.
+     * Whether a value sent for an id can't be one: some other kind of number,
+     * such as "2.5", which `positiveInt()` would otherwise round down to a
+     * row, or a whole number of zero or less, which it would read as "none"
+     * and so clear the field or move the row to the caller (K160). Empty is
+     * the form's "none" and is not refused.
      */
-    private function isFraction(mixed $value): bool
+    private function isNotAnId(mixed $value): bool
     {
-        return is_scalar($value) && trim((string) $value) !== '' && $this->wholeNumber((string) $value) === null;
+        if (!is_scalar($value) || trim((string) $value) === '') {
+            return false;
+        }
+
+        $whole = $this->wholeNumber((string) $value);
+
+        return $whole === null || $whole <= 0;
     }
 
     private function positiveInt(mixed $value): ?int

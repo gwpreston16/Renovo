@@ -362,10 +362,14 @@ row in it.
 numbers are binary floats in most clients, 19.99 is not representable as one,
 and that is most of the reason this application stores integers everywhere.
 A fraction is refused, not rounded: `price_minor: 19.99` and `"19.99"` are a
-`422` on `price_minor`, and so is `cycle_days: 2.5` on `cycle_days`. The same
+`422` on `price_minor` ("Send a whole number of minor units: 999 for 9.99."),
+as are text, `true` and a list there, and a fraction in
+`converts_to_price_minor`; `cycle_days: 2.5` is a `422` on `cycle_days`. The same
 goes for `converts_to_cycle_days`, `notice_period_amount` and the id fields
 (`category_id`, `payment_method_id`, `owner_user_id`, `payer_user_id`): a number
-with a fraction is never rounded. `19.0` is `19`. The
+with a fraction is never rounded. `19.0` is `19`. An id of `0` or less is a
+`422` on its field, as an id that doesn't exist is, never read as "none": send
+`null` (or `""`) for that. The
 largest price accepted is `1000000000000` minor units (10 billion in a
 two-decimal currency); more is a `422` too.
 
@@ -432,7 +436,7 @@ Every error is JSON, in one shape:
     "title": "Validation failed",
     "message": "The submitted data is not valid.",
     "errors": {
-      "price_minor": "Enter a price, for example 9.99.",
+      "price_minor": "Send a whole number of minor units: 999 for 9.99.",
       "next_payment_date": "A recurring subscription needs a next payment date."
     }
   }
