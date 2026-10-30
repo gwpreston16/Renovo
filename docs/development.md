@@ -313,6 +313,20 @@ await window.Renovo.chart(canvas, { type: 'line', data: … });
 element.append(window.Renovo.icon('calendar'));
 ```
 
+### Browser checks the tests cannot run
+
+The repo has no JavaScript test runner, so the script behaviour that PHPUnit
+cannot see is checked by hand and recorded here.
+
+- **A failed save-on-change says so** (Phase 70, K164). With every save-on-change
+  POST answering 500, changing a member's role select on `/settings/members`
+  shows the error handler's message in the page's live region
+  (`data-save-error`) and puts the select back on the role the server holds.
+  The Email switch under Notifications and a backup destination's switch take
+  the same path (`data-save-on-change`); a failed filter or sort on the
+  subscription list shows the message and leaves the list as it was. Checked
+  2026-10-30 on the role select at 1280 px, dark.
+
 ### Keeping it honest
 
 ```bash

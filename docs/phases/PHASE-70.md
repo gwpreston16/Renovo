@@ -137,14 +137,14 @@ None.
 
 ## Status
 
-- [ ] K147: an unreadable JSON write body is a 400
-- [ ] K159: wrong-typed subscription fields are a 422 on the field
-- [ ] K164: a failed save-on-change says so
-- [ ] K165: the Lead times hint is a catalogue's to word
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 70 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K147: an unreadable JSON write body is a 400
+- [x] K159: wrong-typed subscription fields are a 422 on the field
+- [x] K164: a failed save-on-change says so
+- [x] K165: the Lead times hint is a catalogue's to word
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 70 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
