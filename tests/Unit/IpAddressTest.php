@@ -45,6 +45,12 @@ final class IpAddressTest extends TestCase
             ['::ffff:169.254.169.254', 'the metadata service wearing an IPv6 hat'],
             ['2002:c0a8:0101::1', '6to4, which embeds a v4 address'],
             ['64:ff9b::7f00:1', 'NAT64, which also embeds one'],
+            ['::127.0.0.1', 'IPv4-compatible loopback'],
+            ['::7f00:1', 'IPv4-compatible loopback, written as hex'],
+            ['::ffff:0:7f00:1', 'IPv4-translated loopback'],
+            ['64:ff9b:1::7f00:1', 'local-use NAT64, which embeds a v4 address'],
+            ['2001::7f00:1', 'Teredo, which embeds one too'],
+            ['fec0::1', 'deprecated site-local'],
             ['not-an-address', 'anything unparseable'],
         ];
     }
@@ -69,6 +75,8 @@ final class IpAddressTest extends TestCase
             ['100.63.255.255'],  // just below the CGNAT block
             ['100.128.0.1'],     // just above it
             ['2606:4700:4700::1111'],
+            ['2606:4700::1111'],
+            ['::ffff:93.184.216.34'], // a mapped public address still unwraps to v4
         ];
     }
 

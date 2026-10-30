@@ -17,10 +17,13 @@ namespace App\Http;
  *
  *  - **IPv4-mapped IPv6.** `::ffff:127.0.0.1` is loopback wearing a v6 hat. It
  *    is unwrapped and re-tested as v4, because matching it against the v6
- *    ranges alone would let it through. The same applies to 6to4 (2002::/16)
- *    and NAT64 (64:ff9b::/96), which embed a v4 address the checks below would
- *    never see; those are refused outright rather than unwrapped, since nothing
- *    legitimate in this application needs them.
+ *    ranges alone would let it through. The same applies to 6to4 (2002::/16),
+ *    NAT64 (64:ff9b::/96 and the local-use 64:ff9b:1::/48), Teredo
+ *    (2001::/32), IPv4-compatible (::/96) and IPv4-translated
+ *    (::ffff:0:0:0/96) addresses, which embed a v4 address the checks below
+ *    would never see; those are refused outright rather than unwrapped, since
+ *    nothing legitimate in this application needs them. Deprecated site-local
+ *    (fec0::/10) is refused with them.
  *  - **Carrier-grade NAT (100.64.0.0/10).** Blocked like any other private
  *    range, and named here because it is the range a Tailscale host is usually
  *    on. That is precisely the case the admin allowlist exists to re-open —
@@ -54,12 +57,17 @@ final class IpAddress
         // IPv6
         '::/128',             // unspecified
         '::1/128',            // loopback
+        '::/96',              // IPv4-compatible (::127.0.0.1); also covers the two above
+        '::ffff:0:0:0/96',    // IPv4-translated (::ffff:0:7f00:1), not the mapped form
         '64:ff9b::/96',       // NAT64 — embeds a v4 address we cannot vet here
+        '64:ff9b:1::/48',     // local-use NAT64 — embeds one too
         '100::/64',           // discard-only
+        '2001::/32',          // Teredo — embeds a v4 address
         '2001:db8::/32',      // documentation
         '2002::/16',          // 6to4 — embeds a v4 address
         'fc00::/7',           // unique local (Tailscale's fd7a:… lives here)
         'fe80::/10',          // link-local
+        'fec0::/10',          // site-local, deprecated but still routable on old networks
         'ff00::/8',           // multicast
     ];
 
