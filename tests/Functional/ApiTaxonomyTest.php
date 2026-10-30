@@ -103,7 +103,10 @@ final class ApiTaxonomyTest extends ApiTestCase
         }
 
         foreach ([['x'], true] as $value) {
-            $post = $this->api('POST', '/api/v1/categories', $this->ownerToken, ['name' => 'Other', 'colour' => $value]);
+            $post = $this->api('POST', '/api/v1/categories', $this->ownerToken, [
+                'name' => 'Other',
+                'colour' => $value,
+            ]);
             self::assertSame(422, $post->getStatusCode(), (string) $post->getBody());
         }
 
@@ -118,7 +121,8 @@ final class ApiTaxonomyTest extends ApiTestCase
     public function testATagOrPaymentMethodRenameToAWrongTypeIsRefused(): void
     {
         // K171. Without the type check `true` would rename the row to "1".
-        $tagId = (int) $this->decode($this->api('POST', '/api/v1/tags', $this->ownerToken, ['name' => 'Travel']))['data']['id'];
+        $tag = $this->api('POST', '/api/v1/tags', $this->ownerToken, ['name' => 'Travel']);
+        $tagId = (int) $this->decode($tag)['data']['id'];
         $methodId = $this->createMethod();
 
         foreach ([true, ['x']] as $value) {

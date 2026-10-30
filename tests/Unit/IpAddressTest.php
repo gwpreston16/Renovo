@@ -82,7 +82,10 @@ final class IpAddressTest extends TestCase
         $addresses = array_column(self::blockedAddresses(), 0);
 
         foreach ($ranges as $range) {
-            $covered = array_filter($addresses, static fn (string $address): bool => IpAddress::inRange($address, $range));
+            $covered = array_filter(
+                $addresses,
+                static fn (string $address): bool => IpAddress::inRange($address, $range),
+            );
             self::assertNotSame([], $covered, sprintf('No blockedAddresses() case falls inside %s', $range));
         }
     }
