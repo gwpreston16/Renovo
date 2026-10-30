@@ -222,7 +222,7 @@ None.
 
 ## Status
 
-- [ ] K156: a split follows its subscription to a new owner
+- [x] K156: a split follows its subscription to a new owner
 - [ ] K157: on a phone the title keeps its room
 - [ ] K158: a disabled button looks disabled
 - [ ] K160: an id of zero or less is refused
