@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–68
+## Planned — Phases 30–69
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -77,6 +77,7 @@ can be moved.
 | 66 | [API input edge cases, from the known-issues log](docs/phases/PHASE-66.md) | — | None | ✅ done |
 | 67 | [Split owners, phone top bar, disabled buttons and API ids, from the known-issues log](docs/phases/PHASE-67.md) | — | None | ✅ done |
 | 68 | [SSRF ranges and test gaps, from the known-issues log](docs/phases/PHASE-68.md) | — | None | ✅ done |
+| 69 | [Trials, counts and household edges, from the known-issues log](docs/phases/PHASE-69.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -210,6 +211,7 @@ can be moved.
 - **66 — API input edge cases.** A batch from the known-issues log (K146, K148, K149, K150): a bad notice-period unit is a 422 rather than a 500, a wrongly typed id, number, colour or note is refused rather than read as empty, an unknown subscription type is refused rather than saved as recurring, and an attachment's impossible period date is refused rather than rolled over.
 - **67 — Split owners, phone top bar, disabled buttons and API ids.** A batch from the known-issues log (K156, K157, K158, K160, K161, K162): a split follows its subscription to a new owner and stale split rows mend on the next save, the top bar keeps the page title readable on a phone, a disabled button looks disabled, an id of zero or less is refused, and the API's price and type messages name what it actually takes.
 - **68 — SSRF ranges and test gaps.** A batch from the known-issues log (K140, K152, K153, K169, K170, K171): the SSRF client refuses six special-purpose IPv6 forms, every blocked range gets a test that fails without it, and four tests are added where a plausible mistake (a partly trusted name over http, a trial converting today, a charge due today in a budget, a name sent as `true`) would pass CI.
+- **69 — Trials, counts and household edges.** A batch from the known-issues log (K139, K144, K151, K154, K163, K168): a running trial is no longer caught up before it ends, the list tiles and the due-soon badge stop loading every subscription to count a few, "just mine" scenario figures are marked "≈" only for the member's own varying bills, only an instance admin may restore an instance admin's login, and Phinx runs on Postgres in UTC.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
