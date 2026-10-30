@@ -303,6 +303,14 @@ final class UsageAndCancellationTest extends DatabaseTestCase
             self::assertNotContains($id, $loaded);
         }
 
+        // A row that cannot even be loaded, with no deadline: reading every
+        // subscription, as before K168, would throw on it.
+        $unreadable = $this->create('Unreadable', 1000);
+        $this->db->execute(
+            "UPDATE subscriptions SET subscription_type = 'retired' WHERE id = :id",
+            ['id' => $unreadable],
+        );
+
         $names = static fn (array $rows): array => array_map(
             static fn (array $row): string => $row['subscription']->name . ':' . $row['kind'],
             $rows,

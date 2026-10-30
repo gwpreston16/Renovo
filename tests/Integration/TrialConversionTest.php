@@ -340,6 +340,18 @@ final class TrialConversionTest extends DatabaseTestCase
         self::assertSame(0, $this->chargeCount($id));
     }
 
+    public function testCancellingARunningTrialWritesNoPayment(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-10-29 09:00:00'));
+        $id = $this->createTrial(endDate: '2026-12-13', convertsToMinor: 999, priceMinor: 100);
+        $this->setNextPayment($id, '2026-10-24');
+
+        $this->subscriptionService()->cancel($this->scope(), $id);
+
+        self::assertSame(0, $this->chargeCount($id));
+        self::assertTrue($this->subscriptions->find($this->scope(), $id)?->isCancelled());
+    }
+
     /**
      * The catch-up as a page load runs it: conversions first, then payments.
      */

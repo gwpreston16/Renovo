@@ -117,7 +117,8 @@ that was due, when it stays as you added it) — so Undo then puts back the
 price that was due, rather than leaving the date with nothing.
 
 Pausing stops the payments. Pausing or cancelling first records any billing
-dates that had already passed, so nothing due before the pause is lost; after
+dates that had already passed, so nothing due before the pause is lost (a
+running free trial has none: its first payment is its trial end); after
 that, nothing is written while a subscription is paused, and **resuming skips
 the dates the pause covered** — the next payment moves on to the first billing
 date from today, and each date it steps over is listed as skipped, marked

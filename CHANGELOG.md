@@ -39,7 +39,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   login.** A household Owner who isn't an instance administrator could
   restore the login of a co-Owner who is, undoing a revocation only an
   instance administrator may make. Restoring is now refused for them, as
-  revoking already was, and the button is no longer shown. *Phase 69.*
+  revoking already was, and the button is no longer shown (K139).
+  *Phase 69.*
 
 ## [1.27.3] - 2026-10-30
 
