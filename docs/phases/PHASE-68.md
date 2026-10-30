@@ -145,7 +145,7 @@ None.
 - [x] K169: a name partly inside a trusted range is refused over http
 - [x] K140: a trial converting today has one event that day
 - [x] K170: a charge due today counts in the budget-alert projection
-- [ ] K171: a category, tag or payment-method name of `true` is refused
+- [x] K171: a category, tag or payment-method name of `true` is refused
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed
 - [ ] ROADMAP: Phase 68 row marked ✅ done
