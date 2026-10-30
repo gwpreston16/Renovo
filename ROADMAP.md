@@ -78,7 +78,7 @@ can be moved.
 | 67 | [Split owners, phone top bar, disabled buttons and API ids, from the known-issues log](docs/phases/PHASE-67.md) | — | None | ✅ done |
 | 68 | [SSRF ranges and test gaps, from the known-issues log](docs/phases/PHASE-68.md) | — | None | ✅ done |
 | 69 | [Trials, counts and household edges, from the known-issues log](docs/phases/PHASE-69.md) | — | None | ✅ done |
-| 70 | [API bodies and save-on-change messages, from the known-issues log](docs/phases/PHASE-70.md) | — | None | 📋 planned |
+| 70 | [API bodies and save-on-change messages, from the known-issues log](docs/phases/PHASE-70.md) | — | None | 🚧 in progress |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was

@@ -122,13 +122,13 @@ None.
   table. Not chosen: keep reading it as empty and make a `PATCH` with no
   recognised field a 422. A client that sends a broken body is told so,
   instead of being told a field is missing or that it succeeded.
-- **K159:** makes the code do what the OpenAPI headline already claims, and
+- **K159 — Confirmed 2026-10-30:** makes the code do what the OpenAPI headline already claims, and
   extends Phase 66's K148 to the fields it left. The tolerated flag words and
   string forms are kept and documented rather than removed, so no working
   client breaks.
-- **K164:** assumes the live region is the right place for the message (as
+- **K164 — Confirmed 2026-10-30:** assumes the live region is the right place for the message (as
   Phase 60's K138 chose for swap status) and not a new toast component.
-- **K165:** assumes one string per alert plus one for the joiner, over a
+- **K165 — Confirmed 2026-10-30:** assumes one string per alert plus one for the joiner, over a
   single pre-built list string, so a catalogue changes only wording.
 - **Release — Decided 2026-10-30:** its own patch release once merged,
   v1.28.1. No migration, so no back-up-first note beyond the standard line.
