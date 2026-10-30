@@ -7,6 +7,7 @@ namespace App\Tests\Integration;
 use App\Domain\IsolationMode;
 use App\Domain\Role;
 use App\Domain\SplitMode;
+use App\Domain\SubscriptionFilter;
 use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\SplitRepository;
@@ -164,6 +165,75 @@ final class SplitOwnershipMoveTest extends DatabaseTestCase
         );
         self::assertNull($this->subscriptions->find($carol, $this->broadband));
         self::assertSame([], $this->splits->findForSubscription($carol, $this->broadband));
+    }
+
+    public function testALeftoverRowIsNotSomebodysShareInTheMineFilter(): void
+    {
+        $this->giveToBobTheWayMasterDid();
+        $this->db->execute(
+            "UPDATE subscriptions SET split_mode = 'none' WHERE id = :id",
+            ['id' => $this->broadband],
+        );
+
+        $mine = $this->subscriptions->findForList(
+            $this->scope($this->bob, Role::Contributor),
+            new SubscriptionFilter(mine: true),
+        );
+        self::assertContains($this->broadband, array_map(static fn ($row) => $row->id, $mine));
+
+        $carolsRow = $this->db->insert('subscription_splits', [
+            'subscription_id' => $this->broadband,
+            'household_id' => $this->household,
+            'owner_user_id' => $this->bob,
+            'user_id' => $this->carol,
+            'share_units' => 1,
+            'created_at' => '2026-01-01 00:00:00',
+            'updated_at' => '2026-01-01 00:00:00',
+        ]);
+        self::assertGreaterThan(0, $carolsRow);
+
+        $mine = $this->subscriptions->findForList(
+            $this->scope($this->carol, Role::Editor),
+            new SubscriptionFilter(mine: true),
+        );
+        self::assertNotContains($this->broadband, array_map(static fn ($row) => $row->id, $mine));
+    }
+
+    public function testAWriterWhoIsNotTheOwnerClearsAStaleSplitInSharedMode(): void
+    {
+        // Carol, an Editor in SHARED mode, may write Bob's subscription, so the
+        // rows go whoever they name as their owner.
+        $this->giveToBobTheWayMasterDid();
+
+        $this->splits->deleteForSubscription($this->scope($this->carol, Role::Editor), $this->broadband);
+
+        self::assertSame([], $this->participants());
+    }
+
+    public function testTheDeleteIsGuardedByTheParentsPrivacyAndHousehold(): void
+    {
+        $this->giveToBobTheWayMasterDid();
+
+        // Not reachable through the services, which refuse a split on a
+        // private row: set directly to prove the guard's privacy clause.
+        $this->db->execute(
+            "UPDATE subscriptions SET visibility = 'payer' WHERE id = :id",
+            ['id' => $this->broadband],
+        );
+        $this->splits->deleteForSubscription($this->scope($this->carol, Role::Editor), $this->broadband);
+        self::assertSame([$this->alice, $this->bob], $this->participants());
+
+        $elsewhere = (new HouseholdRepository($this->db))->create('Next door', $this->carol);
+        $this->splits->deleteForSubscription(
+            Scope::forMember($this->carol, false, $elsewhere, Role::OwnerAdmin, IsolationMode::Shared),
+            $this->broadband,
+        );
+        $this->splits->deleteForSubscription(
+            Scope::withoutHousehold($this->carol, true, IsolationMode::Shared),
+            $this->broadband,
+        );
+        // Both stale rows still there, as master left them.
+        self::assertSame([$this->alice, $this->alice], $this->splitOwners());
     }
 
     public function testAParticipantWhoIsNotTheOwnerStillCannotChangeTheSplit(): void

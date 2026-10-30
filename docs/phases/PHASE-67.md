@@ -206,7 +206,7 @@ None.
   *Changed 2026-10-30 (found while building it):* icon only **below 1440px**,
   not below 600px. With the sidebar, the search box, the rates chip and Add
   new beside them, the two worded actions on Costs and usage and Edit
-  subscription left a 0px title at 768 and 1280 too, as on master. On a phone
+  subscription left a 0px title at 768 and 1280 too, as on master. Below 1440px
   the icon-only actions also take a narrower side padding.
   *Added 2026-10-30 (found while building it):* Forecast scrolled sideways at
   360 and 390px (423px wide): the "If I cancelled" rows' name, figure and
@@ -250,8 +250,9 @@ The working tree, served with `php -S` against `renovo_test` seeded by
   action overlaps the theme toggle, the bell or the search. Titles are shown in
   full except "Edit Streamly" at 360px, ellipsised by 12px (103 of 115px).
   Before the fix, Costs and usage was 0px at 360, 390, 768 and 1280, and
-  Forecast was 423px wide at 360 and 390. Dark mode checked at 390 (Forecast,
-  Costs and usage).
+  Forecast was 423px wide at 360 and 390. Dark mode gives the same
+  measurements on all five pages at 360, 768 and 1280, and at 390 on Forecast
+  and Costs and usage.
 - **K158:** "Import 0 subscriptions" on an import preview with no valid row,
   and "Save backup settings" and "Back up now" under Settings → Instance →
   Backups with no backup key. Each has `--faint` text on `--surface-2`, a

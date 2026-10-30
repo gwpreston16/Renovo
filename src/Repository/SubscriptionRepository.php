@@ -1003,10 +1003,14 @@ final class SubscriptionRepository extends AbstractScopedRepository
         $params['mine_owner'] = $scope->userId;
         $params['mine_participant'] = $scope->userId;
 
+        // A participation counts only while the split is live, as in the read
+        // widening: a row left behind after sharing was turned off is not
+        // somebody's share (K156).
         return ' AND (' . $this->qualify('owner_user_id') . ' = :mine_owner'
-            . ' OR EXISTS (SELECT 1 FROM ' . $this->quote('subscription_splits') . ' mine_split'
+            . ' OR (' . $this->qualify('split_mode') . " <> '" . SplitMode::None->value . "'"
+            . ' AND EXISTS (SELECT 1 FROM ' . $this->quote('subscription_splits') . ' mine_split'
             . ' WHERE mine_split.' . $this->quote('subscription_id') . ' = ' . $this->qualify('id')
-            . ' AND mine_split.' . $this->quote('user_id') . ' = :mine_participant))';
+            . ' AND mine_split.' . $this->quote('user_id') . ' = :mine_participant)))';
     }
 
     private function selectWithJoins(): string

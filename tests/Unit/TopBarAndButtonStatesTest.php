@@ -16,13 +16,6 @@ use PHPUnit\Framework\TestCase;
  */
 final class TopBarAndButtonStatesTest extends TestCase
 {
-    private const PAGE_ACTION_TEMPLATES = [
-        'subscriptions/money.twig',
-        'subscriptions/form.twig',
-        'forecast/index.twig',
-        'forecast/scenario.twig',
-    ];
-
     /** Every variant whose hover lights a button up. */
     private const VARIANT_HOVERS = [
         '.button:hover',
@@ -40,12 +33,24 @@ final class TopBarAndButtonStatesTest extends TestCase
     }
 
     /**
+     * Every template that fills the top bar's page actions, found rather than
+     * listed, so a new one is held to the same rule.
+     *
      * @return iterable<string, array{string}>
      */
     public static function pageActionTemplates(): iterable
     {
-        foreach (self::PAGE_ACTION_TEMPLATES as $template) {
-            yield $template => [$template];
+        $root = dirname(__DIR__, 2) . '/templates/';
+        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root));
+        foreach ($files as $file) {
+            if (!$file->isFile() || !str_ends_with($file->getFilename(), '.twig')) {
+                continue;
+            }
+            $source = (string) file_get_contents($file->getPathname());
+            if (str_contains($source, '{% block page_actions %}')) {
+                $template = substr($file->getPathname(), strlen($root));
+                yield $template => [$template];
+            }
         }
     }
 
@@ -60,8 +65,9 @@ final class TopBarAndButtonStatesTest extends TestCase
         $source = (string) file_get_contents(dirname(__DIR__, 2) . '/templates/' . $template);
         self::assertSame(1, preg_match('~\{% block page_actions %\}(.*?)\{% endblock %\}~s', $source, $block));
 
-        preg_match_all('~<a class="button[^"]*".*?</a>~s', $block[1], $actions);
-        self::assertNotEmpty($actions[0], $template . ' has no top-bar action.');
+        // Any link or button wearing `.button`; Calendar's checkbox is not one.
+        $pattern = '~<(a|button)\b[^>]*class="(?:[^"]*\s)?button(?:\s[^"]*)?"[^>]*>.*?</\1>~s';
+        preg_match_all($pattern, $block[1], $actions);
 
         foreach ($actions[0] as $action) {
             self::assertMatchesRegularExpression("~\{\{-? icon\('[a-z-]+'\)~", $action, $template);

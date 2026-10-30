@@ -430,6 +430,11 @@ final class ApiInputValidationTest extends ApiTestCase
         ]);
         self::assertSame(422, $post->getStatusCode(), (string) $post->getBody());
         self::assertArrayHasKey($field, $this->decode($post)['error']['errors']);
+        self::assertSame(
+            1,
+            (int) ($this->db->fetchOne('SELECT COUNT(*) AS n FROM subscriptions')['n'] ?? 0),
+            'A refused POST created a row.',
+        );
     }
 
     public function testAnEmptyOrNullIdStillMeansNone(): void
@@ -437,15 +442,24 @@ final class ApiInputValidationTest extends ApiTestCase
         $category = $this->decode($this->api('POST', '/api/v1/categories', $this->ownerToken, [
             'name' => 'Utilities',
         ]))['data']['id'];
-        $id = $this->createSubscription(['category_id' => $category, 'payer_user_id' => $this->editorId]);
+        $method = $this->decode($this->api('POST', '/api/v1/payment-methods', $this->ownerToken, [
+            'name' => 'Joint card',
+        ]))['data']['id'];
 
         foreach (['', null] as $none) {
+            $id = $this->createSubscription([
+                'category_id' => $category,
+                'payment_method_id' => $method,
+                'payer_user_id' => $this->editorId,
+            ]);
             $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
                 'category_id' => $none,
+                'payment_method_id' => $none,
                 'payer_user_id' => $none,
             ] + $this->show($id));
             self::assertSame(200, $put->getStatusCode(), (string) $put->getBody());
             self::assertNull($this->show($id)['category_id']);
+            self::assertNull($this->show($id)['payment_method_id']);
             self::assertNull($this->show($id)['payer_user_id']);
         }
     }
@@ -486,6 +500,29 @@ final class ApiInputValidationTest extends ApiTestCase
             $this->decode($put)['error']['errors'][$field],
         );
         self::assertSame($before, $this->show($id));
+    }
+
+    /**
+     * Why the message is set in the error handler rather than refused early:
+     * one 422 still names every field that is wrong.
+     */
+    public function testABadPriceIsReportedBesideTheOtherFields(): void
+    {
+        $post = $this->api('POST', '/api/v1/subscriptions', $this->ownerToken, [
+            'name' => '',
+            'price_minor' => 12.5,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-12-01',
+            'category_id' => 0,
+        ]);
+
+        self::assertSame(422, $post->getStatusCode(), (string) $post->getBody());
+        $errors = $this->decode($post)['error']['errors'];
+        self::assertSame('Send a whole number of minor units: 999 for 9.99.', $errors['price_minor']);
+        self::assertArrayHasKey('name', $errors);
+        self::assertArrayHasKey('category_id', $errors);
     }
 
     public function testTheFormKeepsItsDecimalPriceMessage(): void
