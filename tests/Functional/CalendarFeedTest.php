@@ -10,6 +10,8 @@ use App\Domain\Role;
 use App\Repository\PriceHistoryRepository;
 use App\Security\Scope;
 use App\Service\CalendarFeedService;
+use App\Support\Clock;
+use App\Support\FrozenClock;
 use DateTimeImmutable;
 
 /**
@@ -24,6 +26,9 @@ use DateTimeImmutable;
  */
 final class CalendarFeedTest extends ApiTestCase
 {
+    /** Set by a test that needs today pinned, before it boots again. */
+    private ?FrozenClock $clock = null;
+
     public function testAFeedNeedsAToken(): void
     {
         self::assertSame(401, $this->api('GET', '/api/v1/calendar.ics')->getStatusCode());
@@ -176,6 +181,38 @@ final class CalendarFeedTest extends ApiTestCase
             }
         }
         self::assertSame(6, $renewals, 'Each monthly renewal after the conversion is an event.');
+    }
+
+    public function testATrialConvertingTodayHasOneEventThatDay(): void
+    {
+        // K140. On its last day the trial is still running, so today has the
+        // conversion and nothing else: a feed that treated the trial as over
+        // would add the same charge again as a payment. The clock is frozen
+        // so a run across midnight can't move "today" under the test.
+        $this->clock = FrozenClock::at('2026-11-14 23:59:00');
+        $this->boot();
+        $today = '20261114';
+
+        $this->createSubscription([
+            'name' => 'Trial service',
+            'is_trial' => true,
+            'trial_end_date' => '2026-11-14',
+            'converts_to_price_minor' => 1500,
+            'next_payment_date' => null,
+        ]);
+
+        $events = array_values(array_filter(
+            explode('BEGIN:VEVENT', $this->unfold($this->feed())),
+            static fn (string $event): bool => str_contains($event, 'DTSTART;VALUE=DATE:' . $today),
+        ));
+
+        self::assertCount(1, $events);
+        self::assertStringContainsString('trial ends', $events[0]);
+    }
+
+    protected function containerOverrides(): array
+    {
+        return $this->clock === null ? [] : [Clock::class => $this->clock];
     }
 
     public function testACancelByDeadlineAppears(): void

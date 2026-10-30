@@ -93,7 +93,8 @@ final class ApiTaxonomyTest extends ApiTestCase
         self::assertSame(201, $created->getStatusCode(), (string) $created->getBody());
         $id = (int) $this->decode($created)['data']['id'];
 
-        foreach (['colour' => ['x'], 'name' => ['x']] as $field => $value) {
+        // `true` as well as a list: read as a string it would be "1" (K171).
+        foreach ([['colour', ['x']], ['colour', true], ['name', ['x']], ['name', true]] as [$field, $value]) {
             $put = $this->api('PUT', '/api/v1/categories/' . $id, $this->ownerToken, [
                 $field => $value,
             ] + ['name' => 'Fuel', 'colour' => '#112233']);
@@ -101,14 +102,49 @@ final class ApiTaxonomyTest extends ApiTestCase
             self::assertArrayHasKey($field, $this->decode($put)['error']['errors']);
         }
 
-        $post = $this->api('POST', '/api/v1/categories', $this->ownerToken, ['name' => 'Other', 'colour' => ['x']]);
-        self::assertSame(422, $post->getStatusCode(), (string) $post->getBody());
+        foreach ([['x'], true] as $value) {
+            $post = $this->api('POST', '/api/v1/categories', $this->ownerToken, [
+                'name' => 'Other',
+                'colour' => $value,
+            ]);
+            self::assertSame(422, $post->getStatusCode(), (string) $post->getBody());
+        }
 
         $kept = array_values(array_filter(
             $this->decode($this->api('GET', '/api/v1/categories', $this->ownerToken))['data'],
             fn (array $c): bool => (int) $c['id'] === $id,
         ));
         self::assertSame('#112233', $kept[0]['colour']);
+        self::assertSame('Fuel', $kept[0]['name']);
+    }
+
+    public function testATagOrPaymentMethodRenameToAWrongTypeIsRefused(): void
+    {
+        // K171. Without the type check `true` would rename the row to "1".
+        $tag = $this->api('POST', '/api/v1/tags', $this->ownerToken, ['name' => 'Travel']);
+        $tagId = (int) $this->decode($tag)['data']['id'];
+        $methodId = $this->createMethod();
+
+        foreach ([true, ['x']] as $value) {
+            foreach (['/api/v1/tags/' . $tagId, '/api/v1/payment-methods/' . $methodId] as $path) {
+                $put = $this->api('PUT', $path, $this->ownerToken, ['name' => $value]);
+                self::assertSame(422, $put->getStatusCode(), $path . ': ' . (string) $put->getBody());
+                self::assertArrayHasKey('name', $this->decode($put)['error']['errors']);
+            }
+        }
+
+        $names = static fn (array $rows, int $id): array => array_column(
+            array_filter($rows, static fn (array $row): bool => (int) $row['id'] === $id),
+            'name',
+        );
+        self::assertSame(
+            ['Travel'],
+            $names($this->decode($this->api('GET', '/api/v1/tags', $this->ownerToken))['data'], $tagId),
+        );
+        self::assertSame(
+            ['Joint card'],
+            $names($this->decode($this->api('GET', '/api/v1/payment-methods', $this->ownerToken))['data'], $methodId),
+        );
     }
 
     public function testATagContainedInAnotherTagsNameIsNotADuplicate(): void

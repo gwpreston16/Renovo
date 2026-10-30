@@ -124,11 +124,14 @@ None.
 - **K153, the translated prefix:** the row writes `::ffff:0:0/96`, which is the
   IPv4-*mapped* prefix that `normalise()` already unwraps; listing it would
   never match. The form the row means, `::ffff:0:7f00:1`, is IPv4-*translated*,
-  `::ffff:0:0:0/96` (RFC 2765), and that is the range added.
+  `::ffff:0:0:0/96` (RFC 2765), and that is the range added. *Confirmed
+  2026-10-30 against `IpAddress::normalise()`, which unwraps only
+  `0:0:0:0:0:ffff::/96`.*
 - **K152:** the reflection guard is added so the gap can't reopen. It checks
-  only that each range has a case, not which address.
+  only that each range has a case, not which address. *Confirmed 2026-10-30.*
 - **K169:** the existing http test is moved to https rather than deleted, so
   the private-address half and the scheme half each have their own test.
+  *Confirmed 2026-10-30.*
 - **K140, K170, K171:** tests only. The code already behaves as the rows
   describe; each test is checked to fail with the mistake its row names.
 - **Release — Decided 2026-10-30:** its own patch release once merged,
@@ -137,16 +140,16 @@ None.
 
 ## Status
 
-- [ ] K153: the SSRF client refuses the special-purpose IPv6 ranges
-- [ ] K152: every blocked range has a test that fails without it
-- [ ] K169: a name partly inside a trusted range is refused over http
-- [ ] K140: a trial converting today has one event that day
-- [ ] K170: a charge due today counts in the budget-alert projection
-- [ ] K171: a category, tag or payment-method name of `true` is refused
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 68 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K153: the SSRF client refuses the special-purpose IPv6 ranges
+- [x] K152: every blocked range has a test that fails without it
+- [x] K169: a name partly inside a trusted range is refused over http
+- [x] K140: a trial converting today has one event that day
+- [x] K170: a charge due today counts in the budget-alert projection
+- [x] K171: a category, tag or payment-method name of `true` is refused
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 68 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

@@ -8,6 +8,30 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Gaps in the tests closed.** Every range the outbound-request guard blocks
+  now has a test address inside it, and a range added without one fails CI.
+  Plain http is shown refused for a name only some of whose addresses are in
+  a trusted range. A trial converting today is shown as one event that day in
+  the calendar feed, a one-off due today is shown counted in a budget's
+  projection, and a category, tag or payment-method name sent as `true`
+  through the API is shown refused with a 422 on `name`. No behaviour
+  changes. *Phase 68.*
+
+### Security
+
+- **The outbound-request guard refuses five more IPv6 ranges.** A
+  user-supplied URL (a logo, a webhook, a notification channel) can no longer
+  reach an IPv4-compatible address (`::127.0.0.1`), an IPv4-translated one
+  (`::ffff:0:7f00:1`), local-use NAT64 (`64:ff9b:1::/48`), Teredo
+  (`2001::/32`) or deprecated site-local (`fec0::/10`). On a network with a
+  local NAT64 gateway or a Teredo relay these could lead to a private IPv4
+  address, as 6to4 and well-known NAT64, refused already, could. An
+  IPv4-mapped public address (`::ffff:93.184.216.34`) is still allowed, and a
+  trusted-host entry still re-opens a range for an administrator.
+  *Phase 68.*
+
 ## [1.27.2] - 2026-10-30
 
 ### Fixed

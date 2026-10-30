@@ -76,7 +76,7 @@ can be moved.
 | 65 | [MySQL case rules and per-currency estimate marks, from the known-issues log](docs/phases/PHASE-65.md) | — | None | ✅ done |
 | 66 | [API input edge cases, from the known-issues log](docs/phases/PHASE-66.md) | — | None | ✅ done |
 | 67 | [Split owners, phone top bar, disabled buttons and API ids, from the known-issues log](docs/phases/PHASE-67.md) | — | None | ✅ done |
-| 68 | [SSRF ranges and test gaps, from the known-issues log](docs/phases/PHASE-68.md) | — | None | 📋 planned |
+| 68 | [SSRF ranges and test gaps, from the known-issues log](docs/phases/PHASE-68.md) | — | None | ✅ done |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was

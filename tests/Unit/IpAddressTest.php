@@ -33,9 +33,17 @@ final class IpAddressTest extends TestCase
             ['169.254.169.254', 'the cloud metadata service'],
             ['100.64.0.1', 'carrier-grade NAT, where Tailscale lives'],
             ['198.18.0.1', 'benchmarking'],
+            ['192.0.0.8', 'IETF protocol assignments'],
+            ['192.0.2.1', 'documentation (TEST-NET-1)'],
+            ['192.88.99.1', '6to4 relay anycast'],
+            ['198.51.100.1', 'documentation (TEST-NET-2)'],
+            ['203.0.113.1', 'documentation (TEST-NET-3)'],
             ['224.0.0.1', 'multicast'],
             ['255.255.255.255', 'broadcast'],
             ['::1', 'IPv6 loopback'],
+            ['::', 'IPv6 unspecified'],
+            ['100::1', 'IPv6 discard-only'],
+            ['2001:db8::1', 'IPv6 documentation'],
             ['fe80::1', 'IPv6 link-local'],
             ['fd7a:115c:a1e0::1', 'IPv6 unique local, a Tailscale address'],
             ['fc00::1', 'IPv6 unique local'],
@@ -45,6 +53,12 @@ final class IpAddressTest extends TestCase
             ['::ffff:169.254.169.254', 'the metadata service wearing an IPv6 hat'],
             ['2002:c0a8:0101::1', '6to4, which embeds a v4 address'],
             ['64:ff9b::7f00:1', 'NAT64, which also embeds one'],
+            ['::127.0.0.1', 'IPv4-compatible loopback'],
+            ['::7f00:1', 'IPv4-compatible loopback, written as hex'],
+            ['::ffff:0:7f00:1', 'IPv4-translated loopback'],
+            ['64:ff9b:1::7f00:1', 'local-use NAT64, which embeds a v4 address'],
+            ['2001::7f00:1', 'Teredo, which embeds one too'],
+            ['fec0::1', 'deprecated site-local'],
             ['not-an-address', 'anything unparseable'],
         ];
     }
@@ -53,6 +67,27 @@ final class IpAddressTest extends TestCase
     public function testBlockedAddressesAreRefused(string $address, string $why): void
     {
         self::assertTrue(IpAddress::isBlocked($address), sprintf('%s should be blocked (%s)', $address, $why));
+    }
+
+    /**
+     * Every range in the blocked list has a case above that falls inside it,
+     * so a range added without one fails this. Removing a range fails a case
+     * unless a wider range still covers it (`::/96` covers `::` and `::1`).
+     */
+    public function testEveryBlockedRangeHasACase(): void
+    {
+        $ranges = (new \ReflectionClassConstant(IpAddress::class, 'BLOCKED'))->getValue();
+        self::assertIsArray($ranges);
+
+        $addresses = array_column(self::blockedAddresses(), 0);
+
+        foreach ($ranges as $range) {
+            $covered = array_filter(
+                $addresses,
+                static fn (string $address): bool => IpAddress::inRange($address, $range),
+            );
+            self::assertNotSame([], $covered, sprintf('No blockedAddresses() case falls inside %s', $range));
+        }
     }
 
     /**
@@ -69,6 +104,8 @@ final class IpAddressTest extends TestCase
             ['100.63.255.255'],  // just below the CGNAT block
             ['100.128.0.1'],     // just above it
             ['2606:4700:4700::1111'],
+            ['2606:4700::1111'],
+            ['::ffff:93.184.216.34'], // a mapped public address still unwraps to v4
         ];
     }
 
