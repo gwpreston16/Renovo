@@ -140,7 +140,7 @@ None.
 - [x] K147: an unreadable JSON write body is a 400
 - [x] K159: wrong-typed subscription fields are a 422 on the field
 - [x] K164: a failed save-on-change says so
-- [x] K164 browser check: a 500 on a member's role select (recorded in `docs/development.md`); the Email switch not run, no channel in the seeded data
+- [x] K164 browser check: a 500 on a member's role select and on the Email switch (recorded in `docs/development.md`)
 - [x] K165: the Lead times hint is a catalogue's to word
 - [x] Rows marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed

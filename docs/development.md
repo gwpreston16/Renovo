@@ -325,9 +325,9 @@ cannot see is checked by hand and recorded here.
   The Email switch under Notifications and a backup destination's switch take
   the same path (`data-save-on-change`); a failed filter or sort on the
   subscription list shows the message and leaves the list as it was. Checked
-  2026-10-30 on the role select only, at 1280 px in dark mode; the Email switch
-  was not run (the seeded household has no channel), and 375/768 px and light
-  mode were not looked at.
+  2026-10-30: the role select at 1280 px in dark mode, and the Email switch at
+  375 px in light mode and at 768 px. The message showed, the switch went back
+  to on, and the page did not scroll sideways.
 
 ### Keeping it honest
 

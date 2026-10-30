@@ -688,6 +688,26 @@ final class ApiInputValidationTest extends ApiTestCase
         self::assertSame(400, $put->getStatusCode(), 'not a 422 listing the required fields');
     }
 
+    public function testAFormBodyKeepsItsPresentPath(): void
+    {
+        $id = $this->createSubscription();
+        $created = $this->api('POST', '/api/v1/subscriptions/' . $id . '/charges', $this->ownerToken, [
+            'date' => (new \DateTimeImmutable('-3 days'))->format('Y-m-d'),
+            'amount_minor' => 500,
+        ]);
+        $chargeId = (int) $this->decode($created)['data']['id'];
+
+        $form = $this->apiRaw(
+            'PATCH',
+            '/api/v1/charges/' . $chargeId,
+            $this->ownerToken,
+            'status=skipped',
+            'application/x-www-form-urlencoded',
+        );
+
+        self::assertSame(200, $form->getStatusCode(), (string) $form->getBody());
+    }
+
     public function testAnEmptyObjectIsStillABody(): void
     {
         $id = $this->createSubscription();
