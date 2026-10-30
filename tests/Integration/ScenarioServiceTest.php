@@ -163,6 +163,11 @@ final class ScenarioServiceTest extends DatabaseTestCase
         self::assertSame([], $mine['twelve_months']['marks']['estimate_currencies']);
         self::assertSame(['GBP'], $mine['marks_current']['estimate_currencies'], 'The run-rate is the household\'s.');
 
+        // Cancelling the Gym saves Alice exactly her own charges.
+        self::assertStringNotContainsString(
+            '≈',
+            $this->twelveMonthSaving($this->scenarioPage('mine=1&cancel[]=' . $this->gymId)),
+        );
         $row = $this->twelveMonthsRow($this->scenarioPage('mine=1'));
         self::assertMatchesRegularExpression('~<td class="numeric num">\s*£110\.00\s*</td>~u', $row);
         self::assertStringNotContainsString('≈', $row);
@@ -180,6 +185,10 @@ final class ScenarioServiceTest extends DatabaseTestCase
         $shared = $service->plan($this->scope(), [], $this->userId)['results'];
         self::assertSame(['GBP'], $shared['twelve_months']['marks_current']['estimate_currencies']);
         self::assertStringContainsString('≈', $this->twelveMonthsRow($this->scenarioPage('mine=1')));
+        self::assertStringContainsString(
+            '≈',
+            $this->twelveMonthSaving($this->scenarioPage('mine=1&cancel[]=' . $this->gymId)),
+        );
     }
 
     public function testWithNothingVaryingNothingIsMarked(): void
@@ -278,6 +287,21 @@ final class ScenarioServiceTest extends DatabaseTestCase
         self::assertSame(1, preg_match('~<tr>\s*<th scope="row">[^<]*</th>(.*?)</tr>~s', $html, $row));
 
         return $row[1];
+    }
+
+    /** The figure on the twelve-month saving card, the second above the table. */
+    private function twelveMonthSaving(string $html): string
+    {
+        self::assertSame(
+            1,
+            preg_match(
+                '~scenario-headline.*?<p class="stat-value num">.*?</p>.*?<p class="stat-value num">(.*?)</p>~s',
+                $html,
+                $card,
+            ),
+        );
+
+        return $card[1];
     }
 
     /** The "Next 12 months" row of the figures table: the last of the three. */

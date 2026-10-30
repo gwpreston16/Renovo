@@ -15,7 +15,9 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   trial-price) payment written to Payments and spend history for each passed
   date; its first payment is its trial end, once it converts, as the
   forecast, the calendar and Savings already said. Pausing a running trial
-  writes no payment either. *Phase 69.*
+  writes no payment either. Through the API, a write-scoped read leaves a
+  running trial's past `next_payment_date` in place. OpenAPI 1.9.8,
+  behaviour only. *Phase 69.*
 - **"Just mine" marks the next 12 months only when your own share varies.**
   In the scenario planner with "just mine" on, the next-12-months figures and
   the 12-month saving are no longer drawn "≈" because another member owns a

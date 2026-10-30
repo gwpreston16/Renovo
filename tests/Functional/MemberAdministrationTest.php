@@ -1099,7 +1099,15 @@ final class MemberAdministrationTest extends DatabaseTestCase
         $adminId = $this->addRevokedInstanceAdminOwner();
 
         $this->signIn($this->ownerId);
-        $this->request('POST', '/settings/members/' . $adminId . '/restore');
+        $response = $this->request('POST', '/settings/members/' . $adminId . '/restore');
+
+        // Refused in words, on the page it came from.
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame('/settings/members', $response->getHeaderLine('Location'));
+        self::assertStringContainsString(
+            'only an instance administrator can revoke or restore its login',
+            (string) $this->request('GET', '/settings/members')->getBody(),
+        );
 
         $admin = (new UserRepository($this->db))->findById($adminId);
         self::assertNotNull($admin);
