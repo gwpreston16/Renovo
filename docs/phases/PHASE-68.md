@@ -124,11 +124,14 @@ None.
 - **K153, the translated prefix:** the row writes `::ffff:0:0/96`, which is the
   IPv4-*mapped* prefix that `normalise()` already unwraps; listing it would
   never match. The form the row means, `::ffff:0:7f00:1`, is IPv4-*translated*,
-  `::ffff:0:0:0/96` (RFC 2765), and that is the range added.
+  `::ffff:0:0:0/96` (RFC 2765), and that is the range added. *Confirmed
+  2026-10-30 against `IpAddress::normalise()`, which unwraps only
+  `0:0:0:0:0:ffff::/96`.*
 - **K152:** the reflection guard is added so the gap can't reopen. It checks
-  only that each range has a case, not which address.
+  only that each range has a case, not which address. *Confirmed 2026-10-30.*
 - **K169:** the existing http test is moved to https rather than deleted, so
   the private-address half and the scheme half each have their own test.
+  *Confirmed 2026-10-30.*
 - **K140, K170, K171:** tests only. The code already behaves as the rows
   describe; each test is checked to fail with the mistake its row names.
 - **Release — Decided 2026-10-30:** its own patch release once merged,
