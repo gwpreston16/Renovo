@@ -33,9 +33,17 @@ final class IpAddressTest extends TestCase
             ['169.254.169.254', 'the cloud metadata service'],
             ['100.64.0.1', 'carrier-grade NAT, where Tailscale lives'],
             ['198.18.0.1', 'benchmarking'],
+            ['192.0.0.8', 'IETF protocol assignments'],
+            ['192.0.2.1', 'documentation (TEST-NET-1)'],
+            ['192.88.99.1', '6to4 relay anycast'],
+            ['198.51.100.1', 'documentation (TEST-NET-2)'],
+            ['203.0.113.1', 'documentation (TEST-NET-3)'],
             ['224.0.0.1', 'multicast'],
             ['255.255.255.255', 'broadcast'],
             ['::1', 'IPv6 loopback'],
+            ['::', 'IPv6 unspecified'],
+            ['100::1', 'IPv6 discard-only'],
+            ['2001:db8::1', 'IPv6 documentation'],
             ['fe80::1', 'IPv6 link-local'],
             ['fd7a:115c:a1e0::1', 'IPv6 unique local, a Tailscale address'],
             ['fc00::1', 'IPv6 unique local'],
@@ -59,6 +67,24 @@ final class IpAddressTest extends TestCase
     public function testBlockedAddressesAreRefused(string $address, string $why): void
     {
         self::assertTrue(IpAddress::isBlocked($address), sprintf('%s should be blocked (%s)', $address, $why));
+    }
+
+    /**
+     * Every range in the blocked list has a case above that falls inside it,
+     * so removing a range fails a test, and a range added without one fails
+     * this.
+     */
+    public function testEveryBlockedRangeHasACase(): void
+    {
+        $ranges = (new \ReflectionClassConstant(IpAddress::class, 'BLOCKED'))->getValue();
+        self::assertIsArray($ranges);
+
+        $addresses = array_column(self::blockedAddresses(), 0);
+
+        foreach ($ranges as $range) {
+            $covered = array_filter($addresses, static fn (string $address): bool => IpAddress::inRange($address, $range));
+            self::assertNotSame([], $covered, sprintf('No blockedAddresses() case falls inside %s', $range));
+        }
     }
 
     /**
