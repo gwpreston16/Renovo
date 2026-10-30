@@ -6,8 +6,10 @@
 {% block page_subtitle %}{{ t('subtitle.forecast') }}{% endblock %}
 
 {% block page_actions %}
-    <a class="button button-quiet" href="/forecast{{ mine_only ? '' : '?mine=1' }}">
-        {{ mine_only ? t('forecast.show_whole_household') : t('forecast.show_only_my_share') }}
+    {% set toggle_label = mine_only ? t('forecast.show_whole_household') : t('forecast.show_only_my_share') %}
+    <a class="button button-quiet" href="/forecast{{ mine_only ? '' : '?mine=1' }}" title="{{ toggle_label }}">
+        {{- icon('household') -}}
+        <span class="button-label">{{ toggle_label }}</span>
     </a>
 {% endblock %}
 

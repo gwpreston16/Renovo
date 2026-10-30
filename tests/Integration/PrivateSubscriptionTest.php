@@ -243,6 +243,11 @@ final class PrivateSubscriptionTest extends DatabaseTestCase
         // row; written directly to prove the predicate's order rather than the
         // validation. In ISOLATED mode a split participation widens reads — and
         // the privacy clause sits outside that widening.
+        // A live split, or the widening would not apply at all (K156).
+        $this->db->execute(
+            "UPDATE subscriptions SET split_mode = 'equal' WHERE id = :id",
+            ['id' => $this->therapy],
+        );
         $this->db->insert('subscription_splits', [
             'subscription_id' => $this->therapy,
             'household_id' => $this->household,

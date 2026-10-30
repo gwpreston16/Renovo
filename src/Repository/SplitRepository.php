@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Domain\Entity\SubscriptionSplit;
+use App\Domain\SplitMode;
+use App\Domain\Visibility;
 use App\Persistence\Criteria;
 use App\Security\Scope;
 use DateTimeImmutable;
@@ -56,9 +58,15 @@ final class SplitRepository extends AbstractScopedRepository
     {
         $params['__participant'] = $scope->userId;
 
+        // A participation counts only while the split is live, as for the
+        // subscription itself: a row left behind after sharing was turned off
+        // widens nothing (K156).
         return 'EXISTS (SELECT 1 FROM ' . $this->quote('subscription_splits') . ' mine'
+            . ' JOIN ' . $this->quote('subscriptions') . ' live'
+            . ' ON live.' . $this->quote('id') . ' = mine.' . $this->quote('subscription_id')
             . ' WHERE mine.' . $this->quote('subscription_id') . ' = ' . $this->qualify('subscription_id')
-            . ' AND mine.' . $this->quote('user_id') . ' = :__participant)';
+            . ' AND mine.' . $this->quote('user_id') . ' = :__participant'
+            . ' AND live.' . $this->quote('split_mode') . " <> '" . SplitMode::None->value . "')";
     }
 
     /**
@@ -138,17 +146,49 @@ final class SplitRepository extends AbstractScopedRepository
     /**
      * Remove every participant from a subscription.
      *
-     * Deliberately keyed on the *write* predicate rather than the read one: a
-     * participant who can see a split must not be able to delete it.
+     * The guard is the *parent*: the rows go when this scope may write the
+     * subscription they belong to, whoever each row names as its owner. A
+     * participant who can see a split still cannot delete it, because they
+     * cannot write the subscription. Keying on the split rows' own owner
+     * instead missed rows left with a former owner when the subscription
+     * changed hands, and the rewrite after it then hit the unique index
+     * (K156). SplitService calls this only after `setSplitMode()` has passed
+     * the subscription's write check; the predicate here does not rely on it.
      */
     public function deleteForSubscription(Scope $scope, int $subscriptionId): void
     {
-        $params = ['__subscription' => $subscriptionId];
+        if (!$scope->hasHousehold()) {
+            return;
+        }
+
+        // Each placeholder used once: MySQL's native prepares refuse a
+        // repeated name.
+        $params = [
+            '__subscription' => $subscriptionId,
+            '__household' => $scope->householdId,
+            '__parent' => $subscriptionId,
+            '__parent_household' => $scope->householdId,
+            '__viewer' => $scope->userId,
+        ];
+
+        // The subscriptions' write predicate, on an aliased subquery so each
+        // column is unambiguously the parent's: the household, the owner when
+        // this scope is fenced to its own rows, and the "only me" privacy.
+        $parent = 'SELECT parent.' . $this->quote('id') . ' FROM ' . $this->quote('subscriptions') . ' parent'
+            . ' WHERE parent.' . $this->quote('id') . ' = :__parent'
+            . ' AND parent.' . $this->quote('household_id') . ' = :__parent_household'
+            . ' AND (parent.' . $this->quote('visibility') . " = '" . Visibility::Household->value . "'"
+            . ' OR parent.' . $this->quote('owner_user_id') . ' = :__viewer)';
+        if ($scope->restrictsWritesToOwner()) {
+            $params['__owner'] = $scope->userId;
+            $parent .= ' AND parent.' . $this->quote('owner_user_id') . ' = :__owner';
+        }
 
         $this->db->execute(
             'DELETE FROM ' . $this->quote('subscription_splits')
             . ' WHERE ' . $this->quote('subscription_id') . ' = :__subscription'
-            . ' AND ' . $this->scopePredicateUnqualified($scope, $params),
+            . ' AND ' . $this->quote('household_id') . ' = :__household'
+            . ' AND ' . $this->quote('subscription_id') . ' IN (' . $parent . ')',
             $params,
         );
     }

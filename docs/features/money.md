@@ -241,7 +241,10 @@ exactly — the odd penny goes to a specific member rather than disappearing.
 A member listed on a split can **see** the subscription they help pay for even
 when the instance is ISOLATED and they do not own it. They cannot change it,
 delete it, re-tag it or alter the split: the scoping layer applies that widening
-to reads only, and every write path uses the unwidened predicate.
+to reads only, and every write path uses the unwidened predicate. Only a live
+split widens: once sharing is turned off, a former participant no longer sees
+the row. Giving a split subscription to another member moves the split with
+it, so the new owner can change or end it.
 
 ### Year over year
 

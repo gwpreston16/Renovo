@@ -617,6 +617,7 @@ return [
         'Only you can see this subscription, so it cannot be split. Make it visible to the household first.',
     'error.subscription.cancelled_resume' =>
         'A cancelled subscription cannot be resumed. Undo the cancellation first; it comes back paused.',
+    'error.subscription.minor_invalid' => 'Send a whole number of minor units: 999 for 9.99.',
     'error.subscription.not_found' => 'That subscription does not exist.',
     'error.currency.required' => 'Choose a currency.',
     'error.member.not_in_household' => 'Choose a member of this household.',
@@ -824,7 +825,7 @@ return [
     'error.reminder_days.too_many' => 'Use at most six reminders for one subscription.',
     'error.next_payment.required' => 'Enter the next payment date.',
     'error.notice.range' => 'Enter a notice period between 0 and 3650.',
-    'error.subscription_type.invalid' => 'Choose a subscription type: recurring, one-off or lifetime.',
+    'error.subscription_type.invalid' => 'Choose a subscription type: recurring, one_off or lifetime.',
     'error.notice.unit_required' => 'Choose a notice period unit.',
 
     'error.trusted_host.required' => 'Enter a host name, address or CIDR range.',

@@ -81,8 +81,9 @@ Tests (Postgres and MySQL), using Alice and Bob from the row's example:
 
 ### B. K157 — on a phone the title keeps its room
 
-Below 600px, each top-bar page action shows only its icon. Its words stay in a
-`.button-label` for screen readers, as the existing phone rule intends. The
+Below 1440px (*changed 2026-10-30*, from 600px: see *Decisions*), each
+top-bar page action shows only its icon. Its words stay in a `.button-label`
+for screen readers, as the existing phone rule intends. The
 actions carry `icon()` and wrap their words in `.button-label`:
 
 | Action | Icon |
@@ -149,9 +150,10 @@ whole number is answered with a new minor-units message,
 `error.subscription.minor_invalid`: "Send a whole number of minor units: 999
 for 9.99." It is reported on the field the client sent. A refused
 `price_minor` is `12.5`, `"abc"`, `true` or `[]`. A refused
-`converts_to_price_minor` is `12.5`, the case that is a 422 today. The refusal
-is made in `SubscriptionPayload`, beside `refuseWrongTypes()`, before the
-service runs, so the service and the web form keep their decimal wording. The
+`converts_to_price_minor` is `12.5`, the case that is a 422 today. The message
+is swapped for an API response only (*changed 2026-10-30*: in
+`HttpErrorHandler`, see *Decisions*), so the service and the web form keep
+their decimal wording. The
 error example in `docs/api.md` is updated.
 
 Tests: each value above is 422 with the new message. The web form's bad price
@@ -198,33 +200,77 @@ None.
   phone.
   *Decided 2026-10-30:* **icon only** below 600px, with the label for screen
   readers. Not chosen: wrapping the actions onto a second row.
-  *Assumption:* the icons are the ones in the table in B, all already in the
-  sprite. Calendar's checkbox is not a button and stays as it is.
+  *Confirmed 2026-10-30:* the icons are the ones in the table in B, all
+  already in the sprite. Calendar's checkbox is not a button and stays as it
+  is.
+  *Changed 2026-10-30 (found while building it):* icon only **below 1440px**,
+  not below 600px. With the sidebar, the search box, the rates chip and Add
+  new beside them, the two worded actions on Costs and usage and Edit
+  subscription left a 0px title at 768 and 1280 too, as on master. Below 1440px
+  the icon-only actions also take a narrower side padding.
+  *Added 2026-10-30 (found while building it):* Forecast scrolled sideways at
+  360 and 390px (423px wide): the "If I cancelled" rows' name, figure and
+  `nowrap` "Add to scenario" link overflowed, and the list's grid sized its
+  column to them. Below 600px the link takes its own line and the column may
+  shrink. Fixed here so B's "no horizontal scroll" check holds.
 - **K158:** follows the disabled pattern `.icon-button` and the toggle (K95)
-  already use, with no new colour.
+  already use, with no new colour. *Confirmed 2026-10-30.*
 - **K160:** treats a zero or negative id like any other id that doesn't exist,
-  as `999` already is. `""` stays "none" for the form.
+  as `999` already is. `""` stays "none" for the form. *Confirmed 2026-10-30*,
+  with what was found while starting it: a writer fenced to their own rows (a
+  Contributor, or anyone in ISOLATED) still has `owner_user_id` set to
+  themselves whatever is sent, as `999` is today, so `0` is not refused for
+  them.
 - **K161:** an API-only message, as K76 did for charges. The form shares the
-  service and keeps its wording.
+  service and keeps its wording. *Confirmed 2026-10-30*, with the wording in E.
+  *Changed 2026-10-30 (found while building it):* the message is swapped in
+  `HttpErrorHandler`, beside its `price` → `price_minor` renaming, not refused
+  in `SubscriptionPayload`. Refusing there threw before the service ran, so a
+  bad price hid every other field's error (`ApiContractTest` and
+  `ApiMoneyInputTest` pin that one 422 lists them all). The behaviour E asks
+  for is the same, and a null or absent `price_minor` gets the minor-units
+  message too.
 - **K162:** a wording fix in `translations/en.php`, the only catalogue.
+  *Confirmed 2026-10-30:* "Choose a subscription type: recurring, one_off or
+  lifetime."
 - *Decided 2026-10-30:* the rows are K156–K158 and K160–K162. K159 was dropped
   to keep the batch to six rows.
 - **Release — Decided 2026-10-30:** ships with the **next minor release**
   (1.28.0) alongside other phases, not as its own patch. No migration, so no
   back-up-first note beyond the standard line.
 
+## Browser check (2026-10-30)
+
+The working tree, served with `php -S` against `renovo_test` seeded by
+`demo:seed`, in the built-in browser.
+
+- **K157:** Costs and usage, Edit subscription, Forecast, Scenario and Calendar
+  at 360, 390, 768 and 1280px. On every page at every width there is no
+  horizontal scroll, Add new is hidden below 768 and shown from 768, and no
+  action overlaps the theme toggle, the bell or the search. Titles are shown in
+  full except "Edit Streamly" at 360px, ellipsised by 12px (103 of 115px).
+  Before the fix, Costs and usage was 0px at 360, 390, 768 and 1280, and
+  Forecast was 423px wide at 360 and 390. Dark mode gives the same
+  measurements on all five pages at 360, 768 and 1280, and at 390 on Forecast
+  and Costs and usage.
+- **K158:** "Import 0 subscriptions" on an import preview with no valid row,
+  and "Save backup settings" and "Back up now" under Settings → Instance →
+  Backups with no backup key. Each has `--faint` text on `--surface-2`, a
+  not-allowed cursor, and the same colours on hover. Checked in light at 1280
+  and dark at 390.
+
 ## Status
 
-- [ ] K156: a split follows its subscription to a new owner
-- [ ] K157: on a phone the title keeps its room
-- [ ] K158: a disabled button looks disabled
-- [ ] K160: an id of zero or less is refused
-- [ ] K161: the API asks for minor units
-- [ ] K162: the type message names the values the API takes
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 67 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K156: a split follows its subscription to a new owner
+- [x] K157: on a phone the title keeps its room
+- [x] K158: a disabled button looks disabled
+- [x] K160: an id of zero or less is refused
+- [x] K161: the API asks for minor units
+- [x] K162: the type message names the values the API takes
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 67 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

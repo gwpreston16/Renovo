@@ -74,9 +74,12 @@ final class SubscriptionRepository extends AbstractScopedRepository
     {
         $params['__participant'] = $scope->userId;
 
-        return 'EXISTS (SELECT 1 FROM ' . $this->quote('subscription_splits') . ' split'
+        // Only a live split widens: a row left behind after sharing was
+        // turned off must not keep showing the subscription (K156).
+        return '(' . $this->qualify('split_mode') . " <> '" . SplitMode::None->value . "'"
+            . ' AND EXISTS (SELECT 1 FROM ' . $this->quote('subscription_splits') . ' split'
             . ' WHERE split.' . $this->quote('subscription_id') . ' = ' . $this->qualify('id')
-            . ' AND split.' . $this->quote('user_id') . ' = :__participant)';
+            . ' AND split.' . $this->quote('user_id') . ' = :__participant))';
     }
 
     /**
@@ -455,7 +458,8 @@ final class SubscriptionRepository extends AbstractScopedRepository
 
     /**
      * Carry a change of owner down to the rows that keep their own copy of
-     * it: the price history, the payment ledger and the attachments.
+     * it: the price history, the payment ledger, the attachments and the
+     * split participants.
      *
      * Those copies are what the scoping layer fences them by, so a copy left
      * behind would leave the former owner able to change the payments of a
@@ -472,7 +476,8 @@ final class SubscriptionRepository extends AbstractScopedRepository
             return;
         }
 
-        foreach (['subscription_price_history', 'subscription_charges', 'attachments'] as $table) {
+        $tables = ['subscription_price_history', 'subscription_charges', 'attachments', 'subscription_splits'];
+        foreach ($tables as $table) {
             $this->db->execute(
                 'UPDATE ' . $this->quote($table) . ' SET ' . $this->quote('owner_user_id') . ' = :owner'
                 . ' WHERE ' . $this->quote('subscription_id') . ' = :subscription'
@@ -998,10 +1003,14 @@ final class SubscriptionRepository extends AbstractScopedRepository
         $params['mine_owner'] = $scope->userId;
         $params['mine_participant'] = $scope->userId;
 
+        // A participation counts only while the split is live, as in the read
+        // widening: a row left behind after sharing was turned off is not
+        // somebody's share (K156).
         return ' AND (' . $this->qualify('owner_user_id') . ' = :mine_owner'
-            . ' OR EXISTS (SELECT 1 FROM ' . $this->quote('subscription_splits') . ' mine_split'
+            . ' OR (' . $this->qualify('split_mode') . " <> '" . SplitMode::None->value . "'"
+            . ' AND EXISTS (SELECT 1 FROM ' . $this->quote('subscription_splits') . ' mine_split'
             . ' WHERE mine_split.' . $this->quote('subscription_id') . ' = ' . $this->qualify('id')
-            . ' AND mine_split.' . $this->quote('user_id') . ' = :mine_participant))';
+            . ' AND mine_split.' . $this->quote('user_id') . ' = :mine_participant)))';
     }
 
     private function selectWithJoins(): string

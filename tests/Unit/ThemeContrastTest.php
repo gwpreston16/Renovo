@@ -58,6 +58,7 @@ final class ThemeContrastTest extends TestCase
             'bg', 'surface', 'surface-2',
             'ok-bg:surface', 'warn-bg:surface', 'bad-bg:surface', 'info-bg:surface', 'accent-soft:surface',
         ],
+        // Faint text, and a disabled button's label on its fill (K158).
         'faint' => ['bg', 'surface', 'surface-2'],
 
         // The accent rule: a filled accent carries its ink, and accent-coloured

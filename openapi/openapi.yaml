@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.6"
+  version: "1.9.7"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -2021,8 +2021,9 @@ components:
           type: integer
           maximum: 1000000000000
           description: >-
-            Minor units. £19.99 is 1999. A fraction, or more than the maximum,
-            is a 422.
+            Minor units. £19.99 is 1999. A fraction, text, a boolean or a list
+            is a 422 asking for a whole number of minor units; more than the
+            maximum is a 422 too.
         currency: { type: string, description: ISO 4217 code. }
         subscription_type:
           type: string
@@ -2091,7 +2092,11 @@ components:
           format: date
           nullable: true
           description: A date that does not exist is a `422`.
-        converts_to_price_minor: { type: integer, nullable: true, maximum: 1000000000000 }
+        converts_to_price_minor:
+          type: integer
+          nullable: true
+          maximum: 1000000000000
+          description: Minor units. A fraction is a 422 asking for a whole number of minor units.
         converts_to_billing_cycle:
           type: string
           nullable: true
@@ -2172,22 +2177,34 @@ components:
             role, and it is left out of their totals. Only the owner may set it,
             only when the payer is the owner or unset, and never on a split
             subscription. An absent key keeps the current setting.
-        category_id: { type: integer, nullable: true }
+        category_id:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: An id of 0 or less is a 422, as an id that doesn't exist is; null clears it.
         payment_method_id:
           type: integer
           nullable: true
+          minimum: 1
           description: |
             What the subscription is paid with. Unlike the other fields, an
             absent key leaves the current assignment alone, so a client written
             before this field existed does not clear it; send null to clear it.
+            An id of 0 or less is a 422, as an id that doesn't exist is.
         owner_user_id:
           type: integer
           nullable: true
+          minimum: 1
           description: |
-            Must be a member of the household. Ignored when the token's user is
-            fenced to their own rows: in ISOLATED mode, and for a Contributor
-            in SHARED mode too. They own only what they make.
-        payer_user_id: { type: integer, nullable: true }
+            Must be a member of the household; 0 or less is a 422, as a
+            non-member is. Ignored when the token's user is fenced to their own
+            rows: in ISOLATED mode, and for a Contributor in SHARED mode too.
+            They own only what they make.
+        payer_user_id:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: Must be a member of the household; 0 or less is a 422, as a non-member is.
         tags:
           type: array
           items: { type: string, maxLength: 50 }
