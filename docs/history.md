@@ -755,6 +755,18 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   projection, and a boolean `true` as a category, tag or payment-method name.
   No API change. No migrations. See
   [Security](security.md).
+- **Phase 69 — Trials, counts and household edges, from the known-issues
+  log — complete (1.28.0).** A running trial is no longer charged before it
+  ends: a trial saved with a next payment date before its trial end gets no
+  £0.00 payment for each passed date, and pausing one writes none. "Just
+  mine" in the scenario planner marks the 12-month figures "≈" only when your
+  own share varies. The Trials and Paused tiles are counted in the database
+  and the due-soon badge reads only rows that can be due. Only an instance
+  administrator may restore an instance administrator's login, and Phinx
+  runs on PostgreSQL in UTC. Through the API a write-scoped read leaves a
+  running trial's past `next_payment_date` in place. OpenAPI 1.9.8, behaviour
+  only. No migrations. See [Money](features/money.md) and
+  [Security](security.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says

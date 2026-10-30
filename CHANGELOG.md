@@ -8,6 +8,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.28.0] - 2026-10-30
+
 ### Fixed
 
 - **A running trial is never charged before it ends.** A trial saved with a
@@ -1251,7 +1253,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.27.3...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.28.0...HEAD
+[1.28.0]: https://github.com/gwpreston16/Renovo/compare/v1.27.3...v1.28.0
 [1.27.3]: https://github.com/gwpreston16/Renovo/compare/v1.27.2...v1.27.3
 [1.27.2]: https://github.com/gwpreston16/Renovo/compare/v1.27.1...v1.27.2
 [1.27.1]: https://github.com/gwpreston16/Renovo/compare/v1.27.0...v1.27.1
