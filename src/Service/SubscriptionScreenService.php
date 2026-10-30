@@ -236,17 +236,16 @@ final class SubscriptionScreenService
      * statistics service's recurring monthly total, per currency, with the
      * combined figure only when every currency converts.
      *
+     * Trials and Paused are counted by the status filter's own query: two
+     * COUNTs, not every row in the household loaded to be counted (K154).
+     *
      * @param array<string, mixed> $stats
      * @return array{active: int, trials: int, paused: int, per_month: Figures}
      */
     private function strip(Scope $scope, array $stats): array
     {
-        $trials = 0;
-        foreach ($this->subscriptions->allForStats($scope) as $subscription) {
-            if ($subscription->status() === SubscriptionStatus::Trial) {
-                $trials++;
-            }
-        }
+        $trials = $this->subscriptions->count($scope, new SubscriptionFilter(status: SubscriptionStatus::Trial));
+        $paused = $this->subscriptions->count($scope, new SubscriptionFilter(status: SubscriptionStatus::Paused));
 
         /** @var list<array{currency: string, monthly_minor: int, yearly_minor: int, count: int}> $recurring */
         $recurring = $stats['recurring'];
@@ -256,7 +255,7 @@ final class SubscriptionScreenService
         return [
             'active' => max(0, (int) $stats['active_count'] - $trials),
             'trials' => $trials,
-            'paused' => count($this->subscriptions->paused($scope)),
+            'paused' => $paused,
             'per_month' => [
                 'totals' => array_map(
                     static fn (array $row): array => [

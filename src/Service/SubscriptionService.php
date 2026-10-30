@@ -844,7 +844,7 @@ final class SubscriptionService
     }
 
     /**
-     * The switched-off subscriptions, for the strip's paused figure.
+     * The switched-off subscriptions, for the dashboard's paused figure.
      *
      * @return list<Subscription>
      */

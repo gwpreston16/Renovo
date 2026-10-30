@@ -166,7 +166,7 @@ None.
 ## Status
 
 - [x] K151: a running trial is never caught up before it ends
-- [ ] K154: the Trials and Paused tiles are counted in SQL
+- [x] K154: the Trials and Paused tiles are counted in SQL
 - [ ] K168: the due-soon badge reads only rows that can be due
 - [ ] K144: "just mine" marks the 12-month figures from the member's charges
 - [ ] K139: only an instance admin may restore an instance admin's login
