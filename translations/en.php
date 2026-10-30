@@ -643,6 +643,9 @@ return [
     'error.payments_end.no_billing_date' =>
         'The last payment would be before the first billing date from today, so this can’t be resumed. Move the last payment date later first.',
     'error.json.wrong_type_number' => 'Send this as a whole number.',
+    'error.json.wrong_type_flag' => 'Send this as true or false.',
+    'error.json.wrong_type_tags' => 'Send this as a list of tag names or a comma-separated string.',
+    'error.json.wrong_type_reminder_days' => 'Send this as a list of whole numbers, "none" or null.',
     'error.json.wrong_type' => 'Send this as text, not as true, false, a list or an object.',
     'error.payments_end.before_start' => 'The last payment can’t come before the start date.',
     'error.file.required' => 'Choose a file to upload.',
@@ -2548,6 +2551,7 @@ return [
     'error.api.read_only_tokens_only' => 'This endpoint accepts read-only tokens only.',
     'error.api.subscription_not_found' => 'No such subscription.',
     'error.api.charge_not_found' => 'No such charge.',
+    'error.api.body_not_object' => 'The request body must be a JSON object.',
     'error.api.file_part_missing' => 'Send the file as multipart form data in a "file" part.',
     'error.api.logo_part_missing' => 'Send the image as multipart form data in a "logo" part.',
     'error.api.subscription_unreadable' => 'The subscription could not be read back.',

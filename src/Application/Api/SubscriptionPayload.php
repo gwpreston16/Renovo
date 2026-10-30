@@ -45,6 +45,11 @@ final class SubscriptionPayload
         'converts_to_cycle_interval',
     ];
 
+    /** The yes/no fields; a boolean, 0 or 1, or one of these words (any case) is one. */
+    private const FLAG_FIELDS = ['is_active', 'is_trial', 'amount_varies'];
+
+    private const FLAG_WORDS = ['0', '1', 'true', 'false', 'yes', 'no', 'on', 'off'];
+
     /** The fields read as text; a boolean or an array is not one. */
     private const STRING_FIELDS = [
         'name', 'notes', 'website_url', 'currency', 'subscription_type', 'billing_cycle',
@@ -175,9 +180,61 @@ final class SubscriptionPayload
             }
         }
 
+        // The yes/no fields (K159): `2`, `"abc"` or `[]` for `is_active` would
+        // pause an active row, which writes its passed billing dates to the
+        // ledger. Null and blank keep reading as false, as before.
+        foreach (self::FLAG_FIELDS as $key) {
+            $value = $json[$key] ?? null;
+            if ($value === null || $value === '' || is_bool($value)) {
+                continue;
+            }
+            $isFlag = (is_int($value) && ($value === 0 || $value === 1))
+                || (is_string($value) && in_array(strtolower(trim($value)), self::FLAG_WORDS, true));
+            if (!$isFlag) {
+                $errors[$key] = 'error.json.wrong_type_flag';
+            }
+        }
+
+        // The converts-to price is a count of minor units like the price: `true`,
+        // a list or text that is not a number would save "no price".
+        $converts = $json['converts_to_price_minor'] ?? null;
+        if (is_bool($converts) || is_array($converts) || (is_string($converts) && trim($converts) !== '' && !is_numeric($converts))) {
+            $errors['converts_to_price_minor'] = 'error.json.wrong_type_number';
+        }
+
+        if (array_key_exists('tags', $json) && !self::isTagList($json['tags'])) {
+            $errors['tags'] = 'error.json.wrong_type_tags';
+        }
+
+        if (array_key_exists('reminder_days', $json) && !self::isReminderDays($json['reminder_days'])) {
+            $errors['reminder_days'] = 'error.json.wrong_type_reminder_days';
+        }
+
         if ($errors !== []) {
             throw new ValidationException($errors);
         }
+    }
+
+    /** Null, a comma-separated string, or a list of strings. */
+    private static function isTagList(mixed $value): bool
+    {
+        if ($value === null || is_string($value)) {
+            return true;
+        }
+
+        return is_array($value) && array_is_list($value)
+            && array_filter($value, static fn (mixed $name): bool => !is_string($name)) === [];
+    }
+
+    /** Null, a string (the service reads "none" and refuses the rest), or a list of integers. */
+    private static function isReminderDays(mixed $value): bool
+    {
+        if ($value === null || is_string($value)) {
+            return true;
+        }
+
+        return is_array($value) && array_is_list($value)
+            && array_filter($value, static fn (mixed $day): bool => !is_int($day)) === [];
     }
 
     /**

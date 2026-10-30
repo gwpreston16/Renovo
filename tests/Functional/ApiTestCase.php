@@ -147,6 +147,28 @@ abstract class ApiTestCase extends DatabaseTestCase
     /**
      * @param array<string, mixed>|null $body
      */
+    /**
+     * A request whose body is sent as written, for the bodies `api()` cannot
+     * build: malformed JSON, a list, or no Content-Type.
+     */
+    protected function apiRaw(
+        string $method,
+        string $path,
+        string $token,
+        string $rawBody,
+        ?string $contentType = 'application/json',
+    ): ResponseInterface {
+        $request = (new ServerRequestFactory())
+            ->createServerRequest($method, 'http://localhost' . $path, ['REMOTE_ADDR' => '127.0.0.1'])
+            ->withHeader('Authorization', 'Bearer ' . $token)
+            ->withBody((new \Slim\Psr7\Factory\StreamFactory())->createStream($rawBody));
+        if ($contentType !== null) {
+            $request = $request->withHeader('Content-Type', $contentType);
+        }
+
+        return $this->app->handle($request);
+    }
+
     protected function api(
         string $method,
         string $path,
