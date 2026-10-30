@@ -835,6 +835,17 @@ final class SubscriptionService
     }
 
     /**
+     * The running recurring subscriptions with a notice period or a contract
+     * end date, for the cancellation deadlines.
+     *
+     * @return list<Subscription>
+     */
+    public function withDeadlines(Scope $scope): array
+    {
+        return $this->subscriptions->findWithDeadlines($scope);
+    }
+
+    /**
      * How many subscriptions in the household are private to another member
      * — a count only, for the backup screen to say what it leaves out.
      */

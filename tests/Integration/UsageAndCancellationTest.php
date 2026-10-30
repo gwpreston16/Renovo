@@ -8,6 +8,7 @@ use App\Service\ChargeService;
 use App\Service\ChargeSchedule;
 use App\Repository\ChargeRepository;
 use App\Tests\Support\TestLogoFetcher;
+use App\Domain\Entity\Subscription;
 use App\Domain\IsolationMode;
 use App\Domain\NoticePeriod;
 use App\Domain\Role;
@@ -257,6 +258,67 @@ final class UsageAndCancellationTest extends DatabaseTestCase
             ['Has notice'],
             array_map(static fn (array $row): string => $row['subscription']->name, $rows),
         );
+    }
+
+    /**
+     * K168: the deadlines are read from the rows that can have one: a notice
+     * period or a contract end. The list is the same, a row with neither is
+     * never loaded, and ISOLATED hides another member's deadline.
+     */
+    public function testDeadlinesReadOnlyRowsThatCanBeDue(): void
+    {
+        $notice = $this->create('Notice', 1000, notice: 7, nextPayment: '2026-06-25');
+        $contract = $this->create('Contract', 1000, extra: ['contract_ends_on' => '2026-07-01']);
+        $both = $this->create('Both', 1000, notice: 14, nextPayment: '2026-07-20', extra: [
+            'contract_ends_on' => '2026-09-01',
+        ]);
+        $neither = $this->create('Neither', 1000, nextPayment: '2026-06-20');
+        $zero = $this->create('Zero notice', 1000, extra: ['notice_period_amount' => 0]);
+        $oneOff = $this->create('One-off', 1000, notice: 7, extra: [
+            'subscription_type' => 'one_off',
+            'billing_cycle' => null,
+        ]);
+        $paused = $this->create('Paused', 1000, notice: 7, isActive: false);
+
+        $bob = Scope::forMember($this->bob, false, $this->household, Role::Editor, IsolationMode::Shared);
+        $bobs = $this->subscriptions->create($bob, [
+            'name' => 'Bobs notice',
+            'price_minor' => 500,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-06-28',
+            'notice_period_amount' => 3,
+            'notice_period_unit' => NoticePeriod::UNIT_DAYS,
+            'is_active' => true,
+        ], []);
+
+        $loaded = array_map(
+            static fn (Subscription $row): int => $row->id,
+            $this->service->withDeadlines($this->scope()),
+        );
+        sort($loaded);
+        self::assertSame([$notice, $contract, $both, $bobs], $loaded);
+        foreach ([$neither, $zero, $oneOff, $paused] as $id) {
+            self::assertNotContains($id, $loaded);
+        }
+
+        $names = static fn (array $rows): array => array_map(
+            static fn (array $row): string => $row['subscription']->name . ':' . $row['kind'],
+            $rows,
+        );
+        self::assertSame(
+            ['Notice:notice', 'Bobs notice:notice', 'Contract:contract', 'Both:notice', 'Both:contract'],
+            $names($this->cancellations->deadlines($this->scope())),
+        );
+        self::assertSame(2, $this->cancellations->urgentCount($this->scope()));
+
+        $isolated = Scope::forMember($this->alice, false, $this->household, Role::OwnerAdmin, IsolationMode::Isolated);
+        self::assertSame(
+            ['Notice:notice', 'Contract:contract', 'Both:notice', 'Both:contract'],
+            $names($this->cancellations->deadlines($isolated)),
+        );
+        self::assertSame(1, $this->cancellations->urgentCount($isolated));
     }
 
     public function testAnInactiveSubscriptionHasNoDeadline(): void
