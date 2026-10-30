@@ -81,8 +81,9 @@ Tests (Postgres and MySQL), using Alice and Bob from the row's example:
 
 ### B. K157 — on a phone the title keeps its room
 
-Below 600px, each top-bar page action shows only its icon. Its words stay in a
-`.button-label` for screen readers, as the existing phone rule intends. The
+Below 1440px (*changed 2026-10-30*, from 600px: see *Decisions*), each
+top-bar page action shows only its icon. Its words stay in a `.button-label`
+for screen readers, as the existing phone rule intends. The
 actions carry `icon()` and wrap their words in `.button-label`:
 
 | Action | Icon |
@@ -201,6 +202,16 @@ None.
   *Confirmed 2026-10-30:* the icons are the ones in the table in B, all
   already in the sprite. Calendar's checkbox is not a button and stays as it
   is.
+  *Changed 2026-10-30 (found while building it):* icon only **below 1440px**,
+  not below 600px. With the sidebar, the search box, the rates chip and Add
+  new beside them, the two worded actions on Costs and usage and Edit
+  subscription left a 0px title at 768 and 1280 too, as on master. On a phone
+  the icon-only actions also take a narrower side padding.
+  *Added 2026-10-30 (found while building it):* Forecast scrolled sideways at
+  360 and 390px (423px wide): the "If I cancelled" rows' name, figure and
+  `nowrap` "Add to scenario" link overflowed, and the list's grid sized its
+  column to them. Below 600px the link takes its own line and the column may
+  shrink. Fixed here so B's "no horizontal scroll" check holds.
 - **K158:** follows the disabled pattern `.icon-button` and the toggle (K95)
   already use, with no new colour. *Confirmed 2026-10-30.*
 - **K160:** treats a zero or negative id like any other id that doesn't exist,
@@ -220,11 +231,30 @@ None.
   (1.28.0) alongside other phases, not as its own patch. No migration, so no
   back-up-first note beyond the standard line.
 
+## Browser check (2026-10-30)
+
+The working tree, served with `php -S` against `renovo_test` seeded by
+`demo:seed`, in the built-in browser.
+
+- **K157:** Costs and usage, Edit subscription, Forecast, Scenario and Calendar
+  at 360, 390, 768 and 1280px. On every page at every width there is no
+  horizontal scroll, Add new is hidden below 768 and shown from 768, and no
+  action overlaps the theme toggle, the bell or the search. Titles are shown in
+  full except "Edit Streamly" at 360px, ellipsised by 12px (103 of 115px).
+  Before the fix, Costs and usage was 0px at 360, 390, 768 and 1280, and
+  Forecast was 423px wide at 360 and 390. Dark mode checked at 390 (Forecast,
+  Costs and usage).
+- **K158:** "Import 0 subscriptions" on an import preview with no valid row,
+  and "Save backup settings" and "Back up now" under Settings → Instance →
+  Backups with no backup key. Each has `--faint` text on `--surface-2`, a
+  not-allowed cursor, and the same colours on hover. Checked in light at 1280
+  and dark at 390.
+
 ## Status
 
 - [x] K156: a split follows its subscription to a new owner
-- [ ] K157: on a phone the title keeps its room
-- [ ] K158: a disabled button looks disabled
+- [x] K157: on a phone the title keeps its room
+- [x] K158: a disabled button looks disabled
 - [x] K160: an id of zero or less is refused
 - [x] K161: the API asks for minor units
 - [x] K162: the type message names the values the API takes

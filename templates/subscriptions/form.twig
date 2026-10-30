@@ -34,9 +34,16 @@
 
 {% block page_actions %}
     {% if is_edit %}
-        <a class="button button-quiet" href="/subscriptions/{{ subscription_id }}/money">{{ t('subscriptions_form.costs_and_usage') }}</a>
+        <a class="button button-quiet" href="/subscriptions/{{ subscription_id }}/money"
+           title="{{ t('subscriptions_form.costs_and_usage') }}">
+            {{- icon('price') -}}
+            <span class="button-label">{{ t('subscriptions_form.costs_and_usage') }}</span>
+        </a>
     {% endif %}
-    <a class="button button-quiet" href="/subscriptions">{{ t('subscriptions_form.back_to_list') }}</a>
+    <a class="button button-quiet" href="/subscriptions" title="{{ t('subscriptions_form.back_to_list') }}">
+        {{- icon('chevron-left') -}}
+        <span class="button-label">{{ t('subscriptions_form.back_to_list') }}</span>
+    </a>
 {% endblock %}
 
 {% block content %}

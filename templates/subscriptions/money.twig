@@ -11,11 +11,19 @@
 {% block page_actions %}
     {% if can_plan %}
         <a class="button button-quiet"
-           href="/forecast/scenario?cancel[]={{ subscription.id }}">{{ t('subscriptions_money.what_if_cancelled') }}</a>
+           href="/forecast/scenario?cancel[]={{ subscription.id }}"
+           title="{{ t('subscriptions_money.what_if_cancelled') }}">
+            {{- icon('calculator') -}}
+            <span class="button-label">{{ t('subscriptions_money.what_if_cancelled') }}</span>
+        </a>
     {% endif %}
     {% if can(scope, 'subscription.update') and can_edit_row(scope, subscription) %}
         <a class="button button-quiet"
-           href="/subscriptions/{{ subscription.id }}/edit">{{ t('subscriptions_form.edit_title') }}</a>
+           href="/subscriptions/{{ subscription.id }}/edit"
+           title="{{ t('subscriptions_form.edit_title') }}">
+            {{- icon('edit') -}}
+            <span class="button-label">{{ t('subscriptions_form.edit_title') }}</span>
+        </a>
     {% endif %}
 {% endblock %}
 

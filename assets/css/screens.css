@@ -763,6 +763,27 @@
     white-space: nowrap;
 }
 
+/*
+ * On a phone "Add to scenario" takes a line of its own under the name and
+ * the figure. On one line the three widened the page past the screen: the
+ * list's grid sized its column to the row, so the column has to be allowed
+ * to be narrower than its content too.
+ */
+@media (max-width: 599px) {
+    .forecast-cancel .top-list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .forecast-cancel .top-row {
+        flex-wrap: wrap;
+    }
+
+    .forecast-cancel .forecast-scenario-link {
+        flex-basis: 100%;
+        text-align: right;
+    }
+}
+
 /* ---------------------------------------------------------------- scenario */
 
 /*
