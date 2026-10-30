@@ -71,8 +71,8 @@ final class IpAddressTest extends TestCase
 
     /**
      * Every range in the blocked list has a case above that falls inside it,
-     * so removing a range fails a test, and a range added without one fails
-     * this.
+     * so a range added without one fails this. Removing a range fails a case
+     * unless a wider range still covers it (`::/96` covers `::` and `::1`).
      */
     public function testEveryBlockedRangeHasACase(): void
     {
