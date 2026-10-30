@@ -191,6 +191,28 @@ final class BudgetProjectionTest extends DatabaseTestCase
         self::assertSame(1000, $this->budgets->progress($this->scope($this->alice))[0]['projected']?->amountMinor);
     }
 
+    public function testAOneOffDueTodayCountsTowardsTheBudget(): void
+    {
+        // K170. A one-off has no later charge of the same amount to hide it
+        // dropping out, so a window that started tomorrow would project
+        // nothing here and the alert would never trip.
+        $this->subscriptions->create($this->scope($this->alice), [
+            'name' => 'Concert tickets',
+            'price_minor' => 4000,
+            'currency' => 'GBP',
+            'subscription_type' => 'one_off',
+            'billing_cycle' => '',
+            'next_payment_date' => '2026-01-15',
+            'is_active' => true,
+        ], []);
+        $this->monthlyBudget('20.00');
+
+        $progress = $this->budgets->progress($this->scope($this->alice))[0];
+
+        self::assertSame(4000, $progress['projected']?->amountMinor);
+        self::assertTrue($progress['is_over']);
+    }
+
     public function testAYearlyRenewalDueTodayIsCountedOnceInAnAnnualBudget(): void
     {
         $this->subscriptions->create($this->scope($this->alice), [

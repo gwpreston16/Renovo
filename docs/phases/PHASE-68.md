@@ -144,7 +144,7 @@ None.
 - [x] K152: every blocked range has a test that fails without it
 - [x] K169: a name partly inside a trusted range is refused over http
 - [x] K140: a trial converting today has one event that day
-- [ ] K170: a charge due today counts in the budget-alert projection
+- [x] K170: a charge due today counts in the budget-alert projection
 - [ ] K171: a category, tag or payment-method name of `true` is refused
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed
