@@ -175,6 +175,8 @@ const saveFailed = (event) => {
     // Cleared and refilled so a repeat of the same failure is read out again.
     status.textContent = '';
     status.textContent = plain && body !== '' ? body : (status.dataset.networkMessage || '');
+    // The region sits at the top of the content; a control further down the page must not fail out of sight.
+    status.scrollIntoView({block: 'nearest'});
 
     control.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach((input) => {
         input.checked = input.defaultChecked;

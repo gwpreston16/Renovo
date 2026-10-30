@@ -568,6 +568,7 @@ final class ApiInputValidationTest extends ApiTestCase
             'is_active abc' => ['is_active', 'abc'],
             'is_active nope' => ['is_active', 'nope'],
             'is_active list' => ['is_active', []],
+            'is_active float' => ['is_active', 1.0],
             'is_trial abc' => ['is_trial', 'abc'],
             'amount_varies list' => ['amount_varies', []],
             'tags 5' => ['tags', 5],
@@ -633,6 +634,13 @@ final class ApiInputValidationTest extends ApiTestCase
         self::assertSame(200, $put->getStatusCode(), (string) $put->getBody());
         self::assertSame(['a', 'b'], $this->show($id)['tags']);
         self::assertSame([], $this->show($id)['reminder_days']);
+
+        $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+            'is_trial' => 'off',
+            'amount_varies' => 'no',
+            'converts_to_price_minor' => '500',
+        ] + $before);
+        self::assertSame(200, $put->getStatusCode(), (string) $put->getBody());
 
         $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
             'tags' => ['c'],

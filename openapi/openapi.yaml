@@ -43,9 +43,9 @@ info:
     scopes and expiry.
 
     **An unreadable JSON body is a `400`.** A write whose body is malformed
-    JSON, is a list or a scalar rather than an object, or is sent without a
-    JSON `Content-Type` is refused with `400` and changes nothing. `{}` is
-    still a body.
+    JSON, is a non-empty list or a scalar rather than an object, or is sent
+    with no `Content-Type` is refused with `400` and changes nothing. `{}`,
+    `[]` and an empty body are read as an empty object.
 
     **Wrong types and impossible dates are refused.** A text field sent as a
     boolean, a list or an object is a `422` on that field and clears nothing,

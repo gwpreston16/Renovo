@@ -449,7 +449,7 @@ the field the client sent: a bad price is under `price_minor`, a bad
 
 | Status | When |
 | --- | --- |
-| `400` | The request was malformed — a JSON body that is malformed, is a list or a scalar, or is sent without a JSON `Content-Type` (`{}` is still a body); a bad multipart body; an unreadable upload. |
+| `400` | The request was malformed — a JSON body that is malformed, is a non-empty list or a scalar, or is sent with no `Content-Type` (`{}`, `[]` and an empty body are read as an empty object); a bad multipart body; an unreadable upload. |
 | `401` | No token presented, or it is revoked, expired, malformed or unknown. The four are one answer. A write sent with no bearer token, or another scheme, is a `401` too. |
 | `403` | The token does not hold the scope the route needs (the message names it), **or** the role does not permit this, **or** a token that can write was offered to the calendar feed, **or** the instance is a read-only demonstration: every write (any method but `GET`, `HEAD` and `OPTIONS`) is refused with the message "This instance is a read-only demonstration. Nothing here can be changed." |
 | `404` | No such row — **or** one the caller may not see. |
