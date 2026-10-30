@@ -184,6 +184,16 @@ final class ScenarioService
         );
         $marks = EstimateMarks::keys($marksNow['estimate_currencies'], $marksThen['estimate_currencies']);
 
+        // The 12-month figures are the member's charges under "just mine", so
+        // their marks are too: another member's varying bill isn't in them
+        // (K144). The household's are the run-rate's, as before.
+        $twelveMarksNow = $forUserId === null ? $marksNow : EstimateMarks::keys(EstimateMarks::ofCharges($current));
+        $twelveMarksThen = $forUserId === null ? $marksThen : EstimateMarks::keys(EstimateMarks::ofCharges($planned));
+        $twelveMarks = EstimateMarks::keys(
+            $twelveMarksNow['estimate_currencies'],
+            $twelveMarksThen['estimate_currencies'],
+        );
+
         return [
             'is_empty' => $scenario->isEmpty(),
             'horizon_months' => $horizon,
@@ -217,6 +227,9 @@ final class ScenarioService
                 'current' => $this->figures($twelveNow),
                 'scenario' => $this->figures($twelveThen),
                 'saving' => $this->figures($this->difference($twelveNow, $twelveThen)),
+                'marks' => $twelveMarks,
+                'marks_current' => $twelveMarksNow,
+                'marks_scenario' => $twelveMarksThen,
             ],
             'rows' => $this->rowResults($scenario, $eligible, $current, $planned, $forUserId),
             'months' => $this->months($current, $planned, $horizon),

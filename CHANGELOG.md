@@ -8,6 +8,40 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **A running trial is never charged before it ends.** A trial saved with a
+  next payment date before its trial end no longer gets a £0.00 (or
+  trial-price) payment written to Payments and spend history for each passed
+  date; its first payment is its trial end, once it converts, as the
+  forecast, the calendar and Savings already said. Pausing a running trial
+  writes no payment either. Through the API, a write-scoped read leaves a
+  running trial's past `next_payment_date` in place. OpenAPI 1.9.8,
+  behaviour only. *Phase 69.*
+- **"Just mine" marks the next 12 months only when your own share varies.**
+  In the scenario planner with "just mine" on, the next-12-months figures and
+  the 12-month saving are no longer drawn "≈" because another member owns a
+  bill whose amount varies. The run-rate rows are the household's and keep
+  their marks. *Phase 69.*
+- **The subscription list and every page do less work.** The Trials and
+  Paused tiles are counted in the database rather than by loading every
+  subscription, and the "something due soon" badge reads only the
+  subscriptions that have a notice period or a contract end date. The figures
+  are unchanged. *Phase 69.*
+- **Migrations write UTC on PostgreSQL.** On a PostgreSQL server whose time
+  zone isn't UTC, rolling back the API token scopes migration stamped each
+  token it revoked at the server's local time; Phinx's connection is now put
+  in UTC like the application's. *Phase 69.*
+
+### Security
+
+- **Only an instance administrator may restore an instance administrator's
+  login.** A household Owner who isn't an instance administrator could
+  restore the login of a co-Owner who is, undoing a revocation only an
+  instance administrator may make. Restoring is now refused for them, as
+  revoking already was, and the button is no longer shown (K139).
+  *Phase 69.*
+
 ## [1.27.3] - 2026-10-30
 
 ### Fixed

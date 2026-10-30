@@ -599,6 +599,8 @@ final class SubscriptionService
             !$scope->canWrite()
             || !$subscription->isActive
             || $subscription->isCancelled()
+            // Never caught up while it runs (K151): see findOverdue().
+            || $subscription->isTrial
             || $subscription->nextPaymentDate === null
             || $subscription->nextPaymentDate >= $this->clock->today()
         ) {
@@ -833,6 +835,17 @@ final class SubscriptionService
     }
 
     /**
+     * The running recurring subscriptions with a notice period or a contract
+     * end date, for the cancellation deadlines.
+     *
+     * @return list<Subscription>
+     */
+    public function withDeadlines(Scope $scope): array
+    {
+        return $this->subscriptions->findWithDeadlines($scope);
+    }
+
+    /**
      * How many subscriptions in the household are private to another member
      * — a count only, for the backup screen to say what it leaves out.
      */
@@ -842,7 +855,7 @@ final class SubscriptionService
     }
 
     /**
-     * The switched-off subscriptions, for the strip's paused figure.
+     * The switched-off subscriptions, for the dashboard's paused figure.
      *
      * @return list<Subscription>
      */

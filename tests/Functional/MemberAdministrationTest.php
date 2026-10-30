@@ -1090,6 +1090,70 @@ final class MemberAdministrationTest extends DatabaseTestCase
         self::assertTrue($owner->isDisabled());
     }
 
+    /**
+     * K139: a revocation only an instance administrator may make is not a
+     * plain Owner's to undo.
+     */
+    public function testAPlainOwnerCannotRestoreAnInstanceAdminsLogin(): void
+    {
+        $adminId = $this->addRevokedInstanceAdminOwner();
+
+        $this->signIn($this->ownerId);
+        $response = $this->request('POST', '/settings/members/' . $adminId . '/restore');
+
+        // Refused in words, on the page it came from.
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame('/settings/members', $response->getHeaderLine('Location'));
+        self::assertStringContainsString(
+            'only an instance administrator can revoke or restore its login',
+            (string) $this->request('GET', '/settings/members')->getBody(),
+        );
+
+        $admin = (new UserRepository($this->db))->findById($adminId);
+        self::assertNotNull($admin);
+        self::assertTrue($admin->isDisabled(), 'A household Owner must not be able to restore an instance admin.');
+        self::assertFalse($this->hasAudit(AuditAction::MemberLoginRestored, $adminId));
+    }
+
+    public function testAnInstanceAdminOwnerCanRestoreIt(): void
+    {
+        $adminId = $this->addRevokedInstanceAdminOwner();
+        $otherAdmin = $this->memberWithRole('ops@example.test', 'Ops', Role::OwnerAdmin, true);
+
+        $this->signIn($otherAdmin);
+        $page = (string) $this->request('GET', '/settings/members')->getBody();
+        self::assertStringContainsString('/settings/members/' . $adminId . '/restore', $page);
+
+        $this->request('POST', '/settings/members/' . $adminId . '/restore');
+
+        $admin = (new UserRepository($this->db))->findById($adminId);
+        self::assertNotNull($admin);
+        self::assertFalse($admin->isDisabled());
+    }
+
+    public function testTheRestoreButtonIsHiddenFromAPlainOwner(): void
+    {
+        $adminId = $this->addRevokedInstanceAdminOwner();
+        (new UserRepository($this->db))->setDisabledAt($this->editorId, new DateTimeImmutable());
+
+        $this->signIn($this->ownerId);
+        $page = (string) $this->request('GET', '/settings/members')->getBody();
+
+        // Neither button: restoring is refused, and revoking an account
+        // already revoked means nothing.
+        self::assertStringNotContainsString('/settings/members/' . $adminId . '/restore', $page);
+        self::assertStringNotContainsString('/settings/members/' . $adminId . '/revoke', $page);
+        self::assertStringContainsString('/settings/members/' . $this->editorId . '/restore', $page);
+    }
+
+    private function addRevokedInstanceAdminOwner(): int
+    {
+        $adminId = $this->addInstanceAdminOwner();
+        (new UserRepository($this->db))->setDisabledAt($adminId, new DateTimeImmutable());
+
+        return $adminId;
+    }
+
     private function addInstanceAdminOwner(): int
     {
         $adminId = (new UserRepository($this->db))->create(

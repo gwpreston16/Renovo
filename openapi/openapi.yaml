@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.7"
+  version: "1.9.8"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -186,7 +186,9 @@ paths:
         changes take effect, ended trials convert, overdue payment dates
         move on, recording each passed date as a payment, and a fixed term
         whose last payment has passed is cancelled as of the day after it. A
-        token without it changes nothing.
+        running trial is left alone, whatever `next_payment_date` it carries:
+        its first payment is its trial end, once it converts. A token without
+        it changes nothing.
       parameters:
         - { name: q, in: query, schema: { type: string }, description: Search names and notes. }
         - { name: category, in: query, schema: { type: integer }, description: Category id. }
@@ -2116,7 +2118,8 @@ components:
           default: true
           description: |
             False pauses the subscription. Pausing records the billing dates
-            already passed first and keeps the payment date the catch-up moved
+            already passed first (a running trial has none to record: its
+            first payment is its trial end) and keeps the payment date the catch-up moved
             the row to, unless the PUT sends another: the date the row was
             read with is not written back over it. A cancelled subscription
             stays inactive whatever is sent; un-cancel it first. Resuming a paused

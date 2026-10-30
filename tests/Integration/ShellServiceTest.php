@@ -270,6 +270,33 @@ final class ShellServiceTest extends DatabaseTestCase
         self::assertTrue($this->shell->forScope($editor)->somethingDueSoon);
     }
 
+    /**
+     * K168: the dot reads only the rows that can have a deadline. Rows with
+     * neither a notice period nor a contract end never light it, a contract
+     * end inside the window does, and in ISOLATED mode only for its owner.
+     */
+    public function testTheDueSoonBadgeIsUnchangedAndScoped(): void
+    {
+        $editor = $this->scope($this->editorId, Role::Editor, IsolationMode::Isolated);
+        $viewer = $this->scope($this->viewerId, Role::Viewer, IsolationMode::Isolated);
+        $sharedViewer = $this->scope($this->viewerId, Role::Viewer, IsolationMode::Shared);
+
+        foreach (range(1, 5) as $n) {
+            $this->subscription($editor, 'Plain ' . $n, next: '2026-06-16');
+        }
+        self::assertFalse($this->shell->forScope($editor)->somethingDueSoon, 'A row with no deadline lit the dot.');
+
+        $id = $this->subscription($editor, 'Contract ending', next: '2026-12-01');
+        $this->db->execute(
+            "UPDATE subscriptions SET contract_ends_on = '2026-06-22' WHERE id = :id",
+            ['id' => $id],
+        );
+
+        self::assertTrue($this->shell->forScope($editor)->somethingDueSoon);
+        self::assertTrue($this->shell->forScope($sharedViewer)->somethingDueSoon);
+        self::assertFalse($this->shell->forScope($viewer)->somethingDueSoon, "Another member's deadline lit the dot.");
+    }
+
     private function badge(Scope $scope): ?int
     {
         return $this->shell->forScope($scope)->subscriptionCount;

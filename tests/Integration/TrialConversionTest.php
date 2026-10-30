@@ -15,9 +15,12 @@ use App\Repository\PriceHistoryRepository;
 use App\Repository\SubscriptionRepository;
 use App\Repository\UserRepository;
 use App\Security\Scope;
+use App\Service\ChargeSchedule;
 use App\Service\PriceHistoryService;
+use App\Service\SubscriptionService;
 use App\Service\TrialService;
 use App\Support\FrozenClock;
+use App\Tests\Support\TestSubscriptionService;
 use DateTimeImmutable;
 
 /**
@@ -257,6 +260,126 @@ final class TrialConversionTest extends DatabaseTestCase
 
         self::assertSame(0, $this->trials->convertDueTrials($this->scope()));
         self::assertTrue($this->subscriptions->find($theirScope, $theirId)?->isTrial);
+    }
+
+    /**
+     * A trial saved with a next payment date before its trial end is left
+     * alone by the catch-up while it runs: no £0.00 (or trial-price) payment
+     * is written and the date doesn't move (K151).
+     *
+     * @return array<string, array{int}>
+     */
+    public static function trialPrices(): array
+    {
+        return ['free' => [0], 'a pound during the trial' => [100]];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('trialPrices')]
+    public function testARunningTrialIsNotCaughtUpBeforeItEnds(int $priceMinor): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-10-29 09:00:00'));
+        $id = $this->createTrial(endDate: '2026-12-13', convertsToMinor: 999, priceMinor: $priceMinor);
+        $this->setNextPayment($id, '2026-10-24');
+
+        $this->catchUp();
+
+        self::assertSame(0, $this->chargeCount($id));
+        $trial = $this->subscriptions->find($this->scope(), $id);
+        self::assertNotNull($trial);
+        self::assertTrue($trial->isTrial);
+        self::assertSame('2026-10-24', $trial->nextPaymentDate?->format('Y-m-d'));
+
+        // Past spend doesn't count the dates as pending either: they are the
+        // catch-up's dates, and the catch-up will never write them.
+        self::assertSame(
+            [],
+            (new ChargeSchedule())->pending($trial, [], $this->date('2026-10-01'), $this->date('2026-10-29')),
+        );
+    }
+
+    public function testATrialIsCaughtUpFromItsEndOnceConverted(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-10-29 09:00:00'));
+        $id = $this->createTrial(endDate: '2026-12-13', convertsToMinor: 999);
+        $this->setNextPayment($id, '2026-10-24');
+        $this->catchUp();
+
+        $this->clock->advanceTo(new DateTimeImmutable('2026-12-20 09:00:00'));
+        $this->catchUp();
+
+        $rows = $this->db->fetchAll(
+            'SELECT due_date, expected_minor FROM subscription_charges WHERE subscription_id = :id ORDER BY due_date',
+            ['id' => $id],
+        );
+        self::assertCount(1, $rows);
+        self::assertSame('2026-12-13', substr((string) $rows[0]['due_date'], 0, 10));
+        self::assertSame(999, (int) $rows[0]['expected_minor']);
+
+        $subscription = $this->subscriptions->find($this->scope(), $id);
+        self::assertNotNull($subscription);
+        self::assertFalse($subscription->isTrial);
+        self::assertSame('2027-01-13', $subscription->nextPaymentDate?->format('Y-m-d'));
+    }
+
+    public function testPausingARunningTrialWritesNoPayment(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-10-29 09:00:00'));
+        $id = $this->createTrial(endDate: '2026-12-13', convertsToMinor: 999, priceMinor: 100);
+        $this->setNextPayment($id, '2026-10-24');
+
+        $this->subscriptionService()->setActive($this->scope(), $id, false);
+
+        self::assertSame(0, $this->chargeCount($id));
+        $paused = $this->subscriptions->find($this->scope(), $id);
+        self::assertNotNull($paused);
+        self::assertFalse($paused->isActive);
+        self::assertSame('2026-10-24', $paused->nextPaymentDate?->format('Y-m-d'));
+
+        // And paused, it is no more the catch-up's than before.
+        $this->catchUp();
+        self::assertSame(0, $this->chargeCount($id));
+    }
+
+    public function testCancellingARunningTrialWritesNoPayment(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2026-10-29 09:00:00'));
+        $id = $this->createTrial(endDate: '2026-12-13', convertsToMinor: 999, priceMinor: 100);
+        $this->setNextPayment($id, '2026-10-24');
+
+        $this->subscriptionService()->cancel($this->scope(), $id);
+
+        self::assertSame(0, $this->chargeCount($id));
+        self::assertTrue($this->subscriptions->find($this->scope(), $id)?->isCancelled());
+    }
+
+    /**
+     * The catch-up as a page load runs it: conversions first, then payments.
+     */
+    private function catchUp(): void
+    {
+        $this->trials->convertDueTrials($this->scope());
+        $this->subscriptionService()->advanceDuePayments($this->scope());
+    }
+
+    private function subscriptionService(): SubscriptionService
+    {
+        return TestSubscriptionService::build($this->db, $this->clock, $this->priceHistory);
+    }
+
+    private function setNextPayment(int $id, string $date): void
+    {
+        $this->db->execute(
+            'UPDATE subscriptions SET next_payment_date = :date WHERE id = :id',
+            ['date' => $date, 'id' => $id],
+        );
+    }
+
+    private function chargeCount(int $id): int
+    {
+        return (int) $this->db->fetchValue(
+            'SELECT COUNT(*) FROM subscription_charges WHERE subscription_id = :id',
+            ['id' => $id],
+        );
     }
 
     private function createTrial(

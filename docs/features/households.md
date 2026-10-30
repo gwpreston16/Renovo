@@ -41,7 +41,7 @@ page that member asks for is the account page until they have replaced it.
 An Owner can also send a member a password-reset link, change their role,
 **revoke their login** — which disables the account and ends every session it
 has, everywhere, at once — and remove them from the household. Only an
-instance administrator may revoke the login of another instance
+instance administrator may revoke or restore the login of another instance
 administrator. Two things are refused however they are attempted: acting on the
 household's **last Owner**, so it cannot lock itself out, and leaving a row
 behind that belongs to nobody. On removal, what the departing member owned is

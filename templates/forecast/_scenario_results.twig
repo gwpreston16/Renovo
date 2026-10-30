@@ -23,7 +23,9 @@
 {#
     `marks` says which currencies hold a bill whose amount varies
     (`estimate_currencies`): their subtotals, and any combined or net figure,
-    are drawn "≈" by the one rule in `partials/estimate.twig`.
+    are drawn "≈" by the one rule in `partials/estimate.twig`. The next twelve
+    months carry their own (`twelve_months.marks*`): under "just mine" they
+    come from the member's charges, the run-rate's from the household's rows.
 #}
 {% macro amount(figures, base_currency, marks = {}) %}
     {%- import 'partials/estimate.twig' as estimate -%}
@@ -76,7 +78,7 @@
         </article>
         <article class="stat metric">
             <h3 class="stat-label">{{ t('scenario.twelve_saving', {'months': r.horizon_months}) }}</h3>
-            <p class="stat-value num">{{ scenario.saving(r.twelve_months.saving, base_currency, r.marks) }}</p>
+            <p class="stat-value num">{{ scenario.saving(r.twelve_months.saving, base_currency, r.twelve_months.marks) }}</p>
             <p class="kpi-note muted">{{ t('scenario.twelve_saving_note') }}</p>
         </article>
     </div>
@@ -107,9 +109,9 @@
             </tr>
             <tr>
                 <th scope="row">{{ t('scenario.next_months', {'months': r.horizon_months}) }}</th>
-                <td class="numeric num">{{ scenario.amount(r.twelve_months.current, base_currency, r.marks_current) }}</td>
-                <td class="numeric num">{{ scenario.amount(r.twelve_months.scenario, base_currency, r.marks_scenario) }}</td>
-                <td class="numeric num">{{ scenario.saving(r.twelve_months.saving, base_currency, r.marks) }}</td>
+                <td class="numeric num">{{ scenario.amount(r.twelve_months.current, base_currency, r.twelve_months.marks_current) }}</td>
+                <td class="numeric num">{{ scenario.amount(r.twelve_months.scenario, base_currency, r.twelve_months.marks_scenario) }}</td>
+                <td class="numeric num">{{ scenario.saving(r.twelve_months.saving, base_currency, r.twelve_months.marks) }}</td>
             </tr>
             </tbody>
         </table>

@@ -9,6 +9,7 @@ use App\Domain\ExchangeRate;
 use App\Domain\IsolationMode;
 use App\Domain\Role;
 use App\Domain\SplitMode;
+use App\Persistence\Database;
 use App\Repository\ExchangeRateRepository;
 use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
@@ -24,6 +25,7 @@ use App\Service\Import\SourceFile;
 use App\Service\InstanceSettingsService;
 use App\Service\SplitService;
 use App\Service\StatsService;
+use App\Service\SubscriptionScreenService;
 use App\Service\SubscriptionService;
 use App\Service\UserPreferencesService;
 use App\Support\DateFormatter;
@@ -267,6 +269,63 @@ final class SubscriptionsScreenTest extends DatabaseTestCase
         // Seven running rows, one of them a trial, and two paused. Active is
         // the Active filter's count, so it leaves the trial beside it out.
         self::assertSame(['6', '1', '2'], array_slice($this->figures($strip), 0, 3));
+    }
+
+    /**
+     * K154: the Trials and Paused tiles are the status filter's own COUNTs.
+     * The figures are what they were when every row was loaded to count
+     * them, cancelled rows stay out, and ISOLATED hides another member's.
+     *
+     * @return array<string, array{IsolationMode, string, list<string>}>
+     */
+    public static function stripCounts(): array
+    {
+        return [
+            'SHARED, the Owner' => [IsolationMode::Shared, 'owner', ['5', '1', '2']],
+            // The Editor's own row and the plan they share; their own paused
+            // row and not the Owner's; the Owner's trial is not theirs to see.
+            'ISOLATED, the Editor' => [IsolationMode::Isolated, 'editor', ['2', '0', '1']],
+        ];
+    }
+
+    /**
+     * @param list<string> $expected
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('stripCounts')]
+    public function testTheTrialsAndPausedTilesAreCountedInSql(
+        IsolationMode $mode,
+        string $who,
+        array $expected,
+    ): void {
+        $container = $this->container();
+        $owner = $this->scopeFor($this->ownerId);
+        $container->get(SubscriptionService::class)->cancel($owner, $this->streamingId);
+        $container->get(InstanceSettingsService::class)->setIsolationMode($mode);
+        $userId = $who === 'owner' ? $this->ownerId : $this->editorId;
+
+        $strip = $this->section($this->body($this->get('/subscriptions', $userId)), 'subscription-strip');
+        self::assertSame($expected, array_slice($this->figures($strip), 0, 3));
+
+        // The tiles' own reads are two COUNTs and nothing else.
+        $scope = Scope::forMember(
+            $userId,
+            false,
+            $this->householdId,
+            $who === 'owner' ? Role::OwnerAdmin : Role::Editor,
+            $mode,
+        );
+        $stats = $container->get(StatsService::class)->dashboard($scope);
+        $db = $container->get(Database::class);
+        $screen = $container->get(SubscriptionScreenService::class);
+        $strip = (fn (Scope $scope, array $stats): array => $this->strip($scope, $stats))
+            ->call($screen, $scope, $stats);
+
+        $before = $db->statementCount();
+        $again = (fn (Scope $scope, array $stats): array => $this->strip($scope, $stats))
+            ->call($screen, $scope, $stats);
+        self::assertSame(2, $db->statementCount() - $before);
+        self::assertSame($strip, $again);
+        self::assertSame($expected, [(string) $again['active'], (string) $again['trials'], (string) $again['paused']]);
     }
 
     /** The Budgets screen's tile: the icon leading, the label and figure beside it. */

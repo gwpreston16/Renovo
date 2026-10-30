@@ -61,6 +61,25 @@ if ($adapter === 'mysql') {
         $connection['connection'] = $pdo;
     } catch (PDOException) {
     }
+} else {
+    // The same for PostgreSQL: Phinx's own connection keeps the server's time
+    // zone, so a migration's CURRENT_TIMESTAMP would be written in it. The
+    // platform's session settings (`SET TIME ZONE 'UTC'`) are run on a
+    // connection handed to Phinx, as the application runs them on its own
+    // (K163). If the server cannot be reached, Phinx is left to say so.
+    try {
+        $platform = new App\Persistence\PostgresPlatform();
+        $pdo = new PDO(
+            $platform->dsn($connection),
+            $connection['user'],
+            $connection['pass'],
+        );
+        foreach ($platform->initialStatements() as $statement) {
+            $pdo->exec($statement);
+        }
+        $connection['connection'] = $pdo;
+    } catch (PDOException) {
+    }
 }
 
 return [

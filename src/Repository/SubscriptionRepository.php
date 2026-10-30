@@ -245,6 +245,32 @@ final class SubscriptionRepository extends AbstractScopedRepository
         return $this->hydrateAll($scope, $this->db->fetchAll($sql, $params));
     }
 
+    /**
+     * The running recurring subscriptions that can have a cancellation
+     * deadline: a notice period, a contract end date, or both. Everything
+     * else is never one of the cancellation list's rows, so the badge on
+     * every page needn't load it (K168).
+     *
+     * Read-scoped like `findAllForStats()`, so ISOLATED hides another
+     * member's deadline exactly as it hides the row.
+     *
+     * @return list<Subscription>
+     */
+    public function findWithDeadlines(Scope $scope): array
+    {
+        $criteria = Criteria::new()
+            ->equals('is_active', true)
+            ->equals('subscription_type', SubscriptionType::Recurring->value);
+
+        $params = [];
+        // `> 0`, not `IS NOT NULL`: NoticePeriod reads a zero amount as none.
+        $sql = $this->selectWithJoins() . $this->scopedWhere($scope, $criteria, $params)
+            . ' AND (' . $this->qualify('notice_period_amount') . ' > 0'
+            . ' OR ' . $this->qualify('contract_ends_on') . ' IS NOT NULL)';
+
+        return $this->hydrateAll($scope, $this->db->fetchAll($sql, $params));
+    }
+
     public function find(Scope $scope, int $id): ?Subscription
     {
         $criteria = Criteria::new()->equals('id', $id);
@@ -398,6 +424,10 @@ final class SubscriptionRepository extends AbstractScopedRepository
      * Active recurring subscriptions whose next payment date is in the past,
      * for the cycle auto-advance.
      *
+     * A running trial is left alone, whatever date it carries: its first
+     * charge is its trial end, which the conversion makes its payment date,
+     * and the catch-up takes over from there (K151).
+     *
      * Write-scoped for the same reason as findTrialsToConvert: every row
      * returned here is about to be updated.
      *
@@ -408,6 +438,7 @@ final class SubscriptionRepository extends AbstractScopedRepository
         $criteria = Criteria::new()
             ->equals('is_active', true)
             ->equals('cancelled_at', null)
+            ->equals('is_trial', false)
             ->equals('subscription_type', SubscriptionType::Recurring->value)
             ->where('next_payment_date', '<', $today->format('Y-m-d'));
 

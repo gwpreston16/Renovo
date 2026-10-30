@@ -138,6 +138,55 @@ final class EntryPointTimeZoneTest extends TestCase
         self::assertSame('UTC', $zones[2], $arguments[0] . ' ended in UTC');
     }
 
+    /**
+     * K163: on PostgreSQL, Phinx is handed a connection that has run the
+     * platform's `SET TIME ZONE 'UTC'`, so a migration's CURRENT_TIMESTAMP
+     * is UTC though the server (here, the client's PGTZ) says New York.
+     */
+    public function testPhinxIsHandedAUtcPostgresConnection(): void
+    {
+        $driver = getenv('DB_DRIVER');
+        if (is_string($driver) && $driver !== '' && $driver !== 'pgsql') {
+            self::markTestSkipped('PostgreSQL only: the MySQL block is covered by its own tests.');
+        }
+
+        $code = sprintf(
+            'require %s; $config = require %s; $c = $config["environments"]["default"];'
+            . ' $pdo = $c["connection"] ?? null;'
+            . ' if ($pdo instanceof PDO) { echo $pdo->query("SHOW TimeZone")->fetchColumn(); exit; }'
+            // Not handed one: tell a server that can't be reached from one
+            // phinx.php didn't connect to.
+            . ' try { new PDO((new App\\Persistence\\PostgresPlatform())->dsn($c), $c["user"], $c["pass"]);'
+            . ' echo "not handed"; } catch (PDOException) { echo "none"; }',
+            var_export($this->root . '/vendor/autoload.php', true),
+            var_export($this->root . '/phinx.php', true),
+        );
+
+        $process = proc_open(
+            [PHP_BINARY, '-r', $code],
+            [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes,
+            $this->root,
+            [...getenv(), 'PGTZ' => 'America/New_York'],
+        );
+        self::assertIsResource($process);
+
+        $out = trim((string) stream_get_contents($pipes[1]));
+        $err = (string) stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        self::assertSame(0, proc_close($process), $err);
+
+        if ($out === 'none') {
+            if ((string) getenv('CI') !== '') {
+                self::fail('CI must provide a database for phinx.php to connect to.');
+            }
+            self::markTestSkipped('No PostgreSQL server reachable with the configured DB_* settings.');
+        }
+
+        self::assertSame('UTC', $out);
+    }
+
     public function testEveryEntryPointPinsTheZone(): void
     {
         $bootstrap = (string) file_get_contents($this->root . '/config/bootstrap.php');

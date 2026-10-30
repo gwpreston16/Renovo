@@ -59,7 +59,9 @@ final class CancellationService
         $today = $this->clock->today();
         $rows = [];
 
-        foreach ($this->subscriptions->allForStats($scope) as $subscription) {
+        // Only the rows that can have a deadline are read (K168); the checks
+        // below still say what makes one.
+        foreach ($this->subscriptions->withDeadlines($scope) as $subscription) {
             if (!$subscription->isActive || !$subscription->type->countsTowardsRecurringTotals()) {
                 continue;
             }

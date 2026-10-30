@@ -139,6 +139,10 @@ None.
   save (form, API, import). This makes the catch-up agree with the forecast,
   the calendar and Savings, which already treat the trial end as the first
   charge; a stored date before it is simply never acted on.
+- **K151 — found while starting it, Confirmed 2026-10-30:**
+  `ChargeSchedule::pending()`, which past spend counts for the dates "the
+  catch-up would write", skips a running trial too, so it still says only
+  what the catch-up does.
 - **K154, K168:** performance only; each screen shows the same figures as
   before, which the tests assert alongside the smaller read. K168's
   repository method goes through the scoping layer, not around it.
@@ -147,7 +151,10 @@ None.
   household's by design and keep their marks.
 - **K139 — Decided 2026-10-30:** refuse unless the actor is an instance
   admin, matching K24. Not chosen: leave it and document that any Owner may
-  restore.
+  restore. *Found while starting it:* `error.member.instance_admin` says
+  "revoke its login"; it is reworded to "revoke or restore its login" rather
+  than a second key. A plain Owner sees neither button on a revoked instance
+  admin.
 - **K163 — Decided 2026-10-30:** `phinx.php` hands Phinx a Postgres
   connection in UTC, fixing every migration that writes a timestamp. Not
   chosen: changing only this migration's `down()` to write a UTC time from
@@ -158,16 +165,16 @@ None.
 
 ## Status
 
-- [ ] K151: a running trial is never caught up before it ends
-- [ ] K154: the Trials and Paused tiles are counted in SQL
-- [ ] K168: the due-soon badge reads only rows that can be due
-- [ ] K144: "just mine" marks the 12-month figures from the member's charges
-- [ ] K139: only an instance admin may restore an instance admin's login
-- [ ] K163: Phinx runs on Postgres in UTC
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 69 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K151: a running trial is never caught up before it ends
+- [x] K154: the Trials and Paused tiles are counted in SQL
+- [x] K168: the due-soon badge reads only rows that can be due
+- [x] K144: "just mine" marks the 12-month figures from the member's charges
+- [x] K139: only an instance admin may restore an instance admin's login
+- [x] K163: Phinx runs on Postgres in UTC
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 69 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
