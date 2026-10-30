@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.8"
+  version: "1.9.9"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -42,10 +42,18 @@ info:
     otherwise, and an instance may set a maximum. `GET /me` reports the token's
     scopes and expiry.
 
+    **An unreadable JSON body is a `400`.** A write whose body is malformed
+    JSON, is a list or a scalar rather than an object, or is sent without a
+    JSON `Content-Type` is refused with `400` and changes nothing. `{}` is
+    still a body.
+
     **Wrong types and impossible dates are refused.** A text field sent as a
     boolean, a list or an object is a `422` on that field and clears nothing,
     and so is a whole-number field (an id, an interval, a notice amount) sent
-    as text that is not a number, a boolean or a list; an absent key keeps the
+    as text that is not a number, a boolean or a list, and so are a yes/no
+    field (`is_active`, `is_trial`, `amount_varies`) that is not a boolean or
+    a documented flag word, and `tags` or `reminder_days` of the wrong type;
+    an absent key keeps the
     stored value and `null` clears it. A date that does not exist is a `422`,
     never rolled over to another day. A value outside an enum, such as an
     unknown `subscription_type` or `notice_period_unit`, is a `422` on that
@@ -294,6 +302,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/Subscription"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -372,6 +382,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/Subscription"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -830,6 +842,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/Charge"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -895,6 +909,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/Charge"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1020,6 +1036,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1071,6 +1089,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1180,6 +1200,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/PaymentMethod"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1231,6 +1253,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/PaymentMethod"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1415,6 +1439,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/Tag"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1467,6 +1493,8 @@ paths:
                 properties:
                   data:
                     $ref: "#/components/schemas/Tag"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1590,7 +1618,9 @@ components:
           $ref: "#/components/headers/RateLimit-Remaining"
         RateLimit-Reset:
           $ref: "#/components/headers/RateLimit-Reset"
-      description: The request was malformed.
+      description: >-
+        The request was malformed: a JSON body that is not a JSON object, a bad
+        multipart body or an unreadable upload.
       content:
         application/json:
           schema:
@@ -2088,7 +2118,16 @@ components:
             Three states. Omitted or null means "use my notification
             preference"; an empty array means "never remind me about this one";
             a list of lead times overrides the preference for this subscription.
-        is_trial: { type: boolean, default: false }
+            The string `"none"` is read as the empty array. Anything else that
+            is not a list of integers is a `422` on the field.
+        is_trial:
+          type: boolean
+          default: false
+          description: |
+            A boolean, `0`, `1` or one of the words `"true"`, `"false"`,
+            `"yes"`, `"no"`, `"on"`, `"off"`, `"0"`, `"1"` (any case). Anything
+            else is a `422` on the field, as for `is_active` and
+            `amount_varies`.
         trial_end_date:
           type: string
           format: date
@@ -2098,7 +2137,10 @@ components:
           type: integer
           nullable: true
           maximum: 1000000000000
-          description: Minor units. A fraction is a 422 asking for a whole number of minor units.
+          description: |
+            Minor units. A fraction is a 422 asking for a whole number of
+            minor units, and so are `true`, a list, an object and text that is
+            not a number.
         converts_to_billing_cycle:
           type: string
           nullable: true
@@ -2117,7 +2159,9 @@ components:
           type: boolean
           default: true
           description: |
-            False pauses the subscription. Pausing records the billing dates
+            False pauses the subscription. A boolean, `0`, `1` or one of the
+            words listed under `is_trial`; anything else is a `422`, never read
+            as false. Pausing records the billing dates
             already passed first (a running trial has none to record: its
             first payment is its trial end) and keeps the payment date the catch-up moved
             the row to, unless the PUT sends another: the date the row was
@@ -2168,6 +2212,7 @@ components:
           type: boolean
           description: |
             The amount varies from bill to bill, so the price is an estimate.
+            Sent as a boolean or one of the words listed under `is_trial`.
             An absent key keeps the current value; a new subscription defaults
             to `false`.
         visibility:
@@ -2215,7 +2260,9 @@ components:
           description: |
             Tags are created by name if they do not exist, matched whole and
             ignoring case and accents. More than 25 tags, or a tag over 50
-            characters, is refused with `422` rather than cut.
+            characters, is refused with `422` rather than cut. A comma-separated
+            string (`"tv, music"`) is read as the list of its names; any other
+            type, or a list holding anything but strings, is a `422`.
 
     Subscription:
       allOf:
