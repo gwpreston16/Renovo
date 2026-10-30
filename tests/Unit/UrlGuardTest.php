@@ -188,10 +188,33 @@ final class UrlGuardTest extends TestCase
 
     public function testATrustedBareAddressDoesNotCarryAPrivateAddressOutsideIt(): void
     {
+        // Over https, so the only thing that can refuse it is the metadata
+        // address: the scheme half has its own test below.
         $guard = $this->guard(['evil.example' => ['169.254.169.254', '93.184.216.34']], ['93.184.216.34']);
 
-        $this->expectException(BlockedTargetException::class);
-        $guard->inspect($this->uri('http://evil.example/x'));
+        try {
+            $guard->inspect($this->uri('https://evil.example/x'));
+            self::fail('A host answering with an unlisted private address was allowed.');
+        } catch (BlockedTargetException $refusal) {
+            self::assertSame(BlockedTargetException::PRIVATE_ADDRESS, $refusal->reason);
+        }
+    }
+
+    public function testANamePartlyInsideATrustedRangeIsRefusedOverHttp(): void
+    {
+        // K169. Plain http is for a host the operator trusts, and a name is
+        // trusted only when every address it answers with is listed. One
+        // listed address must not carry the public one out over http.
+        foreach ([['93.184.216.34', '192.168.1.5'], ['192.168.1.5', '93.184.216.34']] as $answer) {
+            $guard = $this->guard(['mixed.example' => $answer], ['192.168.1.0/24']);
+
+            try {
+                $guard->inspect($this->uri('http://mixed.example/'));
+                self::fail('A name only partly inside the trusted range was allowed over http.');
+            } catch (BlockedTargetException $refusal) {
+                self::assertSame(BlockedTargetException::SCHEME, $refusal->reason);
+            }
+        }
     }
 
     public function testEveryPrivateAddressInTheRangeIsAllowedAndPinned(): void

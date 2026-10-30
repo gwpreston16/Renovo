@@ -142,7 +142,7 @@ None.
 
 - [x] K153: the SSRF client refuses the special-purpose IPv6 ranges
 - [x] K152: every blocked range has a test that fails without it
-- [ ] K169: a name partly inside a trusted range is refused over http
+- [x] K169: a name partly inside a trusted range is refused over http
 - [ ] K140: a trial converting today has one event that day
 - [ ] K170: a charge due today counts in the budget-alert projection
 - [ ] K171: a category, tag or payment-method name of `true` is refused
