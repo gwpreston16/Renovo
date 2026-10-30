@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–66
+## Planned — Phases 30–67
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -75,6 +75,7 @@ can be moved.
 | 64 | [Pin PHP's time zone to UTC (K68)](docs/phases/PHASE-64.md) | 63 | None | ✅ done |
 | 65 | [MySQL case rules and per-currency estimate marks, from the known-issues log](docs/phases/PHASE-65.md) | — | None | ✅ done |
 | 66 | [API input edge cases, from the known-issues log](docs/phases/PHASE-66.md) | — | None | ✅ done |
+| 67 | [Split owners, phone top bar, disabled buttons and API ids, from the known-issues log](docs/phases/PHASE-67.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -206,6 +207,7 @@ can be moved.
 - **64 — Pin PHP's time zone to UTC.** The K68 fix Phase 63 measured: the process runs in UTC whatever `date.timezone` says, so a date read from the database is the clock's date; one decision about existing rows on a non-UTC install, a guard test and a docs note. Draft ([brief](docs/phases/PHASE-64.md)).
 - **65 — MySQL case rules and per-currency estimate marks.** A batch from the known-issues log (K32, K122, K87): passkey ids and handles compare case-sensitively on MySQL, the feed token's name is matched exactly in SQL, and only a currency holding a varying bill is drawn "≈". (64 is reserved for the K68 fix.)
 - **66 — API input edge cases.** A batch from the known-issues log (K146, K148, K149, K150): a bad notice-period unit is a 422 rather than a 500, a wrongly typed id, number, colour or note is refused rather than read as empty, an unknown subscription type is refused rather than saved as recurring, and an attachment's impossible period date is refused rather than rolled over.
+- **67 — Split owners, phone top bar, disabled buttons and API ids.** A batch from the known-issues log (K156, K157, K158, K160, K161, K162): a split follows its subscription to a new owner and stale split rows mend on the next save, the top bar keeps the page title readable on a phone, a disabled button looks disabled, an id of zero or less is refused, and the API's price and type messages name what it actually takes.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
