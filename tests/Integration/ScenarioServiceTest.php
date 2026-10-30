@@ -7,6 +7,7 @@ namespace App\Tests\Integration;
 use App\Application\Middleware\AuthenticationMiddleware;
 use App\Domain\IsolationMode;
 use App\Domain\Role;
+use App\Domain\SplitMode;
 use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\SubscriptionRepository;
@@ -15,6 +16,7 @@ use App\Security\Scope;
 use App\Security\SessionInterface;
 use App\Service\InstanceSettingsService;
 use App\Service\ScenarioService;
+use App\Service\SplitService;
 use App\Support\Clock;
 use App\Support\FrozenClock;
 use App\Tests\Support\ArraySession;
@@ -135,6 +137,51 @@ final class ScenarioServiceTest extends DatabaseTestCase
         self::assertStringContainsString('€0.00 · ≈ £10.00', $row);
     }
 
+    /**
+     * K144: Alice has the fixed Gym and Bob the varying Energy, unshared.
+     * Alice's "just mine" next twelve months is exactly £110.00 (eleven
+     * charges in the window); the run-rate is the household's and keeps its
+     * mark, the household view still marks the twelve months, and once Alice
+     * shares the Energy bill her figure holds a varying charge and is marked
+     * again.
+     */
+    public function testJustMineMarksTwelveMonthsFromTheMembersCharges(): void
+    {
+        $bob = (new UserRepository($this->db))
+            ->create('bob@example.test', 'Bob', 'hash', false, new DateTimeImmutable());
+        (new MembershipRepository($this->db))->create($this->householdId, $bob, Role::Editor);
+        $this->db->execute(
+            'UPDATE subscriptions SET owner_user_id = :bob WHERE id = :id',
+            ['bob' => $bob, 'id' => $this->energyId],
+        );
+
+        $service = $this->container()->get(ScenarioService::class);
+        $mine = $service->plan($this->scope(), [], $this->userId)['results'];
+
+        self::assertSame(11000, $mine['twelve_months']['current']['combined']['amount_minor']);
+        self::assertSame([], $mine['twelve_months']['marks_current']['estimate_currencies']);
+        self::assertSame([], $mine['twelve_months']['marks']['estimate_currencies']);
+        self::assertSame(['GBP'], $mine['marks_current']['estimate_currencies'], 'The run-rate is the household\'s.');
+
+        $row = $this->twelveMonthsRow($this->scenarioPage('mine=1'));
+        self::assertMatchesRegularExpression('~<td class="numeric num">\s*£110\.00\s*</td>~u', $row);
+        self::assertStringNotContainsString('≈', $row);
+
+        $household = $service->plan($this->scope(), [])['results'];
+        self::assertSame(['GBP'], $household['twelve_months']['marks_current']['estimate_currencies']);
+        self::assertStringContainsString('≈', $this->twelveMonthsRow($this->scenarioPage('')));
+
+        $owner = Scope::forMember($bob, false, $this->householdId, Role::Editor, IsolationMode::Shared);
+        $this->container()->get(SplitService::class)->update($owner, $this->energyId, [
+            'split_mode' => SplitMode::Equal->value,
+            'shares' => [$this->userId => 1, $bob => 1],
+        ]);
+
+        $shared = $service->plan($this->scope(), [], $this->userId)['results'];
+        self::assertSame(['GBP'], $shared['twelve_months']['marks_current']['estimate_currencies']);
+        self::assertStringContainsString('≈', $this->twelveMonthsRow($this->scenarioPage('mine=1')));
+    }
+
     public function testWithNothingVaryingNothingIsMarked(): void
     {
         $this->db->execute('DELETE FROM subscriptions WHERE id = ' . $this->energyId);
@@ -231,6 +278,14 @@ final class ScenarioServiceTest extends DatabaseTestCase
         self::assertSame(1, preg_match('~<tr>\s*<th scope="row">[^<]*</th>(.*?)</tr>~s', $html, $row));
 
         return $row[1];
+    }
+
+    /** The "Next 12 months" row of the figures table: the last of the three. */
+    private function twelveMonthsRow(string $html): string
+    {
+        self::assertSame(3, preg_match_all('~<tr>\s*<th scope="row">[^<]*</th>(.*?)</tr>~s', $html, $rows));
+
+        return $rows[1][2];
     }
 
     private function scope(): Scope
