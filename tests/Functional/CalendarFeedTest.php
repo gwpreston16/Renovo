@@ -178,6 +178,26 @@ final class CalendarFeedTest extends ApiTestCase
         self::assertSame(6, $renewals, 'Each monthly renewal after the conversion is an event.');
     }
 
+    public function testATrialConvertingTodayHasOneEventThatDay(): void
+    {
+        // K140. On its last day the trial is still running, so today has the
+        // conversion and nothing else: a feed that treated the trial as over
+        // would add the same charge again as a payment.
+        $today = new \DateTimeImmutable('today');
+        $this->createSubscription([
+            'name' => 'Trial service',
+            'is_trial' => true,
+            'trial_end_date' => $today->format('Y-m-d'),
+            'converts_to_price_minor' => 1500,
+            'next_payment_date' => null,
+        ]);
+
+        $body = $this->unfold($this->feed());
+
+        self::assertStringContainsString('trial ends', $body);
+        self::assertSame(1, substr_count($body, 'DTSTART;VALUE=DATE:' . $today->format('Ymd')));
+    }
+
     public function testACancelByDeadlineAppears(): void
     {
         // A month's notice on a payment due on the 1st of December means the
