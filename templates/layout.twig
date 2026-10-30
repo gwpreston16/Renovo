@@ -252,6 +252,12 @@
     {% endif %}
 
     {% include 'partials/flashes.twig' %}
+    {#
+        Where a save-on-change control says it failed (`data-save-on-change`;
+        assets/js/app.js). Empty, and so not drawn, until one does.
+    #}
+    <div class="alert alert-error save-error" role="status" aria-live="polite" data-save-error
+         data-network-message="{{ t('error.save_failed_network') }}"></div>
     {% block content %}{% endblock %}
 
     {% if auth_layout %}

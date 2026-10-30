@@ -57,7 +57,7 @@
                                     nothing else about it.
                                 #}
                                 <form method="post" action="/settings/notifications/channels/{{ channel.id }}/active"
-                                      class="inline channel-switch"
+                                      class="inline channel-switch" data-save-on-change
                                       hx-post="/settings/notifications/channels/{{ channel.id }}/active" hx-trigger="change">
                                     {{ csrf_field() }}
                                     <input type="hidden" name="is_active" value="0">

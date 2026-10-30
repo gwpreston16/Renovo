@@ -99,7 +99,7 @@
                                     refused change comes back as an error.
                                 #}
                                 <form method="post" action="/settings/members/{{ member.userId }}/role"
-                                      class="inline member-role-form"
+                                      class="inline member-role-form" data-save-on-change
                                       hx-post="/settings/members/{{ member.userId }}/role" hx-trigger="change">
                                     {{ csrf_field() }}
                                     <select name="role"

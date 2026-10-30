@@ -26,6 +26,7 @@
         #}
         <div class="list-search-bar">
             <form id="list-search" class="list-search" role="search" method="get" action="/subscriptions"
+                  data-save-on-change
                   hx-get="/subscriptions"
                   hx-target="#subscription-list" hx-sync="#subscription-list:replace"
                   hx-select="#subscription-list"
