@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Application\Middleware\AuthenticationMiddleware;
 use App\Domain\AlertType;
+use App\I18n\CatalogLoader;
 use App\Domain\IsolationMode;
 use App\Domain\Role;
 use App\Notification\NotifierRegistry;
@@ -282,6 +283,46 @@ final class NotificationsPageTest extends DatabaseTestCase
             'digest_day' => '1',
         ]);
         self::assertSame([], $settings->preferences($this->userId)->leadDays);
+    }
+
+    /**
+     * The hint names each alert as the catalogue words it and joins them with
+     * the catalogue's own separator (K165): no lower-casing, no ", " of ours.
+     */
+    public function testTheLeadTimesHintUsesTheCataloguesWording(): void
+    {
+        $directory = sys_get_temp_dir() . '/renovo-catalogue-' . bin2hex(random_bytes(6));
+        mkdir($directory);
+        $catalogue = [
+            'alert.in_sentence.renewal' => 'Verlängerung',
+            'alert.in_sentence.trial_conversion' => 'Probezeit-Ende',
+            'alert.in_sentence.cancel_by' => 'Kündigungsfrist',
+            'alert.in_sentence.contract_ending' => 'Vertragsende',
+            'notifications.lead_types_joiner' => ' und ',
+        ] + require dirname(__DIR__, 2) . '/translations/en.php';
+        file_put_contents($directory . '/en.php', '<?php return ' . var_export($catalogue, true) . ';');
+
+        try {
+            $bootstrap = require dirname(__DIR__, 2) . '/config/bootstrap.php';
+            $app = $bootstrap(true, [
+                SessionInterface::class => $this->session,
+                MailerInterface::class => new RecordingMailer(),
+                CatalogLoader::class => new CatalogLoader($directory),
+            ]);
+
+            $response = $app->handle(
+                (new ServerRequestFactory())
+                    ->createServerRequest('GET', 'http://localhost/settings/notifications', ['REMOTE_ADDR' => '127.0.0.1']),
+            );
+            $html = $this->body($response);
+
+            self::assertSame(200, $response->getStatusCode());
+            self::assertStringContainsString('Verlängerung und Probezeit-Ende und Kündigungsfrist und Vertragsende', $html);
+            self::assertStringNotContainsString('verlängerung', $html);
+        } finally {
+            unlink($directory . '/en.php');
+            rmdir($directory);
+        }
     }
 
     private function body(ResponseInterface $response): string

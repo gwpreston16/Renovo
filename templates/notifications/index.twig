@@ -182,7 +182,7 @@
                 <fieldset class="preference">
                     <legend>{{ t('notifications.lead_times') }}</legend>
                     <p class="hint" id="lead_days_hint">
-                        {{ t('notifications.lead_times_hint', {'types': lead_types|map(type => t(type.labelKey())|lower)|join(', ')}) }}
+                        {{ t('notifications.lead_times_hint', {'types': lead_types_text}) }}
                     </p>
                     <input type="hidden" name="lead_days[]" value="">
                     <div class="chip-choices" aria-describedby="lead_days_hint">

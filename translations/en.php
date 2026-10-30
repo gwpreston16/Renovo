@@ -553,6 +553,10 @@ return [
     'alert.budget_exceeded' => 'Budget projected to be exceeded',
     'alert.about' => 'about {amount}',
     'alert.contract_ending' => 'Contract ending',
+    'alert.in_sentence.renewal' => 'upcoming renewal',
+    'alert.in_sentence.trial_conversion' => 'trial about to convert',
+    'alert.in_sentence.cancel_by' => 'cancellation deadline',
+    'alert.in_sentence.contract_ending' => 'contract ending',
     'alert.contract.line' =>
         'Your {name} contract ends on {date} — a good time to compare prices or renegotiate.',
     'alert.contract.title' => '{name}: contract ends {when}',
@@ -2737,6 +2741,7 @@ return [
     'notifications.channel_switch' => 'Send to {name}',
     'notifications.days_before' => '{count, plural, one {# day} other {# days}}',
     'notifications.lead_times' => 'Remind me before',
+    'notifications.lead_types_joiner' => ', ',
     'notifications.lead_times_hint' =>
         'Before each {types}. Choose any number, or none; each is a reminder of its own. A single '
         . 'subscription can override this on its own page.',
