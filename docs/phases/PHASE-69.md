@@ -139,6 +139,10 @@ None.
   save (form, API, import). This makes the catch-up agree with the forecast,
   the calendar and Savings, which already treat the trial end as the first
   charge; a stored date before it is simply never acted on.
+- **K151 — found while starting it, Confirmed 2026-10-30:**
+  `ChargeSchedule::pending()`, which past spend counts for the dates "the
+  catch-up would write", skips a running trial too, so it still says only
+  what the catch-up does.
 - **K154, K168:** performance only; each screen shows the same figures as
   before, which the tests assert alongside the smaller read. K168's
   repository method goes through the scoping layer, not around it.
@@ -147,7 +151,10 @@ None.
   household's by design and keep their marks.
 - **K139 — Decided 2026-10-30:** refuse unless the actor is an instance
   admin, matching K24. Not chosen: leave it and document that any Owner may
-  restore.
+  restore. *Found while starting it:* `error.member.instance_admin` says
+  "revoke its login"; it is reworded to "revoke or restore its login" rather
+  than a second key. A plain Owner sees neither button on a revoked instance
+  admin.
 - **K163 — Decided 2026-10-30:** `phinx.php` hands Phinx a Postgres
   connection in UTC, fixing every migration that writes a timestamp. Not
   chosen: changing only this migration's `down()` to write a UTC time from
