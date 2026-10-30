@@ -171,9 +171,9 @@ None.
 - [x] K144: "just mine" marks the 12-month figures from the member's charges
 - [x] K139: only an instance admin may restore an instance admin's login
 - [x] K163: Phinx runs on Postgres in UTC
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 69 row marked ✅ done
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 69 row marked ✅ done
 - [ ] composer check, coverage and the API doc tests green
 
 ## Definition of done

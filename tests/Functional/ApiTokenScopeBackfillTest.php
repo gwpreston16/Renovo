@@ -183,7 +183,12 @@ final class ApiTokenScopeBackfillTest extends ApiTestCase
         }
 
         $service = $this->container()->get(ApiTokenService::class);
-        $service->issue($this->owner(), $this->householdId, 'Catalogue writer', TokenScopes::fromString('catalogue:write'));
+        $service->issue(
+            $this->owner(),
+            $this->householdId,
+            'Catalogue writer',
+            TokenScopes::fromString('catalogue:write'),
+        );
         $id = (int) $this->db->fetchValue('SELECT MAX(id) FROM api_tokens');
 
         putenv('PGTZ=America/New_York');

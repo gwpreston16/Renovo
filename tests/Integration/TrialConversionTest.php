@@ -316,8 +316,9 @@ final class TrialConversionTest extends DatabaseTestCase
         self::assertSame(999, (int) $rows[0]['expected_minor']);
 
         $subscription = $this->subscriptions->find($this->scope(), $id);
-        self::assertFalse($subscription?->isTrial);
-        self::assertSame('2027-01-13', $subscription?->nextPaymentDate?->format('Y-m-d'));
+        self::assertNotNull($subscription);
+        self::assertFalse($subscription->isTrial);
+        self::assertSame('2027-01-13', $subscription->nextPaymentDate?->format('Y-m-d'));
     }
 
     public function testPausingARunningTrialWritesNoPayment(): void
@@ -330,8 +331,9 @@ final class TrialConversionTest extends DatabaseTestCase
 
         self::assertSame(0, $this->chargeCount($id));
         $paused = $this->subscriptions->find($this->scope(), $id);
-        self::assertFalse($paused?->isActive);
-        self::assertSame('2026-10-24', $paused?->nextPaymentDate?->format('Y-m-d'));
+        self::assertNotNull($paused);
+        self::assertFalse($paused->isActive);
+        self::assertSame('2026-10-24', $paused->nextPaymentDate?->format('Y-m-d'));
 
         // And paused, it is no more the catch-up's than before.
         $this->catchUp();
