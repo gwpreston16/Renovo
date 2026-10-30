@@ -75,8 +75,8 @@ final class ChargeSchedule
      * The charges the catch-up would write from the current payment date up
      * to `$to` — dates that have passed with nobody able to write looking.
      *
-     * Only for a row the catch-up advances: active, recurring and not
-     * cancelled. Past spend counts these so a Viewer's dashboard is not short
+     * Only for a row the catch-up advances: active, recurring, not cancelled
+     * and not a running trial. Past spend counts these so a Viewer's dashboard is not short
      * by the charges the ledger has not been given yet.
      *
      * @param list<PriceChange> $history Oldest first.
@@ -93,6 +93,7 @@ final class ChargeSchedule
             $next === null
             || !$subscription->isActive
             || $subscription->cancelledAt !== null
+            || $subscription->isTrial
             || !$subscription->type->countsTowardsRecurringTotals()
         ) {
             return [];

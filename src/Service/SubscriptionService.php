@@ -599,6 +599,8 @@ final class SubscriptionService
             !$scope->canWrite()
             || !$subscription->isActive
             || $subscription->isCancelled()
+            // Never caught up while it runs (K151): see findOverdue().
+            || $subscription->isTrial
             || $subscription->nextPaymentDate === null
             || $subscription->nextPaymentDate >= $this->clock->today()
         ) {

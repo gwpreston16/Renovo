@@ -398,6 +398,10 @@ final class SubscriptionRepository extends AbstractScopedRepository
      * Active recurring subscriptions whose next payment date is in the past,
      * for the cycle auto-advance.
      *
+     * A running trial is left alone, whatever date it carries: its first
+     * charge is its trial end, which the conversion makes its payment date,
+     * and the catch-up takes over from there (K151).
+     *
      * Write-scoped for the same reason as findTrialsToConvert: every row
      * returned here is about to be updated.
      *
@@ -408,6 +412,7 @@ final class SubscriptionRepository extends AbstractScopedRepository
         $criteria = Criteria::new()
             ->equals('is_active', true)
             ->equals('cancelled_at', null)
+            ->equals('is_trial', false)
             ->equals('subscription_type', SubscriptionType::Recurring->value)
             ->where('next_payment_date', '<', $today->format('Y-m-d'));
 
