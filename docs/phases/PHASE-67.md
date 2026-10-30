@@ -150,9 +150,10 @@ whole number is answered with a new minor-units message,
 `error.subscription.minor_invalid`: "Send a whole number of minor units: 999
 for 9.99." It is reported on the field the client sent. A refused
 `price_minor` is `12.5`, `"abc"`, `true` or `[]`. A refused
-`converts_to_price_minor` is `12.5`, the case that is a 422 today. The refusal
-is made in `SubscriptionPayload`, beside `refuseWrongTypes()`, before the
-service runs, so the service and the web form keep their decimal wording. The
+`converts_to_price_minor` is `12.5`, the case that is a 422 today. The message
+is swapped for an API response only (*changed 2026-10-30*: in
+`HttpErrorHandler`, see *Decisions*), so the service and the web form keep
+their decimal wording. The
 error example in `docs/api.md` is updated.
 
 Tests: each value above is 422 with the new message. The web form's bad price
@@ -222,6 +223,13 @@ None.
   them.
 - **K161:** an API-only message, as K76 did for charges. The form shares the
   service and keeps its wording. *Confirmed 2026-10-30*, with the wording in E.
+  *Changed 2026-10-30 (found while building it):* the message is swapped in
+  `HttpErrorHandler`, beside its `price` → `price_minor` renaming, not refused
+  in `SubscriptionPayload`. Refusing there threw before the service ran, so a
+  bad price hid every other field's error (`ApiContractTest` and
+  `ApiMoneyInputTest` pin that one 422 lists them all). The behaviour E asks
+  for is the same, and a null or absent `price_minor` gets the minor-units
+  message too.
 - **K162:** a wording fix in `translations/en.php`, the only catalogue.
   *Confirmed 2026-10-30:* "Choose a subscription type: recurring, one_off or
   lifetime."
@@ -258,8 +266,8 @@ The working tree, served with `php -S` against `renovo_test` seeded by
 - [x] K160: an id of zero or less is refused
 - [x] K161: the API asks for minor units
 - [x] K162: the type message names the values the API takes
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
 - [ ] ROADMAP: Phase 67 row marked ✅ done
 - [ ] composer check, coverage and the API doc tests green
 

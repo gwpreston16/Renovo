@@ -6,6 +6,7 @@ namespace App\Tests\Integration;
 
 use App\Domain\IsolationMode;
 use App\Domain\Role;
+use App\Domain\SplitMode;
 use App\Repository\AttachmentRepository;
 use App\Repository\HouseholdRepository;
 use App\Repository\SplitRepository;
@@ -323,6 +324,10 @@ final class AttachmentTest extends DatabaseTestCase
      */
     public function testASplitParticipantWhoCannotWriteTheSubscriptionCannotAttachToIt(): void
     {
+        // As SplitService does: the mode first, then the participants. Only a
+        // live split widens a read (K156).
+        (new SubscriptionRepository($this->db))
+            ->setSplitMode($this->ownerScope, $this->subscriptionId, SplitMode::Equal);
         $splits = new SplitRepository($this->db);
         $splits->replaceForSubscription(
             $this->ownerScope,

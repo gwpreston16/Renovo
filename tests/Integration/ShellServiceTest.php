@@ -9,6 +9,7 @@ use App\Domain\IsolationMode;
 use App\Domain\MembershipStatus;
 use App\Domain\RatesState;
 use App\Domain\Role;
+use App\Domain\SplitMode;
 use App\Domain\SubscriptionFilter;
 use App\Repository\ExchangeRateRepository;
 use App\Repository\HouseholdRepository;
@@ -103,6 +104,8 @@ final class ShellServiceTest extends DatabaseTestCase
         $shared = $this->subscription($owner, 'Shared with the editor');
         $this->subscription($editor, 'Editor one');
 
+        // As SplitService does: the mode first. Only a live split widens (K156).
+        (new SubscriptionRepository($this->db))->setSplitMode($owner, $shared, SplitMode::Equal);
         (new SplitRepository($this->db))->replaceForSubscription($owner, $shared, $this->ownerId, [
             ['user_id' => $this->ownerId, 'share_units' => 1],
             ['user_id' => $this->editorId, 'share_units' => 1],

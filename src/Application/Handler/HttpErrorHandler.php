@@ -49,6 +49,16 @@ final class HttpErrorHandler extends ErrorHandler
         'converts_to_price' => 'converts_to_price_minor',
     ];
 
+    /**
+     * The form's message for a price it can't read asks for a decimal; the
+     * API takes minor units, so its client is asked for those instead
+     * (K161), on the same fields and beside every other field's error.
+     */
+    private const API_MESSAGE_KEYS = [
+        'price' => ['error.price.invalid' => 'error.subscription.minor_invalid'],
+        'converts_to_price' => ['error.trial.converts_to_invalid' => 'error.subscription.minor_invalid'],
+    ];
+
     public function __construct(
         \Slim\Interfaces\CallableResolverInterface $callableResolver,
         \Psr\Http\Message\ResponseFactoryInterface $responseFactory,
@@ -81,8 +91,10 @@ final class HttpErrorHandler extends ErrorHandler
             $title = $this->translator->trans('error.page.validation_title');
             $message = $this->translator->trans('error.page.validation_message');
 
+            $api = ApiPath::matches($this->request);
             foreach ($exception->errors() as $field => $error) {
-                $fieldErrors[$field] = $this->translator->trans($error->key, $error->parameters);
+                $key = $api ? (self::API_MESSAGE_KEYS[$field][$error->key] ?? $error->key) : $error->key;
+                $fieldErrors[$field] = $this->translator->trans($key, $error->parameters);
             }
         } elseif ($exception instanceof ScopeViolationException) {
             // Indistinguishable from "no such row" on purpose.
