@@ -8,6 +8,37 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **A split follows its subscription to a new owner.** Giving a split
+  subscription to another member, through the form, Bulk → owner or an API
+  `PUT` of `owner_user_id`, now moves its split rows too. The next change to
+  the split used to fail with a server error, and in ISOLATED mode a split the
+  new owner turned off went on showing the subscription to the former owner.
+  Rows already left behind mend themselves the next time the split is saved,
+  and a leftover row on a subscription that is no longer split shows it to
+  nobody. *Phase 67.*
+- **The top bar keeps room for the page title.** Below 1440px a page's own
+  top-bar actions (What if I cancelled this?, Edit subscription, Costs and
+  usage, Back to list, and the forecast's household toggle) show only their
+  icon, with the words kept for screen readers and on hover. "Add new" is
+  hidden below 768px as intended. On a phone, Costs and usage no longer
+  scrolls sideways, and neither does Forecast, whose "If I cancelled" rows put
+  "Add to scenario" on a line of its own. *Phase 67.*
+- **A disabled button looks disabled.** "Import 0 subscriptions", and "Save
+  backup settings" and "Back up now" with no backup key, are drawn in faint
+  text with a not-allowed cursor and no hover, where they looked exactly like
+  live buttons. *Phase 67.*
+- **The API says what it wants.** An id of `0` or less for `category_id`,
+  `payment_method_id`, `owner_user_id` or `payer_user_id` is a 422 on that
+  field, not read as "none" (which cleared the category or moved the row to
+  the caller); `""` and `null` still mean none. A `price_minor` that isn't a
+  whole number (`12.5`, `"abc"`, `true`, a list), or a fractional
+  `converts_to_price_minor`, is answered "Send a whole number of minor units:
+  999 for 9.99." rather than asked for a decimal. An unknown
+  `subscription_type` is answered with the values the API takes, `one_off`
+  among them. OpenAPI 1.9.7, behaviour only. *Phase 67.*
+
 ## [1.27.1] - 2026-10-29
 
 ### Fixed
