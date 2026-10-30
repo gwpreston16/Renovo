@@ -733,6 +733,17 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   This release also carries the K145 security fix: a trusted address range no
   longer vouches for the rest of a name's answer. OpenAPI 1.9.6, behaviour
   only. No migrations. See [Trusted hosts](operations.md#trusted-hosts).
+- **Phase 67 — Split owners, phone top bar, disabled buttons and API ids,
+  from the known-issues log — complete (1.27.2).** Giving a split subscription
+  to another member now moves its split rows too, so the next change to the
+  split no longer fails and, in ISOLATED mode, the former owner stops seeing
+  it. On a phone the top bar keeps room for the page title (page actions show
+  their icon below 1440px and "Add new" hides below 768px), Costs and usage
+  and Forecast no longer scroll sideways, and a disabled button looks
+  disabled. The API reads an id of `0` or less as an error on that field, asks
+  for a whole number of minor units rather than a decimal, and names
+  `one_off` among the subscription types it takes. OpenAPI 1.9.7, behaviour
+  only. No migrations. See [Shared costs](features/money.md#shared-costs).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says

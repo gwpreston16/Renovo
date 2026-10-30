@@ -8,6 +8,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.27.2] - 2026-10-30
+
 ### Fixed
 
 - **A split follows its subscription to a new owner.** Giving a split
@@ -1189,7 +1191,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.27.1...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.27.2...HEAD
+[1.27.2]: https://github.com/gwpreston16/Renovo/compare/v1.27.1...v1.27.2
 [1.27.1]: https://github.com/gwpreston16/Renovo/compare/v1.27.0...v1.27.1
 [1.27.0]: https://github.com/gwpreston16/Renovo/compare/v1.26.8...v1.27.0
 [1.26.8]: https://github.com/gwpreston16/Renovo/compare/v1.26.7...v1.26.8
