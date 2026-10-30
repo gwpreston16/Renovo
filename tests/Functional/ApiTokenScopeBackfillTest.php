@@ -6,7 +6,11 @@ namespace App\Tests\Functional;
 
 use App\Domain\TokenScopes;
 use App\Service\ApiTokenService;
+use DateTimeImmutable;
+use DateTimeZone;
+use PDO;
 use PDOStatement;
+use Phinx\Db\Adapter\PostgresAdapter;
 use Phinx\Db\Adapter\AdapterInterface;
 use Phinx\Migration\AbstractMigration;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -165,6 +169,50 @@ final class ApiTokenScopeBackfillTest extends ApiTestCase
         );
         self::assertStringContainsString('Revoked 3 API token(s)', $output);
         self::assertNotSame('', $feed);
+    }
+
+    /**
+     * K163: rolled back by Phinx on a PostgreSQL server whose zone is New
+     * York, each revoked token is stamped in UTC. The connection is the one
+     * `phinx.php` hands Phinx, driven by Phinx's own Postgres adapter.
+     */
+    public function testARollbackStampsRevokedAtInUtc(): void
+    {
+        if ($this->db->platform()->name() !== 'pgsql') {
+            self::markTestSkipped('PostgreSQL only: MySQL sessions are put in UTC by their own setting.');
+        }
+
+        $service = $this->container()->get(ApiTokenService::class);
+        $service->issue($this->owner(), $this->householdId, 'Catalogue writer', TokenScopes::fromString('catalogue:write'));
+        $id = (int) $this->db->fetchValue('SELECT MAX(id) FROM api_tokens');
+
+        putenv('PGTZ=America/New_York');
+        try {
+            $config = require __DIR__ . '/../../phinx.php';
+        } finally {
+            putenv('PGTZ');
+        }
+        $options = $config['environments']['testing'];
+        $pdo = $options['connection'] ?? null;
+        self::assertInstanceOf(PDO::class, $pdo, 'phinx.php hands Phinx its own connection.');
+        // phinx.php reads the environment, not DatabaseTestCase's guard: make
+        // sure it is the database this test may write to.
+        self::assertSame(
+            $this->db->fetchValue('SELECT current_database()'),
+            $pdo->query('SELECT current_database()')?->fetchColumn(),
+        );
+
+        require_once __DIR__ . '/../../migrations/' . self::MIGRATION;
+        $migration = new \BackfillApiTokenScopes('testing', 20270701000002);
+        $migration->setAdapter(new PostgresAdapter($options));
+        $migration->setOutput(new BufferedOutput());
+        $migration->down();
+
+        $revokedAt = $this->db->fetchValue('SELECT revoked_at FROM api_tokens WHERE id = :id', ['id' => $id]);
+        self::assertIsString($revokedAt);
+        $stamped = new DateTimeImmutable($revokedAt, new DateTimeZone('UTC'));
+        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+        self::assertLessThan(60, abs($now->getTimestamp() - $stamped->getTimestamp()), 'Stamped ' . $revokedAt);
     }
 
     /**
