@@ -10,6 +10,7 @@ use App\Domain\BudgetPeriod;
 use App\Domain\ExchangeRate;
 use App\Domain\IsolationMode;
 use App\Domain\Role;
+use App\Persistence\Database;
 use App\Repository\BudgetRepository;
 use App\Repository\ExchangeRateRepository;
 use App\Repository\HouseholdRepository;
@@ -21,6 +22,7 @@ use App\Repository\UserRepository;
 use App\Security\CsrfTokenManager;
 use App\Security\Scope;
 use App\Security\SessionInterface;
+use App\Service\BudgetMonthService;
 use App\Service\BudgetService;
 use App\Service\ExchangeRateService;
 use App\Service\ForecastService;
@@ -135,6 +137,36 @@ final class BudgetScreenTest extends DatabaseTestCase
 
         // The whole household: 12 charged on the 1st, 8 and 5 to come.
         self::assertSame(['charged' => 1200, 'projected' => 2500], $this->expectedMonth(null));
+    }
+
+    /**
+     * Each budgeted member used to make the page load the household's
+     * subscriptions, price history and ledger again, twice (K182). They are
+     * loaded once now; the splits are the one read a member's budget adds.
+     */
+    public function testMoreBudgetedMembersLoadNothingMore(): void
+    {
+        $this->monthly('Early', 1200, '2026-07-01', '2025-01-01');
+        $this->monthly('Late', 800, '2026-06-20', '2025-01-20', $this->contributorId);
+        $this->budget(['name' => 'Everything', 'amount' => '100.00', 'subject_user_id' => 'household']);
+        $months = $this->container()->get(BudgetMonthService::class);
+        $db = $this->container()->get(Database::class);
+        $scope = $this->ownerScope();
+
+        $before = $db->statementCount();
+        $months->all($scope);
+        $one = $db->statementCount() - $before;
+
+        foreach ([$this->ownerId, $this->editorId, $this->contributorId] as $member) {
+            $this->budget(['name' => 'Member', 'amount' => '50.00', 'subject_user_id' => (string) $member]);
+        }
+
+        $before = $db->statementCount();
+        $rows = $months->all($scope);
+        $four = $db->statementCount() - $before;
+
+        self::assertCount(4, $rows);
+        self::assertLessThanOrEqual($one + 3, $four, 'Nothing grows with the budgeted members.');
     }
 
     public function testAYearlyBudgetReadsTheCalendarYear(): void

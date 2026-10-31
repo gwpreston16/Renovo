@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Domain\BillingCycle;
 use App\Domain\Entity\Charge;
 use App\Domain\Entity\PriceChange;
 use App\Domain\Entity\Subscription;
@@ -400,8 +401,10 @@ final class SpendHistoryService
     public function yearOverYear(Scope $scope, ?SpendSources $sources = null): array
     {
         $today = $this->clock->today();
-        $currentFrom = $today->modify('-1 year');
-        $previousFrom = $today->modify('-2 years');
+        // Calendar months, not `-1 year`: on 29 February the latter lands on
+        // 1 March, which makes the first window a day short (K178).
+        $currentFrom = BillingCycle::addMonths($today, -12);
+        $previousFrom = BillingCycle::addMonths($today, -24);
 
         $currentByCurrency = [];
         $previousByCurrency = [];

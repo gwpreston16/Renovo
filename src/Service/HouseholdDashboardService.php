@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Domain\BillingCycle;
 use App\Domain\BudgetPeriod;
 use App\Domain\Entity\Budget;
 use App\Domain\Entity\Subscription;
@@ -193,7 +194,7 @@ final class HouseholdDashboardService
         $previous = $this->history->spent(
             $scope,
             $newYearsEve->modify('-1 year'),
-            $yesterday->modify('-1 year'),
+            BillingCycle::addMonths($yesterday, -12),
             $sources,
         );
 

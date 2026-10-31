@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Domain\BillingCycle;
 use App\Domain\BudgetPeriod;
 use App\Domain\Entity\Budget;
 use App\Domain\Entity\Subscription;
@@ -93,8 +94,10 @@ final class BudgetMonthService
 
         $rows = [];
         $cache = [];
-        foreach (array_slice($monthly, 0, $limit) as $budget) {
-            $rows[] = $this->readCached($scope, $budget, $cache);
+        $shown = array_slice($monthly, 0, $limit);
+        $sources = $shown === [] ? null : $this->sources($scope);
+        foreach ($shown as $budget) {
+            $rows[] = $this->readCached($scope, $budget, $cache, $sources);
         }
 
         return $rows;
@@ -125,11 +128,14 @@ final class BudgetMonthService
 
         $rows = [];
         $cache = [];
+        $sources = null;
         foreach ($budgets as $budget) {
+            $measurable = $this->budgets->isMeasurableBy($scope, $budget);
+            $sources ??= $measurable ? $this->sources($scope) : null;
             $rows[] = [
                 'budget' => $budget,
-                'read' => $this->budgets->isMeasurableBy($scope, $budget)
-                    ? $this->readCached($scope, $budget, $cache)
+                'read' => $measurable
+                    ? $this->readCached($scope, $budget, $cache, $sources)
                     : null,
             ];
         }
@@ -144,10 +150,10 @@ final class BudgetMonthService
      * @param array<string, array{past: list<Charge>, ahead: list<Charge>}> $cache
      * @return MonthBudget
      */
-    private function readCached(Scope $scope, Budget $budget, array &$cache): array
+    private function readCached(Scope $scope, Budget $budget, array &$cache, ?SpendSources $sources): array
     {
         $key = ($budget->subjectUserId ?? 'household') . ':' . $budget->period->value;
-        $cache[$key] ??= $this->periodCharges($scope, $budget->subjectUserId, $budget->period);
+        $cache[$key] ??= $this->periodCharges($scope, $budget->subjectUserId, $budget->period, $sources);
 
         return $this->read($budget, $cache[$key]['past'], $cache[$key]['ahead']);
     }
@@ -178,6 +184,23 @@ final class BudgetMonthService
     }
 
     /**
+     * What every period's past walk reads, loaded once for the whole screen:
+     * from the day before this year began, the widest window any budget
+     * measures, to yesterday. Without it each member's budget loaded the
+     * household's subscriptions, price history and ledger again, twice (K182).
+     */
+    private function sources(Scope $scope): SpendSources
+    {
+        $today = $this->clock->today();
+
+        return $this->history->sources(
+            $scope,
+            $today->setDate((int) $today->format('Y'), 1, 1)->modify('-1 day'),
+            $today->modify('-1 day'),
+        );
+    }
+
+    /**
      * One subject's charges in the calendar period that contains today —
      * this month, or this year — split into before today (reconstructed) and
      * today to the period's end (forecast). The forecast's horizon of the
@@ -185,8 +208,12 @@ final class BudgetMonthService
      *
      * @return array{past: list<Charge>, ahead: list<Charge>}
      */
-    private function periodCharges(Scope $scope, ?int $subjectUserId, BudgetPeriod $period): array
-    {
+    private function periodCharges(
+        Scope $scope,
+        ?int $subjectUserId,
+        BudgetPeriod $period,
+        ?SpendSources $sources,
+    ): array {
         $today = $this->clock->today();
         [$first, $last] = $period === BudgetPeriod::Monthly
             ? [$today->modify('first day of this month'), $today->modify('last day of this month')]
@@ -197,10 +224,11 @@ final class BudgetMonthService
             $first->modify('-1 day'),
             $today->modify('-1 day'),
             $subjectUserId,
+            $sources,
         )['charges'];
 
         $ahead = array_values(array_filter(
-            $this->forecast->charges($scope, $period->months(), $subjectUserId),
+            $this->forecast->charges($scope, $period->months(), $subjectUserId, null, $sources),
             static fn (array $charge): bool => $charge['date'] <= $last,
         ));
 
