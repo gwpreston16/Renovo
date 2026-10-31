@@ -195,6 +195,13 @@ location / {
 - traefik.http.services.renovo.loadbalancer.server.port=80
 ```
 
+The bundled nginx gzips the stylesheet, script and other text files under
+`/build/` and `/assets/`, which is most of a first visit's weight, and nothing
+else. If your proxy compresses too, limit it to those two paths: don't compress
+responses from the application itself, because a compressed page that reflects
+the visitor's input can leak the CSRF token
+([why](security.md#compression-and-the-csrf-token)).
+
 Security headers are a separate matter: see
 [Behind your own reverse proxy](security.md#behind-your-own-reverse-proxy).
 Without the bundled nginx (the PHP-FPM image behind your own web server), use

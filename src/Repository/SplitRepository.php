@@ -6,7 +6,6 @@ namespace App\Repository;
 
 use App\Domain\Entity\SubscriptionSplit;
 use App\Domain\SplitMode;
-use App\Domain\Visibility;
 use App\Persistence\Criteria;
 use App\Security\Scope;
 use DateTimeImmutable;
@@ -165,24 +164,14 @@ final class SplitRepository extends AbstractScopedRepository
         // repeated name.
         $params = [
             '__subscription' => $subscriptionId,
-            '__household' => $scope->householdId,
             '__parent' => $subscriptionId,
-            '__parent_household' => $scope->householdId,
-            '__viewer' => $scope->userId,
+            '__household' => $scope->householdId,
         ];
 
-        // The subscriptions' write predicate, on an aliased subquery so each
-        // column is unambiguously the parent's: the household, the owner when
-        // this scope is fenced to its own rows, and the "only me" privacy.
-        $parent = 'SELECT parent.' . $this->quote('id') . ' FROM ' . $this->quote('subscriptions') . ' parent'
-            . ' WHERE parent.' . $this->quote('id') . ' = :__parent'
-            . ' AND parent.' . $this->quote('household_id') . ' = :__parent_household'
-            . ' AND (parent.' . $this->quote('visibility') . " = '" . Visibility::Household->value . "'"
-            . ' OR parent.' . $this->quote('owner_user_id') . ' = :__viewer)';
-        if ($scope->restrictsWritesToOwner()) {
-            $params['__owner'] = $scope->userId;
-            $parent .= ' AND parent.' . $this->quote('owner_user_id') . ' = :__owner';
-        }
+        // The parent must be writable in this scope: the subscription
+        // repository's own write predicate, so the household, the owner fence
+        // and the "only me" privacy are never restated here.
+        $parent = (new SubscriptionRepository($this->db))->writableIdSubquery($scope, '__parent', $params);
 
         $this->db->execute(
             'DELETE FROM ' . $this->quote('subscription_splits')

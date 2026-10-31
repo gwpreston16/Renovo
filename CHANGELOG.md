@@ -8,6 +8,22 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Changed
+
+- **The bundled web image compresses its static files.** The stylesheet, script
+  and other text files under `/build/` and `/assets/` go out gzipped (a first
+  visit pulls a fraction of the bytes); pages from the application are still not
+  compressed, because a compressed page that reflects the visitor's input can
+  leak the CSRF token. Rebuild or pull the `web` image to get it. If your own
+  proxy compresses, limit it to those two paths. *Phase 71.*
+
+### Fixed
+
+- **Clearing a split asks the subscription repository whether the subscription
+  is writable.** The check was a hand-written copy of the subscription write
+  rule; a later change to who may write a subscription would not have reached
+  it. Behaviour is unchanged today. *Phase 71.*
+
 ## [1.29.0] - 2026-10-31
 
 ### Changed
