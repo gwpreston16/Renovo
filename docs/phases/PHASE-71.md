@@ -96,7 +96,7 @@ None.
 
 ## Status
 
-- [ ] K172: the split delete builds its parent check from the subscription write predicate
+- [x] K172: the split delete builds its parent check from the subscription write predicate
 - [ ] K166: `/build/` and `/assets/` are gzipped, HTML is not, and the docs say so
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed

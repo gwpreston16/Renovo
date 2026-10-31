@@ -271,6 +271,24 @@ final class SubscriptionRepository extends AbstractScopedRepository
         return $this->hydrateAll($scope, $this->db->fetchAll($sql, $params));
     }
 
+    /**
+     * The id of a subscription this scope may write, as a subquery.
+     *
+     * For a table that hangs off a subscription and guards its own rows on
+     * the parent being writable (the splits): it asks the same predicate every
+     * subscription write uses, rather than keeping a copy that a later change
+     * to who may write a subscription would not reach. `$idParam` names the
+     * placeholder the caller binds the subscription id to.
+     *
+     * @param array<string, mixed> $params Filled with the predicate's own parameters.
+     */
+    public function writableIdSubquery(Scope $scope, string $idParam, array &$params): string
+    {
+        return 'SELECT ' . $this->qualify('id') . ' FROM ' . $this->quote($this->table())
+            . ' WHERE ' . $this->qualify('id') . ' = :' . $idParam
+            . ' AND ' . $this->scopePredicate($scope, $params);
+    }
+
     public function find(Scope $scope, int $id): ?Subscription
     {
         $criteria = Criteria::new()->equals('id', $id);
