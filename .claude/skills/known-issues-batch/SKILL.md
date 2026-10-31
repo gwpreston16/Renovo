@@ -48,10 +48,6 @@ grep -n '| Open |' docs/phases/known-issues.md
 A row is a **candidate** only if all of these hold:
 
 - Its status is exactly *Open* — not *Scheduled*, *Fixed* or *Won't fix*.
-- It is small: a fix in one or two places, a regression test, no new table,
-  no new setting, no design pass across many screens. Rows an earlier batch
-  put under *Explicitly out of scope* as "larger" stay out (read that section
-  of the last two batch briefs). A row that says "measure first" is not small.
 - It belongs to **no planned phase**. If a drafted brief in `ROADMAP.md`'s
   *Planned* table already rebuilds the code a row names, leave the row for
   that phase and say so.
@@ -63,6 +59,18 @@ A row is a **candidate** only if all of these hold:
 A row that says "Needs a decision" can be a candidate: its choice is asked in
 step 3. If the owner would rather not decide now, it drops out.
 
+**Small first.** Prefer a *small* row: a fix in one or two places, a
+regression test, no new table, no new setting, no design pass across many
+screens. Rows an earlier batch put under *Explicitly out of scope* as "larger"
+or "needs a JavaScript test runner" are *not small*, and a row that says
+"measure first" isn't either. They rank after every small row, but they are
+**not excluded**: a batch is never refused because the small rows ran out.
+When only not-small rows are left, take the ones that share a root cause or a
+set of files as one focused batch, say plainly in the brief's *Decisions &
+assumptions* why it is larger than usual, and put any new tooling it needs
+(a test runner, say) in scope. The only way to end with nothing is that every
+row in the log is *Fixed* or *Won't fix* (or *Scheduled* in a planned phase).
+
 **Rank** the candidates by severity (BLOCKER, MAJOR, MINOR), then by how small
 the fix is, then by age (lowest K-number first). Then **group**: prefer rows
 in one area or one set of files, so the phase has a theme ("billing dates",
@@ -71,8 +79,9 @@ lone MAJOR elsewhere. A docs-only row is cheap: one may join on top of the
 count. Rows named in `$ARGUMENTS` are taken first if they pass the checks; if
 one doesn't, say why.
 
-Take the count. If fewer candidates pass, take what there is. If none pass,
-report why each open row was left out and stop.
+Take the count. If fewer candidates pass, take what there is. Always pick
+something while any row is *Open*; stop with nothing only when no row is *Open*
+(then say so, and suggest `/issue-sweep` to find more).
 
 ## 3. Ask the owner (a hard stop)
 
@@ -133,8 +142,8 @@ These files change, and nothing else:
   - `## Data-model changes`: "None." (a batch has none; if a row needs a
     migration, it wasn't small).
   - `## Explicitly out of scope (leave clean seams, do NOT stub)`: the
-    candidates left out and why (too large, belongs to Phase *m*, the owner
-    declined), so the next run doesn't re-plan them.
+    candidates left out and why (belongs to Phase *m*, the owner declined, or ranked below the rows
+    taken), so the next run doesn't re-plan them.
   - `## Decisions & assumptions (confirm or correct before build)`: for each
     row, why the fix is the right one ("makes the code do what SPEC.md §x
     already says"); each choice from step 3, *Decided YYYY-MM-DD:* with the
