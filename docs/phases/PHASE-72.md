@@ -99,10 +99,10 @@ None.
 
 - [x] K167: `/stats`, the overview and the household dashboard load the spend sources once per request
 - [x] K155: the "by member" chart loads once and replays per member
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 72 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 72 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

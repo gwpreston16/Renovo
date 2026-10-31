@@ -8,6 +8,17 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **The analytics screen, the household dashboard and the "by member" chart load
+  the past once.** Each walk into the past (the year to date, both charts, the
+  year-over-year card, the month so far, the pace line) reloaded the household's
+  subscriptions, price history and ledger for itself, and the "by member" chart
+  did so once per member. A screen now loads them once for all its walks: the
+  household dashboard runs 39 statements instead of 54, the analytics screen 52
+  instead of 72, and the by-member chart 15 instead of 27, whatever the number of
+  members. The figures do not change. *Phase 72.*
+
 ## [1.30.0] - 2026-10-31
 
 ### Changed
