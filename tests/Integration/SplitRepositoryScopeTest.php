@@ -95,6 +95,30 @@ final class SplitRepositoryScopeTest extends DatabaseTestCase
         self::assertGreaterThan(0, $refusedCases);
     }
 
+    /**
+     * Absolute cases, so a loosened subscription write rule is caught here too
+     * and not only by the comparison above.
+     */
+    public function testThePinnedCases(): void
+    {
+        $shared = IsolationMode::Shared;
+
+        // A Contributor may not clear a split on a subscription somebody else owns.
+        $this->resetSplit('household');
+        $this->splits->deleteForSubscription($this->scope($this->bob, Role::Contributor, $shared), $this->broadband);
+        self::assertSame(2, $this->splitRows());
+
+        // An Editor may not clear one on an "only me" subscription somebody else owns.
+        $this->resetSplit('payer');
+        $this->splits->deleteForSubscription($this->scope($this->carol, Role::Editor, $shared), $this->broadband);
+        self::assertSame(2, $this->splitRows());
+
+        // The owner may.
+        $this->resetSplit('payer');
+        $this->splits->deleteForSubscription($this->scope($this->alice, Role::OwnerAdmin, $shared), $this->broadband);
+        self::assertSame(0, $this->splitRows());
+    }
+
     public function testAnotherHouseholdsScopeClearsNothing(): void
     {
         $this->resetSplit('household');
