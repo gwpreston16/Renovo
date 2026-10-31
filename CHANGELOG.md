@@ -8,6 +8,37 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Changed
+
+- **A JSON write the API cannot read is a `400`.** A body that is malformed
+  JSON, a non-empty list or a scalar instead of an object, or sent with no
+  `Content-Type` (a form-encoded body is not JSON and is read as before) is refused with "The request body must be a JSON object." and
+  changes nothing, instead of being read as `{}` (a `PATCH` answering 200 and
+  recording nothing, a `PUT` answering a `422` that listed every required
+  field). `{}` is still a body. OpenAPI 1.9.9 adds `400` to the write
+  operations. *Phase 70.*
+
+### Fixed
+
+- **A wrong-typed subscription field is a `422` on the field.** `is_active`,
+  `is_trial` and `amount_varies` sent as anything but a boolean or a documented
+  flag word, `converts_to_price_minor` as `true`, a list or non-numeric text,
+  `tags` as anything but a list of strings or a comma-separated string, and
+  `reminder_days` as anything but a list of integers, `"none"` or null, are
+  refused instead of pausing an active row, dropping a price or saving a stray
+  tag. This tightens what a client may send: a script that sent
+  `"is_active": "maybe"` now gets the `422`. The accepted flag words, tag
+  string and `"none"` are now documented.
+  *Phase 70.*
+- **A failed save-on-change says so.** When a channel switch, a backup
+  destination switch, a member's role select or the subscription list's filter
+  fails (403, 429, 500, a bad CSRF token or no connection), the page shows the
+  message in its live region and the control goes back to the state the server
+  holds, instead of showing a change that was never saved. *Phase 70.*
+- **The Lead times hint is the catalogue's to word.** Each alert name has its
+  own in-sentence string and the list joiner is a string too, so a translation
+  controls capitals and the separator; English reads as before. *Phase 70.*
+
 ## [1.28.0] - 2026-10-30
 
 ### Fixed

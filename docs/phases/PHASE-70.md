@@ -122,13 +122,13 @@ None.
   table. Not chosen: keep reading it as empty and make a `PATCH` with no
   recognised field a 422. A client that sends a broken body is told so,
   instead of being told a field is missing or that it succeeded.
-- **K159:** makes the code do what the OpenAPI headline already claims, and
+- **K159 — Confirmed 2026-10-30:** makes the code do what the OpenAPI headline already claims, and
   extends Phase 66's K148 to the fields it left. The tolerated flag words and
   string forms are kept and documented rather than removed, so no working
   client breaks.
-- **K164:** assumes the live region is the right place for the message (as
+- **K164 — Confirmed 2026-10-30:** assumes the live region is the right place for the message (as
   Phase 60's K138 chose for swap status) and not a new toast component.
-- **K165:** assumes one string per alert plus one for the joiner, over a
+- **K165 — Confirmed 2026-10-30:** assumes one string per alert plus one for the joiner, over a
   single pre-built list string, so a catalogue changes only wording.
 - **Release — Decided 2026-10-30:** its own patch release once merged,
   v1.28.1. No migration, so no back-up-first note beyond the standard line.
@@ -137,14 +137,15 @@ None.
 
 ## Status
 
-- [ ] K147: an unreadable JSON write body is a 400
-- [ ] K159: wrong-typed subscription fields are a 422 on the field
-- [ ] K164: a failed save-on-change says so
-- [ ] K165: the Lead times hint is a catalogue's to word
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 70 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K147: an unreadable JSON write body is a 400
+- [x] K159: wrong-typed subscription fields are a 422 on the field
+- [x] K164: a failed save-on-change says so
+- [x] K164 browser check: a 500 on a member's role select and on the Email switch (recorded in `docs/development.md`)
+- [x] K165: the Lead times hint is a catalogue's to word
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 70 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

@@ -436,7 +436,7 @@
                         </div>
                         <div class="account-row-actions">
                             <form method="post" action="/settings/backups/destinations/{{ destination.id }}/enabled"
-                                  class="inline channel-switch"
+                                  class="inline channel-switch" data-save-on-change
                                   hx-post="/settings/backups/destinations/{{ destination.id }}/enabled" hx-trigger="change">
                                 {{ csrf_field() }}
                                 <input type="hidden" name="enabled" value="0">

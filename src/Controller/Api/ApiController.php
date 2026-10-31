@@ -13,6 +13,7 @@ use App\Security\Scope;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
+use Slim\Exception\HttpBadRequestException;
 
 /**
  * Shared plumbing for API endpoints: reading a JSON body, writing a JSON
@@ -57,9 +58,11 @@ abstract class ApiController
      * The decoded request body.
      *
      * Slim's body-parsing middleware has already turned `application/json` into
-     * an array by the time this runs; anything else — including a body that
-     * decoded to a scalar — is treated as an empty object rather than guessed
-     * at.
+     * an array by the time this runs. A JSON write whose body cannot be read as
+     * an object — malformed, a list or scalar, or sent without a Content-Type —
+     * is a 400 rather than an empty object, so the client is told what is wrong
+     * instead of that a field is missing or that nothing was saved. An empty
+     * body, `{}` and a multipart or form body keep their present path.
      *
      * @return array<string, mixed>
      */
@@ -67,7 +70,36 @@ abstract class ApiController
     {
         $body = $request->getParsedBody();
 
-        return is_array($body) ? $body : [];
+        if (is_array($body)) {
+            if ($body !== [] && array_is_list($body)) {
+                throw $this->unreadableBody($request);
+            }
+
+            return $body;
+        }
+
+        $type = strtolower(trim(explode(';', $request->getHeaderLine('Content-Type'))[0]));
+        $readsAsJson = $type === '' || $type === 'application/json' || str_ends_with($type, '+json');
+        if ($readsAsJson && trim($this->rawBody($request)) !== '') {
+            throw $this->unreadableBody($request);
+        }
+
+        return [];
+    }
+
+    private function rawBody(ServerRequestInterface $request): string
+    {
+        $stream = $request->getBody();
+        if ($stream->isSeekable()) {
+            $stream->rewind();
+        }
+
+        return (string) $stream;
+    }
+
+    private function unreadableBody(ServerRequestInterface $request): HttpBadRequestException
+    {
+        return new HttpBadRequestException($request, $this->translator->trans('error.api.body_not_object'));
     }
 
     protected function token(ServerRequestInterface $request): ApiToken

@@ -271,6 +271,36 @@ final class TemplateConventionsTest extends TestCase
         self::assertSame([], $unsynced, 'Triggers that target an announced region must set hx-sync="#region:replace".');
     }
 
+    /**
+     * A failed save-on-change must say so (K164): the layout carries the live
+     * region the script writes to, and every control that saves on change
+     * carries the attribute the script looks for.
+     */
+    public function testSaveOnChangeControlsHaveAStatusRegion(): void
+    {
+        $root = dirname(__DIR__, 2) . '/templates/';
+
+        self::assertStringContainsString('data-save-error', $this->source($root . 'layout.twig'));
+        self::assertStringContainsString('role="status"', $this->source($root . 'layout.twig'));
+
+        $controls = [
+            'notifications/index.twig' => 'hx-post="/settings/notifications/channels/{{ channel.id }}/active"',
+            'settings/instance.twig' => 'hx-post="/settings/backups/destinations/{{ destination.id }}/enabled"',
+            'settings/members.twig' => 'hx-post="/settings/members/{{ member.userId }}/role"',
+            'subscriptions/index.twig' => 'hx-get="/subscriptions"',
+        ];
+        foreach ($controls as $template => $anchor) {
+            $source = $this->source($root . $template);
+            $position = strpos($source, $anchor);
+            self::assertNotFalse($position, $template);
+            $opening = (int) strrpos(substr($source, 0, $position), '<');
+            $tag = substr($source, $opening, $position - $opening);
+            self::assertStringContainsString('data-save-on-change', $tag, $template);
+        }
+
+        self::assertStringContainsString('data-save-on-change', $this->source($root . 'subscriptions/_toolbar.twig'));
+    }
+
     /** The template as written, comments removed. */
     private function source(string $path): string
     {

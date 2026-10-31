@@ -57,7 +57,7 @@
                                     nothing else about it.
                                 #}
                                 <form method="post" action="/settings/notifications/channels/{{ channel.id }}/active"
-                                      class="inline channel-switch"
+                                      class="inline channel-switch" data-save-on-change
                                       hx-post="/settings/notifications/channels/{{ channel.id }}/active" hx-trigger="change">
                                     {{ csrf_field() }}
                                     <input type="hidden" name="is_active" value="0">
@@ -182,7 +182,7 @@
                 <fieldset class="preference">
                     <legend>{{ t('notifications.lead_times') }}</legend>
                     <p class="hint" id="lead_days_hint">
-                        {{ t('notifications.lead_times_hint', {'types': lead_types|map(type => t(type.labelKey())|lower)|join(', ')}) }}
+                        {{ t('notifications.lead_times_hint', {'types': lead_types_text}) }}
                     </p>
                     <input type="hidden" name="lead_days[]" value="">
                     <div class="chip-choices" aria-describedby="lead_days_hint">

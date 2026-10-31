@@ -559,6 +559,176 @@ final class ApiInputValidationTest extends ApiTestCase
     }
 
     /**
+     * @return array<string, array{string, mixed}>
+     */
+    public static function wrongTypedLooseFields(): array
+    {
+        return [
+            'is_active 2' => ['is_active', 2],
+            'is_active abc' => ['is_active', 'abc'],
+            'is_active nope' => ['is_active', 'nope'],
+            'is_active list' => ['is_active', []],
+            'is_active float' => ['is_active', 1.0],
+            'is_trial abc' => ['is_trial', 'abc'],
+            'amount_varies list' => ['amount_varies', []],
+            'tags 5' => ['tags', 5],
+            'tags true' => ['tags', true],
+            'tags list of true' => ['tags', [true]],
+            'reminder_days true' => ['reminder_days', true],
+            'reminder_days object' => ['reminder_days', ['x' => 3]],
+            'reminder_days nested' => ['reminder_days', [[5]]],
+            'converts abc' => ['converts_to_price_minor', 'abc'],
+            'converts true' => ['converts_to_price_minor', true],
+            'converts list' => ['converts_to_price_minor', []],
+            'converts object' => ['converts_to_price_minor', ['x' => 1]],
+        ];
+    }
+
+    /**
+     * @dataProvider wrongTypedLooseFields
+     */
+    public function testWrongTypedSubscriptionFieldsAreRefused(string $field, mixed $value): void
+    {
+        $id = $this->createSubscription(['tags' => ['a', 'b'], 'reminder_days' => [7]]);
+        $before = $this->show($id);
+
+        $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [$field => $value] + $before);
+        self::assertSame(422, $put->getStatusCode(), (string) $put->getBody());
+        self::assertArrayHasKey($field, $this->decode($put)['error']['errors']);
+        self::assertSame($before, $this->show($id));
+
+        $post = $this->api('POST', '/api/v1/subscriptions', $this->ownerToken, [$field => $value] + [
+            'name' => 'New',
+            'price_minor' => 500,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-12-01',
+        ]);
+        self::assertSame(422, $post->getStatusCode(), (string) $post->getBody());
+        self::assertArrayHasKey($field, $this->decode($post)['error']['errors']);
+    }
+
+    public function testTheDocumentedFlagAndListFormsStillWork(): void
+    {
+        $id = $this->createSubscription();
+        $before = $this->show($id);
+
+        foreach (['false', 'no', 'off', '0', 0, false] as $off) {
+            $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+                'is_active' => $off,
+            ] + $before);
+            self::assertSame(200, $put->getStatusCode(), (string) $put->getBody());
+            self::assertSame('paused', $this->show($id)['status']);
+            $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+                'is_active' => 'YES',
+            ] + $before);
+            self::assertSame(200, $put->getStatusCode(), (string) $put->getBody());
+            self::assertSame('active', $this->show($id)['status']);
+        }
+
+        $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+            'tags' => 'a, b',
+            'reminder_days' => 'none',
+        ] + $before);
+        self::assertSame(200, $put->getStatusCode(), (string) $put->getBody());
+        self::assertSame(['a', 'b'], $this->show($id)['tags']);
+        self::assertSame([], $this->show($id)['reminder_days']);
+
+        $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+            'is_trial' => 'off',
+            'amount_varies' => 'no',
+            'converts_to_price_minor' => '500',
+        ] + $before);
+        self::assertSame(200, $put->getStatusCode(), (string) $put->getBody());
+
+        $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+            'tags' => ['c'],
+            'reminder_days' => [30, 7],
+        ] + $before);
+        self::assertSame(200, $put->getStatusCode(), (string) $put->getBody());
+        self::assertSame([['c'], [30, 7]], [$this->show($id)['tags'], $this->show($id)['reminder_days']]);
+    }
+
+    /**
+     * @return array<string, array{string, ?string}>
+     */
+    public static function unreadableBodies(): array
+    {
+        return [
+            'malformed' => ['{"actual_minor": 900,', 'application/json'],
+            'no content type' => ['{"actual_minor": 900}', null],
+            'a list' => ['[1,2]', 'application/json'],
+            'a scalar' => ['"text"', 'application/json'],
+        ];
+    }
+
+    /**
+     * @dataProvider unreadableBodies
+     */
+    public function testAnUnreadableJsonBodyIsA400(string $raw, ?string $contentType): void
+    {
+        $id = $this->createSubscription();
+        $date = (new \DateTimeImmutable('-3 days'))->format('Y-m-d');
+        $charge = $this->decode($this->api('POST', '/api/v1/subscriptions/' . $id . '/charges', $this->ownerToken, [
+            'date' => $date,
+            'amount_minor' => 500,
+        ]));
+        self::assertArrayHasKey('data', $charge);
+        $chargeId = (int) $charge['data']['id'];
+
+        $patch = $this->apiRaw('PATCH', '/api/v1/charges/' . $chargeId, $this->ownerToken, $raw, $contentType);
+        self::assertSame(400, $patch->getStatusCode(), (string) $patch->getBody());
+        self::assertSame('The request body must be a JSON object.', $this->decode($patch)['error']['message']);
+
+        $list = $this->api('GET', '/api/v1/subscriptions/' . $id . '/charges', $this->ownerToken);
+        self::assertNotContains(900, array_column($this->decode($list)['data'], 'actual_minor'));
+
+        $put = $this->apiRaw('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, $raw, $contentType);
+        self::assertSame(400, $put->getStatusCode(), 'not a 422 listing the required fields');
+    }
+
+    public function testAFormBodyKeepsItsPresentPath(): void
+    {
+        $id = $this->createSubscription();
+        $created = $this->api('POST', '/api/v1/subscriptions/' . $id . '/charges', $this->ownerToken, [
+            'date' => (new \DateTimeImmutable('-3 days'))->format('Y-m-d'),
+            'amount_minor' => 500,
+        ]);
+        $chargeId = (int) $this->decode($created)['data']['id'];
+
+        $form = $this->apiRaw(
+            'PATCH',
+            '/api/v1/charges/' . $chargeId,
+            $this->ownerToken,
+            'status=skipped',
+            'application/x-www-form-urlencoded',
+        );
+
+        self::assertSame(200, $form->getStatusCode(), (string) $form->getBody());
+    }
+
+    public function testAnEmptyObjectIsStillABody(): void
+    {
+        $id = $this->createSubscription();
+        $date = (new \DateTimeImmutable('-3 days'))->format('Y-m-d');
+        $created = $this->api('POST', '/api/v1/subscriptions/' . $id . '/charges', $this->ownerToken, [
+            'date' => $date,
+            'amount_minor' => 500,
+        ]);
+        $chargeId = (int) $this->decode($created)['data']['id'];
+
+        foreach (['{}', ''] as $raw) {
+            $patch = $this->apiRaw('PATCH', '/api/v1/charges/' . $chargeId, $this->ownerToken, $raw);
+            self::assertSame(200, $patch->getStatusCode(), (string) $patch->getBody());
+        }
+
+        $valid = $this->apiRaw('PATCH', '/api/v1/charges/' . $chargeId, $this->ownerToken, '{"actual_minor": 900}');
+        self::assertSame(200, $valid->getStatusCode());
+        self::assertSame(900, $this->decode($valid)['data']['actual_minor']);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function show(int $id): array

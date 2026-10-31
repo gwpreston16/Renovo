@@ -553,6 +553,10 @@ return [
     'alert.budget_exceeded' => 'Budget projected to be exceeded',
     'alert.about' => 'about {amount}',
     'alert.contract_ending' => 'Contract ending',
+    'alert.in_sentence.renewal' => 'upcoming renewal',
+    'alert.in_sentence.trial_conversion' => 'trial about to convert',
+    'alert.in_sentence.cancel_by' => 'cancellation deadline',
+    'alert.in_sentence.contract_ending' => 'contract ending',
     'alert.contract.line' =>
         'Your {name} contract ends on {date} — a good time to compare prices or renegotiate.',
     'alert.contract.title' => '{name}: contract ends {when}',
@@ -643,6 +647,9 @@ return [
     'error.payments_end.no_billing_date' =>
         'The last payment would be before the first billing date from today, so this can’t be resumed. Move the last payment date later first.',
     'error.json.wrong_type_number' => 'Send this as a whole number.',
+    'error.json.wrong_type_flag' => 'Send this as true or false.',
+    'error.json.wrong_type_tags' => 'Send this as a list of tag names or a comma-separated string.',
+    'error.json.wrong_type_reminder_days' => 'Send this as a list of whole numbers, "none" or null.',
     'error.json.wrong_type' => 'Send this as text, not as true, false, a list or an object.',
     'error.payments_end.before_start' => 'The last payment can’t come before the start date.',
     'error.file.required' => 'Choose a file to upload.',
@@ -2548,6 +2555,8 @@ return [
     'error.api.read_only_tokens_only' => 'This endpoint accepts read-only tokens only.',
     'error.api.subscription_not_found' => 'No such subscription.',
     'error.api.charge_not_found' => 'No such charge.',
+    'error.save_failed_network' => 'That did not go through. Check your connection and try again.',
+    'error.api.body_not_object' => 'The request body must be a JSON object.',
     'error.api.file_part_missing' => 'Send the file as multipart form data in a "file" part.',
     'error.api.logo_part_missing' => 'Send the image as multipart form data in a "logo" part.',
     'error.api.subscription_unreadable' => 'The subscription could not be read back.',
@@ -2732,6 +2741,7 @@ return [
     'notifications.channel_switch' => 'Send to {name}',
     'notifications.days_before' => '{count, plural, one {# day} other {# days}}',
     'notifications.lead_times' => 'Remind me before',
+    'notifications.lead_types_joiner' => ', ',
     'notifications.lead_times_hint' =>
         'Before each {types}. Choose any number, or none; each is a reminder of its own. A single '
         . 'subscription can override this on its own page.',

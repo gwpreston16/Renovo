@@ -148,6 +148,55 @@ const forgetSwap = (event) => {
 document.addEventListener('htmx:responseError', forgetSwap);
 document.addEventListener('htmx:sendError', forgetSwap);
 
+/*
+ * A control that saves on change (`data-save-on-change`) that fails says so.
+ *
+ * htmx drops an error response, so without this a switch would keep showing
+ * "on" for a channel the server still holds off. The message goes in the
+ * page's polite live region (`data-save-error`): the plain-text body the error
+ * handler writes for an htmx request, or the catalogue's own sentence when
+ * nothing answered. A form control is put back to the state its markup came
+ * with, which is the state the server holds. A refused change (flash and
+ * redirect) and an expired session (`HX-Redirect`) are not errors here and are
+ * shown as before.
+ */
+const saveStatus = () => document.querySelector('[data-save-error]');
+
+const saveFailed = (event) => {
+    const control = event.detail.elt;
+    const status = saveStatus();
+    if (!(control instanceof Element) || control.closest('[data-save-on-change]') === null || status === null) {
+        return;
+    }
+
+    const xhr = event.detail.xhr;
+    const body = xhr && typeof xhr.responseText === 'string' ? xhr.responseText.trim() : '';
+    const plain = xhr && /^text\/plain/.test(xhr.getResponseHeader('Content-Type') || '');
+    // Cleared and refilled so a repeat of the same failure is read out again.
+    status.textContent = '';
+    status.textContent = plain && body !== '' ? body : (status.dataset.networkMessage || '');
+    // The region sits at the top of the content; a control further down the page must not fail out of sight.
+    status.scrollIntoView({block: 'nearest'});
+
+    control.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach((input) => {
+        input.checked = input.defaultChecked;
+    });
+    control.querySelectorAll('select option').forEach((option) => {
+        option.selected = option.defaultSelected;
+    });
+};
+document.addEventListener('htmx:responseError', saveFailed);
+document.addEventListener('htmx:sendError', saveFailed);
+document.addEventListener('htmx:timeout', saveFailed);
+
+// The next attempt starts clean.
+document.addEventListener('htmx:beforeRequest', (event) => {
+    const status = saveStatus();
+    if (status !== null && event.detail.elt instanceof Element && event.detail.elt.closest('[data-save-on-change]') !== null) {
+        status.textContent = '';
+    }
+});
+
 document.addEventListener('htmx:afterSettle', (event) => {
     const settled = event.detail.target instanceof Element ? event.detail.target.id : '';
     if (settled === '' || !pendingSwaps.has(settled)) {

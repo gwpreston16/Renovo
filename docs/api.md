@@ -449,7 +449,7 @@ the field the client sent: a bad price is under `price_minor`, a bad
 
 | Status | When |
 | --- | --- |
-| `400` | The request was malformed — a bad multipart body, an unreadable upload. |
+| `400` | The request was malformed — a JSON body that is malformed, is a non-empty list or a scalar, or is sent with no `Content-Type` (`{}`, `[]` and an empty body are read as an empty object); a bad multipart body; an unreadable upload. |
 | `401` | No token presented, or it is revoked, expired, malformed or unknown. The four are one answer. A write sent with no bearer token, or another scheme, is a `401` too. |
 | `403` | The token does not hold the scope the route needs (the message names it), **or** the role does not permit this, **or** a token that can write was offered to the calendar feed, **or** the instance is a read-only demonstration: every write (any method but `GET`, `HEAD` and `OPTIONS`) is refused with the message "This instance is a read-only demonstration. Nothing here can be changed." |
 | `404` | No such row — **or** one the caller may not see. |
@@ -1010,10 +1010,10 @@ category, tag or payment method and to a charge's `note`.
 | `start_date` | date, null | The rules below follow the type the request submits: a one-off turning recurring keeps its payment as history. On a one-off or lifetime entry, changing it moves the entry's own payment (`source: one_off`) to the new date — today included — with any amount, note and invoice on it; a future date removes it until that day passes, when it is written again and its invoice returns to it. A date that already has another payment is a `422` on `start_date`. Other payments, including those the row recorded while it was recurring, are not touched. |
 | `notice_period_amount` | integer, null | 0–3650. |
 | `notice_period_unit` | enum, null | `days`, `weeks`, `months`. |
-| `reminder_days` | int[], null | Max 6 items, each 0–365. Three states — see [Conventions](#conventions). |
-| `is_trial` | boolean | Default `false`. |
+| `reminder_days` | int[], null | Max 6 items, each 0–365. Three states — see [Conventions](#conventions). The string `"none"` is read as `[]`; a boolean, a number, an object or a list holding anything but integers is a `422` on `reminder_days`. |
+| `is_trial` | boolean | Default `false`. Besides a JSON boolean the API reads `0`, `1` and the words `"true"`, `"false"`, `"yes"`, `"no"`, `"on"`, `"off"`, `"0"`, `"1"` (any case), here and for `is_active` and `amount_varies`; anything else (`2`, `"abc"`, a list) is a `422` on that field, never read as false. |
 | `trial_end_date` | date, null | A date that does not exist is a `422`. |
-| `converts_to_price_minor` | integer, null | |
+| `converts_to_price_minor` | integer, null | Minor units. `true`, a list, an object and text that is not a number are a `422` on this field, never read as "no price". |
 | `converts_to_billing_cycle` | enum, null | As `billing_cycle`. |
 | `converts_to_cycle_days` | integer, null | |
 | `converts_to_cycle_interval` | integer, null | As `cycle_interval`, for the cycle it converts to — bounded the same way, and an absent key on a PUT that keeps `converts_to_billing_cycle` keeps it. Null when it converts to the cycle it already has. |
@@ -1027,7 +1027,7 @@ category, tag or payment method and to a charge's `note`.
 | `payment_method_id` | integer, null | An absent key leaves the current assignment alone — unlike the other fields, so a client written before it existed does not clear it. Send `null` to clear it. |
 | `owner_user_id` | integer, null | Must be a household member. Ignored when the token's user is fenced to their own rows: in ISOLATED mode, and for a Contributor in SHARED mode too. They own only what they make. |
 | `payer_user_id` | integer, null | Must be a household member. Reads back `null` once that member has left the household. |
-| `tags` | string[] | Max 25, each max 50 chars; more is a `422` on `tags`, never cut. Created by name if they do not exist, matched whole ignoring case and accents. |
+| `tags` | string[] | Max 25, each max 50 chars; more is a `422` on `tags`, never cut. Created by name if they do not exist, matched whole ignoring case and accents. A comma-separated string (`"tv, music"`) is read as its names; any other type, or a list holding anything but strings, is a `422` on `tags`. |
 
 ### Subscription
 

@@ -2179,6 +2179,11 @@ legend {
     margin: 0;
 }
 
+/* The failed-save message is drawn only while it holds one. */
+.save-error:empty {
+    display: none;
+}
+
 /* A heads-up rather than a problem: the warm hue, as a leading rule. */
 .callout {
     border-left: 4px solid var(--warn);

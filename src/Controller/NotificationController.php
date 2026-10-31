@@ -248,10 +248,18 @@ final class NotificationController extends Controller
             'notifiers' => $this->notifiers->all(),
             'preferences' => $preferences,
             'lead_choices' => $leadChoices,
-            'lead_types' => array_values(array_filter(
-                AlertType::all(),
-                static fn (AlertType $type): bool => $type->usesLeadTimes(),
-            )),
+            // Each name and the joiner are the catalogue's, so a language
+            // sets its own capitals and its own "and".
+            'lead_types_text' => implode(
+                $this->translator->trans('notifications.lead_types_joiner'),
+                array_map(
+                    fn (AlertType $type): string => $this->translator->trans($type->sentenceKey()),
+                    array_values(array_filter(
+                        AlertType::all(),
+                        static fn (AlertType $type): bool => $type->usesLeadTimes(),
+                    )),
+                ),
+            ),
             'routes' => $routes ?? $this->settings->routes($user->id),
             // The backup alerts reach instance administrators only, so only
             // they are given a column for them.

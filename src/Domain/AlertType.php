@@ -87,6 +87,16 @@ enum AlertType: string
     }
 
     /**
+     * The name as it reads inside a sentence ("Before each upcoming renewal"),
+     * which a catalogue words for itself rather than having the label
+     * lower-cased.
+     */
+    public function sentenceKey(): string
+    {
+        return 'alert.in_sentence.' . $this->value;
+    }
+
+    /**
      * @return list<self>
      */
     public static function all(): array

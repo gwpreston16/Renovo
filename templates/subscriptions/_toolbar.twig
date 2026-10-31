@@ -154,7 +154,7 @@
     a screen reader is told.
 #}
 {% macro link(query, label, active, class, id) %}
-    <a id="{{ id }}" class="{{ class }}" href="/subscriptions{{ query ? '?' ~ query : '' }}"
+    <a id="{{ id }}" class="{{ class }}" href="/subscriptions{{ query ? '?' ~ query : '' }}" data-save-on-change
        hx-get="/subscriptions{{ query ? '?' ~ query : '' }}"
        hx-target="#subscription-list" hx-sync="#subscription-list:replace" hx-select="#subscription-list"
        hx-swap="outerHTML" hx-push-url="true"
