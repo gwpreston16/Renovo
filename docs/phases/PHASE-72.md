@@ -80,12 +80,12 @@ None.
 
 ## Decisions & assumptions (confirm or correct before build)
 
-- **Size — Assumed 2026-10-31:** taken although earlier briefs called these
+- **Size — Confirmed 2026-10-31:** taken although earlier briefs called these
   rows larger than a batch row, because both share one fix and no smaller row
   was open. If the build finds `StatsService`'s walks can't take the shared
   object without a wider rewrite, ship K155 and the screens that can, and
   leave the rest as K167's remaining work rather than stretching the phase.
-- **Shape — Assumed 2026-10-31:** an explicit sources object handed to the
+- **Shape — Confirmed 2026-10-31:** an explicit sources object handed to the
   walks, not a memoising cache inside the service. Not chosen: a per-request
   cache keyed by scope and window (hidden state, stale after the catch-up
   writes).

@@ -80,7 +80,7 @@ can be moved.
 | 69 | [Trials, counts and household edges, from the known-issues log](docs/phases/PHASE-69.md) | — | None | ✅ done |
 | 70 | [API bodies and save-on-change messages, from the known-issues log](docs/phases/PHASE-70.md) | — | None | ✅ done |
 | 71 | [Split deletes and static-file compression, from the known-issues log](docs/phases/PHASE-71.md) | — | None | ✅ done |
-| 72 | [Spend walks load their sources once, from the known-issues log](docs/phases/PHASE-72.md) | — | None | 📋 planned |
+| 72 | [Spend walks load their sources once, from the known-issues log](docs/phases/PHASE-72.md) | — | None | 🚧 in progress |
 | 73 | [A JavaScript test runner, from the known-issues log](docs/phases/PHASE-73.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
