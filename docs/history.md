@@ -778,6 +778,15 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   Lead times hint leaves its wording to the catalogue. OpenAPI 1.9.9 adds the
   `400`. No migrations. See [the API reference](api.md) and
   [Notifications](features/notifications.md).
+- **Phase 71 — split deletes and static-file compression, from the
+  known-issues log — complete (1.30.0).** Clearing or rewriting a split asks
+  the subscription repository whether the subscription is writable, instead
+  of a hand-written copy of the write rule, so a later change to who may
+  write a subscription reaches it; behaviour is unchanged today. The bundled
+  nginx gzips the stylesheet, script and other text files under `/build/` and
+  `/assets/`, and still never the application's HTML, which could leak the
+  CSRF token through compression. No API change and no migrations. See
+  [Installing](install.md#behind-a-reverse-proxy).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
