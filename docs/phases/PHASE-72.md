@@ -149,7 +149,9 @@ are at least 80% covered and the suite at least 85%. No migration. Then mark it
 - K182: `BudgetScreenTest::testMoreBudgetedMembersLoadNothingMore` (39
   statements before for four budgets, a handful after, with nothing growing per
   member). K178: `YearOverYearTest::testOnTheLeapDayTheWindowsAreStillTwelveMonthsEach`
-  (11 charges against 12 before).
+  (11 charges against 12 before) and
+  `HouseholdDashboardTest::testTheYearToDateOnTheDayAfterALeapDayComparesLikeWithLike`
+  (the dashboard's year-to-date: -6% before, 0% after).
 
 ## Notes from the build
 

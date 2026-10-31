@@ -123,6 +123,22 @@ final class HouseholdDashboardTest extends DatabaseTestCase
     }
 
     /**
+     * On 1 March of a leap year "yesterday" is 29 February, and `-1 year` from
+     * it is 1 March, so the comparison ran a day past last year's equivalent
+     * and took in a charge that belongs to the next period (K178). Every bill
+     * here is monthly, so the two years must compare equal.
+     */
+    public function testTheYearToDateOnTheDayAfterALeapDayComparesLikeWithLike(): void
+    {
+        $this->monthly($this->adaId, 'On the first', 1000, '2028-03-01', '2025-01-01');
+        $this->container()->get(Clock::class)->advanceTo(new DateTimeImmutable('2028-03-01 09:00:00'));
+
+        $year = $this->container()->get(HouseholdDashboardService::class)->yearToDate($this->scopeFor($this->adaId));
+
+        self::assertSame(0, $year['change_percent']);
+    }
+
+    /**
      * Counted against today's figures at this household: the walks into the
      * past used to load the subscriptions, price history and ledger each for
      * itself (54 statements), and now share one load.
