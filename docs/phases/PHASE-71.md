@@ -98,10 +98,10 @@ None.
 
 - [x] K172: the split delete builds its parent check from the subscription write predicate
 - [x] K166: `/build/` and `/assets/` are gzipped, HTML is not, and the docs say so
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 71 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 71 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
