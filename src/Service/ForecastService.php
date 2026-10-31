@@ -135,6 +135,9 @@ final class ForecastService
      * see `overlay()`. Nothing else differs, so the two lists can be compared
      * charge for charge.
      *
+     * Given sources for the same scope, the subscriptions, price history and
+     * splits come from them instead of being read again.
+     *
      * @return list<array{subscription: Subscription, date: DateTimeImmutable, amount: Money, reason: string}>
      */
     public function charges(
@@ -142,13 +145,23 @@ final class ForecastService
         int $months = self::DEFAULT_MONTHS,
         ?int $forUserId = null,
         ?Scenario $scenario = null,
+        ?SpendSources $sources = null,
     ): array {
         $today = $this->clock->today();
         $horizon = $today->modify(sprintf('+%d months', $months));
 
-        $subscriptions = $this->subscriptions->allForStats($scope);
-        [$scheduled, $offerEnds] = $this->announced($scope, $today);
-        $splits = $forUserId === null ? [] : $this->splits->allInScope($scope);
+        // Sources loaded for this scope already hold the subscriptions and
+        // price history: the walk skips an inactive subscription itself, so
+        // the list that includes them gives the same charges (K182).
+        $shared = $sources !== null && $sources->scope == $scope ? $sources : null;
+        $subscriptions = $shared !== null ? $shared->subscriptions : $this->subscriptions->allForStats($scope);
+        [$scheduled, $offerEnds] = $this->announced($scope, $today, $shared?->history);
+        $load = fn (): array => $this->splits->allInScope($scope);
+        $splits = match (true) {
+            $forUserId === null => [],
+            $shared !== null => $shared->splits($load),
+            default => $load(),
+        };
 
         $charges = [];
         foreach ($subscriptions as $subscription) {
@@ -442,17 +455,18 @@ final class ForecastService
      * second list changes wording and nothing else — every amount comes from
      * the first.
      *
+     * @param array<int, list<PriceChange>>|null $history Already loaded, if a caller holds it.
      * @return array{
      *     0: array<int, list<PriceChange>>,
      *     1: array<int, array<int, DateTimeImmutable>>
      * } Announced changes, earliest first, and the offer ends among them by
      *   change id, both keyed by subscription id.
      */
-    private function announced(Scope $scope, DateTimeImmutable $today): array
+    private function announced(Scope $scope, DateTimeImmutable $today, ?array $history = null): array
     {
         $scheduled = [];
         $offerEnds = [];
-        foreach ($this->priceHistory->findAllBySubscription($scope) as $subscriptionId => $changes) {
+        foreach (($history ?? $this->priceHistory->findAllBySubscription($scope)) as $subscriptionId => $changes) {
             $previous = null;
             foreach ($changes as $change) {
                 if ($change->isScheduled($today)) {

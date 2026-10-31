@@ -10,6 +10,7 @@ use App\Domain\IsolationMode;
 use App\Domain\Money;
 use App\Domain\PriceChangeSource;
 use App\Domain\Role;
+use App\Persistence\Database;
 use App\Repository\ExchangeRateRepository;
 use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
@@ -498,6 +499,24 @@ final class AnalyticsScreenTest extends DatabaseTestCase
         self::assertStringContainsString('XOF', $card);
         self::assertStringContainsString('>GBP<', $card);
         self::assertStringContainsString('meter-fill', $card);
+    }
+
+    /**
+     * The KPI row, both charts and the year-over-year card read the past from
+     * one load of the household's subscriptions, price history and ledger
+     * rather than one each (K167): 72 statements before, 52 after.
+     */
+    public function testTheOverviewLoadsTheSpendSourcesOnce(): void
+    {
+        $db = $this->container()->get(Database::class);
+        $scope = $this->scopeFor($this->ownerId);
+
+        $before = $db->statementCount();
+        $overview = $this->container()->get(AnalyticsScreenService::class)->overview($scope);
+        $statements = $db->statementCount() - $before;
+
+        self::assertArrayHasKey('chart', $overview);
+        self::assertLessThanOrEqual(56, $statements);
     }
 
     /**

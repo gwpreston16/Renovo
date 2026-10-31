@@ -64,6 +64,23 @@ Regression test: `SpendTrendServiceTest::testByMemberLoadsTheSourcesOnce`
 (statements flat in the number of members) and
 `testByMemberSeriesAreUnchanged` against a fixture computed with the old walk.
 
+### C. K182 — the Budgets screen loads the sources once
+
+Added 2026-10-31, from the Phase 72 issue sweep. `BudgetMonthService` loads one
+`SpendSources` for the screen (from the day before this year began to yesterday,
+the widest window a budget reads) and hands it to every budget's past walk and,
+through a new optional parameter on `ForecastService::charges()`, to its
+forecast, so a budgeted member no longer reloads the household's subscriptions,
+price history and ledger twice. Test:
+`BudgetScreenTest::testMoreBudgetedMembersLoadNothingMore`.
+
+### D. K178 — the year-over-year windows are whole calendar years on 29 February
+
+Added 2026-10-31. `yearOverYear()` and the dashboard's year-to-date card step
+back with `BillingCycle::addMonths()` instead of `modify('-1 year')`, which on
+29 February lands on 1 March and cut a window a day short. Test:
+`YearOverYearTest::testOnTheLeapDayTheWindowsAreStillTwelveMonthsEach`.
+
 ## Data-model changes
 
 None.
@@ -80,29 +97,32 @@ None.
 
 ## Decisions & assumptions (confirm or correct before build)
 
-- **Size — Assumed 2026-10-31:** taken although earlier briefs called these
+- **Size — Confirmed 2026-10-31:** taken although earlier briefs called these
   rows larger than a batch row, because both share one fix and no smaller row
   was open. If the build finds `StatsService`'s walks can't take the shared
   object without a wider rewrite, ship K155 and the screens that can, and
   leave the rest as K167's remaining work rather than stretching the phase.
-- **Shape — Assumed 2026-10-31:** an explicit sources object handed to the
+- **Shape — Confirmed 2026-10-31:** an explicit sources object handed to the
   walks, not a memoising cache inside the service. Not chosen: a per-request
   cache keyed by scope and window (hidden state, stale after the catch-up
   writes).
 - **K155, K167:** make the screens do what their own comments already claim
   ("loaded once rather than once per subscription"), one level up.
-- **Release — Assumed 2026-10-31:** its own patch release once merged, the
-  patch after Phase 71's (v1.29.2 if 71 ships first). No migration, so no
+- **K182, K178 — Added 2026-10-31:** the owner took both into this phase from the sweep after the PR was open. K182 is the same defect on one more screen and reuses the sources object; K178 is in a function this phase already touches. Not added: the other sweep rows.
+- **Release — Decided 2026-10-31:** its own patch release once merged, v1.30.1
+  (Phase 71 shipped as v1.30.0). Not chosen: holding it to ship with Phase 73. No migration, so no
   back-up-first note beyond the standard line.
 
 ## Status
 
-- [ ] K167: `/stats`, the overview and the household dashboard load the spend sources once per request
-- [ ] K155: the "by member" chart loads once and replays per member
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 72 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K167: `/stats`, the overview and the household dashboard load the spend sources once per request
+- [x] K155: the "by member" chart loads once and replays per member
+- [x] K182: the Budgets screen loads the sources once
+- [x] K178: year-over-year windows on 29 February
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 72 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
@@ -114,13 +134,30 @@ are at least 80% covered and the suite at least 85%. No migration. Then mark it
 
 ## Tests
 
-- K167: `AnalyticsScreenTest::testTheOverviewLoadsTheSpendSourcesOnce`,
-  `HouseholdDashboardTest::testTheDashboardLoadsTheSpendSourcesOnce`,
-  `SpendFiguresTest::testStatsLoadsTheSpendSourcesOnce` (each counts statements
-  at a fixed household and asserts a ceiling that does not grow with
-  subscriptions or members), and
-  `SpendHistoryTest::testAWalkGivenSourcesReadsNoMore` (no extra statements,
-  same charges).
-- K155: `SpendTrendServiceTest::testByMemberLoadsTheSourcesOnce`,
-  `SpendTrendServiceTest::testByMemberSeriesAreUnchanged` (SHARED and
-  ISOLATED).
+- K167: `AnalyticsScreenTest::testTheOverviewLoadsTheSpendSourcesOnce` (72
+  statements before, 52 after),
+  `HouseholdDashboardTest::testTheDashboardLoadsTheSpendSourcesOnce` (54 before,
+  39 after), and `SpendHistoryTest::testAWalkGivenSourcesReadsNoMore`,
+  `testSourcesForAWiderWindowGiveANarrowerWalkTheSameCharges` and
+  `testAWalkTheSourcesDoNotCoverLoadsItsOwn` (the shared load changes no
+  figure, and a wrong hand-off falls back).
+- K155: `HouseholdDashboardTest::testByMemberLoadsTheSourcesOnce` (27 statements
+  before, 15 after, against 14 for the category view); the existing
+  `testSpendOverTimeByMemberIsEachMembersShare` and
+  `testSpendOverTimeUnderIsolationIsYourOwnRows` keep the series identical.
+
+- K182: `BudgetScreenTest::testMoreBudgetedMembersLoadNothingMore` (39
+  statements before for four budgets, a handful after, with nothing growing per
+  member). K178: `YearOverYearTest::testOnTheLeapDayTheWindowsAreStillTwelveMonthsEach`
+  (11 charges against 12 before) and
+  `HouseholdDashboardTest::testTheYearToDateOnTheDayAfterALeapDayComparesLikeWithLike`
+  (the dashboard's year-to-date: -6% before, 0% after).
+
+## Notes from the build
+
+- The by-member tests live in `HouseholdDashboardTest`, which already has the
+  three-member household, rather than in a new `SpendTrendServiceTest`.
+- `/stats` is `AnalyticsScreenService::overview()`; it, the household dashboard
+  and the trend card load the sources once with `sourcesForScreen()` or
+  `sourcesForMonths()`. `CalendarService` still makes
+  one walk and loads its own; `BudgetMonthService` now shares one load (K182).

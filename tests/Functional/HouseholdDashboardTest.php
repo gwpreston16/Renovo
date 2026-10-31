@@ -9,6 +9,7 @@ use App\Domain\IsolationMode;
 use App\Domain\Role;
 use App\Domain\SplitMode;
 use App\Domain\Visibility;
+use App\Persistence\Database;
 use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\SubscriptionRepository;
@@ -119,6 +120,62 @@ final class HouseholdDashboardTest extends DatabaseTestCase
             'visibility' => Visibility::Payer->value,
             'payer_user_id' => $this->bramId,
         ]);
+    }
+
+    /**
+     * On 1 March of a leap year "yesterday" is 29 February, and `-1 year` from
+     * it is 1 March, so the comparison ran a day past last year's equivalent
+     * and took in a charge that belongs to the next period (K178). Every bill
+     * here is monthly, so the two years must compare equal.
+     */
+    public function testTheYearToDateOnTheDayAfterALeapDayComparesLikeWithLike(): void
+    {
+        $this->monthly($this->adaId, 'On the first', 1000, '2028-03-01', '2025-01-01');
+        $this->container()->get(Clock::class)->advanceTo(new DateTimeImmutable('2028-03-01 09:00:00'));
+
+        $year = $this->container()->get(HouseholdDashboardService::class)->yearToDate($this->scopeFor($this->adaId));
+
+        self::assertSame(0, $year['change_percent']);
+    }
+
+    /**
+     * Counted against today's figures at this household: the walks into the
+     * past used to load the subscriptions, price history and ledger each for
+     * itself (54 statements), and now share one load.
+     */
+    public function testTheDashboardLoadsTheSpendSourcesOnce(): void
+    {
+        $db = $this->container()->get(Database::class);
+        $scope = $this->scopeFor($this->adaId);
+        $before = $db->statementCount();
+        $page = $this->container()->get(HouseholdDashboardService::class)->household($scope);
+
+        self::assertLessThanOrEqual(42, $db->statementCount() - $before);
+        self::assertArrayHasKey('trend', $page);
+    }
+
+    /**
+     * The by-member view reads what the by-category view reads, once, and
+     * replays each member's share in memory (K155): it used to make a full
+     * load per member (27 statements against 14).
+     */
+    public function testByMemberLoadsTheSourcesOnce(): void
+    {
+        $db = $this->container()->get(Database::class);
+        $trend = $this->container()->get(SpendTrendService::class);
+        $scope = $this->scopeFor($this->adaId);
+
+        $before = $db->statementCount();
+        $trend->trend($scope, 'category');
+        $category = $db->statementCount() - $before;
+
+        $before = $db->statementCount();
+        $member = $trend->trend($scope, 'member');
+        $byMember = $db->statementCount() - $before;
+
+        self::assertSame('member', $member['by']);
+        // The splits are the one extra read; nothing grows with the members.
+        self::assertLessThanOrEqual($category + 2, $byMember);
     }
 
     /**

@@ -55,6 +55,7 @@ final class YearOverYearTest extends DatabaseTestCase
     private StatsService $stats;
     private SpendHistoryService $history;
 
+    private FrozenClock $clock;
     private int $alice;
     private int $household;
 
@@ -71,7 +72,7 @@ final class YearOverYearTest extends DatabaseTestCase
         $memberships->create($this->household, $this->alice, Role::OwnerAdmin);
 
         $this->subscriptions = new SubscriptionRepository($this->db);
-        $clock = FrozenClock::at('2026-06-15 09:00:00');
+        $this->clock = $clock = FrozenClock::at('2026-06-15 09:00:00');
 
         $settings = new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring());
         $settings->setBaseCurrency('GBP');
@@ -415,6 +416,23 @@ final class YearOverYearTest extends DatabaseTestCase
             ['daily' => null, 'weekly' => null, 'monthly' => null, 'yearly' => null],
             $this->stats->perPeriod(null),
         );
+    }
+
+    /**
+     * On 29 February `-1 year` lands on 1 March, which cut the first window a
+     * day short and showed a drop that was not there (K178).
+     */
+    public function testOnTheLeapDayTheWindowsAreStillTwelveMonthsEach(): void
+    {
+        $this->clock->advanceTo(new DateTimeImmutable('2028-02-29 09:00:00'));
+        // £10 on the 1st: twelve charges in each year, whatever the day.
+        $this->createMonthly('Streaming', 1000, '2025-01-01');
+
+        $yoy = $this->history->yearOverYear($this->scope());
+
+        self::assertSame(12000, $yoy['current']['amount_minor']);
+        self::assertSame(12000, $yoy['previous']['amount_minor']);
+        self::assertSame(0, $yoy['change_percent']);
     }
 
     private function createMonthly(
