@@ -767,6 +767,17 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   running trial's past `next_payment_date` in place. OpenAPI 1.9.8, behaviour
   only. No migrations. See [Money](features/money.md) and
   [Security](security.md).
+- **Phase 70 — API bodies and save-on-change messages, from the known-issues
+  log — complete (1.29.0).** A JSON write the API cannot read (malformed
+  JSON, a list or scalar, or no `Content-Type`) is a `400` and changes
+  nothing, instead of being read as an empty object. A wrong-typed
+  subscription field (`is_active`, `is_trial`, `amount_varies`,
+  `converts_to_price_minor`, `tags`, `reminder_days`) is a `422` on the
+  field, and the accepted flag words are documented. A save-on-change control
+  that fails says so and goes back to the state the server holds, and the
+  Lead times hint leaves its wording to the catalogue. OpenAPI 1.9.9 adds the
+  `400`. No migrations. See [the API reference](api.md) and
+  [Notifications](features/notifications.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
