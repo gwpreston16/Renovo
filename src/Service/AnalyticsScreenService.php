@@ -105,6 +105,10 @@ final class AnalyticsScreenService
         // below reads a figure the next page load would correct.
         $stats = $this->stats->dashboard($scope);
 
+        // Once for every walk into the past the page makes (K167): the KPI
+        // row's year to date, both charts and the year-over-year card.
+        $sources = $this->history->sourcesForScreen($scope);
+
         $all = $this->subscriptions->allForStats($scope);
         $breakdown = $this->breakdown->fromStats($stats);
         $byMethod = $this->breakdown->fromStats($stats, CategoryBreakdownService::BY_PAYMENT_METHOD);
@@ -120,7 +124,7 @@ final class AnalyticsScreenService
         $valueSignals = $this->usage->valueSignals($all);
 
         return [
-            'kpis' => $this->kpis($scope, $stats, $changes),
+            'kpis' => $this->kpis($scope, $stats, $changes, $sources),
             // The recurring cost over a year, which the per-period figures at
             // the foot of the page are derived from.
             'yearly' => [
@@ -135,11 +139,11 @@ final class AnalyticsScreenService
             ],
             // The dashboard's chart, asked for twelve months a side rather than
             // six: its thirteen bars are thirteen of these.
-            'chart' => $this->spendChart->window($scope, self::CHART_MONTHS, self::CHART_MONTHS),
-            'year_against_year' => $this->spendChart->yearAgainstYear($scope),
+            'chart' => $this->spendChart->window($scope, self::CHART_MONTHS, self::CHART_MONTHS, null, $sources),
+            'year_against_year' => $this->spendChart->yearAgainstYear($scope, $sources),
             // The rolling twelve months against the twelve before, kept as the
             // summary line beneath the calendar-year bars.
-            'year_over_year' => $this->history->yearOverYear($scope),
+            'year_over_year' => $this->history->yearOverYear($scope, $sources),
             // The household dashboard's card, scoped the same way: only the
             // viewer's own share in ISOLATED mode, private rows only for their
             // payer.
@@ -181,7 +185,7 @@ final class AnalyticsScreenService
      * @param list<HouseholdChange> $changes
      * @return array<string, mixed>
      */
-    private function kpis(Scope $scope, array $stats, array $changes): array
+    private function kpis(Scope $scope, array $stats, array $changes, SpendSources $sources): array
     {
         $today = $this->clock->today();
         $monthsElapsed = (int) $today->format('n');
@@ -189,7 +193,7 @@ final class AnalyticsScreenService
         // The household dashboard's own two figures, read rather than
         // recomputed, so the two screens cannot state different numbers for
         // the same stretch of time.
-        $spent = $this->householdDashboard->yearToDate($scope);
+        $spent = $this->householdDashboard->yearToDate($scope, $sources);
         $ahead = $this->householdDashboard->yearAhead($scope);
 
         /** @var array<string, int> $spentByCurrency */

@@ -49,11 +49,6 @@ use DateTimeImmutable;
  *
  * @phpstan-import-type Combined from StatsService
  * @phpstan-import-type MonthTotals from ForecastService
- * @phpstan-type Sources array{
- *     history: array<int, list<PriceChange>>,
- *     ledger: array<int, list<Charge>>,
- *     first: array<int, array{written: DateTimeImmutable|null, any: DateTimeImmutable}>
- * }
  * @phpstan-type HistoricCharge array{
  *     subscription: Subscription,
  *     date: DateTimeImmutable,
@@ -71,6 +66,13 @@ final class SpendHistoryService
      * like with like.
      */
     public const MONTHS = 12;
+
+    /**
+     * How far back `sourcesForScreen()` reads: two years and a month, which
+     * reaches the lower bound of every walk a screen makes (the year-over-year
+     * card's second window is the furthest, at two years back).
+     */
+    private const SCREEN_LOOKBACK_MONTHS = 25;
 
     public function __construct(
         private readonly SubscriptionService $subscriptions,
@@ -98,6 +100,9 @@ final class SpendHistoryService
      * keep no history; a member who joined an arrangement last month is
      * counted as though they had always been in it.
      *
+     * `$sources` is what a screen that makes several walks loaded once for all
+     * of them; a walk it does not cover loads its own.
+     *
      * @return array{charges: list<HistoricCharge>, excluded_count: int}
      */
     public function charges(
@@ -105,16 +110,19 @@ final class SpendHistoryService
         DateTimeImmutable $from,
         DateTimeImmutable $to,
         ?int $forUserId = null,
+        ?SpendSources $sources = null,
     ): array {
         $charges = [];
         $excluded = 0;
-        $splits = $forUserId === null ? [] : $this->splits->allInScope($scope);
-        $sources = $this->sources($scope, $from, $to);
+        $sources = $this->resolve($sources, $scope, $from, $to);
+        $splits = $forUserId === null
+            ? []
+            : $sources->splits(fn (): array => $this->splits->allInScope($scope));
 
-        foreach ($this->subscriptions->allForStats($scope, false) as $subscription) {
+        foreach ($sources->subscriptions as $subscription) {
             // No start date is no evidence of when it began — unless the
             // ledger has recorded charges for it since.
-            if ($subscription->startDate === null && !isset($sources['first'][$subscription->id])) {
+            if ($subscription->startDate === null && !isset($sources->first[$subscription->id])) {
                 $excluded++;
                 continue;
             }
@@ -161,9 +169,13 @@ final class SpendHistoryService
      *
      * @return array{by_currency: array<string, int>, combined: Combined, excluded_count: int}
      */
-    public function spent(Scope $scope, DateTimeImmutable $from, DateTimeImmutable $to): array
-    {
-        $walk = $this->charges($scope, $from, $to);
+    public function spent(
+        Scope $scope,
+        DateTimeImmutable $from,
+        DateTimeImmutable $to,
+        ?SpendSources $sources = null,
+    ): array {
+        $walk = $this->charges($scope, $from, $to, null, $sources);
 
         $byCurrency = [];
         foreach ($walk['charges'] as $charge) {
@@ -232,9 +244,16 @@ final class SpendHistoryService
         int $months = self::MONTHS,
         ?DateTimeImmutable $through = null,
         ?int $forUserId = null,
+        ?SpendSources $sources = null,
     ): array {
         $windowStart = $this->windowStart($months);
-        $walk = $this->charges($scope, $windowStart->modify('-1 day'), $through ?? $this->clock->today(), $forUserId);
+        $walk = $this->charges(
+            $scope,
+            $windowStart->modify('-1 day'),
+            $through ?? $this->clock->today(),
+            $forUserId,
+            $sources,
+        );
 
         return [
             'months' => $this->bucket($walk['charges'], $windowStart, $months),
@@ -260,9 +279,16 @@ final class SpendHistoryService
         Scope $scope,
         int $months = self::MONTHS,
         ?DateTimeImmutable $through = null,
+        ?SpendSources $sources = null,
     ): array {
         $windowStart = $this->windowStart($months);
-        $walk = $this->charges($scope, $windowStart->modify('-1 day'), $through ?? $this->clock->today());
+        $walk = $this->charges(
+            $scope,
+            $windowStart->modify('-1 day'),
+            $through ?? $this->clock->today(),
+            null,
+            $sources,
+        );
 
         $grouped = [];
         $meta = [];
@@ -371,7 +397,7 @@ final class SpendHistoryService
      *     excluded_count: int
      * }
      */
-    public function yearOverYear(Scope $scope): array
+    public function yearOverYear(Scope $scope, ?SpendSources $sources = null): array
     {
         $today = $this->clock->today();
         $currentFrom = $today->modify('-1 year');
@@ -380,12 +406,12 @@ final class SpendHistoryService
         $currentByCurrency = [];
         $previousByCurrency = [];
         $excluded = 0;
-        $sources = $this->sources($scope, $previousFrom, $today);
+        $sources = $this->resolve($sources, $scope, $previousFrom, $today);
 
-        foreach ($this->subscriptions->allForStats($scope, false) as $subscription) {
+        foreach ($sources->subscriptions as $subscription) {
             // No start date is no evidence of when it began — unless the
             // ledger has recorded charges for it since.
-            if ($subscription->startDate === null && !isset($sources['first'][$subscription->id])) {
+            if ($subscription->startDate === null && !isset($sources->first[$subscription->id])) {
                 $excluded++;
                 continue;
             }
@@ -435,19 +461,68 @@ final class SpendHistoryService
     }
 
     /**
-     * What every past-spend walk reads, loaded once rather than once per
-     * subscription: each one's price history (K17), the ledger rows in the
-     * window, and where each subscription's ledger begins.
+     * What every past-spend walk reads, loaded once: the subscriptions, each
+     * one's price history (K17), the ledger rows in `($from, $to]` and where
+     * each subscription's ledger begins.
      *
-     * @return Sources
+     * A screen that makes several walks calls this once, for a window that
+     * contains all of theirs, and hands the result to each (K155, K167).
      */
-    private function sources(Scope $scope, DateTimeImmutable $from, DateTimeImmutable $to): array
+    public function sources(Scope $scope, DateTimeImmutable $from, DateTimeImmutable $to): SpendSources
     {
-        return [
-            'history' => $this->priceHistory->findAllBySubscription($scope),
-            'ledger' => $this->ledger->findInWindow($scope, $from, $to),
-            'first' => $this->ledger->firstDueDates($scope),
-        ];
+        return new SpendSources(
+            $scope,
+            $from,
+            $to,
+            $this->subscriptions->allForStats($scope, false),
+            $this->priceHistory->findAllBySubscription($scope),
+            $this->ledger->findInWindow($scope, $from, $to),
+            $this->ledger->firstDueDates($scope),
+        );
+    }
+
+    /**
+     * The sources for walks of `$months` buckets, as `history()` and
+     * `historyByCategory()` take them, ending at `$through` (today by default).
+     */
+    public function sourcesForMonths(Scope $scope, int $months, ?DateTimeImmutable $through = null): SpendSources
+    {
+        return $this->sources(
+            $scope,
+            $this->windowStart($months)->modify('-1 day'),
+            $through ?? $this->clock->today(),
+        );
+    }
+
+    /**
+     * The sources for a screen whose walks all end today or earlier and reach
+     * no further back than the year-over-year card's two years.
+     */
+    public function sourcesForScreen(Scope $scope): SpendSources
+    {
+        $today = $this->clock->today();
+
+        return $this->sources(
+            $scope,
+            $today->modify('first day of this month')
+                ->modify(sprintf('-%d months', self::SCREEN_LOOKBACK_MONTHS))
+                ->modify('-1 day'),
+            $today,
+        );
+    }
+
+    /**
+     * The sources a walk was handed if they cover it, else its own.
+     */
+    private function resolve(
+        ?SpendSources $given,
+        Scope $scope,
+        DateTimeImmutable $from,
+        DateTimeImmutable $to,
+    ): SpendSources {
+        return $given !== null && $given->covers($scope, $from, $to)
+            ? $given
+            : $this->sources($scope, $from, $to);
     }
 
     /**
@@ -458,23 +533,26 @@ final class SpendHistoryService
      * partition the charges rather than sharing the one on the boundary. A
      * skipped charge did not happen and is left out.
      *
-     * @param Sources $sources
      * @return list<array{date: DateTimeImmutable, amount: Money}>
      */
     private function historicCharges(
-        array $sources,
+        SpendSources $sources,
         Subscription $subscription,
         DateTimeImmutable $from,
         DateTimeImmutable $to,
     ): array {
-        $history = $sources['history'][$subscription->id] ?? [];
-        $first = $sources['first'][$subscription->id]['written'] ?? null;
+        $history = $sources->history[$subscription->id] ?? [];
+        $first = $sources->first[$subscription->id]['written'] ?? null;
 
         // Every ledger row in the window counts, a payment added by hand
         // included; a date that has one is never also reconstructed.
         $charges = [];
         $recorded = [];
-        foreach ($sources['ledger'][$subscription->id] ?? [] as $charge) {
+        foreach ($sources->ledger[$subscription->id] ?? [] as $charge) {
+            // The sources may span a wider window than this walk.
+            if ($charge->dueDate <= $from || $charge->dueDate > $to) {
+                continue;
+            }
             $recorded[$charge->dueDate->format('Y-m-d')] = true;
             if (!$charge->isSkipped()) {
                 $charges[] = ['date' => $charge->dueDate, 'amount' => $charge->amount()];

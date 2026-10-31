@@ -89,12 +89,14 @@ final class SpendTrendService
      * The card's payload for one view.
      *
      * `$whoPays` is the dashboard's own, passed through when it has already
-     * been worked out; left null, it is asked for.
+     * been worked out; left null, it is asked for. `$sources` is the spend the
+     * dashboard already loaded for its other walks; left null, the card loads
+     * its own, once, for every line it draws.
      *
      * @param WhoPays|null $whoPays
      * @return array<string, mixed>
      */
-    public function trend(Scope $scope, string $by, ?array $whoPays = null): array
+    public function trend(Scope $scope, string $by, ?array $whoPays = null, ?SpendSources $sources = null): array
     {
         $whoPays ??= $this->household->whoPays($scope);
         $memberAvailable = count($whoPays['rows']) > 1;
@@ -106,10 +108,11 @@ final class SpendTrendService
         }
 
         $through = $this->clock->today()->modify('first day of this month')->modify('-1 day');
+        $sources ??= $this->history->sourcesForMonths($scope, self::MONTHS + 1, $through);
 
         [$raw, $excluded] = $by === self::BY_MEMBER
-            ? $this->memberSeries($scope, $whoPays['rows'], $through)
-            : $this->categorySeries($scope, $through);
+            ? $this->memberSeries($scope, $whoPays['rows'], $through, $sources)
+            : $this->categorySeries($scope, $through, $sources);
 
         $payload = [
             'by' => $by,
@@ -194,9 +197,9 @@ final class SpendTrendService
      *
      * @return array{0: list<array<string, mixed>>, 1: int}
      */
-    private function categorySeries(Scope $scope, DateTimeImmutable $through): array
+    private function categorySeries(Scope $scope, DateTimeImmutable $through, SpendSources $sources): array
     {
-        $history = $this->history->historyByCategory($scope, self::MONTHS + 1, $through);
+        $history = $this->history->historyByCategory($scope, self::MONTHS + 1, $through, $sources);
 
         $series = [];
         foreach ($history['categories'] as $category) {
@@ -219,14 +222,14 @@ final class SpendTrendService
      * @param list<array<string, mixed>> $rows
      * @return array{0: list<array<string, mixed>>, 1: int}
      */
-    private function memberSeries(Scope $scope, array $rows, DateTimeImmutable $through): array
+    private function memberSeries(Scope $scope, array $rows, DateTimeImmutable $through, SpendSources $sources): array
     {
         $series = [];
         $excluded = 0;
         foreach ($rows as $row) {
             /** @var HouseholdMember $member */
             $member = $row['member'];
-            $history = $this->history->history($scope, self::MONTHS + 1, $through, $member->userId);
+            $history = $this->history->history($scope, self::MONTHS + 1, $through, $member->userId, $sources);
             // Every member's walk passes over the same subscriptions, so the
             // count left out is the same number each time, not a sum.
             $excluded = $history['excluded_count'];

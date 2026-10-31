@@ -66,12 +66,20 @@ final class SpendChartService
      * of a start date, comes back with the bars, because a reconstructed
      * figure owes its reader that number.
      *
+     * `$sources` is the spend a screen that draws several charts loaded once
+     * for all of them; left null, the chart loads its own.
+     *
      * @return array<string, mixed>
      */
-    public function window(Scope $scope, int $pastMonths, int $futureMonths, ?int $budgetMinor = null): array
-    {
+    public function window(
+        Scope $scope,
+        int $pastMonths,
+        int $futureMonths,
+        ?int $budgetMinor = null,
+        ?SpendSources $sources = null,
+    ): array {
         $yesterday = $this->clock->today()->modify('-1 day');
-        $past = $this->history->history($scope, $pastMonths + 1, $yesterday);
+        $past = $this->history->history($scope, $pastMonths + 1, $yesterday, null, $sources);
         $future = $this->forecast->monthly($scope, $futureMonths + 1);
 
         return $this->monthBars($past['months'], $future, $budgetMinor) + [
@@ -94,7 +102,7 @@ final class SpendChartService
      *
      * @return array<string, mixed>
      */
-    public function yearAgainstYear(Scope $scope): array
+    public function yearAgainstYear(Scope $scope, ?SpendSources $sources = null): array
     {
         $today = $this->clock->today();
         $currency = $this->settings->baseCurrency();
@@ -102,7 +110,7 @@ final class SpendChartService
 
         // From last January to this month, counted back from today: twelve
         // buckets for last year, then this year's so far.
-        $past = $this->history->history($scope, 12 + $monthOfYear, $today->modify('-1 day'));
+        $past = $this->history->history($scope, 12 + $monthOfYear, $today->modify('-1 day'), null, $sources);
         // From this month to December.
         $future = $this->forecast->monthly($scope, 13 - $monthOfYear);
 

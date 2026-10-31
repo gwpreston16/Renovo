@@ -91,14 +91,14 @@ None.
   writes).
 - **K155, K167:** make the screens do what their own comments already claim
   ("loaded once rather than once per subscription"), one level up.
-- **Release — Assumed 2026-10-31:** its own patch release once merged, the
-  patch after Phase 71's (v1.29.2 if 71 ships first). No migration, so no
+- **Release — Decided 2026-10-31:** its own patch release once merged, v1.30.1
+  (Phase 71 shipped as v1.30.0). Not chosen: holding it to ship with Phase 73. No migration, so no
   back-up-first note beyond the standard line.
 
 ## Status
 
-- [ ] K167: `/stats`, the overview and the household dashboard load the spend sources once per request
-- [ ] K155: the "by member" chart loads once and replays per member
+- [x] K167: `/stats`, the overview and the household dashboard load the spend sources once per request
+- [x] K155: the "by member" chart loads once and replays per member
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed
 - [ ] ROADMAP: Phase 72 row marked ✅ done
@@ -114,13 +114,23 @@ are at least 80% covered and the suite at least 85%. No migration. Then mark it
 
 ## Tests
 
-- K167: `AnalyticsScreenTest::testTheOverviewLoadsTheSpendSourcesOnce`,
-  `HouseholdDashboardTest::testTheDashboardLoadsTheSpendSourcesOnce`,
-  `SpendFiguresTest::testStatsLoadsTheSpendSourcesOnce` (each counts statements
-  at a fixed household and asserts a ceiling that does not grow with
-  subscriptions or members), and
-  `SpendHistoryTest::testAWalkGivenSourcesReadsNoMore` (no extra statements,
-  same charges).
-- K155: `SpendTrendServiceTest::testByMemberLoadsTheSourcesOnce`,
-  `SpendTrendServiceTest::testByMemberSeriesAreUnchanged` (SHARED and
-  ISOLATED).
+- K167: `AnalyticsScreenTest::testTheOverviewLoadsTheSpendSourcesOnce` (72
+  statements before, 52 after),
+  `HouseholdDashboardTest::testTheDashboardLoadsTheSpendSourcesOnce` (54 before,
+  39 after), and `SpendHistoryTest::testAWalkGivenSourcesReadsNoMore`,
+  `testSourcesForAWiderWindowGiveANarrowerWalkTheSameCharges` and
+  `testAWalkTheSourcesDoNotCoverLoadsItsOwn` (the shared load changes no
+  figure, and a wrong hand-off falls back).
+- K155: `HouseholdDashboardTest::testByMemberLoadsTheSourcesOnce` (27 statements
+  before, 15 after, against 14 for the category view); the existing
+  `testSpendOverTimeByMemberIsEachMembersShare` and
+  `testSpendOverTimeUnderIsolationIsYourOwnRows` keep the series identical.
+
+## Notes from the build
+
+- The by-member tests live in `HouseholdDashboardTest`, which already has the
+  three-member household, rather than in a new `SpendTrendServiceTest`.
+- `/stats` is `AnalyticsScreenService::overview()`; it, the household dashboard
+  and the trend card load the sources once with `sourcesForScreen()` or
+  `sourcesForMonths()`. `CalendarService` and `BudgetMonthService` still make
+  one walk each and load their own.

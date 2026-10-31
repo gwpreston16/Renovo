@@ -192,6 +192,68 @@ final class SpendHistoryTest extends DatabaseTestCase
         );
     }
 
+    public function testAWalkGivenSourcesReadsNoMore(): void
+    {
+        $id = $this->createMonthly('Streaming', 1000, '2024-06-15');
+        $this->recordLedger($id, ['2026-03-15', '2026-04-15']);
+        $scope = $this->scope();
+        $from = new DateTimeImmutable('2025-06-15');
+        $to = new DateTimeImmutable('2026-06-15');
+
+        $plain = $this->history->charges($scope, $from, $to);
+        $sources = $this->history->sources($scope, $from, $to);
+
+        $before = $this->db->statementCount();
+        $given = $this->history->charges($scope, $from, $to, null, $sources);
+
+        self::assertSame(0, $this->db->statementCount() - $before, 'A covered walk reads nothing more.');
+        self::assertEquals($plain, $given);
+        self::assertNotSame([], $plain['charges']);
+    }
+
+    public function testSourcesForAWiderWindowGiveANarrowerWalkTheSameCharges(): void
+    {
+        // One ledger row inside the narrow walk and one before it: the wider
+        // load holds both, and the walk must count only its own.
+        $id = $this->createMonthly('Streaming', 1000, '2024-06-15');
+        $this->recordLedger($id, ['2025-08-15', '2026-04-15']);
+        $scope = $this->scope();
+        $from = new DateTimeImmutable('2026-01-01');
+        $to = new DateTimeImmutable('2026-06-15');
+
+        $plain = $this->history->charges($scope, $from, $to);
+        $wide = $this->history->sourcesForScreen($scope);
+
+        self::assertEquals($plain, $this->history->charges($scope, $from, $to, null, $wide));
+        self::assertEquals(
+            $this->history->history($scope, 6, $to),
+            $this->history->history($scope, 6, $to, null, $wide),
+        );
+        self::assertEquals($this->history->yearOverYear($scope), $this->history->yearOverYear($scope, $wide));
+    }
+
+    public function testAWalkTheSourcesDoNotCoverLoadsItsOwn(): void
+    {
+        $this->createMonthly('Streaming', 1000, '2024-06-15');
+        $scope = $this->scope();
+        $from = new DateTimeImmutable('2025-06-15');
+        $to = new DateTimeImmutable('2026-06-15');
+        $plain = $this->history->charges($scope, $from, $to);
+
+        // Too short a window, and another member's scope: both fall back.
+        $short = $this->history->sources($scope, new DateTimeImmutable('2026-03-01'), $to);
+        $other = $this->history->sources(
+            Scope::forMember($this->alice, false, $this->household, Role::Viewer, IsolationMode::Shared),
+            $from,
+            $to,
+        );
+
+        $before = $this->db->statementCount();
+        self::assertEquals($plain, $this->history->charges($scope, $from, $to, null, $short));
+        self::assertGreaterThan(0, $this->db->statementCount() - $before);
+        self::assertEquals($plain, $this->history->charges($scope, $from, $to, null, $other));
+    }
+
     public function testTheWindowIsTwelveCalendarMonthsEndingWithThisOne(): void
     {
         $months = $this->history->monthly($this->scope());
@@ -491,6 +553,27 @@ final class SpendHistoryTest extends DatabaseTestCase
             'is_active' => $isActive,
             'cancelled_at' => $cancelledAt,
         ], []);
+    }
+
+    /**
+     * @param list<string> $dates
+     */
+    private function recordLedger(int $subscriptionId, array $dates): void
+    {
+        $service = new ChargeService(
+            new ChargeRepository($this->db),
+            $this->subscriptions,
+            $this->priceHistory,
+            new ChargeSchedule(),
+            FrozenClock::at('2026-06-15 09:00:00'),
+        );
+        $subscription = $this->subscriptions->find($this->scope(), $subscriptionId);
+        self::assertNotNull($subscription);
+        $service->recordPassed(
+            $this->scope(),
+            $subscription,
+            array_map(static fn (string $date): DateTimeImmutable => new DateTimeImmutable($date), $dates),
+        );
     }
 
     private function scope(): Scope

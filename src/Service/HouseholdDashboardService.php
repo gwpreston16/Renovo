@@ -94,17 +94,22 @@ final class HouseholdDashboardService
         $breakdown = $this->breakdown->fromStats($stats);
         $whoPays = $this->household->whoPays($scope);
 
+        // After the catch-up above, and once for every walk into the past the
+        // page makes (K167): the month so far, the year to date and its
+        // comparison, the trend and the pace line.
+        $sources = $this->history->sourcesForScreen($scope);
+
         return [
-            'month' => $this->monthSoFar($scope, $monthlyBudget),
+            'month' => $this->monthSoFar($scope, $monthlyBudget, $sources),
             'hero' => [
-                'year_to_date' => $this->yearToDate($scope),
+                'year_to_date' => $this->yearToDate($scope, $sources),
                 'year_ahead' => $this->yearAhead($scope),
                 'trials' => $this->trialsConverting($scope),
             ],
             'timeline' => $this->timeline($scope),
             'who_pays' => $whoPays,
-            'trend' => $this->trend->trend($scope, $trendBy, $whoPays),
-            'pace' => $this->pace($scope, $monthlyBudget),
+            'trend' => $this->trend->trend($scope, $trendBy, $whoPays, $sources),
+            'pace' => $this->pace($scope, $monthlyBudget, $sources),
             'by_category' => $breakdown,
             'base_currency' => $this->settings->baseCurrency(),
         ];
@@ -121,12 +126,12 @@ final class HouseholdDashboardService
      *
      * @return array<string, mixed>
      */
-    private function monthSoFar(Scope $scope, ?Budget $budget): array
+    private function monthSoFar(Scope $scope, ?Budget $budget, SpendSources $sources): array
     {
         $today = $this->clock->today();
         $yesterday = $today->modify('-1 day');
 
-        $charged = $this->history->history($scope, 1, $yesterday)['months'][0]['by_currency'] ?? [];
+        $charged = $this->history->history($scope, 1, $yesterday, null, $sources)['months'][0]['by_currency'] ?? [];
         $due = $this->forecast->monthly($scope, 1)[0]['by_currency'] ?? [];
 
         $total = $charged;
@@ -179,13 +184,18 @@ final class HouseholdDashboardService
      *
      * @return array<string, mixed>
      */
-    public function yearToDate(Scope $scope): array
+    public function yearToDate(Scope $scope, ?SpendSources $sources = null): array
     {
         $yesterday = $this->clock->today()->modify('-1 day');
         $newYearsEve = $this->clock->today()->modify('first day of january this year')->modify('-1 day');
 
-        $current = $this->history->spent($scope, $newYearsEve, $yesterday);
-        $previous = $this->history->spent($scope, $newYearsEve->modify('-1 year'), $yesterday->modify('-1 year'));
+        $current = $this->history->spent($scope, $newYearsEve, $yesterday, $sources);
+        $previous = $this->history->spent(
+            $scope,
+            $newYearsEve->modify('-1 year'),
+            $yesterday->modify('-1 year'),
+            $sources,
+        );
 
         $nowMinor = $current['combined']['amount_minor'];
         $thenMinor = $previous['combined']['amount_minor'];
@@ -320,7 +330,7 @@ final class HouseholdDashboardService
      *
      * @return array<string, mixed>|null
      */
-    private function pace(Scope $scope, ?Budget $monthlyBudget): ?array
+    private function pace(Scope $scope, ?Budget $monthlyBudget, SpendSources $sources): ?array
     {
         $yearly = $this->budgets->householdOverall($scope, BudgetPeriod::Annual);
         $source = $yearly ?? $monthlyBudget;
@@ -335,7 +345,7 @@ final class HouseholdDashboardService
         $today = $this->clock->today();
         $yesterday = $today->modify('-1 day');
         $monthsElapsed = (int) $today->format('n');
-        $history = $this->history->history($scope, $monthsElapsed, $yesterday);
+        $history = $this->history->history($scope, $monthsElapsed, $yesterday, null, $sources);
 
         $cumulative = [];
         $running = 0;
