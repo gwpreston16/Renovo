@@ -274,3 +274,13 @@ The bundled nginx adds `nosniff`, `Referrer-Policy` and
 `Cross-Origin-Resource-Policy` only to the static files it serves itself
 (`/build/`, `/assets/`), and the sandbox policy to uploaded logos; it adds
 nothing to what PHP answers.
+
+### Compression and the CSRF token
+
+Every page carries the session's CSRF token, and the list search reflects what
+the visitor typed. A compressed response that does both lets an attacker who
+can watch response sizes recover the token a byte at a time (BREACH). So the
+bundled nginx compresses only the static files in `/build/` and `/assets/`
+(text, never the application's HTML), and your own proxy should do the same:
+compress those two paths if you like, and leave responses from the application
+uncompressed. The token is not masked per response today.

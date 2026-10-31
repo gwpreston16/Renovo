@@ -89,4 +89,36 @@ final class NginxConfigTest extends TestCase
             (string) file_get_contents($root . '/docker-compose.yml'),
         );
     }
+
+    /**
+     * Compression is for the static files only (K166): HTML from index.php
+     * carries the session-wide CSRF token, and compressing a response that
+     * reflects the visitor's input would expose it to BREACH.
+     */
+    public function testOnlyTheStaticBlocksAreGzipped(): void
+    {
+        $conf = (string) file_get_contents(dirname(__DIR__, 2) . '/docker/nginx/default.conf');
+
+        $blocks = [];
+        foreach (['/assets/logos/', '/build/', '/assets/', '/', '~ ^/index\.php$', '~ \.php$'] as $name) {
+            $start = strpos($conf, 'location ' . ($name === '/assets/logos/' ? '^~ ' : '') . $name . ' {');
+            self::assertNotFalse($start, 'location ' . $name . ' is in the config');
+            $end = strpos($conf, "
+    }
+", $start);
+            $blocks[$name] = substr($conf, $start, (int) $end - $start);
+        }
+
+        foreach (['/build/', '/assets/'] as $name) {
+            self::assertMatchesRegularExpression('/^\s*gzip on;/m', $blocks[$name], $name . ' is gzipped');
+            self::assertStringContainsString('gzip_vary on;', $blocks[$name]);
+            self::assertStringContainsString('text/css', $blocks[$name]);
+            self::assertStringContainsString('javascript', $blocks[$name]);
+            self::assertStringNotContainsString('text/html', $blocks[$name]);
+        }
+        foreach (['/assets/logos/', '/', '~ ^/index\.php$', '~ \.php$'] as $name) {
+            self::assertStringNotContainsString('gzip on', $blocks[$name], $name . ' is not gzipped');
+        }
+        self::assertSame(2, preg_match_all('/^\s*gzip on;/m', $conf), 'gzip is on in two blocks only');
+    }
 }
