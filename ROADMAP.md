@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–71
+## Planned — Phases 30–72
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -80,6 +80,7 @@ can be moved.
 | 69 | [Trials, counts and household edges, from the known-issues log](docs/phases/PHASE-69.md) | — | None | ✅ done |
 | 70 | [API bodies and save-on-change messages, from the known-issues log](docs/phases/PHASE-70.md) | — | None | ✅ done |
 | 71 | [Split deletes and static-file compression, from the known-issues log](docs/phases/PHASE-71.md) | — | None | 📋 planned |
+| 72 | [Spend walks load their sources once, from the known-issues log](docs/phases/PHASE-72.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -216,6 +217,7 @@ can be moved.
 - **69 — Trials, counts and household edges.** A batch from the known-issues log (K139, K144, K151, K154, K163, K168): a running trial is no longer caught up before it ends, the list tiles and the due-soon badge stop loading every subscription to count a few, "just mine" scenario figures are marked "≈" only for the member's own varying bills, only an instance admin may restore an instance admin's login, and Phinx runs on Postgres in UTC.
 - **70 — API bodies and save-on-change messages.** A batch from the known-issues log (K147, K159, K164, K165): an unreadable JSON write body is a 400 and not an empty object, wrong-typed subscription fields are a 422 on the field, a failed save-on-change control says so, and the Lead times hint leaves its wording to the catalogue.
 - **71 — Split deletes and static-file compression.** A batch from the known-issues log (K172, K166): clearing a split checks the parent with the subscription write predicate instead of a hand-written copy, and the bundled web image gzips `/build/` and `/assets/` (never HTML).
+- **72 — Spend walks load their sources once.** A batch from the known-issues log (K155, K167): `/stats`, the overview, the household dashboard and the "by member" chart load the household's subscriptions, price history and ledger once per request instead of once per walk; the figures do not change.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
