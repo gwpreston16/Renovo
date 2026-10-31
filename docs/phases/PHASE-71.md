@@ -88,6 +88,12 @@ None.
   The change to the web image needs `docker compose build`/`pull` to take
   effect, which the CHANGELOG entry says.
 
+- **Confirmed 2026-10-31 (start of the build):** every decision above stands.
+  *Found while starting it:* `SplitRepository` is built from the database alone
+  in many tests and in `config/`, so it makes its own `SubscriptionRepository`
+  over the same `Database` for the parent check rather than taking a new
+  constructor argument. Nothing the owner chose changes.
+
 ## Status
 
 - [ ] K172: the split delete builds its parent check from the subscription write predicate
