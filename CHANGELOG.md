@@ -8,6 +8,26 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.31.2] - 2026-11-01
+
+### Changed
+
+- **The application image runs PHP 8.5 and the web image nginx 1.31.** They
+  were `php:8.4-fpm-alpine` and `nginx:1.29-alpine`. PHP 8.5 builds OPcache in,
+  so the Dockerfile no longer installs it as an extension; it is still loaded
+  and `php.ini` is unchanged. PHP 8.5 logs two startup deprecations for
+  `session.sid_length` and `session.sid_bits_per_character`, which are harmless.
+  CI's PHPUnit jobs still run PHP 8.4 and `composer.json` still requires
+  `>=8.4`. Rebuild or pull the images to get them. *Phase 73.2.*
+- **The MySQL compose override runs MySQL 9.7.** `docker-compose.mysql.yml`
+  moves from `mysql:8.4` to `mysql:9.7`, and CI runs both MySQL test legs
+  against it. A first start on an 8.4 volume upgrades the data directory in
+  place, which MySQL cannot undo, so back up first; to stay on 8.4, keep
+  `image: mysql:8.4` in your own override. PostgreSQL is unchanged. See
+  [Upgrading](docs/upgrading.md). *Phase 73.2.*
+- **PHP dependencies are current.** The Symfony polyfills and phpdotenv (5.8)
+  moved to their newest minor and patch releases. *Phase 73.2.*
+
 ## [1.31.1] - 2026-11-01
 
 ### Changed
@@ -1345,7 +1365,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.31.1...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.31.2...HEAD
+[1.31.2]: https://github.com/gwpreston16/Renovo/compare/v1.31.1...v1.31.2
 [1.31.1]: https://github.com/gwpreston16/Renovo/compare/v1.31.0...v1.31.1
 [1.31.0]: https://github.com/gwpreston16/Renovo/compare/v1.30.0...v1.31.0
 [1.30.0]: https://github.com/gwpreston16/Renovo/compare/v1.29.0...v1.30.0

@@ -804,6 +804,11 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
 - **Phase 73.1 — front-end dependency patch — hotfix (1.31.1).** chart.js
   4.5.1 to 4.6.1 and Lucide 1.61.0 to 1.64.0, from Dependabot's npm group,
   with no change to the screens, the API or the data. No migrations.
+- **Phase 73.2 — image and engine updates — hotfix (1.31.2).** The images
+  move to PHP 8.5 and nginx 1.31 and the MySQL compose override to MySQL 9.7,
+  with the Composer group and a CI that tests MySQL 9.7. The MySQL start
+  upgrades an existing data directory in place, so back up first. No
+  migrations. See [Upgrading](upgrading.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
