@@ -462,9 +462,6 @@ final class ProfilePageTest extends DatabaseTestCase
     }
 
     /**
-     * @param array<string, mixed> $body
-     */
-    /**
      * K174: the challenge a registration completes against is only handed out
      * for the right password, and none is kept for a wrong one.
      */
@@ -473,28 +470,59 @@ final class ProfilePageTest extends DatabaseTestCase
         $this->signIn($this->viewerId);
 
         foreach ([[], ['password' => 'not-the-password']] as $payload) {
-            $stream = fopen('php://temp', 'r+');
-            fwrite($stream, json_encode($payload, JSON_THROW_ON_ERROR));
-            rewind($stream);
+            $response = $this->passkeyOptions($payload);
 
-            $container = $this->app->getContainer();
-            self::assertNotNull($container);
-            $request = (new ServerRequestFactory())
+            self::assertSame(422, $response->getStatusCode());
+            self::assertNull($this->session->get('passkey_registration_options'));
+        }
+
+        $response = $this->passkeyOptions(['password' => self::PASSWORD]);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertNotNull($this->session->get('passkey_registration_options'));
+    }
+
+    public function testAWrongPasswordLeavesThePasskeyWhereItIs(): void
+    {
+        $this->signIn($this->viewerId);
+        $passkey = $this->passkeyFor($this->viewerId, 'Laptop');
+
+        $this->request(
+            'POST',
+            '/profile/two-step/passkeys/' . $passkey . '/delete',
+            ['password' => 'not-the-password'],
+        );
+
+        self::assertSame('Laptop', $this->passkeyName($passkey));
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function passkeyOptions(array $payload): ResponseInterface
+    {
+        $stream = fopen('php://temp', 'r+');
+        fwrite($stream, json_encode($payload, JSON_THROW_ON_ERROR));
+        rewind($stream);
+
+        $container = $this->app->getContainer();
+        self::assertNotNull($container);
+
+        return $this->app->handle(
+            (new ServerRequestFactory())
                 ->createServerRequest(
                     'POST',
                     'http://localhost/profile/two-step/passkeys/options',
                     ['REMOTE_ADDR' => '127.0.0.1'],
                 )
                 ->withBody(new \Slim\Psr7\Stream($stream))
-                ->withHeader(CsrfTokenManager::HEADER_NAME, $container->get(CsrfTokenManager::class)->token());
-
-            $response = $this->app->handle($request);
-
-            self::assertSame(422, $response->getStatusCode());
-            self::assertNull($this->session->get('passkey_registration_options'));
-        }
+                ->withHeader(CsrfTokenManager::HEADER_NAME, $container->get(CsrfTokenManager::class)->token()),
+        );
     }
 
+    /**
+     * @param array<string, mixed> $body
+     */
     private function request(string $method, string $path, array $body = [], bool $htmx = false): ResponseInterface
     {
         $request = (new ServerRequestFactory())->createServerRequest(

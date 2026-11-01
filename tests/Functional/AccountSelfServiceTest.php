@@ -382,6 +382,54 @@ final class AccountSelfServiceTest extends DatabaseTestCase
         self::assertSame('Mary Renamed', $member->displayName);
     }
 
+    public function testResendingThePendingAddressNeedsNoPassword(): void
+    {
+        $this->signIn($this->memberId);
+        $this->details('new@example.test');
+        self::assertCount(2, $this->mailer->messages);
+
+        $this->details('new@example.test', 'Mary Member', '');
+
+        // A fresh link went to the same address, with no new notice.
+        self::assertCount(3, $this->mailer->messages);
+        self::assertSame('new@example.test', $this->reload($this->memberId)->pendingEmail);
+    }
+
+    public function testADifferentAddressWhileOneIsPendingStillNeedsThePassword(): void
+    {
+        $this->signIn($this->memberId);
+        $this->details('new@example.test');
+
+        $this->details('other@example.test', 'Mary Member', '');
+
+        self::assertSame('new@example.test', $this->reload($this->memberId)->pendingEmail);
+    }
+
+    /**
+     * K179 through the web path: the controller hands the limiter a real
+     * client address, and a block refuses even the right password.
+     */
+    public function testWrongPasswordsAreStoppedAtTheAccountPage(): void
+    {
+        $this->signIn($this->memberId);
+
+        for ($guess = 1; $guess <= 5; $guess++) {
+            $this->details('new@example.test', 'Mary Member', 'wrong-' . $guess);
+        }
+
+        $this->details('new@example.test');
+
+        self::assertNull($this->reload($this->memberId)->pendingEmail);
+
+        $before = $this->reload($this->memberId)->passwordHash;
+        $this->request('POST', '/profile/password', [
+            'current_password' => self::PASSWORD,
+            'password' => 'a-brand-new-password',
+            'password_confirm' => 'a-brand-new-password',
+        ]);
+        self::assertSame($before, $this->reload($this->memberId)->passwordHash);
+    }
+
     public function testTheNameAloneNeedsNoPassword(): void
     {
         $this->signIn($this->memberId);

@@ -8,7 +8,7 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
-### Fixed
+### Security
 
 - **Changing the email address needs your password.** Profile → Who you are asks
   for the current password when the address changes (the name alone does not),
@@ -21,6 +21,9 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   the authenticator off, issuing new recovery codes and the prompts above count
   each miss against a budget of their own, per account and per IP, and refuse
   while it is spent. Sign-in's own budget is untouched. *Phase 74.*
+
+### Fixed
+
 - **A two-digit year in an imported CSV is refused.** `15/06/26` no longer
   imports as the year 26; the row is refused with its date. *Phase 74.*
 - **A day-first date with a time imports day-first.** `01/03/2026 00:00` is
