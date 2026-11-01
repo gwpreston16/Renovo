@@ -51,6 +51,12 @@ test('an HTML error page is not shown; the catalogue sentence is', () => {
     expect(status().textContent).toBe('No answer from the server.');
 });
 
+test('a plain-text error with an empty body shows the network message', () => {
+    htmx('responseError', form(), {xhr: xhr('   ', 'text/plain')});
+
+    expect(status().textContent).toBe('No answer from the server.');
+});
+
 test('no answer shows the catalogue\'s network message', () => {
     htmx('sendError', form(), {});
     expect(status().textContent).toBe('No answer from the server.');

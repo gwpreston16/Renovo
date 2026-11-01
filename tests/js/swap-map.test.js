@@ -111,3 +111,23 @@ test('the swap status is cleared and refilled', () => {
     vi.advanceTimersByTime(50);
     expect(status.textContent).toBe('3 results');
 });
+
+test('focus falls back to the region itself when it carries the fallback', () => {
+    document.body.innerHTML = `
+        <input id="q-a">
+        <section id="results" data-focus-fallback tabindex="-1"><p data-swap-status>3 results</p></section>`;
+    request('q-a');
+    document.getElementById('q-a').remove();
+    settle();
+
+    expect(document.activeElement.id).toBe('results');
+});
+
+test('focus is left alone when nothing with an id was focused at the start', () => {
+    document.activeElement.blur();
+    htmx('beforeRequest', document.body, {target: region()});
+    document.getElementById('q-a').remove();
+    settle();
+
+    expect(document.activeElement).toBe(document.body);
+});
