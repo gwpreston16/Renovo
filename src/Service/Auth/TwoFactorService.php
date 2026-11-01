@@ -8,7 +8,6 @@ use App\Domain\AuditAction;
 use App\Domain\Entity\User;
 use App\Repository\UserRepository;
 use App\Repository\WebAuthnCredentialRepository;
-use App\Security\PasswordHasher;
 use App\Security\SessionInterface;
 use App\Service\AuditLogService;
 use App\Service\ValidationException;
@@ -48,7 +47,7 @@ final class TwoFactorService
         private readonly RecoveryCodeService $recoveryCodes,
         private readonly WebAuthnCredentialRepository $credentials,
         private readonly UserRepository $users,
-        private readonly PasswordHasher $hasher,
+        private readonly PasswordReconfirmation $reconfirmation,
         private readonly AuditLogService $audit,
         private readonly SessionInterface $session,
         private readonly Clock $clock,
@@ -123,11 +122,9 @@ final class TwoFactorService
      * @return list<string>
      * @throws ValidationException
      */
-    public function regenerateRecoveryCodes(User $user, string $password): array
+    public function regenerateRecoveryCodes(User $user, string $password, string $ipAddress): array
     {
-        if (!$this->hasher->verify($password, $user->passwordHash)) {
-            throw ValidationException::field('password', 'error.password.incorrect');
-        }
+        $this->reconfirmation->assert($user, $password, 'password', $ipAddress);
 
         if (!$this->isRequiredFor($user->id)) {
             throw ValidationException::field(

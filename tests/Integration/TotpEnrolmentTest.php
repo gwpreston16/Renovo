@@ -71,7 +71,7 @@ final class TotpEnrolmentTest extends DatabaseTestCase
             $this->recovery,
             $credentials,
             new SecretCipher(new KeyRing('test-instance-secret-for-totp')),
-            $hasher,
+            \App\Tests\Support\Reconfirmation::make($this->db, $this->clock),
             $audit,
             $this->clock,
             new NullLogger(),
@@ -82,7 +82,7 @@ final class TotpEnrolmentTest extends DatabaseTestCase
             $this->recovery,
             $credentials,
             $this->users,
-            $hasher,
+            \App\Tests\Support\Reconfirmation::make($this->db, $this->clock),
             $audit,
             new \App\Tests\Support\ArraySession(),
             $this->clock,
@@ -253,7 +253,7 @@ final class TotpEnrolmentTest extends DatabaseTestCase
         $this->enrol();
         $original = $this->recoveryCodes->findUnused($this->user->id);
 
-        $fresh = $this->twoFactor->regenerateRecoveryCodes($this->user, self::PASSWORD);
+        $fresh = $this->twoFactor->regenerateRecoveryCodes($this->user, self::PASSWORD, '198.51.100.20');
 
         self::assertCount(RecoveryCodeService::CODE_COUNT, $fresh);
         self::assertNotEquals(
@@ -268,7 +268,7 @@ final class TotpEnrolmentTest extends DatabaseTestCase
         $this->enrol();
 
         try {
-            $this->totp->disable($this->user, 'not-the-password');
+            $this->totp->disable($this->user, 'not-the-password', '198.51.100.20');
             self::fail('Disabling should require the current password.');
         } catch (ValidationException $exception) {
             self::assertArrayHasKey('password', $exception->errors());
@@ -276,7 +276,7 @@ final class TotpEnrolmentTest extends DatabaseTestCase
 
         self::assertTrue($this->totp->isEnabled($this->user->id));
 
-        $this->totp->disable($this->user, self::PASSWORD);
+        $this->totp->disable($this->user, self::PASSWORD, '198.51.100.20');
 
         self::assertFalse($this->totp->isEnabled($this->user->id));
         self::assertSame(0, $this->twoFactor->unusedRecoveryCodeCount($this->user->id));

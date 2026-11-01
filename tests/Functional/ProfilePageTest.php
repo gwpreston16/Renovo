@@ -178,7 +178,11 @@ final class ProfilePageTest extends DatabaseTestCase
 
         $this->assertLandsOn(
             '/profile#two-step',
-            $this->request('POST', '/profile/two-step/passkeys/' . $passkey . '/delete'),
+            $this->request(
+                'POST',
+                '/profile/two-step/passkeys/' . $passkey . '/delete',
+                ['password' => self::PASSWORD],
+            ),
         );
         self::assertNull($this->passkeyName($passkey));
 
@@ -460,6 +464,37 @@ final class ProfilePageTest extends DatabaseTestCase
     /**
      * @param array<string, mixed> $body
      */
+    /**
+     * K174: the challenge a registration completes against is only handed out
+     * for the right password, and none is kept for a wrong one.
+     */
+    public function testAPasskeyChallengeNeedsThePassword(): void
+    {
+        $this->signIn($this->viewerId);
+
+        foreach ([[], ['password' => 'not-the-password']] as $payload) {
+            $stream = fopen('php://temp', 'r+');
+            fwrite($stream, json_encode($payload, JSON_THROW_ON_ERROR));
+            rewind($stream);
+
+            $container = $this->app->getContainer();
+            self::assertNotNull($container);
+            $request = (new ServerRequestFactory())
+                ->createServerRequest(
+                    'POST',
+                    'http://localhost/profile/two-step/passkeys/options',
+                    ['REMOTE_ADDR' => '127.0.0.1'],
+                )
+                ->withBody(new \Slim\Psr7\Stream($stream))
+                ->withHeader(CsrfTokenManager::HEADER_NAME, $container->get(CsrfTokenManager::class)->token());
+
+            $response = $this->app->handle($request);
+
+            self::assertSame(422, $response->getStatusCode());
+            self::assertNull($this->session->get('passkey_registration_options'));
+        }
+    }
+
     private function request(string $method, string $path, array $body = [], bool $htmx = false): ResponseInterface
     {
         $request = (new ServerRequestFactory())->createServerRequest(

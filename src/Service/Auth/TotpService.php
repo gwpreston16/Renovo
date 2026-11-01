@@ -8,7 +8,6 @@ use App\Domain\AuditAction;
 use App\Domain\Entity\User;
 use App\Repository\TotpRepository;
 use App\Repository\WebAuthnCredentialRepository;
-use App\Security\PasswordHasher;
 use App\Security\SecretCipher;
 use App\Security\Totp;
 use App\Service\AuditLogService;
@@ -39,7 +38,7 @@ final class TotpService
         private readonly RecoveryCodeService $recoveryCodes,
         private readonly WebAuthnCredentialRepository $credentials,
         private readonly SecretCipher $cipher,
-        private readonly PasswordHasher $hasher,
+        private readonly PasswordReconfirmation $reconfirmation,
         private readonly AuditLogService $audit,
         private readonly Clock $clock,
         private readonly LoggerInterface $logger,
@@ -176,9 +175,9 @@ final class TotpService
     /**
      * @throws ValidationException
      */
-    public function disable(User $user, string $password): void
+    public function disable(User $user, string $password, string $ipAddress): void
     {
-        $this->assertPassword($user, $password);
+        $this->reconfirmation->assert($user, $password, 'password', $ipAddress);
 
         $this->totp->delete($user->id);
 
@@ -201,16 +200,6 @@ final class TotpService
     {
         if (!$this->totp->isConfirmed($userId)) {
             $this->totp->delete($userId);
-        }
-    }
-
-    /**
-     * @throws ValidationException
-     */
-    private function assertPassword(User $user, string $password): void
-    {
-        if (!$this->hasher->verify($password, $user->passwordHash)) {
-            throw ValidationException::field('password', 'error.password.incorrect');
         }
     }
 }

@@ -91,14 +91,21 @@
                     </span>
                 </div>
                 <div class="account-row-actions">
-                    <form method="post" action="/profile/two-step/passkeys/{{ passkey.id }}/delete" class="inline">
-                        {{ csrf_field() }}
-                        <button type="submit" class="button-icon" title="{{ t('action.remove') }}"
-                                aria-label="{{ t('profile.passkey_remove', { 'name': passkey.name }) }}">
-                            {{ icon('delete') }}
-                        </button>
-                    </form>
                 </div>
+
+                <details class="account-row-more">
+                    <summary class="button button-quiet"
+                             aria-label="{{ t('profile.passkey_remove', { 'name': passkey.name }) }}">
+                        {{ t('action.remove') }}
+                    </summary>
+                    <form method="post" action="/profile/two-step/passkeys/{{ passkey.id }}/delete" class="field-row">
+                        {{ csrf_field() }}
+                        <input type="password" name="password" required autocomplete="current-password"
+                               aria-label="{{ t('security.passkey_password_label') }}"
+                               placeholder="{{ t('security.passkey_password_label') }}">
+                        <button type="submit" class="button">{{ t('action.remove') }}</button>
+                    </form>
+                </details>
 
                 <details class="account-row-more">
                     <summary class="button button-quiet">{{ t('action.rename') }}</summary>
@@ -120,10 +127,14 @@
                 <input type="text" id="passkey-name" maxlength="100"
                        placeholder="{{ t('security.phone_yubikey_laptop') }}">
             </div>
+            <div class="field">
+                <label for="passkey-password">{{ t('security.passkey_password_label') }}</label>
+                <input type="password" id="passkey-password" autocomplete="current-password">
+            </div>
             <div class="form-actions">
                 <button type="button" class="button button-outline" id="passkey-register"
                         data-passkey="register" data-container="passkey-add"
-                        data-error="passkey-register-error" data-name-input="passkey-name"
+                        data-error="passkey-register-error" data-name-input="passkey-name" data-password-input="passkey-password"
                         data-options-url="/profile/two-step/passkeys/options"
                         data-register-url="/profile/two-step/passkeys"
                         data-csrf="{{ csrf_token() }}">

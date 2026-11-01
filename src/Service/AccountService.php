@@ -14,6 +14,7 @@ use App\Persistence\Database;
 use App\Repository\UserRepository;
 use App\Security\PasswordHasher;
 use App\Security\SessionInterface;
+use App\Service\Auth\PasswordReconfirmation;
 use App\Service\Auth\SessionDirectoryService;
 use App\Support\Clock;
 use Psr\Http\Message\UploadedFileInterface;
@@ -55,6 +56,7 @@ final class AccountService
         private readonly Clock $clock,
         private readonly ApiTokenRepository $apiTokens,
         private readonly Database $db,
+        private readonly PasswordReconfirmation $reconfirmation,
         private readonly string $appUrl,
     ) {
     }
@@ -77,13 +79,23 @@ final class AccountService
      * as it was drawn — and an account with no mailbox of its own is not
      * offered the field at all, so a missing one is left alone too.
      *
+     * A new address needs the current password (K173): the address is where
+     * every reset link goes, so changing it from a browser that is merely still
+     * signed in must not be possible. Nothing is saved, the name included, when
+     * the password is missing or wrong.
+     *
      * Returns whether a confirmation link went out, which is what the reader
      * needs to be told.
      *
      * @throws ValidationException
      */
-    public function updateDetails(User $user, string $displayName, ?string $email): bool
-    {
+    public function updateDetails(
+        User $user,
+        string $displayName,
+        ?string $email,
+        string $currentPassword,
+        string $ipAddress,
+    ): bool {
         $errors = [];
         $name = '';
         $newEmail = null;
@@ -108,6 +120,12 @@ final class AccountService
 
         if ($errors !== []) {
             throw new ValidationException($errors);
+        }
+
+        // A resend of the address already awaiting its link asks for nothing
+        // new, so it does not need the password again.
+        if ($newEmail !== null && $newEmail !== $user->pendingEmail) {
+            $this->reconfirmation->assert($user, $currentPassword, 'current_password', $ipAddress);
         }
 
         $this->writeName($user, $name);
@@ -359,10 +377,9 @@ final class AccountService
         string $password,
         string $passwordConfirm,
         bool $signOutOthers,
+        string $ipAddress,
     ): int {
-        if (!$this->hasher->verify($current, $user->passwordHash)) {
-            throw ValidationException::field('current_password', 'error.password.incorrect');
-        }
+        $this->reconfirmation->assert($user, $current, 'current_password', $ipAddress);
 
         $errors = [];
 
@@ -389,6 +406,11 @@ final class AccountService
         $hash = $this->hasher->hash($password);
         $tokensRevoked = $this->db->transactional(function () use ($user, $hash): int {
             $this->users->updatePasswordHash($user->id, $hash);
+
+            // An address waiting for its link was asked for by someone who
+            // knew the old password; the notice to the old address says to
+            // change it, and that has to end the request too (K173).
+            $this->users->setPendingEmail($user->id, null);
 
             return $this->apiTokens->revokeAllForUser($user->id);
         });

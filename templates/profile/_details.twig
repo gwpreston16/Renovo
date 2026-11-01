@@ -89,6 +89,12 @@
                     </p>
                 {% endif %}
             </div>
+            <div class="field">
+                <label for="details_password">{{ t('account.current_password') }}</label>
+                <input type="password" id="details_password" name="current_password"
+                       autocomplete="current-password" aria-describedby="details-password-hint">
+                <p class="hint" id="details-password-hint">{{ t('account.email_password_hint') }}</p>
+            </div>
         {% else %}
             <p class="muted">{{ t('account.email_none') }}</p>
         {% endif %}

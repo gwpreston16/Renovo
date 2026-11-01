@@ -101,7 +101,7 @@ final class SecretsRotationTest extends DatabaseTestCase
             new RecoveryCodeService(new RecoveryCodeRepository($this->db), new PasswordHasher(), $audit, $this->clock),
             new WebAuthnCredentialRepository($this->db),
             new SecretCipher(new KeyRing('key-two'), SecretCipher::PURPOSE_TOTP),
-            new PasswordHasher(),
+            \App\Tests\Support\Reconfirmation::make($this->db, $this->clock),
             $audit,
             $this->clock,
             new NullLogger(),

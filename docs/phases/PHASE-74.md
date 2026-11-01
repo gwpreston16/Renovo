@@ -118,16 +118,16 @@ None.
 
 ## Status
 
-- [ ] K173: email change needs the password; a password change clears the pending address
-- [ ] K174: adding and removing a passkey need the password
-- [ ] K179: re-confirmation failures are rate-limited
-- [ ] K176: a two-digit year is refused
-- [ ] K177: a day-first date with a time is read day-first
-- [ ] K175: the scenario planner sends only changed rows
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 74 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K173: email change needs the password; a password change clears the pending address
+- [x] K174: adding and removing a passkey need the password
+- [x] K179: re-confirmation failures are rate-limited
+- [x] K176: a two-digit year is refused
+- [x] K177: a day-first date with a time is read day-first
+- [x] K175: the scenario planner sends only changed rows
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 74 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

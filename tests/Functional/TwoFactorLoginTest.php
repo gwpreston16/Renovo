@@ -183,7 +183,7 @@ final class TwoFactorLoginTest extends DatabaseTestCase
     public function testARecoveryCodeCompletesTheSignInOnce(): void
     {
         $codes = $this->container->get(TwoFactorService::class)
-            ->regenerateRecoveryCodes($this->user, self::PASSWORD);
+            ->regenerateRecoveryCodes($this->user, self::PASSWORD, '198.51.100.7');
 
         $this->beginLogin();
         $response = $this->post('/login/two-factor', ['mode' => 'recovery', 'code' => $codes[0]]);

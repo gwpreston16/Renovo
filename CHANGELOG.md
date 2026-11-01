@@ -8,6 +8,29 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Changing the email address needs your password.** Profile → Who you are asks
+  for the current password when the address changes (the name alone does not),
+  and a wrong one saves nothing. Changing the password now also cancels an email
+  change still waiting for its link. *Phase 74.*
+- **Adding or removing a passkey needs your password.** The password is checked
+  before a registration's challenge exists and before a passkey is removed.
+  *Phase 74.*
+- **Typing the password again is rate-limited.** Changing the password, turning
+  the authenticator off, issuing new recovery codes and the prompts above count
+  each miss against a budget of their own, per account and per IP, and refuse
+  while it is spent. Sign-in's own budget is untouched. *Phase 74.*
+- **A two-digit year in an imported CSV is refused.** `15/06/26` no longer
+  imports as the year 26; the row is refused with its date. *Phase 74.*
+- **A day-first date with a time imports day-first.** `01/03/2026 00:00` is
+  1 March, not 3 January. *Phase 74.*
+- **The scenario planner works with any number of subscriptions.** The page sends
+  only the rows you have changed, so a household of several hundred no longer
+  overruns the request-line limit. Without script the form still submits whole,
+  which PHP's default limit of 1000 request variables reaches at about 250 rows.
+  *Phase 74.*
+
 ## [1.31.2] - 2026-11-01
 
 ### Changed

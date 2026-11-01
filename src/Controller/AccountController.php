@@ -79,6 +79,8 @@ final class AccountController extends Controller
                 $this->user($request),
                 is_scalar($body['display_name'] ?? null) ? (string) $body['display_name'] : '',
                 is_scalar($body['email'] ?? null) ? (string) $body['email'] : null,
+                is_scalar($body['current_password'] ?? null) ? (string) $body['current_password'] : '',
+                $this->clientIp($request),
             );
             $this->flash('success', $requested ? 'flash.email_change_requested' : 'flash.details_saved');
         } catch (ValidationException $exception) {
@@ -123,6 +125,7 @@ final class AccountController extends Controller
                 is_scalar($body['password'] ?? null) ? (string) $body['password'] : '',
                 is_scalar($body['password_confirm'] ?? null) ? (string) $body['password_confirm'] : '',
                 ($body['sign_out_others'] ?? '') === '1',
+                $this->clientIp($request),
             );
 
             $this->flash(

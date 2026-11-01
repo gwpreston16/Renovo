@@ -188,7 +188,7 @@ final class SignedOutScreensTest extends DatabaseTestCase
         $user = (new UserRepository($this->db))->findById($this->userId);
         self::assertNotNull($user);
         $twoFactor = $this->container->get(\App\Service\Auth\TwoFactorService::class);
-        $twoFactor->regenerateRecoveryCodes($user, self::PASSWORD);
+        $twoFactor->regenerateRecoveryCodes($user, self::PASSWORD, '198.51.100.7');
 
         $this->container->get(\App\Service\Auth\TwoFactorService::class)->beginChallenge($user, '/');
         $html = $this->body('GET', '/login/two-factor');

@@ -40,6 +40,7 @@ use Webauthn\PublicKeyCredentialRequestOptions;
 final class WebAuthnCredentialTest extends DatabaseTestCase
 {
     private const APP_URL = 'https://renovo.test';
+    private const PASSWORD = 'correct-horse-battery';
     private const RP_ID = 'renovo.test';
 
     private WebAuthnService $webAuthn;
@@ -67,6 +68,7 @@ final class WebAuthnCredentialTest extends DatabaseTestCase
         );
 
         $hasher = new PasswordHasher();
+        $reconfirmation = \App\Tests\Support\Reconfirmation::make($this->db, $this->clock);
         $totpRepository = new TotpRepository($this->db);
         $this->recoveryCodes = new RecoveryCodeService(
             new RecoveryCodeRepository($this->db),
@@ -81,7 +83,7 @@ final class WebAuthnCredentialTest extends DatabaseTestCase
                 $this->recoveryCodes,
                 $this->credentials,
                 new SecretCipher(new KeyRing('test-instance-secret-for-totp')),
-                $hasher,
+                $reconfirmation,
                 $audit,
                 $this->clock,
                 new NullLogger(),
@@ -89,7 +91,7 @@ final class WebAuthnCredentialTest extends DatabaseTestCase
             $this->recoveryCodes,
             $this->credentials,
             $this->users,
-            $hasher,
+            $reconfirmation,
             $audit,
             new ArraySession(),
             $this->clock,
@@ -101,6 +103,7 @@ final class WebAuthnCredentialTest extends DatabaseTestCase
             $totpRepository,
             $this->recoveryCodes,
             $audit,
+            $reconfirmation,
             $this->clock,
             self::APP_URL,
             'Renovo Test',
@@ -109,7 +112,7 @@ final class WebAuthnCredentialTest extends DatabaseTestCase
         $this->userId = $this->users->create(
             'passkey@example.test',
             'Passkey User',
-            'hash',
+            $hasher->hash(self::PASSWORD),
             false,
             $this->clock->now(),
         );
@@ -159,7 +162,7 @@ final class WebAuthnCredentialTest extends DatabaseTestCase
         self::assertNotNull($stored->lastUsedAt);
 
         // --- revoke ------------------------------------------------------
-        $this->webAuthn->revoke($this->user(), $credential->id);
+        $this->webAuthn->revoke($this->user(), $credential->id, self::PASSWORD, '203.0.113.5');
 
         self::assertFalse($this->webAuthn->hasCredentials($user->id));
         self::assertNull($this->credentials->findByCredentialId($credential->credentialId));
@@ -399,6 +402,48 @@ final class WebAuthnCredentialTest extends DatabaseTestCase
         self::assertCount(RecoveryCodeService::CODE_COUNT, $first);
     }
 
+    /**
+     * K174: a browser that is merely still signed in cannot take a passkey
+     * away without the password.
+     */
+    public function testRemovingAPasskeyNeedsThePassword(): void
+    {
+        $authenticator = $this->registeredAuthenticator();
+        $credential = $this->credentials->findByCredentialId($authenticator->credentialIdBase64Url());
+        self::assertNotNull($credential);
+
+        foreach (['', 'not-the-password'] as $password) {
+            try {
+                $this->webAuthn->revoke($this->user(), $credential->id, $password, '203.0.113.5');
+                self::fail('A passkey was removed without the password.');
+            } catch (ValidationException $exception) {
+                self::assertArrayHasKey('password', $exception->errors());
+            }
+
+            self::assertTrue($this->webAuthn->hasCredentials($this->userId), 'The passkey is still there.');
+        }
+
+        $this->webAuthn->revoke($this->user(), $credential->id, self::PASSWORD, '203.0.113.5');
+
+        self::assertFalse($this->webAuthn->hasCredentials($this->userId));
+    }
+
+    public function testAddingAPasskeyNeedsThePassword(): void
+    {
+        foreach (['', 'not-the-password'] as $password) {
+            try {
+                $this->webAuthn->beginRegistration($this->user(), $password, '203.0.113.5');
+                self::fail('A registration began without the password.');
+            } catch (ValidationException $exception) {
+                self::assertArrayHasKey('password', $exception->errors());
+            }
+        }
+
+        $options = $this->webAuthn->beginRegistration($this->user(), self::PASSWORD, '203.0.113.5');
+
+        self::assertSame(32, strlen($options->challenge));
+    }
+
     public function testRevokingTheLastPasskeyClearsTheRecoveryCodes(): void
     {
         $authenticator = $this->registeredAuthenticator();
@@ -407,7 +452,7 @@ final class WebAuthnCredentialTest extends DatabaseTestCase
         $credential = $this->credentials->findByCredentialId($authenticator->credentialIdBase64Url());
         self::assertNotNull($credential);
 
-        $this->webAuthn->revoke($this->user(), $credential->id);
+        $this->webAuthn->revoke($this->user(), $credential->id, self::PASSWORD, '203.0.113.5');
 
         // Nothing left to recover into: codes that outlived every factor would
         // be a standing way past the password on an account that asked for none.

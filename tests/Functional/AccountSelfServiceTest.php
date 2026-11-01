@@ -355,6 +355,65 @@ final class AccountSelfServiceTest extends DatabaseTestCase
         self::assertSame($before, $this->reload($this->memberId)->passwordHash);
     }
 
+    // ------------------------------------------- re-confirmation (Phase 74)
+
+    /**
+     * K173: the address is where every reset link goes. A browser that is
+     * merely still signed in must not be able to move it.
+     */
+    public function testEmailChangeNeedsThePassword(): void
+    {
+        $this->signIn($this->memberId);
+
+        foreach (['', 'not-the-password'] as $password) {
+            $this->details('new@example.test', 'Mary Renamed', $password);
+
+            $member = $this->reload($this->memberId);
+            self::assertNull($member->pendingEmail, 'No address is parked without the password.');
+            self::assertSame('Mary Member', $member->displayName, 'Nothing else is saved either.');
+            self::assertSame([], $this->mailer->messages, 'No link and no notice go out.');
+            self::assertNotSame([], $this->errorFlashes());
+        }
+
+        $this->details('new@example.test', 'Mary Renamed');
+
+        $member = $this->reload($this->memberId);
+        self::assertSame('new@example.test', $member->pendingEmail);
+        self::assertSame('Mary Renamed', $member->displayName);
+    }
+
+    public function testTheNameAloneNeedsNoPassword(): void
+    {
+        $this->signIn($this->memberId);
+
+        $this->details('member@example.test', 'Mary Renamed', '');
+
+        self::assertSame('Mary Renamed', $this->reload($this->memberId)->displayName);
+    }
+
+    public function testPasswordChangeClearsAPendingAddress(): void
+    {
+        $this->signIn($this->memberId);
+        $this->details('new@example.test');
+
+        $token = $this->mailer->lastTokenFromMessage(0);
+        self::assertNotNull($token);
+        self::assertSame('new@example.test', $this->reload($this->memberId)->pendingEmail);
+
+        $this->request('POST', '/profile/password', [
+            'current_password' => self::PASSWORD,
+            'password' => 'a-brand-new-password',
+            'password_confirm' => 'a-brand-new-password',
+        ]);
+
+        self::assertNull($this->reload($this->memberId)->pendingEmail);
+
+        // The link that was already sent now leads nowhere.
+        $this->request('GET', '/confirm-email-change?token=' . $token);
+
+        self::assertSame('member@example.test', $this->reload($this->memberId)->email);
+    }
+
     public function testTheRightCurrentPasswordChangesItAndCanSignOutTheOthers(): void
     {
         $this->session->setId('this-browser');
@@ -565,9 +624,16 @@ final class AccountSelfServiceTest extends DatabaseTestCase
     /**
      * The "Who you are" form as the page submits it: both fields, every time.
      */
-    private function details(string $email, string $name = 'Mary Member'): ResponseInterface
-    {
-        return $this->request('POST', '/profile/details', ['display_name' => $name, 'email' => $email]);
+    private function details(
+        string $email,
+        string $name = 'Mary Member',
+        string $password = self::PASSWORD,
+    ): ResponseInterface {
+        return $this->request('POST', '/profile/details', [
+            'display_name' => $name,
+            'email' => $email,
+            'current_password' => $password,
+        ]);
     }
 
     /**

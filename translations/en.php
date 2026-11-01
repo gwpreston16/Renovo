@@ -26,6 +26,7 @@ return [
     'account.confirm_password' => 'Confirm new password',
     'account.current_password' => 'Current password',
     'account.email_cancel' => 'cancel',
+    'account.email_password_hint' => 'Only needed when you change your email address.',
     'account.email_hint' => 'Changing it sends a confirmation link to the new address.',
     'account.email_none' =>
         'This account has no mailbox of its own. An Owner of your household can give it an address.',
@@ -1824,6 +1825,7 @@ return [
 
     // security
     'security.add_a_passkey' => 'Add a passkey',
+    'security.passkey_password_label' => 'Confirm your password',
     'security.authenticator_app' => 'Authenticator app',
     'security.passkey_name' => 'Passkey name',
     'security.passkey_name_label' => 'Name for the new passkey',
