@@ -103,18 +103,18 @@ None.
 - **K179 — Decided 2026-11-01:** failures are counted through `RateLimiter`
   under a kind of their own. Not chosen: sharing the sign-in budget, or ending
   the session after N misses.
-- **Release — Decided 2026-11-01:** its own patch, v1.30.1 once merged.
+- **Release — Decided 2026-11-01:** its own patch once merged. *Changed 2026-11-01:* the version number is dropped (master was already at 1.31.2); `/release` picks it.
 - **Rows — Decided 2026-11-01:** the five MAJOR rows and K179. K175 is the
   largest fix; the alternative batch swapped it for K188.
 - **Passkey registration — Assumed:** the password is checked when the
   registration starts, and the challenge it stores is the only way to complete
-  it. Confirm at build.
+  it. *Confirmed 2026-11-01.*
 - **K176 — Assumed:** a two-digit year is refused, not guessed; a spreadsheet
   export with `dd/mm/yy` gets the row error naming the date. Confirm or choose a
-  rule (a pivot year) at build.
+  rule (a pivot year) at build. *Confirmed 2026-11-01: refused.*
 - **K175 — Assumed:** the browser sends only non-Keep rows (an htmx parameter
   filter in a served file, never inline script); the server side needs no change.
-  Confirm at build.
+  *Confirmed 2026-11-01.*
 
 ## Status
 

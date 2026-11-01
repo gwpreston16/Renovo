@@ -82,7 +82,7 @@ can be moved.
 | 71 | [Split deletes and static-file compression, from the known-issues log](docs/phases/PHASE-71.md) | — | None | ✅ done |
 | 72 | [Spend walks load their sources once, from the known-issues log](docs/phases/PHASE-72.md) | — | None | ✅ done |
 | 73 | [A JavaScript test runner, from the known-issues log](docs/phases/PHASE-73.md) | — | None | ✅ done |
-| 74 | [Re-confirmation, CSV dates and the scenario planner, from the known-issues log](docs/phases/PHASE-74.md) | — | None | 📋 planned |
+| 74 | [Re-confirmation, CSV dates and the scenario planner, from the known-issues log](docs/phases/PHASE-74.md) | — | None | 🚧 in progress |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
