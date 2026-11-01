@@ -8,7 +8,30 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.31.1] - 2026-11-01
+
+### Changed
+
+- **The charts and icons are built from newer libraries.** chart.js moves from
+  4.5.1 to 4.6.1 and Lucide from 1.61.0 to 1.64.0. Both are still served from
+  the instance's own web root, and nothing about the screens, the API or the
+  data changes. Rebuild or pull the images to get them. *Phase 73.1.*
+
+## [1.31.0] - 2026-11-01
+
+### Changed
+
+- **The front-end scripts have a test runner.** `npm test` runs Vitest with
+  jsdom over `tests/js/`, and CI runs it. It is a development dependency only:
+  nothing is bundled and the running application is unchanged. *Phase 73.*
+
 ### Fixed
+
+- **The htmx swap bookkeeping and the save-failed handler are tested.** Two
+  overlapping requests keep the newest one's focus, an error forgets a region
+  unless a newer request is pending, focus falls back when the trigger is gone,
+  and a failed save-on-change shows its message and puts the control back. A
+  mistake in any of these now fails CI. *Phase 73.*
 
 - **The analytics screen, the household dashboard and the "by member" chart load
   the past once.** Each walk into the past (the year to date, both charts, the
@@ -1322,7 +1345,9 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.30.0...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.31.1...HEAD
+[1.31.1]: https://github.com/gwpreston16/Renovo/compare/v1.31.0...v1.31.1
+[1.31.0]: https://github.com/gwpreston16/Renovo/compare/v1.30.0...v1.31.0
 [1.30.0]: https://github.com/gwpreston16/Renovo/compare/v1.29.0...v1.30.0
 [1.29.0]: https://github.com/gwpreston16/Renovo/compare/v1.28.0...v1.29.0
 [1.28.0]: https://github.com/gwpreston16/Renovo/compare/v1.27.3...v1.28.0
