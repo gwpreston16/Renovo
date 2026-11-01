@@ -435,3 +435,24 @@ WHERE revoked_at IS NULL AND scopes = 'calendar:read' AND expires_at IS NULL
 
 If one of them was meant to read everything, its owner reissues it from
 **Settings → Data & integrations → API tokens** as **Read everything**.
+
+## After upgrading to MySQL 9.7 and the PHP 8.5 image
+
+Two images changed after 1.31.1. Neither needs a Renovo migration.
+
+**MySQL.** `docker-compose.mysql.yml` now runs `mysql:9.7` instead of
+`mysql:8.4`, and CI runs both MySQL test legs against it. **Back up your
+database first**, then check Oracle's upgrade notes for 8.4 to 9.7 before
+`docker compose pull && docker compose up -d`: the first start with the new
+image upgrades the data directory in place, and MySQL cannot downgrade one
+afterwards, so the backup is the only way back. To stay on 8.4 for now, keep
+`image: mysql:8.4` in your own compose override. PostgreSQL is unchanged (the
+compose file still runs `postgres:16-alpine`).
+
+**PHP.** The application image is built from `php:8.5-fpm-alpine` (it was 8.4)
+and the web image from `nginx:1.31-alpine`. PHP 8.5 builds OPcache into the
+binary, so the Dockerfile no longer installs it as an extension; it is still
+loaded and `php.ini` is unchanged. PHP 8.5 logs two startup deprecations for
+`session.sid_length` and `session.sid_bits_per_character`; they are harmless
+and the settings stay as they are. The PHPUnit jobs in CI still run on
+PHP 8.4, and `composer.json` still requires `>=8.4`.
