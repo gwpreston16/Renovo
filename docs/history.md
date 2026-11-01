@@ -801,6 +801,9 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   save-failed handler. A development dependency only: nothing is bundled and
   the running application is unchanged. No API change and no migrations. See
   [Development](development.md).
+- **Phase 73.1 — front-end dependency patch — hotfix (1.31.1).** chart.js
+  4.5.1 to 4.6.1 and Lucide 1.61.0 to 1.64.0, from Dependabot's npm group,
+  with no change to the screens, the API or the data. No migrations.
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
