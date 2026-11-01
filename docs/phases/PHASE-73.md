@@ -96,13 +96,13 @@ None.
 
 ## Status
 
-- [ ] K141: the swap map and focus fallback have JS tests, run by `npm test` and by CI
-- [ ] The save-failed handler has JS tests too
-- [ ] `docs/development.md`, `CLAUDE.md` and the CHANGELOG say how to run them
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 73 row marked ✅ done
-- [ ] composer check, `npm test`, coverage and the API doc tests green
+- [x] K141: the swap map and focus fallback have JS tests, run by `npm test` and by CI
+- [x] The save-failed handler has JS tests too
+- [x] `docs/development.md`, `CLAUDE.md` and the CHANGELOG say how to run them
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 73 row marked ✅ done
+- [x] composer check, `npm test`, coverage and the API doc tests green
 
 ## Definition of done
 
