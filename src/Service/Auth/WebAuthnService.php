@@ -71,6 +71,7 @@ final class WebAuthnService
         private readonly TotpRepository $totp,
         private readonly RecoveryCodeService $recoveryCodes,
         private readonly AuditLogService $audit,
+        private readonly PasswordReconfirmation $reconfirmation,
         private readonly Clock $clock,
         private readonly string $appUrl,
         private readonly string $relyingPartyName,
@@ -88,6 +89,24 @@ final class WebAuthnService
     public function hasCredentials(int $userId): bool
     {
         return $this->credentials->countForUser($userId) > 0;
+    }
+
+    /**
+     * Options for registering a new credential, for a user who has just typed
+     * their password again (K174). The caller keeps the options it gets back as
+     * the only challenge a registration can complete against, so a registration
+     * that did not pass this check has nothing to complete.
+     *
+     * @throws ValidationException
+     */
+    public function beginRegistration(
+        User $user,
+        string $password,
+        string $ipAddress,
+    ): PublicKeyCredentialCreationOptions {
+        $this->reconfirmation->assert($user, $password, 'password', $ipAddress);
+
+        return $this->registrationOptions($user);
     }
 
     /**
@@ -333,8 +352,10 @@ final class WebAuthnService
     /**
      * @throws ValidationException
      */
-    public function revoke(User $user, int $credentialId): void
+    public function revoke(User $user, int $credentialId, string $password, string $ipAddress): void
     {
+        $this->reconfirmation->assert($user, $password, 'password', $ipAddress);
+
         $credential = $this->credentials->find($user->id, $credentialId);
         if ($credential === null) {
             throw ValidationException::field('credential', 'error.passkey.missing');

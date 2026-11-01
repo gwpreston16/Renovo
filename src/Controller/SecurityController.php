@@ -88,7 +88,21 @@ final class SecurityController extends Controller
             return $this->redirectAfterWrite($request, $response, self::TWO_STEP);
         }
 
-        $enrolment = $this->totp->beginEnrolment($user, $this->settings->instanceName());
+        $body = $this->body($request);
+
+        try {
+            $enrolment = $this->totp->requestEnrolment(
+                $user,
+                $this->settings->instanceName(),
+                is_scalar($body['password'] ?? null) ? (string) $body['password'] : '',
+                $this->clientIp($request),
+            );
+        } catch (ValidationException $exception) {
+            $this->flashErrors($exception);
+
+            return $this->redirectAfterWrite($request, $response, self::TWO_STEP);
+        }
+
         $this->session->set(self::ENROLMENT_SECRET_KEY, $enrolment['secret']);
 
         return $this->render($request, $response, 'security/totp_setup.twig', [
@@ -147,6 +161,7 @@ final class SecurityController extends Controller
             $this->totp->disable(
                 $this->user($request),
                 is_scalar($body['password'] ?? null) ? (string) $body['password'] : '',
+                $this->clientIp($request),
             );
             $this->flash('success', 'flash.totp_disabled');
         } catch (ValidationException $exception) {
@@ -166,6 +181,7 @@ final class SecurityController extends Controller
             $codes = $this->twoFactor->regenerateRecoveryCodes(
                 $this->user($request),
                 is_scalar($body['password'] ?? null) ? (string) $body['password'] : '',
+                $this->clientIp($request),
             );
 
             $this->session->set(self::RECOVERY_CODES_KEY, $codes);
@@ -182,9 +198,25 @@ final class SecurityController extends Controller
      */
     public function passkeyOptions(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        $options = $this->webAuthn->serializeOptions(
-            $this->webAuthn->registrationOptions($this->user($request)),
-        );
+        $payload = json_decode((string) $request->getBody(), true);
+        $password = is_array($payload) && is_scalar($payload['password'] ?? null) ? (string) $payload['password'] : '';
+
+        // The password is checked before a challenge exists, and the challenge
+        // kept in the session is the only one a registration can complete
+        // against (K174).
+        try {
+            $creation = $this->webAuthn->beginRegistration(
+                $this->user($request),
+                $password,
+                $this->clientIp($request),
+            );
+        } catch (ValidationException $exception) {
+            $this->session->remove(self::REGISTRATION_OPTIONS_KEY);
+
+            return $this->json($response->withStatus(422), ['error' => $this->errorSentence($exception)]);
+        }
+
+        $options = $this->webAuthn->serializeOptions($creation);
 
         $this->session->set(self::REGISTRATION_OPTIONS_KEY, $options);
 
@@ -262,8 +294,15 @@ final class SecurityController extends Controller
         ResponseInterface $response,
         string $id,
     ): ResponseInterface {
+        $body = $this->body($request);
+
         try {
-            $this->webAuthn->revoke($this->user($request), (int) $id);
+            $this->webAuthn->revoke(
+                $this->user($request),
+                (int) $id,
+                is_scalar($body['password'] ?? null) ? (string) $body['password'] : '',
+                $this->clientIp($request),
+            );
             $this->flash('success', 'flash.passkey_revoked');
         } catch (ValidationException $exception) {
             $this->flashErrors($exception);

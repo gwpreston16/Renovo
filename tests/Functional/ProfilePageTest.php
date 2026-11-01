@@ -10,6 +10,7 @@ use App\Domain\IsolationMode;
 use App\Domain\Role;
 use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
+use App\Repository\TotpRepository;
 use App\Repository\UserRepository;
 use App\Repository\WebAuthnCredentialRepository;
 use App\Security\CsrfTokenManager;
@@ -164,7 +165,7 @@ final class ProfilePageTest extends DatabaseTestCase
     {
         $this->signIn($this->viewerId);
 
-        $setup = $this->request('POST', '/profile/two-step/totp');
+        $setup = $this->request('POST', '/profile/two-step/totp', ['password' => self::PASSWORD]);
         self::assertSame(200, $setup->getStatusCode());
         self::assertStringContainsString('action="/profile/two-step/totp/confirm"', (string) $setup->getBody());
 
@@ -178,7 +179,11 @@ final class ProfilePageTest extends DatabaseTestCase
 
         $this->assertLandsOn(
             '/profile#two-step',
-            $this->request('POST', '/profile/two-step/passkeys/' . $passkey . '/delete'),
+            $this->request(
+                'POST',
+                '/profile/two-step/passkeys/' . $passkey . '/delete',
+                ['password' => self::PASSWORD],
+            ),
         );
         self::assertNull($this->passkeyName($passkey));
 
@@ -455,6 +460,97 @@ final class ProfilePageTest extends DatabaseTestCase
         $this->session->clear();
         $this->session->set(AuthenticationMiddleware::SESSION_USER_ID, $userId);
         $this->session->set(AuthenticationMiddleware::SESSION_HOUSEHOLD_ID, $this->householdId);
+    }
+
+    /**
+     * K174: the challenge a registration completes against is only handed out
+     * for the right password, and none is kept for a wrong one.
+     */
+    public function testAPasskeyChallengeNeedsThePassword(): void
+    {
+        $this->signIn($this->viewerId);
+
+        foreach ([[], ['password' => 'not-the-password']] as $payload) {
+            $response = $this->passkeyOptions($payload);
+
+            self::assertSame(422, $response->getStatusCode());
+            self::assertNull($this->session->get('passkey_registration_options'));
+        }
+
+        $response = $this->passkeyOptions(['password' => self::PASSWORD]);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertNotNull($this->session->get('passkey_registration_options'));
+    }
+
+    /**
+     * K210: without the password, setting up an authenticator app shows no QR
+     * code and starts nothing.
+     */
+    public function testAnAuthenticatorAppNeedsThePassword(): void
+    {
+        $this->signIn($this->viewerId);
+
+        foreach ([[], ['password' => 'not-the-password']] as $body) {
+            $response = $this->request('POST', '/profile/two-step/totp', $body);
+
+            $this->assertLandsOn('/profile#two-step', $response);
+            self::assertStringNotContainsString('totp/confirm', (string) $response->getBody());
+        }
+
+        self::assertNull((new TotpRepository($this->db))->find($this->viewerId));
+    }
+
+    /**
+     * K212: the page names the field the script reads the password from, and
+     * that field is on the page.
+     */
+    public function testTheRegisterButtonNamesThePasswordField(): void
+    {
+        $this->signIn($this->viewerId);
+
+        $body = (string) $this->request('GET', '/profile')->getBody();
+
+        self::assertStringContainsString('data-password-input="passkey-password"', $body);
+        self::assertMatchesRegularExpression('/<input[^>]*id="passkey-password"/', $body);
+    }
+
+    public function testAWrongPasswordLeavesThePasskeyWhereItIs(): void
+    {
+        $this->signIn($this->viewerId);
+        $passkey = $this->passkeyFor($this->viewerId, 'Laptop');
+
+        $this->request(
+            'POST',
+            '/profile/two-step/passkeys/' . $passkey . '/delete',
+            ['password' => 'not-the-password'],
+        );
+
+        self::assertSame('Laptop', $this->passkeyName($passkey));
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function passkeyOptions(array $payload): ResponseInterface
+    {
+        $stream = fopen('php://temp', 'r+');
+        fwrite($stream, json_encode($payload, JSON_THROW_ON_ERROR));
+        rewind($stream);
+
+        $container = $this->app->getContainer();
+        self::assertNotNull($container);
+
+        return $this->app->handle(
+            (new ServerRequestFactory())
+                ->createServerRequest(
+                    'POST',
+                    'http://localhost/profile/two-step/passkeys/options',
+                    ['REMOTE_ADDR' => '127.0.0.1'],
+                )
+                ->withBody(new \Slim\Psr7\Stream($stream))
+                ->withHeader(CsrfTokenManager::HEADER_NAME, $container->get(CsrfTokenManager::class)->token()),
+        );
     }
 
     /**

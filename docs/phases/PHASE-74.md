@@ -103,31 +103,32 @@ None.
 - **K179 — Decided 2026-11-01:** failures are counted through `RateLimiter`
   under a kind of their own. Not chosen: sharing the sign-in budget, or ending
   the session after N misses.
-- **Release — Decided 2026-11-01:** its own patch, v1.30.1 once merged.
+- **Release — Decided 2026-11-01:** its own patch once merged. *Changed 2026-11-01:* the version number is dropped (master was already at 1.31.2); `/release` picks it.
 - **Rows — Decided 2026-11-01:** the five MAJOR rows and K179. K175 is the
   largest fix; the alternative batch swapped it for K188.
 - **Passkey registration — Assumed:** the password is checked when the
   registration starts, and the challenge it stores is the only way to complete
-  it. Confirm at build.
+  it. *Confirmed 2026-11-01.*
 - **K176 — Assumed:** a two-digit year is refused, not guessed; a spreadsheet
   export with `dd/mm/yy` gets the row error naming the date. Confirm or choose a
-  rule (a pivot year) at build.
+  rule (a pivot year) at build. *Confirmed 2026-11-01: refused.*
 - **K175 — Assumed:** the browser sends only non-Keep rows (an htmx parameter
   filter in a served file, never inline script); the server side needs no change.
-  Confirm at build.
+  *Confirmed 2026-11-01.*
 
 ## Status
 
-- [ ] K173: email change needs the password; a password change clears the pending address
-- [ ] K174: adding and removing a passkey need the password
-- [ ] K179: re-confirmation failures are rate-limited
-- [ ] K176: a two-digit year is refused
-- [ ] K177: a day-first date with a time is read day-first
-- [ ] K175: the scenario planner sends only changed rows
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 74 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K173: email change needs the password; a password change clears the pending address
+- [x] K174: adding and removing a passkey need the password
+- [x] K179: re-confirmation failures are rate-limited
+- [x] K176: a two-digit year is refused
+- [x] K177: a day-first date with a time is read day-first
+- [x] K175: the scenario planner sends only changed rows
+- [x] Found in the merge review and fixed here (K210-K213): setting up an authenticator app needs the password; the no-script planner form is a POST answered with the short address (`max_input_vars` raised in `docker/php/php.ini`); a JS test for the passkey password; the passkey Remove button is a danger button with a label
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 74 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

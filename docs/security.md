@@ -14,6 +14,19 @@ scan the QR code and type the six-digit code it shows, to prove the app received
 the key. Turning two-step verification off requires your password, so a stolen
 but still-signed-in session cannot quietly remove it.
 
+**Typing your password again.** A browser that is signed in but not yours must
+not be able to weaken the account, so the changes that would do it ask for the
+current password: a new **email address** (Profile → Who you are; the name
+alone does not), **adding** or **removing a passkey**, setting the authenticator
+app **up** or turning it **off**, issuing **new recovery codes** and **changing the password**. A
+wrong password changes nothing. Every one of these is a password guess, so a
+miss is counted under a budget of its own (the sign-in limits, applied
+separately per account and per IP) and a block refuses even the right password
+until it expires; sign-in's own budget is not touched either way. Changing the
+password also cancels an email change that is still waiting for its link, so
+the advice in the notice sent to the old address ("change your password") ends
+the request.
+
 The secret is stored encrypted (see `SECRETS_KEY` and [Rotating the encryption key](operations.md#rotating-the-encryption-key)), which is the best
 available: the server has to reproduce codes from it, so it cannot be hashed.
 What that protects is a database dump or a stray backup, not an attacker who
@@ -88,7 +101,8 @@ the reset may well have been prompted by somebody else having one.
   token in a header set once on the page body.
 - Sessions are **server-side, in the database**, with secure, http-only,
   same-site cookies and a fresh id on sign-in.
-- Login, password reset and the **second-factor step** are throttled per account
+- Login, password reset, the **second-factor step** and **typing the password
+  again** for an account change are throttled per account
   and per IP, so neither brute-forcing one account from many addresses nor
   spraying many accounts from one address gets far. The second factor has its own
   budget rather than sharing the password's. The IP is the connection's

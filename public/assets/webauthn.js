@@ -206,7 +206,11 @@
             config.button.disabled = true;
 
             try {
-                const optionsResponse = await post(config.optionsUrl, config.csrf);
+                // Adding a passkey asks for the password again; the server
+                // checks it before it hands out the challenge.
+                const optionsResponse = await post(config.optionsUrl, config.csrf, {
+                    password: config.passwordInput ? config.passwordInput.value : '',
+                });
                 if (!optionsResponse.ok) {
                     show(config.error, await readError(optionsResponse));
 
@@ -317,6 +321,7 @@
                 button,
                 error: element(button, 'error'),
                 nameInput: element(button, 'nameInput'),
+                passwordInput: element(button, 'passwordInput'),
                 optionsUrl: button.dataset.optionsUrl,
                 registerUrl: button.dataset.registerUrl,
                 csrf: button.dataset.csrf,

@@ -254,7 +254,9 @@ preview calls valid is one that will be written.
   are wrong — which the preview shows you before you commit. A date that cannot
   be a real day that way (`31/02/2026`) refuses the row rather than moving it
   to another day, and one that can only be month-first (`12/25/2026`) is read
-  month-first.
+  month-first. A year is four digits: `15/06/26` refuses the row instead of
+  becoming the year 26. A time after the date (`01/03/2026 00:00`, as a
+  spreadsheet writes it) is dropped and the date is read the same way.
 - The Terms columns — contract ends, payments end, amount varies — are matched
   by those names.
 - Categories are created by name if they do not already exist; so are tags.

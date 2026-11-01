@@ -29,6 +29,8 @@ final class AuthAttemptRepository extends AbstractRepository
     // mean a user who mistyped their password twice had fewer tries left for a
     // six-digit code than the code's own guessing odds assume.
     public const KIND_TWO_FACTOR = '2fa';
+    /** Typing the password again before an account change (Phase 74, K179). */
+    public const KIND_RECONFIRM = 'reconfirm';
 
     /** More than any limit needs to see; keeps a flood from an address cheap to read. */
     public const FAILURE_HISTORY_CAP = 500;

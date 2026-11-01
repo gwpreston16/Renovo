@@ -71,7 +71,7 @@ final class TotpEnrolmentTest extends DatabaseTestCase
             $this->recovery,
             $credentials,
             new SecretCipher(new KeyRing('test-instance-secret-for-totp')),
-            $hasher,
+            \App\Tests\Support\Reconfirmation::make($this->db, $this->clock),
             $audit,
             $this->clock,
             new NullLogger(),
@@ -82,7 +82,7 @@ final class TotpEnrolmentTest extends DatabaseTestCase
             $this->recovery,
             $credentials,
             $this->users,
-            $hasher,
+            \App\Tests\Support\Reconfirmation::make($this->db, $this->clock),
             $audit,
             new \App\Tests\Support\ArraySession(),
             $this->clock,
@@ -118,6 +118,30 @@ final class TotpEnrolmentTest extends DatabaseTestCase
         self::assertCount(RecoveryCodeService::CODE_COUNT, $codes);
         self::assertSame(RecoveryCodeService::CODE_COUNT, $this->twoFactor->unusedRecoveryCodeCount($this->user->id));
         self::assertTrue($this->hasAudit(AuditAction::TotpEnabled));
+    }
+
+    /**
+     * K210: turning on a second factor changes how the account signs in, so a
+     * browser that is merely signed in has to know the password first.
+     */
+    public function testSettingUpNeedsThePassword(): void
+    {
+        foreach (['', 'not-the-password'] as $password) {
+            try {
+                $this->totp->requestEnrolment($this->user, 'Renovo Test', $password, '198.51.100.20');
+                self::fail('A wrong password should not start enrolment.');
+            } catch (ValidationException $exception) {
+                self::assertArrayHasKey('password', $exception->errors());
+            }
+        }
+
+        // Nothing was started, so no secret was issued and nothing is pending.
+        self::assertNull((new TotpRepository($this->db))->find($this->user->id));
+
+        $enrolment = $this->totp->requestEnrolment($this->user, 'Renovo Test', self::PASSWORD, '198.51.100.20');
+
+        self::assertStringContainsString('otpauth://totp/', $enrolment['uri']);
+        self::assertNotNull((new TotpRepository($this->db))->find($this->user->id));
     }
 
     public function testTheSecretIsNotStoredInReadableForm(): void
@@ -253,7 +277,7 @@ final class TotpEnrolmentTest extends DatabaseTestCase
         $this->enrol();
         $original = $this->recoveryCodes->findUnused($this->user->id);
 
-        $fresh = $this->twoFactor->regenerateRecoveryCodes($this->user, self::PASSWORD);
+        $fresh = $this->twoFactor->regenerateRecoveryCodes($this->user, self::PASSWORD, '198.51.100.20');
 
         self::assertCount(RecoveryCodeService::CODE_COUNT, $fresh);
         self::assertNotEquals(
@@ -268,7 +292,7 @@ final class TotpEnrolmentTest extends DatabaseTestCase
         $this->enrol();
 
         try {
-            $this->totp->disable($this->user, 'not-the-password');
+            $this->totp->disable($this->user, 'not-the-password', '198.51.100.20');
             self::fail('Disabling should require the current password.');
         } catch (ValidationException $exception) {
             self::assertArrayHasKey('password', $exception->errors());
@@ -276,7 +300,7 @@ final class TotpEnrolmentTest extends DatabaseTestCase
 
         self::assertTrue($this->totp->isEnabled($this->user->id));
 
-        $this->totp->disable($this->user, self::PASSWORD);
+        $this->totp->disable($this->user, self::PASSWORD, '198.51.100.20');
 
         self::assertFalse($this->totp->isEnabled($this->user->id));
         self::assertSame(0, $this->twoFactor->unusedRecoveryCodeCount($this->user->id));

@@ -54,7 +54,7 @@ final class RouteTableViewerTest extends ApiTestCase
             '/subscriptions/density' => 'Their own list density.',
             '/saved-views' => 'Their own saved list views.',
             '/calendar/feed-link' => 'Their own calendar feed link, which shows only what they can see.',
-            '/forecast/scenario/selection' => 'Which rows their own scenario lists; nothing is stored on a row.',
+            '/forecast/scenario' => 'The planner form and the bulk bar: an address for a scenario; nothing is stored.',
             '/updates/dismiss' => 'Hiding the update banner for themselves.',
         ];
     }

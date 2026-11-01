@@ -68,7 +68,7 @@ Service/ExchangeRate/HttpRateProvider.php	date-only	$date = DateTimeImmutable::c
 Service/FixedTermService.php	date-only	return new DateTimeImmutable($last);
 Service/ForecastScreenService.php	one-zone	$date = new DateTimeImmutable($month['month'] . '-01');
 Service/HouseholdDashboardService.php	one-zone	static fn (array $point): DateTimeImmutable => new DateTimeImmutable($point['month'] . '-01'),
-Service/Import/RowTranslator.php	date-only	$date = DateTimeImmutable::createFromFormat($format, $raw);
+Service/Import/RowTranslator.php	date-only	$date = DateTimeImmutable::createFromFormat($format, $day);
 Service/Import/RowTranslator.php	date-only	$parsed = date_create_immutable($raw);
 Service/InstanceSettingsService.php	timestamp	'published_at' => $published === '' ? null : new DateTimeImmutable($published),
 Service/InstanceSettingsService.php	timestamp	return $value === '' ? null : new DateTimeImmutable($value);

@@ -32,6 +32,7 @@ import { applyGeometry, stripGeometryForHistory } from './geometry.js';
 import { bindFormBehaviours } from './form-behaviours.js';
 import { icon } from './icons.js';
 import { enhancePaymentMethodFields } from './payment-method-field.js';
+import { enhanceScenarioForm } from './scenario-form.js';
 import { enhanceSubscriptionForms } from './subscription-form.js';
 import { enhanceSubscriptionLists } from './subscription-list.js';
 import { enhanceTagFields } from './tag-field.js';
@@ -75,6 +76,7 @@ function hydrate() {
     enhanceSubscriptionLists(document);
     enhanceCopyFields(document);
     enhanceCardLayouts(document);
+    enhanceScenarioForm();
     drawCharts();
 }
 
