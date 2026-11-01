@@ -11,6 +11,9 @@
 # they arrived. The runtime libraries stay in the image and only the headers
 # are thrown away with .build-deps, so the extension it produces still has
 # something to link against.
+#
+# opcache is not in the list: PHP 8.5 builds it into the binary, and
+# docker-php-ext-install opcache fails there ("cp: can't stat 'modules/*'").
 # ---------------------------------------------------------------------------
 FROM php:8.5-fpm-alpine AS base
 
@@ -41,7 +44,6 @@ RUN apk upgrade --no-cache \
     && docker-php-ext-install -j"$(nproc)" \
         gd \
         intl \
-        opcache \
         pdo_mysql \
         pdo_pgsql \
         zip \
