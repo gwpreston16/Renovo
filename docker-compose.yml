@@ -135,7 +135,7 @@ services:
       start_period: 30s
 
   database:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     restart: unless-stopped
     # Bound to loopback only: this is for host-side tooling (phinx, phpunit,
     # psql), not for exposing the database to the network.
@@ -285,7 +285,7 @@ services:
   # only while a rehearsal runs; no port is published.
   #
   # rehearsal-db:
-  #   image: postgres:16-alpine
+  #   image: postgres:18-alpine
   #   restart: unless-stopped
   #   environment:
   #     POSTGRES_DB: rehearsal
