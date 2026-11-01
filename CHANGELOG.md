@@ -8,6 +8,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.31.0] - 2026-11-01
+
 ### Changed
 
 - **The front-end scripts have a test runner.** `npm test` runs Vitest with
@@ -1334,7 +1336,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.30.0...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.31.0...HEAD
+[1.31.0]: https://github.com/gwpreston16/Renovo/compare/v1.30.0...v1.31.0
 [1.30.0]: https://github.com/gwpreston16/Renovo/compare/v1.29.0...v1.30.0
 [1.29.0]: https://github.com/gwpreston16/Renovo/compare/v1.28.0...v1.29.0
 [1.28.0]: https://github.com/gwpreston16/Renovo/compare/v1.27.3...v1.28.0
