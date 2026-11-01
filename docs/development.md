@@ -313,10 +313,27 @@ await window.Renovo.chart(canvas, { type: 'line', data: … });
 element.append(window.Renovo.icon('calendar'));
 ```
 
+### JavaScript tests
+
+```bash
+npm test        # one run of every file in tests/js/
+```
+
+Vitest with jsdom (development dependencies only). A test imports
+`assets/js/app.js` through `tests/js/load-app.js`, which removes the listeners
+again afterwards, and drives it with dispatched htmx events. Today that covers
+the per-region swap map and focus fallback (`swap-map.test.js`) and the
+save-failed handler (`save-failed.test.js`). Another script joins the runner in
+the phase that records a gap in it.
+
+jsdom has no layout, real focus handling or htmx timing, so those stay browser
+checks.
+
 ### Browser checks the tests cannot run
 
-The repo has no JavaScript test runner, so the script behaviour that PHPUnit
-cannot see is checked by hand and recorded here.
+Layout, real focus and real htmx timing are checked by hand and recorded here.
+The save-failed logic is also under `npm test`; this check is the part jsdom
+cannot see.
 
 - **A failed save-on-change says so** (Phase 70, K164). With every save-on-change
   POST answering 500, changing a member's role select on `/settings/members`

@@ -787,6 +787,23 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   `/assets/`, and still never the application's HTML, which could leak the
   CSRF token through compression. No API change and no migrations. See
   [Installing](install.md#behind-a-reverse-proxy).
+- **Phase 72 — spend walks load their sources once, from the known-issues
+  log — complete (1.31.0).** The analytics screen, the household dashboard,
+  the "by member" chart and the Budgets screen load the household's
+  subscriptions, price history and ledger once for all their walks into the
+  past, instead of once per walk or per member, so the statement count no
+  longer grows with the number of members. The year-over-year card and the
+  year-to-date comparison are also right on 29 February. The figures do not
+  change. No API change and no migrations. See [Money](features/money.md).
+- **Phase 73 — a JavaScript test runner, from the known-issues log — complete
+  (1.31.0).** `npm test` runs Vitest with jsdom over `tests/js/`, and CI runs
+  it; it tests the htmx swap bookkeeping and focus fallback and the
+  save-failed handler. A development dependency only: nothing is bundled and
+  the running application is unchanged. No API change and no migrations. See
+  [Development](development.md).
+- **Phase 73.1 — front-end dependency patch — hotfix (1.31.1).** chart.js
+  4.5.1 to 4.6.1 and Lucide 1.61.0 to 1.64.0, from Dependabot's npm group,
+  with no change to the screens, the API or the data. No migrations.
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says

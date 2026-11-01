@@ -125,6 +125,7 @@ npm install                  # front-end build only; not needed at run time
 # its stylesheet through the build manifest)
 npm run build                # compile into public/build/
 npm run watch                # rebuild on change (the `assets` compose service)
+npm test                     # the front-end tests (Vitest + jsdom, tests/js/)
 
 # Run the app as it ships (each container serves its own image; no npm at run
 # time). Postgres by default; MySQL variant documented in docs/install.md.
