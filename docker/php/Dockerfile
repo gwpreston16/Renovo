@@ -12,7 +12,7 @@
 # are thrown away with .build-deps, so the extension it produces still has
 # something to link against.
 # ---------------------------------------------------------------------------
-FROM php:8.4-fpm-alpine AS base
+FROM php:8.5-fpm-alpine AS base
 
 # Upgraded first: the base image is rebuilt less often than Alpine ships fixes,
 # and CI fails the build on a fixable high or critical vulnerability (Phase 43).
@@ -144,7 +144,7 @@ CMD ["php-fpm"]
 # docker-compose.dev.yml), which is what makes editing a stylesheet show up
 # without a rebuild.
 # ---------------------------------------------------------------------------
-FROM nginx:1.29-alpine AS web
+FROM nginx:1.31-alpine AS web
 
 # As for the application image: the fixes Alpine has shipped since the nginx
 # image was built (Phase 43).
