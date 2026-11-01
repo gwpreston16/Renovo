@@ -81,7 +81,7 @@ can be moved.
 | 70 | [API bodies and save-on-change messages, from the known-issues log](docs/phases/PHASE-70.md) | — | None | ✅ done |
 | 71 | [Split deletes and static-file compression, from the known-issues log](docs/phases/PHASE-71.md) | — | None | ✅ done |
 | 72 | [Spend walks load their sources once, from the known-issues log](docs/phases/PHASE-72.md) | — | None | ✅ done |
-| 73 | [A JavaScript test runner, from the known-issues log](docs/phases/PHASE-73.md) | — | None | 📋 planned |
+| 73 | [A JavaScript test runner, from the known-issues log](docs/phases/PHASE-73.md) | — | None | ✅ done |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was

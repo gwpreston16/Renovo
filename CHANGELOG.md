@@ -8,7 +8,19 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Changed
+
+- **The front-end scripts have a test runner.** `npm test` runs Vitest with
+  jsdom over `tests/js/`, and CI runs it. It is a development dependency only:
+  nothing is bundled and the running application is unchanged. *Phase 73.*
+
 ### Fixed
+
+- **The htmx swap bookkeeping and the save-failed handler are tested.** Two
+  overlapping requests keep the newest one's focus, an error forgets a region
+  unless a newer request is pending, focus falls back when the trigger is gone,
+  and a failed save-on-change shows its message and puts the control back. A
+  mistake in any of these now fails CI. *Phase 73.*
 
 - **The analytics screen, the household dashboard and the "by member" chart load
   the past once.** Each walk into the past (the year to date, both charts, the
