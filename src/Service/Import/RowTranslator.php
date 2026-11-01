@@ -35,6 +35,12 @@ use DateTimeImmutable;
 final class RowTranslator
 {
     /**
+     * A numeric date with a year of 1000 or later in four digits: year-first
+     * (dash or slash) or day-first (slash, dash or dot).
+     */
+    private const FOUR_DIGIT_YEAR = '/^(?:[1-9]\d{3}([\/-])\d{1,2}\1\d{1,2}|\d{1,2}([\/.-])\d{1,2}\2[1-9]\d{3})$/';
+
+    /**
      * Words other trackers use for billing cycles.
      *
      * @var array<string, string>
@@ -273,12 +279,26 @@ final class RowTranslator
             return '';
         }
 
+        // A time on the end of a numeric date ("01/03/2026 00:00", as a
+        // spreadsheet writes it) is dropped, and the date in front of it is
+        // read the way it would be on its own: day-first (K177).
+        $day = preg_replace('/[ T]\d{1,2}:\d{2}(?::\d{2})?$/', '', $raw) ?? $raw;
+        $numeric = preg_match('/^\d+([\/.-])\d+\1\d+$/', $day) === 1;
+
+        // A year is four digits. "15/06/26" would otherwise be read as the
+        // year 26 (or, by the American fallback, as 2026 on the wrong
+        // reading), so a numeric date that is not in a four-digit shape is
+        // handed on to be refused rather than guessed at (K176).
+        if ($numeric && preg_match(self::FOUR_DIGIT_YEAR, $day) !== 1) {
+            return $raw;
+        }
+
         // ISO first: it is unambiguous, and it is what this application emits.
         // Each format is strict: a day or month out of range is not rolled
         // into the next one, so "12/25/2026" is not 12 January 2028 (K48) and
         // falls through to be read as the American date it is.
         foreach (['!Y-m-d', '!Y/m/d', '!d/m/Y', '!d-m-Y', '!d.m.Y'] as $format) {
-            $date = DateTimeImmutable::createFromFormat($format, $raw);
+            $date = DateTimeImmutable::createFromFormat($format, $day);
             if ($date !== false && !self::overflowed()) {
                 return $date->format('Y-m-d');
             }
