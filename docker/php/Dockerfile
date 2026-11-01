@@ -11,8 +11,11 @@
 # they arrived. The runtime libraries stay in the image and only the headers
 # are thrown away with .build-deps, so the extension it produces still has
 # something to link against.
+#
+# opcache is not in the list: PHP 8.5 builds it into the binary, and
+# docker-php-ext-install opcache fails there ("cp: can't stat 'modules/*'").
 # ---------------------------------------------------------------------------
-FROM php:8.4-fpm-alpine AS base
+FROM php:8.5-fpm-alpine AS base
 
 # Upgraded first: the base image is rebuilt less often than Alpine ships fixes,
 # and CI fails the build on a fixable high or critical vulnerability (Phase 43).
@@ -41,7 +44,6 @@ RUN apk upgrade --no-cache \
     && docker-php-ext-install -j"$(nproc)" \
         gd \
         intl \
-        opcache \
         pdo_mysql \
         pdo_pgsql \
         zip \
@@ -144,7 +146,7 @@ CMD ["php-fpm"]
 # docker-compose.dev.yml), which is what makes editing a stylesheet show up
 # without a rebuild.
 # ---------------------------------------------------------------------------
-FROM nginx:1.29-alpine AS web
+FROM nginx:1.31-alpine AS web
 
 # As for the application image: the fixes Alpine has shipped since the nginx
 # image was built (Phase 43).
