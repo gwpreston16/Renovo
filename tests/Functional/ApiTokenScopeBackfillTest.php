@@ -204,7 +204,7 @@ final class ApiTokenScopeBackfillTest extends ApiTestCase
         // sure it is the database this test may write to.
         self::assertSame(
             $this->db->fetchValue('SELECT current_database()'),
-            $pdo->query('SELECT current_database()')?->fetchColumn(),
+            $pdo->query('SELECT current_database()')->fetchColumn(),
         );
 
         require_once __DIR__ . '/../../migrations/' . self::MIGRATION;

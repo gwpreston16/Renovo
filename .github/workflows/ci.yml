@@ -328,6 +328,9 @@ jobs:
       - name: Build the assets
         run: npm run build
 
+      - name: Front-end tests
+        run: npm test
+
       - name: Nothing is loaded from a third-party host
         env:
           SESSION_KEY: ci-session-key-not-a-secret-0000000000000000
