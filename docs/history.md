@@ -809,6 +809,17 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   with the Composer group and a CI that tests MySQL 9.7. The MySQL start
   upgrades an existing data directory in place, so back up first. No
   migrations. See [Upgrading](upgrading.md).
+- **Phase 74 — re-confirmation, CSV dates and the scenario planner, from the
+  known-issues log — complete (1.32.0).** Changing the email address, adding
+  or removing a passkey and setting up an authenticator app now ask for the
+  current password, so a signed-in browser that is not the owner's cannot take
+  the account over, and every prompt that asks for the password again counts
+  its misses against a rate limit of its own. A CSV date with a two-digit year
+  is refused instead of importing as the first century, a day-first date with
+  a time imports day-first, and the scenario planner works for households of
+  any size. No API change and no migrations. See
+  [Security](security.md#signing-in) and
+  [Tracking](features/tracking.md#importing).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says

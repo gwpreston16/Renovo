@@ -185,8 +185,8 @@ uses it, and a deployment from the published image never installs it. See
 ## What's new
 
 Release notes are in [CHANGELOG.md](CHANGELOG.md), and what each phase built is
-in [docs/history.md](docs/history.md). The latest phase is **Phase 73, a JavaScript test runner, from the known-issues log**
-([brief](docs/phases/PHASE-73.md)); the [roadmap](ROADMAP.md) shows what is in
+in [docs/history.md](docs/history.md). The latest phase is **Phase 74, re-confirmation, CSV dates and the scenario planner, from the known-issues log**
+([brief](docs/phases/PHASE-74.md)); the [roadmap](ROADMAP.md) shows what is in
 progress and what is planned.
 
 ## Contributing
