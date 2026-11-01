@@ -325,6 +325,10 @@ return static function (App $app): void {
             ->setName('forecast-scenario')
             ->add($requires(Permission::ViewSubscriptions));
 
+        $group->post('/forecast/scenario', [ForecastController::class, 'submit'])
+            ->setName('forecast-scenario-submit')
+            ->add($requires(Permission::ViewSubscriptions));
+
         $group->post('/forecast/scenario/selection', [ForecastController::class, 'selection'])
             ->setName('forecast-scenario-selection')
             ->add($requires(Permission::ViewSubscriptions));

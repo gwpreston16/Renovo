@@ -1,23 +1,25 @@
 /**
  * The scenario planner sends only the rows that change something (K175).
  *
- * The planner's rows are one GET form, and every row carries a Keep / Cancel /
- * Change choice plus three amount fields, so the whole form is several
- * thousand bytes and four request variables per subscription. Past about 80
- * rows that is longer than the web server's request-line limit, and past 250
- * it is more variables than PHP reads. A row left on Keep contributes nothing
- * to the scenario (`Scenario::fromQuery()` treats a missing row as Keep), so
- * it is left out of the request, and the request is as long as the changes
- * made rather than the number of subscriptions.
+ * Every row carries a Keep / Cancel / Change choice plus three amount fields,
+ * so the whole form is several thousand bytes and four request variables per
+ * subscription. Sent as a GET, past about 80 rows that is longer than the web
+ * server's request-line limit. A row left on Keep contributes nothing to the
+ * scenario (`Scenario::fromQuery()` treats a missing row as Keep), so it is
+ * left out of the request, and the request is as long as the changes made
+ * rather than the number of subscriptions.
  *
  * The form is still complete in the page: what was typed into a row stays in
  * its fields, so choosing Change again shows it. Only the request is trimmed.
  *
- * Without script the form submits whole, as before.
+ * Without script the form posts whole (it is a POST, so no address length
+ * applies) and the server answers with the short address
+ * (`ScenarioService::queryFromForm()`).
  */
 
 const FORM = 'scenario-form';
 const SCENARIO_PATH = '/forecast/scenario';
+const CSRF_FIELD = '_csrf';
 const ROW_FIELD = /^(?:choice|change)\[(\d+)\]/;
 const CHOICE_FIELD = /^choice\[(\d+)\]$/;
 
@@ -76,6 +78,10 @@ function onConfigRequest(event) {
     if (path !== SCENARIO_PATH && !path.startsWith(SCENARIO_PATH + '?')) {
         return;
     }
+
+    // The form carries the token for its POST; a GET has no use for it and an
+    // address is no place for it.
+    delete detail.parameters[CSRF_FIELD];
 
     dropKeptRows(detail.parameters);
 }

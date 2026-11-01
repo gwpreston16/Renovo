@@ -124,6 +124,7 @@ None.
 - [x] K176: a two-digit year is refused
 - [x] K177: a day-first date with a time is read day-first
 - [x] K175: the scenario planner sends only changed rows
+- [x] Found in the merge review and fixed here (K210-K213): setting up an authenticator app needs the password; the no-script planner form is a POST answered with the short address (`max_input_vars` raised in `docker/php/php.ini`); a JS test for the passkey password; the passkey Remove button is a danger button with a label
 - [x] Rows marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed
 - [x] ROADMAP: Phase 74 row marked ✅ done

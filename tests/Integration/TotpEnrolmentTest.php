@@ -120,6 +120,30 @@ final class TotpEnrolmentTest extends DatabaseTestCase
         self::assertTrue($this->hasAudit(AuditAction::TotpEnabled));
     }
 
+    /**
+     * K210: turning on a second factor changes how the account signs in, so a
+     * browser that is merely signed in has to know the password first.
+     */
+    public function testSettingUpNeedsThePassword(): void
+    {
+        foreach (['', 'not-the-password'] as $password) {
+            try {
+                $this->totp->requestEnrolment($this->user, 'Renovo Test', $password, '198.51.100.20');
+                self::fail('A wrong password should not start enrolment.');
+            } catch (ValidationException $exception) {
+                self::assertArrayHasKey('password', $exception->errors());
+            }
+        }
+
+        // Nothing was started, so no secret was issued and nothing is pending.
+        self::assertNull((new TotpRepository($this->db))->find($this->user->id));
+
+        $enrolment = $this->totp->requestEnrolment($this->user, 'Renovo Test', self::PASSWORD, '198.51.100.20');
+
+        self::assertStringContainsString('otpauth://totp/', $enrolment['uri']);
+        self::assertNotNull((new TotpRepository($this->db))->find($this->user->id));
+    }
+
     public function testTheSecretIsNotStoredInReadableForm(): void
     {
         $enrolment = $this->totp->beginEnrolment($this->user, 'Renovo Test');

@@ -61,6 +61,21 @@ final class TotpService
     }
 
     /**
+     * Step one as the account page asks for it: the password first. Adding a
+     * second factor changes how the account signs in, so a browser that is
+     * merely signed in does not get to do it (K210).
+     *
+     * @return array{secret: string, formatted_secret: string, uri: string}
+     * @throws ValidationException
+     */
+    public function requestEnrolment(User $user, string $issuer, string $password, string $ipAddress): array
+    {
+        $this->reconfirmation->assert($user, $password, 'password', $ipAddress);
+
+        return $this->beginEnrolment($user, $issuer);
+    }
+
+    /**
      * Step one: issue a secret and the URI an authenticator app understands.
      *
      * @return array{secret: string, formatted_secret: string, uri: string}

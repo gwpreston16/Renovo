@@ -53,17 +53,25 @@
             <div class="account-row-actions">
                 {% if totp_on %}
                     <span class="badge badge-ok">{{ t('profile.totp_on') }}</span>
-                {% else %}
-                    <form method="post" action="/profile/two-step/totp" class="inline">
-                        {{ csrf_field() }}
-                        <button type="submit" class="button button-outline">
-                            {{ t('profile.totp_set_up') }}
-                        </button>
-                    </form>
                 {% endif %}
             </div>
 
-            {% if totp_on %}
+            {% if not totp_on %}
+                <details class="account-row-more">
+                    <summary class="button button-outline">{{ t('profile.totp_set_up') }}</summary>
+                    <form method="post" action="/profile/two-step/totp" class="stack">
+                        {{ csrf_field() }}
+                        <div class="field">
+                            <label for="setup-password">{{ t('security.totp_setup_password_label') }}</label>
+                            <input type="password" id="setup-password" name="password"
+                                   autocomplete="current-password" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="button">{{ t('profile.totp_set_up') }}</button>
+                        </div>
+                    </form>
+                </details>
+            {% else %}
                 <details class="account-row-more">
                     <summary class="button button-quiet">{{ t('security.turn_off') }}</summary>
                     <form method="post" action="/profile/two-step/totp/disable" class="stack">
@@ -95,12 +103,16 @@
                              aria-label="{{ t('profile.passkey_remove', { 'name': passkey.name }) }}">
                         {{ t('action.remove') }}
                     </summary>
-                    <form method="post" action="/profile/two-step/passkeys/{{ passkey.id }}/delete" class="field-row">
+                    <form method="post" action="/profile/two-step/passkeys/{{ passkey.id }}/delete" class="stack">
                         {{ csrf_field() }}
-                        <input type="password" name="password" required autocomplete="current-password"
-                               aria-label="{{ t('security.passkey_password_label') }}"
-                               placeholder="{{ t('security.passkey_password_label') }}">
-                        <button type="submit" class="button">{{ t('action.remove') }}</button>
+                        <div class="field">
+                            <label for="remove-passkey-{{ passkey.id }}">{{ t('security.passkey_password_label') }}</label>
+                            <input type="password" id="remove-passkey-{{ passkey.id }}" name="password" required
+                                   autocomplete="current-password">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="button button-danger">{{ t('action.remove') }}</button>
+                        </div>
                     </form>
                 </details>
 

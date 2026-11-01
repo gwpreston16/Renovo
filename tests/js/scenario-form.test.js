@@ -22,7 +22,7 @@ function planner(choices = {}) {
     for (let id = 1; id <= ROWS; id++) {
         rows += row(id, choices[id] ?? 'keep');
     }
-    document.body.innerHTML = `<form id="scenario-form" method="get" action="/forecast/scenario"><ul>${rows}</ul>
+    document.body.innerHTML = `<form id="scenario-form" method="post" action="/forecast/scenario"><ul>${rows}</ul>
         <button type="submit">Work it out</button></form>`;
 }
 
@@ -108,4 +108,10 @@ test('the form\'s own submit leaves Keep rows out and puts them back', async () 
 
     await new Promise((resolve) => setTimeout(resolve, 5));
     expect([...form.elements].some((field) => field.disabled)).toBe(false);
+});
+
+test('the form\'s token stays out of a request for the results', () => {
+    document.getElementById('scenario-form').insertAdjacentHTML('beforeend', '<input type="hidden" name="_csrf" value="t">');
+
+    expect(request()).not.toContain('_csrf');
 });

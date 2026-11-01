@@ -88,7 +88,21 @@ final class SecurityController extends Controller
             return $this->redirectAfterWrite($request, $response, self::TWO_STEP);
         }
 
-        $enrolment = $this->totp->beginEnrolment($user, $this->settings->instanceName());
+        $body = $this->body($request);
+
+        try {
+            $enrolment = $this->totp->requestEnrolment(
+                $user,
+                $this->settings->instanceName(),
+                is_scalar($body['password'] ?? null) ? (string) $body['password'] : '',
+                $this->clientIp($request),
+            );
+        } catch (ValidationException $exception) {
+            $this->flashErrors($exception);
+
+            return $this->redirectAfterWrite($request, $response, self::TWO_STEP);
+        }
+
         $this->session->set(self::ENROLMENT_SECRET_KEY, $enrolment['secret']);
 
         return $this->render($request, $response, 'security/totp_setup.twig', [

@@ -11,6 +11,7 @@ use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\SubscriptionRepository;
 use App\Repository\UserRepository;
+use App\Security\CsrfTokenManager;
 use App\Security\Scope;
 use App\Security\SessionInterface;
 use App\Service\InstanceSettingsService;
@@ -136,20 +137,73 @@ final class ScenarioPlannerLargeHouseholdTest extends DatabaseTestCase
         self::assertStringNotContainsString('Service 150', $results);
     }
 
-    public function testTheWholeFormStillWorks(): void
+    /**
+     * K211: without script the form is posted whole, so no address length
+     * applies, and is answered with the short address of the rows that changed.
+     */
+    public function testTheWholeFormIsPostedAndAnsweredWithTheShortAddress(): void
     {
-        // Without script the form submits whole: every row's choice. 300 rows
-        // are 300 variables, well inside PHP's default of 1000, and the
-        // answer is the same as the short request's.
-        $choices = [];
+        $form = [];
         foreach ($this->ids as $position => $id) {
-            $choices[$id] = $position === 300 ? 'cancel' : 'keep';
+            $form['choice'][$id] = match ($position) {
+                300 => 'cancel',
+                7 => 'change',
+                default => 'keep',
+            };
+            // Every row has its three amount fields, filled in or not.
+            $form['change'][$id] = ['price' => $position === 7 ? '9.99' : '', 'cycle' => '', 'days' => ''];
         }
+        // Four fields a row, as the page draws it: more than any address holds.
+        self::assertGreaterThan(8000, strlen(http_build_query($form)));
 
-        $response = $this->plan(http_build_query(['choice' => $choices]));
+        $response = $this->post($form + ['mine' => '1']);
 
-        self::assertSame(200, $response->getStatusCode());
-        self::assertStringContainsString('Service 300', (string) $response->getBody());
+        self::assertSame(303, $response->getStatusCode());
+        $location = $response->getHeaderLine('Location');
+        self::assertLessThan(300, strlen($location));
+        parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+        self::assertSame('1', $query['mine']);
+        self::assertSame(
+            [(string) $this->ids[7] => 'change', (string) $this->ids[300] => 'cancel'],
+            array_map('strval', $query['choice']),
+        );
+        self::assertSame('9.99', $query['change'][$this->ids[7]]['price']);
+        self::assertCount(1, $query['change']);
+
+        // And that address answers with the plan.
+        $plan = $this->plan((string) parse_url($location, PHP_URL_QUERY));
+        self::assertSame(200, $plan->getStatusCode());
+        self::assertStringContainsString('Service 300', (string) $plan->getBody());
+    }
+
+    public function testAPostedFormWithNothingChangedGoesToThePlainPlanner(): void
+    {
+        $form = ['choice' => array_fill_keys($this->ids, 'keep')];
+
+        $response = $this->post($form);
+
+        self::assertSame(303, $response->getStatusCode());
+        self::assertSame('/forecast/scenario', $response->getHeaderLine('Location'));
+    }
+
+    /**
+     * @param array<string, mixed> $form
+     */
+    private function post(array $form): ResponseInterface
+    {
+        $container = $this->app->getContainer();
+        self::assertNotNull($container);
+
+        $request = (new ServerRequestFactory())
+            ->createServerRequest('POST', '/forecast/scenario', ['REMOTE_ADDR' => '127.0.0.1'])
+            ->withParsedBody(
+                $form + [CsrfTokenManager::FIELD_NAME => $container->get(CsrfTokenManager::class)->token()],
+            );
+
+        $this->session->set(AuthenticationMiddleware::SESSION_USER_ID, $this->ownerId);
+        $this->session->set(AuthenticationMiddleware::SESSION_HOUSEHOLD_ID, $this->householdId);
+
+        return $this->app->handle($request);
     }
 
     /**

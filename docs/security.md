@@ -17,8 +17,8 @@ but still-signed-in session cannot quietly remove it.
 **Typing your password again.** A browser that is signed in but not yours must
 not be able to weaken the account, so the changes that would do it ask for the
 current password: a new **email address** (Profile → Who you are; the name
-alone does not), **adding** or **removing a passkey**, turning the authenticator
-app **off**, issuing **new recovery codes** and **changing the password**. A
+alone does not), **adding** or **removing a passkey**, setting the authenticator
+app **up** or turning it **off**, issuing **new recovery codes** and **changing the password**. A
 wrong password changes nothing. Every one of these is a password guess, so a
 miss is counted under a budget of its own (the sign-in limits, applied
 separately per account and per IP) and a block refuses even the right password

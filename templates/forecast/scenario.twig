@@ -23,9 +23,11 @@
         default; set one to Cancel or Change price and the results panel says
         what it saves, and from when — `ScenarioService`.
 
-        The scenario is the query string: the rows are one GET form, so it
-        works without script and a bookmark keeps it. With script, htmx sends
-        the form whenever a choice changes and replaces only the results panel;
+        The scenario is the query string, so a bookmark keeps it. With script,
+        htmx sends the form as a GET whenever a choice changes, only the rows
+        that change something, and replaces only the results panel;
+        the button posts the form, which a household of any size can be, and
+        is answered with the short address of the rows that changed;
         a filter change replaces the whole planner. A row the filters hide is
         still in the form, `hidden`, so its choice is still sent — the filters
         narrow what is shown, never what is planned.
@@ -40,7 +42,7 @@
     {% endif %}
 
     <div class="scenario-planner" id="scenario-planner">
-        <form class="card scenario-rows" id="scenario-form" method="get" action="/forecast/scenario"
+        <form class="card scenario-rows" id="scenario-form" method="post" action="/forecast/scenario"
               aria-labelledby="scenario-rows-heading"
               hx-get="/forecast/scenario" hx-target="#scenario-results" hx-swap="outerHTML"
               hx-trigger="change, renovo:typed delay:500ms" data-typed-trigger
@@ -51,6 +53,8 @@
                     <p class="muted">{{ t('scenario.rows_note') }}</p>
                 </div>
             </header>
+
+            {{ csrf_field() }}
 
             {% if mine_only %}
                 <input type="hidden" name="mine" value="1">

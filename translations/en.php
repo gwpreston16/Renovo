@@ -1842,6 +1842,7 @@ return [
     'security.this_device' => 'This device',
     'security.totp_off' => 'Off. Add an authenticator app to require a six-digit code as well as your password.',
     'security.totp_off_password_label' => 'Confirm your password to turn two-step verification off',
+    'security.totp_setup_password_label' => 'Confirm your password to set up an authenticator app',
     'security.turn_off' => 'Turn off',
     'security.your_recovery_codes' => 'Your recovery codes',
 

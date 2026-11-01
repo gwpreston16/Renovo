@@ -17,6 +17,10 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 - **Adding or removing a passkey needs your password.** The password is checked
   before a registration's challenge exists and before a passkey is removed.
   *Phase 74.*
+- **Setting up an authenticator app needs your password.** The QR code is not
+  shown, and no secret is issued, until the password is typed, so a browser that
+  is merely signed in cannot enrol an app of its own and replace the recovery
+  codes. *Phase 74.*
 - **Typing the password again is rate-limited.** Changing the password, turning
   the authenticator off, issuing new recovery codes and the prompts above count
   each miss against a budget of their own, per account and per IP, and refuse
@@ -30,9 +34,12 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   1 March, not 3 January. *Phase 74.*
 - **The scenario planner works with any number of subscriptions.** The page sends
   only the rows you have changed, so a household of several hundred no longer
-  overruns the request-line limit. Without script the form still submits whole,
-  which PHP's default limit of 1000 request variables reaches at about 250 rows.
-  *Phase 74.*
+  overruns the request-line limit. Without script the form is posted whole and
+  answered with the short address of the rows you changed; the bundled image
+  reads up to 5000 request variables (`max_input_vars`), which is about 1200
+  subscriptions. *Phase 74.*
+- **The passkey Remove button is a danger button** and its password field has a
+  label. *Phase 74.*
 
 ## [1.31.2] - 2026-11-01
 

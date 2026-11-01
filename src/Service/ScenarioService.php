@@ -678,4 +678,37 @@ final class ScenarioService
 
         return (int) $value;
     }
+    /**
+     * The address query a submitted planner form stands for, which is only the
+     * rows that change something (K211). A row left on Keep contributes
+     * nothing, so the form's other fields for it are not carried and the
+     * address is as long as the changes made rather than the household.
+     *
+     * @param array<mixed> $form The posted form.
+     * @return array<string, mixed>
+     */
+    public function queryFromForm(array $form): array
+    {
+        $query = [];
+
+        if (($form['mine'] ?? '') === '1') {
+            $query['mine'] = '1';
+        }
+
+        $choices = is_array($form['choice'] ?? null) ? $form['choice'] : [];
+        $changes = is_array($form['change'] ?? null) ? $form['change'] : [];
+
+        foreach ($choices as $id => $choice) {
+            if (!is_scalar($choice) || !in_array((string) $choice, [Scenario::CANCEL, Scenario::CHANGE], true)) {
+                continue;
+            }
+
+            $query['choice'][$id] = (string) $choice;
+            if ((string) $choice === Scenario::CHANGE && is_array($changes[$id] ?? null)) {
+                $query['change'][$id] = $changes[$id];
+            }
+        }
+
+        return $query;
+    }
 }

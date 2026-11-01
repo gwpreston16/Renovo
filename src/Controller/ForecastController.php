@@ -93,6 +93,22 @@ final class ForecastController extends Controller
     }
 
     /**
+     * The no-script "Work it out": the whole form, posted so that it is not
+     * held to the length of an address (K211), answered with the short
+     * address that holds just the rows that change something. The planner's
+     * own address stays the scenario, so a bookmark keeps it.
+     */
+    public function submit(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $form = $this->body($request);
+        $query = $this->scenarios->queryFromForm($form);
+
+        $address = '/forecast/scenario' . ($query === [] ? '' : '?' . http_build_query($query));
+
+        return $this->redirect($response, $this->withFilters($address, $form))->withStatus(303);
+    }
+
+    /**
      * The subscriptions list's "Plan a scenario": the ticked rows, set to
      * Cancel. A POST because the bulk bar is a form with a CSRF token, which
      * has no place in an address; it writes nothing and answers with the
