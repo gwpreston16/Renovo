@@ -63,7 +63,7 @@ itself on every UPDATE (K110) cannot come back unnoticed. Locally:
 ```bash
 docker run -d --name renovo-mysql-flag-off -p 127.0.0.1:3318:3306 \
   -e MYSQL_DATABASE=renovo_test -e MYSQL_USER=renovo -e MYSQL_PASSWORD=renovo \
-  -e MYSQL_ROOT_PASSWORD=renovo-root mysql:8.4 \
+  -e MYSQL_ROOT_PASSWORD=renovo-root mysql:9.7 \
   --explicit-defaults-for-timestamp=0 \
   --sql-mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION \
   --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
