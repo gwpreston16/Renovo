@@ -219,7 +219,12 @@ final class CalendarFeedTest extends ApiTestCase
     {
         // A month's notice on a payment due on the 1st of December means the
         // last useful day to act is the 1st of November — the fact this feed
-        // exists to put in somebody's diary.
+        // exists to put in somebody's diary. The clock is frozen before that
+        // day: a deadline that has passed is not put in the diary, so on the
+        // real clock this test would fail from 2 November 2026 on.
+        $this->clock = FrozenClock::at('2026-10-15 12:00:00');
+        $this->boot();
+
         $this->createSubscription([
             'name' => 'Gym',
             'next_payment_date' => '2026-12-01',
