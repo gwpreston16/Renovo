@@ -88,7 +88,7 @@ can be moved.
 | 77 | [Date-boundary tests, from the known-issues log](docs/phases/PHASE-77.md) | — | None | ✅ done |
 | 78 | [Figures, icons, passkey labels and migration order, from the known-issues log](docs/phases/PHASE-78.md) | — | None | ✅ done |
 | 79 | [Controller flows over HTTP, from the known-issues log](docs/phases/PHASE-79.md) | — | None | ✅ done |
-| 80 | [Service-level test gaps, from the known-issues log](docs/phases/PHASE-80.md) | — | None | 📋 planned |
+| 80 | [Service-level test gaps, from the known-issues log](docs/phases/PHASE-80.md) | — | None | 🚧 in progress |
 | 81 | [API subscription reads and deletes, from the known-issues log](docs/phases/PHASE-81.md) | — | None | 📋 planned |
 | 82 | [API contract documentation, from the known-issues log](docs/phases/PHASE-82.md) | — | None | 📋 planned |
 
