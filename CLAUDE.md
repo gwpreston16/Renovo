@@ -179,6 +179,11 @@ reference and locale completeness. Don't merge red CI.
   each migration small and idempotent and note manual-rollback steps).
 - Applied version is tracked so partial migrations are detectable. Document a
   single upgrade command and always tell operators to **back up first**.
+- A new migration's **version must be greater than the highest in `migrations/`**.
+  Versions run ahead of the calendar, so the date `phinx create` stamps is lower
+  than the newest: rename the file (and its class stays as it is) to a version
+  above the highest. Otherwise it is applied out of order and `phinx rollback`
+  undoes the wrong one. `MigrationOrderTest` checks it.
 
 ## Conventions for common additions
 
@@ -191,8 +196,8 @@ reference and locale completeness. Don't merge red CI.
   *and* in `docs/api.md` (the prose reference). Both are checked against the
   route table in CI, in both directions, so neither can be skipped — and a new
   `Permission` case has to reach the role matrix in `docs/api.md` too.
-- **New migration:** one concern per migration, with a working `down()`; verify
-  on Postgres and MySQL.
+- **New migration:** one concern per migration, with a working `down()`, a version
+  above the highest in `migrations/`; verify on Postgres and MySQL.
 - **New front-end dependency:** install it from npm and let the build vendor
   it. Never add a `<script>` or `<link>` pointing at a CDN — not even
   temporarily. A large library goes behind a dynamic `import()` so it becomes a

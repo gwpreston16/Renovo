@@ -52,6 +52,10 @@ right if the code reading it agrees.
 **Shape and safety**
 - **One concern per migration**; ordering by filename timestamp is correct
   relative to the migrations it depends on.
+- **The version is above the highest in `migrations/`.** `phinx create` stamps
+  today's date, which is lower than the newest version (they run ahead of the
+  calendar), so a new file is renamed to a higher one; a lower version is
+  applied out of order and `phinx rollback` undoes the wrong migration.
 - **Money is integer minor units** — never `decimal`, `float` or `double`.
 - `NOT NULL` additions on existing tables carry a default or a backfill that
   runs first. Backfills on large tables are batched and don't load the whole

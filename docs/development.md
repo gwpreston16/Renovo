@@ -90,6 +90,24 @@ DB_NAME=renovo_test CROSS_ENGINE_DB_DRIVER=mysql CROSS_ENGINE_DB_PORT=3317 \
   CROSS_ENGINE_DB_NAME=renovo_test vendor/bin/phpunit --filter OtherEngine
 ```
 
+## Migrations
+
+Migrations are Phinx files in `migrations/`, applied in the order of their
+version, the number before the first underscore. Versions here run ahead of the
+calendar: the newest is `20271001000001`, so `phinx create` today stamps a
+lower number. **A new migration's version must be greater than the highest
+already in `migrations/`.** After `phinx create`, rename the file to a version
+above the highest (the class name does not carry the version, so it stays).
+
+Why it matters: Phinx orders by version (`version_order` is `creation` in
+`phinx.php`). A migration below the newest is applied out of order on an
+instance already at head, runs before later migrations it may depend on on a
+fresh install, and `phinx rollback`, which undoes the last migration by
+version, reverts the newest existing one instead of the new one.
+
+`tests/Unit/MigrationOrderTest.php` fails when a migration is added with a
+lower version than one added before it, or reuses a version.
+
 ## Dependency and image scanning
 
 CI runs three checks on every pull request, and Dependabot proposes updates
