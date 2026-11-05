@@ -8,6 +8,17 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Three service-level guards are now tested.** The resolver behind the SSRF guard
+  is tested offline (it asks for both address families, falls back to the hosts
+  file, and drops malformed and duplicate answers); a split share outside 0-10000 is
+  refused and nothing is stored; and one user's failed reminder run is counted and
+  does not stop the next user's reminders. Each test fails under the mistake it
+  guards against. The only code change is that `SystemDnsResolver` takes optional
+  lookups so a test can run it without a network; the container wiring and
+  behaviour are unchanged. *Phase 80.*
+
 ## [1.37.0] - 2026-11-05
 
 ### Fixed

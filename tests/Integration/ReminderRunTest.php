@@ -7,8 +7,10 @@ namespace App\Tests\Integration;
 use App\Domain\AlertType;
 use App\Domain\BudgetPeriod;
 use App\Domain\DigestMode;
+use App\Domain\IsolationMode;
 use App\Domain\Role;
 use DateTimeImmutable;
+use Throwable;
 
 /**
  * The scheduler's run, end to end: what fires, when, for whom, and how often.
@@ -65,6 +67,72 @@ final class ReminderRunTest extends NotificationTestCase
 
         self::assertCount(2, $this->notifier->sent);
         self::assertStringContainsString('renews in 5 days', $this->notifier->titles()[1]);
+    }
+
+    // ------------------------------------------------------------------
+    // One user's failure (K207)
+    // ------------------------------------------------------------------
+
+    /**
+     * Give Alice, and only Alice, a household whose data cannot be read: a
+     * subscription row with a currency nobody can hydrate. Her run throws;
+     * Bob's household is untouched.
+     */
+    private function breakAlicesRun(): void
+    {
+        $other = $this->households->create('Alice elsewhere', $this->alice);
+        $this->memberships->create($other, $this->alice, Role::OwnerAdmin);
+        $id = $this->subscriptions->create(
+            $this->scope($this->alice, IsolationMode::Shared, $other),
+            [
+                'name' => 'Unreadable',
+                'price_minor' => 500,
+                'currency' => 'GBP',
+                'subscription_type' => 'recurring',
+                'billing_cycle' => 'monthly',
+                'next_payment_date' => '2026-10-15',
+                'is_active' => true,
+                'owner_user_id' => $this->alice,
+            ],
+            [],
+        );
+        $this->db->execute("UPDATE subscriptions SET currency = '??' WHERE id = :id", ['id' => $id]);
+    }
+
+    public function testOneUsersFailedRunDoesNotStopTheNextUsersReminders(): void
+    {
+        // Users run in display-name order, so Alice's run fails first and
+        // Bob's comes after it.
+        $this->addChannel($this->alice);
+        $this->addChannel($this->bob);
+        $this->createSubscription('Bob streaming', 1099, '2026-10-15', $this->bob);
+        $this->breakAlicesRun();
+
+        try {
+            $this->runner->runForUser($this->user($this->alice));
+            self::fail('Alice\'s run was meant to throw.');
+        } catch (Throwable) {
+            // The fault is real: it is her run that breaks, on its own.
+        }
+
+        $totals = $this->runner->run();
+
+        self::assertSame(1, $totals['failures'], 'the failure is counted');
+        self::assertSame(1, $totals['users'], 'only the user that succeeded is counted');
+        self::assertSame(1, $totals['sent'], 'and it is Bob\'s reminder that went out');
+        self::assertCount(1, $this->notifier->sent);
+        self::assertStringContainsString('Bob streaming', $this->notifier->titles()[0]);
+    }
+
+    public function testARunWithNoFailureCountsNone(): void
+    {
+        $this->addChannel($this->alice);
+        $this->createSubscription('Netflix', 1099, '2026-10-15', $this->alice);
+
+        $totals = $this->runner->run();
+
+        self::assertSame(0, $totals['failures']);
+        self::assertSame(2, $totals['users']);
     }
 
     public function testASubscriptionCanSilenceItself(): void

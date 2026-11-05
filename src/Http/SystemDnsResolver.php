@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http;
 
+use Closure;
+
 /**
  * The real resolver, asking the system for A and AAAA records.
  *
@@ -19,11 +21,38 @@ namespace App\Http;
  */
 final class SystemDnsResolver implements DnsResolver
 {
+    /** @var Closure(string, int): (array<int, array<string, mixed>>|false) */
+    private readonly Closure $records;
+
+    /** @var Closure(string): (array<int, string>|false) */
+    private readonly Closure $fallback;
+
+    /**
+     * Both lookups default to the real calls. A test supplies its own so the
+     * resolver's handling of answers can be exercised without a network, and
+     * the container binds the class with no arguments, so nothing changes in
+     * production.
+     *
+     * @param (callable(string, int): (array<int, array<string, mixed>>|false))|null $records
+     *        Stands in for `dns_get_record($host, $types)`.
+     * @param (callable(string): (array<int, string>|false))|null $fallback
+     *        Stands in for `gethostbynamel($host)`.
+     */
+    public function __construct(?callable $records = null, ?callable $fallback = null)
+    {
+        $this->records = $records !== null
+            ? Closure::fromCallable($records)
+            : static fn (string $host, int $types): array|false => @dns_get_record($host, $types);
+        $this->fallback = $fallback !== null
+            ? Closure::fromCallable($fallback)
+            : static fn (string $host): array|false => @gethostbynamel($host);
+    }
+
     public function resolve(string $host): array
     {
         $addresses = [];
 
-        $records = @dns_get_record($host, DNS_A | DNS_AAAA);
+        $records = ($this->records)($host, DNS_A | DNS_AAAA);
         if (is_array($records)) {
             foreach ($records as $record) {
                 $address = $record['ip'] ?? $record['ipv6'] ?? null;
@@ -34,7 +63,7 @@ final class SystemDnsResolver implements DnsResolver
         }
 
         if ($addresses === []) {
-            $fallback = @gethostbynamel($host);
+            $fallback = ($this->fallback)($host);
             if (is_array($fallback)) {
                 foreach ($fallback as $address) {
                     if ($address !== '') {

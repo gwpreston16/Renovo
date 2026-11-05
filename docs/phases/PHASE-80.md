@@ -49,9 +49,11 @@ an IPv6-only host would be refused as unresolvable.
 
 ### B. K206 — a split share outside 0-10000 is refused
 
-`SplitChargeShareTest` saves shares of -1 and 10001 in units mode and in percent
-mode and asserts the 422 `shares` error with nothing stored; and 10000 is
-accepted. Catches: removing the `$units < 0 || $units > 10000` check, which would
+`SplitShareRangeTest` (a new class: `SplitChargeShareTest` has no household or
+subscription to save a split against) saves shares of -1, 10001 and 1000000 in
+Custom mode and asserts the 422 `shares` error with nothing stored; 10000 is
+accepted, and Equal mode ignores the numbers it is sent. The code has no percent
+mode: Custom weights are the units, and Equal forces 1. Catches: removing the `$units < 0 || $units > 10000` check, which would
 store -1 and later make `Allocation::byWeight` throw.
 
 ### C. K207 — one user's failed reminder run does not stop the next
@@ -95,13 +97,13 @@ None.
 
 ## Status
 
-- [ ] K205: the SSRF resolver is tested offline
-- [ ] K206: a split share outside 0-10000 is refused
-- [ ] K207: one user's failed reminder run does not stop the next
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 80 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K205: the SSRF resolver is tested offline
+- [x] K206: a split share outside 0-10000 is refused
+- [x] K207: one user's failed reminder run does not stop the next
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 80 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
@@ -114,7 +116,7 @@ constructor. Then mark it ✅ in `ROADMAP.md`.
 
 - K205: `SystemDnsResolverTest` — literal, `localhost`, v6-only, A plus AAAA,
   malformed and duplicate records, fallback.
-- K206: `SplitChargeShareTest` — -1 and 10001 refused in units and percent mode,
-  10000 accepted.
+- K206: `SplitShareRangeTest` — -1, 10001 and 1000000 refused in Custom mode,
+  10000 accepted, Equal mode ignoring out-of-range input.
 - K207: `ReminderRunTest` — one user's failure leaves the next user's alert sent
   and `failures` at 1.
