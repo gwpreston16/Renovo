@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–81
+## Planned — Phases 30–82
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -90,6 +90,7 @@ can be moved.
 | 79 | [Controller flows over HTTP, from the known-issues log](docs/phases/PHASE-79.md) | — | None | 📋 planned |
 | 80 | [Service-level test gaps, from the known-issues log](docs/phases/PHASE-80.md) | — | None | 📋 planned |
 | 81 | [API subscription reads and deletes, from the known-issues log](docs/phases/PHASE-81.md) | — | None | 📋 planned |
+| 82 | [API contract documentation, from the known-issues log](docs/phases/PHASE-82.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -236,6 +237,7 @@ can be moved.
 - **79 — Controller flows over HTTP.** A tests-only batch from the known-issues log (K203, K204, K218, K219): the two-step forms, a CSV import from upload to commit, registration open and closed, and the setup wizard's "Send test email" are exercised over HTTP.
 - **80 — Service-level test gaps.** A batch from the known-issues log (K205, K206, K207): the SSRF resolver gets a test (its DNS lookup made injectable), a split share outside 0-10000 is covered, and one user's failed reminder run is shown not to stop the next.
 - **81 — API subscription reads and deletes.** A batch from the known-issues log (K189, K190): `GET /api/v1/subscriptions/{id}` catches up an overdue date as the list does, and deleting a subscription through the API releases its logo file as the web delete does.
+- **82 — API contract documentation.** A docs-only batch from the known-issues log (K192, K196, K197, K223): the PUT subscription 422 uses the shared validation response, the price fields declare `minimum: 0`, a category delete is documented as unassigning its subscriptions, and the logo and attachment upload limits are documented with their environment variables.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
