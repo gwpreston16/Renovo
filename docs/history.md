@@ -835,6 +835,15 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   know; `inactive` takes `0` or `1`. A `405` carries an `Allow` header, and
   `docs/api.md` lists the `400` on every JSON write. OpenAPI is 1.9.11. No
   migrations. See [API](api.md#errors).
+- **Phase 77 — Date-boundary tests, from the known-issues log — complete
+  (1.35.0).** Tests for four places where code decides what happens on a
+  particular day: an alert is not sent once its date has passed, a trial
+  ending today or on the last day of the "ending soon" window is listed, a
+  quarterly bill keeps its anchor day after a short month, and a trial
+  converting on the forecast's last day or a charge on the day an offer ends
+  is placed correctly. Each test fails under the one-day mistake it guards
+  against. Tests only: no behaviour, API or data change, and no migrations.
+  See [Development](development.md#tests).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
