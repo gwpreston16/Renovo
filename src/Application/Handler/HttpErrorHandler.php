@@ -129,6 +129,11 @@ final class HttpErrorHandler extends ErrorHandler
 
         $response = $this->responseFactory->createResponse($status);
 
+        if ($exception instanceof HttpMethodNotAllowedException && $exception->getAllowedMethods() !== []) {
+            // RFC 9110 §15.5.6: a 405 names the methods the route does take.
+            $response = $response->withHeader('Allow', implode(', ', $exception->getAllowedMethods()));
+        }
+
         if (ApiPath::matches($this->request)) {
             $renamed = [];
             foreach ($fieldErrors as $field => $error) {

@@ -59,10 +59,11 @@ abstract class ApiController
      *
      * Slim's body-parsing middleware has already turned `application/json` into
      * an array by the time this runs. A JSON write whose body cannot be read as
-     * an object — malformed, a list or scalar, or sent without a Content-Type —
-     * is a 400 rather than an empty object, so the client is told what is wrong
-     * instead of that a field is missing or that nothing was saved. An empty
-     * body, `{}` and a multipart or form body keep their present path.
+     * an object — malformed, a list or scalar, or sent with no Content-Type or
+     * one that is not JSON, multipart or form — is a 400 rather than an empty
+     * object, so the client is told what is wrong instead of that a field is
+     * missing or that nothing was saved. An empty body, `{}` and a multipart or
+     * form body keep their present path.
      *
      * @return array<string, mixed>
      */
@@ -79,8 +80,11 @@ abstract class ApiController
         }
 
         $type = strtolower(trim(explode(';', $request->getHeaderLine('Content-Type'))[0]));
-        $readsAsJson = $type === '' || $type === 'application/json' || str_ends_with($type, '+json');
-        if ($readsAsJson && trim($this->rawBody($request)) !== '') {
+        // Multipart and form bodies keep their path; any other type that
+        // carries a body (text/plain, application/xml, text/json) cannot be
+        // read as an object, so it is refused rather than taken as empty.
+        $isFormLike = $type === 'application/x-www-form-urlencoded' || str_starts_with($type, 'multipart/');
+        if (!$isFormLike && trim($this->rawBody($request)) !== '') {
             throw $this->unreadableBody($request);
         }
 

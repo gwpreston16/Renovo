@@ -112,12 +112,12 @@ None.
 
 ## Status
 
-- [ ] K191: a non-JSON Content-Type on a JSON write is a 400
-- [ ] K193: an unknown filter value on the subscription list is a 422
-- [ ] K194: a 405 carries `Allow`, and is documented
-- [ ] K222: every JSON write's "Responses:" line lists `400`
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
+- [x] K191: a non-JSON Content-Type on a JSON write is a 400
+- [x] K193: an unknown filter value on the subscription list is a 422
+- [x] K194: a 405 carries `Allow`, and is documented
+- [x] K222: every JSON write's "Responses:" line lists `400`
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
 - [ ] ROADMAP: Phase 76 row marked ✅ done
 - [ ] composer check, coverage and the API doc tests green
 

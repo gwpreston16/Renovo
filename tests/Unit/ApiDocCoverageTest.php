@@ -66,6 +66,73 @@ final class ApiDocCoverageTest extends TestCase
         );
     }
 
+    /**
+     * K222: a route OpenAPI declares a `400` for names it on its "Responses:"
+     * line in the prose, as the upload endpoints always did.
+     */
+    public function testEveryOperationWithADeclared400ListsItInTheProse(): void
+    {
+        $spec = Yaml::parseFile(dirname(__DIR__, 2) . '/openapi/openapi.yaml');
+        self::assertIsArray($spec);
+
+        $declared = [];
+        foreach ($spec['paths'] as $path => $operations) {
+            foreach ($operations as $method => $operation) {
+                if (is_array($operation) && isset($operation['responses']['400'])) {
+                    $declared[] = strtoupper($method) . ' ' . $path;
+                }
+            }
+        }
+        self::assertNotEmpty($declared);
+
+        // The prose: every "#### `METHOD /path` · `METHOD /path`" heading, with
+        // the "Responses:" paragraph beneath it.
+        $responses = [];
+        $headings = null;
+        $lines = explode("\n", $this->document());
+        foreach ($lines as $index => $line) {
+            if (str_starts_with($line, '#')) {
+                $headings = null;
+                $found = [];
+                $isOperation = str_starts_with($line, '#### ')
+                    && preg_match_all('/`([A-Z]+) (\/api\/v1[^`?]*)/', $line, $found, PREG_SET_ORDER) > 0;
+                if ($isOperation) {
+                    $headings = array_map(static fn (array $m): string => $m[1] . ' ' . $m[2], $found);
+                    foreach ($headings as $operation) {
+                        $responses[$operation] = '';
+                    }
+                }
+                continue;
+            }
+            if ($headings === null || !str_contains($line, 'Responses:')) {
+                continue;
+            }
+            // Read the whole paragraph the "Responses:" word starts, which may
+            // wrap onto the next lines.
+            $paragraph = '';
+            $count = count($lines);
+            for ($i = $index; $i < $count && trim($lines[$i]) !== '' && !str_starts_with($lines[$i], '#'); $i++) {
+                $paragraph .= ' ' . $lines[$i];
+            }
+            $position = strpos($paragraph, 'Responses:');
+            foreach ($headings as $operation) {
+                $responses[$operation] .= $position === false ? '' : substr($paragraph, $position);
+            }
+        }
+
+        $missing = [];
+        foreach ($declared as $operation) {
+            if (!isset($responses[$operation])) {
+                continue; // the endpoint table check covers a missing section
+            }
+            if (!str_contains($responses[$operation], '`400`')) {
+                $missing[] = $operation;
+            }
+        }
+
+        self::assertSame([], $missing, 'OpenAPI declares a 400 that the docs/api.md "Responses:" line leaves out.');
+    }
+
     public function testEveryDocumentedRouteNamesTheScopeItsRouteDeclares(): void
     {
         // Phase 42: the Scope column is the route's own declaration, read off

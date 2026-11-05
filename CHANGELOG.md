@@ -8,6 +8,22 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **A JSON write with a body that is not JSON is a `400`.** `text/plain`,
+  `application/xml` and `text/json` bodies were read as an empty object and
+  answered `200` having saved nothing. Multipart, form and empty bodies are
+  unchanged. *Phase 76.*
+- **An unknown filter value on the subscription list is a `422`.** `?status=actve`
+  or `?inactive=true` named no state and returned the unfiltered list; the API
+  now answers `422` naming the parameter. The web list is as forgiving as before.
+  *Phase 76.*
+- **A `405` carries an `Allow` header** listing the methods the route takes, on
+  the API and the web, as RFC 9110 asks. OpenAPI 1.9.11 declares a shared
+  `MethodNotAllowed` response. *Phase 76.*
+- **`docs/api.md` lists the `400`** on every JSON write's "Responses:" line, and a
+  test keeps it in step with OpenAPI. *Phase 76.*
+
 ## [1.33.0] - 2026-11-05
 
 ### Fixed

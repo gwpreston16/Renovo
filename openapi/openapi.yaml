@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.10"
+  version: "1.9.11"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -44,7 +44,8 @@ info:
 
     **An unreadable JSON body is a `400`.** A write whose body is malformed
     JSON, is a non-empty list or a scalar rather than an object, or is sent
-    with no `Content-Type` is refused with `400` and changes nothing. `{}`,
+    with no `Content-Type` or one that is not JSON, multipart or form is
+    refused with `400` and changes nothing. `{}`,
     `[]` and an empty body are read as an empty object.
 
     **Wrong types and impossible dates are refused.** A text field sent as a
@@ -219,8 +220,10 @@ paths:
           schema: { type: string, enum: [recurring, one_off, lifetime] }
         - name: inactive
           in: query
-          schema: { type: string, enum: ["1"] }
-          description: Include inactive subscriptions — paused and cancelled.
+          schema: { type: string, enum: ["0", "1"] }
+          description: >
+            `1` includes inactive subscriptions — paused and cancelled. `true`
+            and `false` are refused.
         - name: status
           in: query
           schema: { type: string, enum: [active, trial, paused, cancelled] }
@@ -268,6 +271,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -1683,6 +1688,23 @@ components:
         RateLimit-Reset:
           $ref: "#/components/headers/RateLimit-Reset"
       description: The body was understood but is not valid.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    MethodNotAllowed:
+      headers:
+        Allow:
+          description: The methods the route takes.
+          schema: { type: string, example: "GET, PUT, DELETE" }
+        RateLimit-Limit:
+          $ref: "#/components/headers/RateLimit-Limit"
+        RateLimit-Remaining:
+          $ref: "#/components/headers/RateLimit-Remaining"
+        RateLimit-Reset:
+          $ref: "#/components/headers/RateLimit-Reset"
+      description: >-
+        The route does not take this method. `Allow` lists the ones it does.
       content:
         application/json:
           schema:

@@ -449,10 +449,11 @@ the field the client sent: a bad price is under `price_minor`, a bad
 
 | Status | When |
 | --- | --- |
-| `400` | The request was malformed — a JSON body that is malformed, is a non-empty list or a scalar, or is sent with no `Content-Type` (`{}`, `[]` and an empty body are read as an empty object); a bad multipart body; an unreadable upload. |
+| `400` | The request was malformed — a JSON body that is malformed, is a non-empty list or a scalar, or is sent with no `Content-Type` or one that is not JSON, multipart or form (`text/plain`, `application/xml`) (`{}`, `[]` and an empty body are read as an empty object); a bad multipart body; an unreadable upload. |
 | `401` | No token presented, or it is revoked, expired, malformed or unknown. The four are one answer. A write sent with no bearer token, or another scheme, is a `401` too. |
 | `403` | The token does not hold the scope the route needs (the message names it), **or** the role does not permit this, **or** a token that can write was offered to the calendar feed, **or** the instance is a read-only demonstration: every write (any method but `GET`, `HEAD` and `OPTIONS`) is refused with the message "This instance is a read-only demonstration. Nothing here can be changed." |
 | `404` | No such row — **or** one the caller may not see. |
+| `405` | The route does not take this method. `Allow` lists the methods it does. |
 | `422` | The body was understood but is not valid. |
 | `429` | Over a [rate limit](#rate-limits), or the address has failed token authentication ten times in five minutes. `Retry-After` says how many seconds to wait. |
 
@@ -596,12 +597,14 @@ without anybody editing the row. A token without that scope changes nothing.
 | `tag` | integer or integer[] | Tag id; repeat it (`tag[]=3&tag[]=7`) for several. A subscription matches when it has **any** of them. |
 | `currency` | string | ISO 4217 code. |
 | `type` | enum | `recurring`, `one_off`, `lifetime`. |
-| `inactive` | `"1"` | Include inactive subscriptions — paused and cancelled. |
+| `inactive` | `"0"` or `"1"` | `1` includes inactive subscriptions — paused and cancelled. `true` and `false` are refused. |
 | `status` | enum | `active`, `trial`, `paused`, `cancelled`. Only that state; takes precedence over `inactive`. |
 | `sort` | enum | `name`, `next_payment`, `price`, `created`. |
 | `dir` | enum | `asc`, `desc`. |
 | `page` | integer | Minimum 1. A page past the last is empty, however large the number. |
 | `per_page` | integer | 1–100, default 25. |
+
+An empty parameter is no filter. A `type`, `status`, `sort`, `dir` or `inactive` value outside the set above, or a `currency` that is not three letters, is a `422` naming the parameter, rather than being ignored; the web list is more forgiving.
 
 Two things hold whatever `sort` and `dir` say, so that a page of results means
 the same on either supported database engine: inactive subscriptions come after
@@ -620,7 +623,7 @@ curl -H "Authorization: Bearer rnv_..." \
 }
 ```
 
-Responses: `200`, `401`, `403`.
+Responses: `200`, `401`, `403`, `422` (a filter value outside its set).
 
 #### `POST /api/v1/subscriptions`
 
@@ -642,7 +645,7 @@ curl -X POST \
      https://your-instance.example/api/v1/subscriptions
 ```
 
-Responses: `201`, `401`, `403`, `422`.
+Responses: `201`, `400`, `401`, `403`, `422`.
 
 #### `GET /api/v1/subscriptions/{id}`
 
@@ -654,7 +657,7 @@ Replace a subscription. A **full** replacement: any field the body omits takes
 its documented default, so read the resource, edit the representation and send
 it back rather than sending only what changed. The logo is untouched.
 
-Responses: `200`, `401`, `403`, `404`, `422`.
+Responses: `200`, `400`, `401`, `403`, `404`, `422`.
 
 #### `DELETE /api/v1/subscriptions/{id}`
 
@@ -797,7 +800,7 @@ Add a charge that fell off the cycle, such as a one-time fee. Needs
 | `amount_minor` | **Required.** Integer minor units, in the subscription's currency, at most `1000000000000` (more is a `422` on the field, as for a price). The web form's decimal `amount` is not read. |
 | `note` | Optional, up to 255 characters. |
 
-Responses: `201` with the `Charge`, `401`, `403`, `404`, `422`.
+Responses: `201` with the `Charge`, `400`, `401`, `403`, `404`, `422`.
 
 #### `PATCH /api/v1/charges/{id}`
 
@@ -819,7 +822,7 @@ curl -X PATCH \
      https://your-instance.example/api/v1/charges/481
 ```
 
-Responses: `200` with the `Charge`, `401`, `403`, `404`, `422`.
+Responses: `200` with the `Charge`, `400`, `401`, `403`, `404`, `422`.
 
 ---
 
@@ -872,7 +875,7 @@ case and accents (and "ß" is read as "ss"). `colour` is nullable and must match
 `^#[0-9a-fA-F]{6}$`. A null or absent `colour` leaves the category uncoloured, so a `PUT` without
 `colour` clears the one the category had: send it back to keep it.
 
-Responses: `201`/`200`, `401`, `403`, `404` (on `PUT`), `422`.
+Responses: `201`/`200`, `400`, `401`, `403`, `404` (on `PUT`), `422`.
 
 #### `DELETE /api/v1/categories/{id}`
 
@@ -898,7 +901,7 @@ unique in the household ignoring case and accents (and "ß" is read as "ss");
 `colour` is nullable and must match `^#[0-9a-fA-F]{6}$`. A null colour takes the theme's palette in the breakdown.
 A logo doesn't travel in this body; it has an endpoint of its own, below.
 
-Responses: `201`/`200`, `401`, `403`, `404` (on `PUT`), `422`.
+Responses: `201`/`200`, `400`, `401`, `403`, `404` (on `PUT`), `422`.
 
 #### `DELETE /api/v1/payment-methods/{id}`
 
@@ -938,7 +941,7 @@ array follows, so a tag made here and a tag typed on a subscription can't end
 up as two. An existing name is refused with `422` rather than returned.
 Renaming changes the name on every subscription that carries the tag.
 
-Responses: `201`/`200`, `401`, `403`, `404` (on `PUT`), `422`.
+Responses: `201`/`200`, `400`, `401`, `403`, `404` (on `PUT`), `422`.
 
 #### `DELETE /api/v1/tags/{id}`
 
