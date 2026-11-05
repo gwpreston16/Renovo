@@ -117,6 +117,84 @@ final class SignedOutScreensTest extends DatabaseTestCase
         self::assertMatchesRegularExpression('~Try again in \d+ minutes?~', $this->alert((string) $locked->getBody()));
     }
 
+    // ------------------------------------------------------------------
+    // Registration over HTTP, closed and open (K218)
+    // ------------------------------------------------------------------
+
+    /**
+     * @return array<string, string>
+     */
+    private function registration(array $overrides = []): array
+    {
+        return $overrides + [
+            'email' => 'newcomer@example.test',
+            'display_name' => 'Nina Newcomer',
+            'password' => 'a long enough passphrase',
+            'password_confirm' => 'a long enough passphrase',
+        ];
+    }
+
+    private function userRows(string $email): int
+    {
+        return (int) $this->db->fetchValue(
+            'SELECT COUNT(*) FROM users WHERE email = :email',
+            ['email' => $email],
+        );
+    }
+
+    public function testWhileRegistrationIsClosedTheFormAndTheSubmissionAre404(): void
+    {
+        // setUp closes registration.
+        self::assertSame(404, $this->request('GET', '/register')->getStatusCode());
+
+        $post = $this->request('POST', '/register', $this->registration());
+
+        self::assertSame(404, $post->getStatusCode());
+        self::assertSame(0, $this->userRows('newcomer@example.test'), 'a closed instance makes no account');
+        self::assertNull($this->mailer->lastTokenFromMessage(0), 'and sends no mail');
+    }
+
+    public function testAValidRegistrationMakesAnUnverifiedUserAndMailsALink(): void
+    {
+        $this->container->get(InstanceSettingsService::class)->setRegistrationAllowed(true);
+        self::assertSame(200, $this->request('GET', '/register')->getStatusCode());
+
+        $response = $this->request('POST', '/register', $this->registration());
+
+        self::assertSame(200, $response->getStatusCode());
+        $html = (string) $response->getBody();
+        self::assertStringContainsString('newcomer@example.test', $html);
+        self::assertStringContainsString('action="/verify-email/resend"', $html);
+
+        self::assertSame(1, $this->userRows('newcomer@example.test'));
+        self::assertNull(
+            $this->db->fetchValue(
+                'SELECT email_verified_at FROM users WHERE email = :email',
+                ['email' => 'newcomer@example.test'],
+            ),
+            'the address is not confirmed until its link is followed',
+        );
+        self::assertNotNull($this->mailer->lastTokenFromMessage(0), 'a verification mail was sent');
+    }
+
+    public function testAnInvalidRegistrationIs422AndKeepsTheNameAndEmailButNeverThePassword(): void
+    {
+        $this->container->get(InstanceSettingsService::class)->setRegistrationAllowed(true);
+
+        $response = $this->request('POST', '/register', $this->registration([
+            'password' => 'a long enough passphrase',
+            'password_confirm' => 'something else entirely',
+        ]));
+
+        self::assertSame(422, $response->getStatusCode());
+        $html = (string) $response->getBody();
+        self::assertStringContainsString('value="newcomer@example.test"', $html);
+        self::assertStringContainsString('value="Nina Newcomer"', $html);
+        self::assertStringNotContainsString('a long enough passphrase', $html);
+        self::assertStringNotContainsString('something else entirely', $html);
+        self::assertSame(0, $this->userRows('newcomer@example.test'));
+    }
+
     public function testTheRegistrationLinkAppearsOnlyWhenRegistrationIsOpen(): void
     {
         self::assertStringNotContainsString('href="/register"', $this->body('GET', '/login'));
