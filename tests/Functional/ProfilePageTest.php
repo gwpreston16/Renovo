@@ -369,6 +369,127 @@ final class ProfilePageTest extends DatabaseTestCase
         self::assertStringContainsString('action="/profile/two-step/recovery-codes"', $body);
     }
 
+    // ---------------------------------------------- the two-step forms (K203)
+
+    /**
+     * Start an authenticator enrolment over HTTP and answer with the code its
+     * secret makes now, as the app on the member's phone would.
+     */
+    private function currentAuthenticatorCode(): string
+    {
+        $secret = $this->session->get('totp_enrolment_secret');
+        self::assertIsString($secret, 'the enrolment kept its secret for the confirm step');
+
+        return \App\Security\Totp::codeForStep($secret, \App\Security\Totp::stepAt(time()));
+    }
+
+    /**
+     * Enrol the Viewer's authenticator through the forms and return the
+     * recovery codes the confirm step handed over.
+     *
+     * @return list<string>
+     */
+    private function enrolAuthenticator(): array
+    {
+        $this->signIn($this->viewerId);
+        $this->request('POST', '/profile/two-step/totp', ['password' => self::PASSWORD]);
+        $this->assertLandsOn('/profile#two-step', $this->request(
+            'POST',
+            '/profile/two-step/totp/confirm',
+            ['code' => $this->currentAuthenticatorCode()],
+        ));
+
+        $codes = $this->session->get(SecurityController::RECOVERY_CODES_KEY);
+        self::assertIsArray($codes);
+
+        return array_values($codes);
+    }
+
+    private function authenticatorIsOn(): bool
+    {
+        return (new TotpRepository($this->db))->isConfirmed($this->viewerId);
+    }
+
+    public function testConfirmingTheAuthenticatorWithItsCodeTurnsItOnAndShowsRecoveryCodes(): void
+    {
+        $codes = $this->enrolAuthenticator();
+
+        self::assertTrue($this->authenticatorIsOn());
+        self::assertCount(10, $codes);
+        self::assertNull($this->session->get('totp_enrolment_secret'), 'the pending secret is dropped');
+
+        $page = (string) $this->request('GET', '/profile')->getBody();
+        self::assertStringContainsString('Two-factor authentication is on', $page);
+        self::assertStringContainsString($codes[0], $page, 'the codes are shown once, on the page');
+    }
+
+    public function testConfirmingWithAWrongCodeAnswers422AndTurnsNothingOn(): void
+    {
+        $this->signIn($this->viewerId);
+        $this->request('POST', '/profile/two-step/totp', ['password' => self::PASSWORD]);
+
+        $response = $this->request('POST', '/profile/two-step/totp/confirm', ['code' => '000000']);
+
+        self::assertSame(422, $response->getStatusCode());
+        self::assertStringContainsString('That code is not correct', (string) $response->getBody());
+        self::assertFalse($this->authenticatorIsOn());
+        self::assertNull($this->session->get(SecurityController::RECOVERY_CODES_KEY));
+    }
+
+    public function testDisablingTheAuthenticatorNeedsThePassword(): void
+    {
+        $this->enrolAuthenticator();
+
+        $this->assertLandsOn('/profile#two-step', $this->request(
+            'POST',
+            '/profile/two-step/totp/disable',
+            ['password' => 'not-the-password'],
+        ));
+        self::assertTrue($this->authenticatorIsOn(), 'a wrong password leaves it on');
+
+        $this->assertLandsOn('/profile#two-step', $this->request(
+            'POST',
+            '/profile/two-step/totp/disable',
+            ['password' => self::PASSWORD],
+        ));
+        self::assertFalse($this->authenticatorIsOn());
+        self::assertStringContainsString(
+            'Two-factor authentication is off',
+            (string) $this->request('GET', '/profile')->getBody(),
+        );
+    }
+
+    public function testNewRecoveryCodesNeedThePasswordAndRetireTheOldOnes(): void
+    {
+        $old = $this->enrolAuthenticator();
+        $this->session->remove(SecurityController::RECOVERY_CODES_KEY);
+
+        $this->request('POST', '/profile/two-step/recovery-codes', ['password' => 'not-the-password']);
+        self::assertNull(
+            $this->session->get(SecurityController::RECOVERY_CODES_KEY),
+            'a wrong password issues nothing',
+        );
+
+        $this->assertLandsOn('/profile#two-step', $this->request(
+            'POST',
+            '/profile/two-step/recovery-codes',
+            ['password' => self::PASSWORD],
+        ));
+        $new = $this->session->get(SecurityController::RECOVERY_CODES_KEY);
+        self::assertIsArray($new);
+        self::assertCount(10, $new);
+        self::assertNotSame($old, array_values($new));
+
+        $container = $this->app->getContainer();
+        self::assertNotNull($container);
+        $recovery = $container->get(\App\Service\Auth\RecoveryCodeService::class);
+        $user = $this->users->findById($this->viewerId);
+        self::assertNotNull($user);
+
+        self::assertFalse($recovery->redeem($user, $old[0]), 'an old code no longer works');
+        self::assertTrue($recovery->redeem($user, (string) array_values($new)[0]), 'a new one does');
+    }
+
     /**
      * Recovery codes are shown on the page every issuing action lands on, and
      * only on the first render of it.

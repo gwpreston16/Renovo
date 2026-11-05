@@ -17,8 +17,15 @@ final class RecordingMailer implements MailerInterface
     /** @var list<RawMessage> */
     public array $messages = [];
 
+    /** When true the relay refuses every message, as a down relay would. */
+    public bool $failing = false;
+
     public function send(RawMessage $message, ?Envelope $envelope = null): void
     {
+        if ($this->failing) {
+            throw new \Symfony\Component\Mailer\Exception\TransportException('relay down');
+        }
+
         $this->messages[] = $message;
     }
 

@@ -8,6 +8,16 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Four controller flows are now tested over HTTP.** Confirming and disabling the
+  authenticator app and issuing new recovery codes are posted; a CSV import is
+  uploaded, mapped, previewed and committed; `/register` is requested while
+  registration is closed and open; and the setup wizard's "Send test email" is
+  pressed. Each test fails under the mistake it guards against, such as a form reading
+  the wrong field or the closed-registration check being removed. Tests only; no
+  behaviour changes. *Phase 79.*
+
 ## [1.36.0] - 2026-11-05
 
 ### Fixed

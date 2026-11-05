@@ -193,6 +193,92 @@ final class SetupWizardStepsTest extends DatabaseTestCase
         self::assertStringContainsString('Phone', $this->body('GET', '/setup/notifications'));
     }
 
+    // ------------------------------------------------------------------
+    // "Send test email" (K219)
+    // ------------------------------------------------------------------
+
+    /**
+     * @param array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
+    private function remindersForm(array $overrides = []): array
+    {
+        return $overrides + [
+            'reminders' => '1',
+            'email' => '1',
+            'budget_alerts' => '0',
+            'lead_days' => ['', '3', '7'],
+        ];
+    }
+
+    public function testTheTestEmailSavesTheSwitchesThenSendsThroughTheEmailChannel(): void
+    {
+        $this->createOwner();
+        $owner = $this->owner();
+        $this->mailer->reset();
+
+        $response = $this->request('POST', '/setup/notifications/test-email', $this->remindersForm());
+
+        self::assertSame('/setup/notifications#mail-relay', $response->getHeaderLine('Location'));
+
+        // The switches were saved first, so the message went out through the
+        // channel the owner has just turned on.
+        self::assertFalse($this->preferences($owner)->budgetAlerts);
+        self::assertSame([7, 3], $this->preferences($owner)->leadDays);
+        $channels = $this->channels($owner);
+        self::assertCount(1, $channels);
+        self::assertTrue($channels[0]->isActive);
+        self::assertCount(1, $this->mailer->messages);
+
+        self::assertStringContainsString(
+            'A test message is on its way to first@example.test.',
+            $this->body('GET', '/setup/notifications'),
+        );
+        // It was a test, not the end of the wizard.
+        self::assertFalse($this->container->get(InstanceSettingsService::class)->isNotificationSetupComplete());
+    }
+
+    public function testTheTestEmailWithEmailOffSaysSoAndSendsNothing(): void
+    {
+        $this->createOwner();
+        $this->mailer->reset();
+
+        $response = $this->request('POST', '/setup/notifications/test-email', $this->remindersForm(['email' => '0']));
+
+        self::assertSame('/setup/notifications#mail-relay', $response->getHeaderLine('Location'));
+        self::assertSame([], $this->mailer->messages);
+        $page = $this->body('GET', '/setup/notifications');
+        self::assertStringContainsString('Turn Email on to send a test message.', $page);
+        self::assertStringNotContainsString('is on its way', $page);
+    }
+
+    public function testAFailingRelaysOwnErrorIsShownOnTheMailRelayCard(): void
+    {
+        $this->createOwner();
+        $this->mailer->reset();
+        $this->mailer->failing = true;
+
+        $response = $this->request('POST', '/setup/notifications/test-email', $this->remindersForm());
+
+        self::assertSame('/setup/notifications#mail-relay', $response->getHeaderLine('Location'));
+        $page = $this->body('GET', '/setup/notifications');
+        self::assertStringContainsString('the mail relay refused the message', $page);
+        self::assertStringNotContainsString('is on its way', $page);
+    }
+
+    public function testTheTestEmailIsClosedOnceTheWizardIsFinished(): void
+    {
+        $this->createOwner();
+        $this->request('POST', '/setup/notifications/finish', []);
+        $this->mailer->reset();
+
+        $response = $this->request('POST', '/setup/notifications/test-email', $this->remindersForm());
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame('/', $response->getHeaderLine('Location'));
+        self::assertSame([], $this->mailer->messages);
+    }
+
     public function testSkippingTheOptionalStepsLeavesTheDefaults(): void
     {
         $this->createOwner();
