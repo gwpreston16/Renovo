@@ -485,6 +485,9 @@ final class ChargeService
             $value = $input['actual_minor'];
             if ($value === null) {
                 $actualMinor = null;
+            } elseif (is_int($value) && $value > Money::MAX_MINOR) {
+                // The ceiling every other way of entering money stops at (K215).
+                $errors['actual_minor'] = 'error.price.too_large';
             } elseif (is_int($value) && $value >= 0) {
                 $actualMinor = $value;
             } else {
@@ -636,11 +639,15 @@ final class ChargeService
         // sends what a member types.
         if (array_key_exists('amount_minor', $input)) {
             $minor = $input['amount_minor'];
-            $amount = is_int($minor) && $minor >= 0 ? Money::of($minor, $subscription->price->currency) : null;
+            $amount = is_int($minor) && $minor >= 0 && $minor <= Money::MAX_MINOR
+                ? Money::of($minor, $subscription->price->currency)
+                : null;
             if ($amount === null) {
-                $errors['amount_minor'] = $minor === null
-                    ? 'error.charge.amount_required'
-                    : 'error.charge.minor_invalid';
+                $errors['amount_minor'] = match (true) {
+                    $minor === null => 'error.charge.amount_required',
+                    is_int($minor) && $minor > Money::MAX_MINOR => 'error.price.too_large',
+                    default => 'error.charge.minor_invalid',
+                };
             }
         } else {
             $amount = $this->amount($this->str($input, 'amount'), $subscription->price->currency, 'amount', $errors);

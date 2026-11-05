@@ -820,8 +820,10 @@ paths:
                 amount_minor:
                   type: integer
                   minimum: 0
+                  maximum: 1000000000000
                   description: |
-                    Minor units, in the subscription's currency. The web form's
+                    Minor units, in the subscription's currency, up to
+                    `1000000000000` (more is a `422`). The web form's
                     decimal `amount` is not accepted here.
                 note: { type: string, nullable: true, maxLength: 255 }
       responses:
@@ -887,7 +889,7 @@ paths:
             schema:
               type: object
               properties:
-                actual_minor: { type: integer, minimum: 0, nullable: true }
+                actual_minor: { type: integer, minimum: 0, maximum: 1000000000000, nullable: true }
                 status: { type: string, enum: [charged, skipped] }
                 note: { type: string, nullable: true, maxLength: 255 }
                 is_discount: { type: boolean }

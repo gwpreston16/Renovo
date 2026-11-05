@@ -794,7 +794,7 @@ Add a charge that fell off the cycle, such as a one-time fee. Needs
 | Field | Notes |
 | --- | --- |
 | `date` | **Required.** `YYYY-MM-DD`, today or earlier. One charge a day per subscription. |
-| `amount_minor` | **Required.** Integer minor units, in the subscription's currency. The web form's decimal `amount` is not read. |
+| `amount_minor` | **Required.** Integer minor units, in the subscription's currency, at most `1000000000000` (more is a `422` on the field, as for a price). The web form's decimal `amount` is not read. |
 | `note` | Optional, up to 255 characters. |
 
 Responses: `201` with the `Charge`, `401`, `403`, `404`, `422`.
@@ -806,7 +806,7 @@ Record what a charge really was, skip it, or annotate it. Needs
 
 | Field | Notes |
 | --- | --- |
-| `actual_minor` | Integer minor units, or `null` to clear a recorded amount. Sent without a `status`, it also sets `charged` — recording an amount says the charge happened, as it does on the web. On a `manual` charge the amount entered is its `expected_minor`, so clearing the actual keeps it; once the charge is adopted that amount is the actual (unless it was skipped, when it is gone), and clearing it leaves the price due. |
+| `actual_minor` | Integer minor units, at most `1000000000000` (more is a `422`), or `null` to clear a recorded amount. Sent without a `status`, it also sets `charged` — recording an amount says the charge happened, as it does on the web. On a `manual` charge the amount entered is its `expected_minor`, so clearing the actual keeps it; once the charge is adopted that amount is the actual (unless it was skipped, when it is gone), and clearing it leaves the price due. |
 | `status` | `charged` or `skipped`. Skipping clears the actual; sending both `skipped` and an `actual_minor` is a `422`. |
 | `note` | Up to 255 characters, or `null`. |
 | `is_discount` | `true` says an actual below the expected amount was a discount: the expected amount becomes the charge's `reference_minor`, and what it saved counts in `GET /savings`. `false` takes a discount off; on a charge an offer stands behind it does nothing. Not sent, a discount stays while the actual is still lower — and through a skip, when it saves nothing — and goes when the actual is cleared or raised to the expected amount. A `422` on an actual that is not lower, and on a charge an offer already stands behind — its reference already counts a lower actual. |
