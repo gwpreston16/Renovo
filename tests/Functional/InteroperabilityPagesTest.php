@@ -405,6 +405,81 @@ final class InteroperabilityPagesTest extends DatabaseTestCase
         }
     }
 
+    /**
+     * The whole import over HTTP (K204): upload the file, see the mapping
+     * screen, post the mapping to the preview, and commit what it showed. The
+     * mapping the member chose on the way must still be the one the commit
+     * uses, or the import brings in no rows.
+     */
+    public function testACsvIsUploadedMappedPreviewedAndCommittedOverHttp(): void
+    {
+        $this->signIn($this->ownerId);
+        $before = (int) $this->db->fetchValue('SELECT COUNT(*) FROM subscriptions');
+
+        try {
+            $upload = $this->request('POST', '/import', ['preset' => 'automatic'], true, [
+                'file' => FakeUpload::of(
+                    "Service,Cost,Cycle,Next due
+Imported Alpha,4.50,monthly,2026-12-15
+Imported Beta,12.00,yearly,2027-01-20
+",
+                    'subs.csv',
+                ),
+            ]);
+            self::assertContains($upload->getStatusCode(), [302, 303]);
+            self::assertSame('/import/map', $upload->getHeaderLine('Location'));
+            self::assertIsString($this->session->get('import_id'));
+
+            $map = $this->request('GET', '/import/map');
+            self::assertSame(200, $map->getStatusCode());
+            self::assertStringContainsString('subs.csv', (string) $map->getBody());
+
+            $preview = $this->request('POST', '/import/preview', ['mapping' => [
+                'name' => 'Service',
+                'price' => 'Cost',
+                'billing_cycle' => 'Cycle',
+                'next_payment_date' => 'Next due',
+            ]]);
+            self::assertSame(200, $preview->getStatusCode());
+            self::assertStringContainsString('Imported Alpha', (string) $preview->getBody());
+            self::assertStringContainsString('Imported Beta', (string) $preview->getBody());
+
+            $commit = $this->request('POST', '/import/commit');
+            self::assertContains($commit->getStatusCode(), [302, 303]);
+            self::assertSame('/subscriptions', $commit->getHeaderLine('Location'));
+        } finally {
+            FakeUpload::cleanUp();
+        }
+
+        $names = array_column(
+            $this->db->fetchAll("SELECT name FROM subscriptions WHERE name LIKE 'Imported %' ORDER BY name"),
+            'name',
+        );
+        self::assertSame(['Imported Alpha', 'Imported Beta'], $names);
+
+        // The import is over: nothing of it is left in the session.
+        self::assertNull($this->session->get('import_id'));
+        self::assertNull($this->session->get('import_mapping'));
+        self::assertNull($this->session->get('import_preset'));
+
+        self::assertStringContainsString(
+            'Imported 2 subscriptions',
+            (string) $this->request('GET', '/subscriptions')->getBody(),
+        );
+    }
+
+    public function testCommittingWithNoImportInProgressGoesBackToTheStart(): void
+    {
+        $this->signIn($this->ownerId);
+        $before = (int) $this->db->fetchValue('SELECT COUNT(*) FROM subscriptions');
+
+        $response = $this->request('POST', '/import/commit');
+
+        self::assertContains($response->getStatusCode(), [302, 303]);
+        self::assertSame('/import', $response->getHeaderLine('Location'));
+        self::assertSame($before, (int) $this->db->fetchValue('SELECT COUNT(*) FROM subscriptions'));
+    }
+
     private function tokenService(): ApiTokenService
     {
         $container = $this->app->getContainer();
@@ -428,6 +503,7 @@ final class InteroperabilityPagesTest extends DatabaseTestCase
         string $path,
         array $body = [],
         bool $withCsrf = true,
+        array $files = [],
     ): ResponseInterface {
         $request = (new ServerRequestFactory())->createServerRequest(
             $method,
@@ -436,7 +512,7 @@ final class InteroperabilityPagesTest extends DatabaseTestCase
         );
 
         if ($method !== 'GET') {
-            $request = $request->withParsedBody($body);
+            $request = $request->withParsedBody($body)->withUploadedFiles($files);
 
             if ($withCsrf) {
                 $container = $this->app->getContainer();
