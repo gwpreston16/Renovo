@@ -844,6 +844,15 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   is placed correctly. Each test fails under the one-day mistake it guards
   against. Tests only: no behaviour, API or data change, and no migrations.
   See [Development](development.md#tests).
+- **Phase 78 — Figures, icons, passkey labels and migration order, from the
+  known-issues log — complete (1.36.0).** The amounts in Stats' spend
+  breakdown are set in the figures font, as on the dashboard; the icon sprite
+  drops four drawings nothing used, and a test keeps it to the icons the app
+  draws; each passkey's rename control and field on Profile → Two-step name
+  the passkey, so a screen reader can tell them apart; and contributors are
+  told, and a test enforces, that a new migration's version must sort after
+  the highest. No API change and no migrations. See
+  [Development](development.md#migrations).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
