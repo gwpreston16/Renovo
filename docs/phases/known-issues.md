@@ -377,3 +377,9 @@ table below it:
 | # | Severity | Area | Issue | Where | Since | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | K224 | MINOR | Tests | Nothing tests that a digest leaves out an event whose date has passed. If the `$until < 0` check in `alertsWithin()` were removed, a weekly digest on Monday 2026-09-21 would list a contract that ended 2026-09-19 as "ends in -2 days", and every notification test would still pass (74 notification tests; all 1129 Integration tests show no notification failure). Missing: a digest-day run with a contract end (and a trial end) two days before the digest day, asserting the digest leaves it out, plus an in-window control. The window's last day is already covered by `ReminderRunTest::testADigestWindowEndsBeforeTheNextIssue`. | `src/Service/Notification/AlertScanner.php:122` (`alertsWithin`, called from `src/Service/Notification/ReminderRunner.php:180`), `tests/Integration/ReminderRunTest.php`, `tests/Integration/ContractEndingAlertTest.php` | master | Open |
+
+## Found in Phase 80 (merge review at 8ae5a48, 2026-11-05)
+
+| # | Severity | Area | Issue | Where | Since | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| K225 | MINOR | Tests | No test saves a custom split with a share of 0, which is how the form marks a member who is not a participant (`form.twig:476` posts 0 for each one). If the range check were tightened to refuse 0 (`$units < 1`), every custom split that leaves a member out would be refused with a 422 `error.split.share_range`, and every split, form, household and money-page test would still pass (33 test files, reproduced on Postgres). Missing: a Custom-mode save with one member at 0, asserting it succeeds and only the other members are stored. | `src/Service/SplitService.php:337-344`, `tests/Integration/SplitShareRangeTest.php`, `templates/subscriptions/form.twig:475-476` | master | Open |
