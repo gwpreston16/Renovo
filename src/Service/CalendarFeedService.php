@@ -136,7 +136,7 @@ final class CalendarFeedService
         array $charges,
     ): array {
         $events = [];
-        $price = $this->money->format($subscription->price);
+        $price = $this->money->format($subscription->nextChargePrice());
 
         if ($subscription->isTrial && $subscription->trialEndDate !== null) {
             if ($subscription->trialEndDate >= $today && $subscription->trialEndDate <= $horizon) {

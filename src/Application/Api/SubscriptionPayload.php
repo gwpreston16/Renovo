@@ -88,7 +88,6 @@ final class SubscriptionPayload
             'is_trial' => self::flag($json, 'is_trial', false),
             'trial_end_date' => self::string($json, 'trial_end_date') ?? '',
             'converts_to_price' => self::money($json, 'converts_to_price_minor', $currency),
-            'converts_to_billing_cycle' => self::string($json, 'converts_to_billing_cycle') ?? '',
             'converts_to_cycle_days' => self::intString($json, 'converts_to_cycle_days'),
             // Absent means active, matching the form's default for a new row.
             'is_active' => self::flag($json, 'is_active', true),
@@ -136,6 +135,12 @@ final class SubscriptionPayload
         // monthly by putting it back. An explicit null is 1 either way.
         if (array_key_exists('cycle_interval', $json)) {
             $input['cycle_interval'] = self::intString($json, 'cycle_interval');
+        }
+        // Absent keeps the cycle a running trial converts to (K188); present
+        // but empty means "on its current cycle", and a value outside the
+        // enum is refused by the service like `billing_cycle`.
+        if (array_key_exists('converts_to_billing_cycle', $json)) {
+            $input['converts_to_billing_cycle'] = self::string($json, 'converts_to_billing_cycle') ?? '';
         }
         if (array_key_exists('converts_to_cycle_interval', $json)) {
             $input['converts_to_cycle_interval'] = self::intString($json, 'converts_to_cycle_interval');

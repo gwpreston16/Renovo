@@ -492,6 +492,83 @@ final class BulkActionTest extends DatabaseTestCase
         self::assertSame('XOF', $this->subscriptions->find($this->scope(), $notConvertible)?->price->currency);
     }
 
+    public function testAFreeTrialsConvertsToPriceIsConvertedWithItsCurrentPrice(): void
+    {
+        // K214: £0 converting to £9.99, changed to EUR at 1.20, must read
+        // €0 converting to €11.99, not "converts to €9.99".
+        $id = $this->createTrial(0, 999);
+
+        $this->bulk->apply($this->scope(), [
+            'action' => BulkActionService::ACTION_CURRENCY,
+            'ids' => [$id],
+            'currency' => 'EUR',
+        ]);
+
+        $subscription = $this->subscriptions->find($this->scope(), $id);
+        self::assertNotNull($subscription);
+        self::assertSame(0, $subscription->price->amountMinor);
+        self::assertSame('EUR', $subscription->price->currency);
+        self::assertSame(1199, $subscription->convertsToPrice?->amountMinor);
+        self::assertSame(1199, $subscription->priceAfterConversion()->amountMinor);
+        self::assertSame('EUR', $subscription->priceAfterConversion()->currency);
+    }
+
+    public function testAPaidTrialsConvertsToPriceIsConvertedToo(): void
+    {
+        $id = $this->createTrial(500, 1000);
+
+        $this->bulk->apply($this->scope(), [
+            'action' => BulkActionService::ACTION_CURRENCY,
+            'ids' => [$id],
+            'currency' => 'EUR',
+        ]);
+
+        $subscription = $this->subscriptions->find($this->scope(), $id);
+        self::assertNotNull($subscription);
+        self::assertSame(600, $subscription->price->amountMinor);
+        self::assertSame(1200, $subscription->convertsToPrice?->amountMinor);
+        self::assertSame('EUR', $subscription->priceAfterConversion()->currency);
+    }
+
+    public function testATrialWithNoRateWritesNeitherPrice(): void
+    {
+        $id = $this->createTrial(0, 999, 'XOF');
+
+        try {
+            $this->bulk->apply($this->scope(), [
+                'action' => BulkActionService::ACTION_CURRENCY,
+                'ids' => [$id],
+                'currency' => 'EUR',
+            ]);
+            self::fail('A currency change without a rate must be refused.');
+        } catch (ValidationException $exception) {
+            self::assertArrayHasKey('currency', $exception->errors());
+        }
+
+        $subscription = $this->subscriptions->find($this->scope(), $id);
+        self::assertNotNull($subscription);
+        self::assertSame('XOF', $subscription->price->currency);
+        self::assertSame(999, $subscription->convertsToPrice?->amountMinor);
+    }
+
+    public function testANonTrialsStaleConvertsToPriceIsLeftAlone(): void
+    {
+        // Only a running trial's converts-to price is read; a stale one on a
+        // row that has already converted is not rewritten.
+        $id = $this->create('Converted', priceMinor: 1000, extra: ['converts_to_price_minor' => 999]);
+
+        $this->bulk->apply($this->scope(), [
+            'action' => BulkActionService::ACTION_CURRENCY,
+            'ids' => [$id],
+            'currency' => 'EUR',
+        ]);
+
+        $subscription = $this->subscriptions->find($this->scope(), $id);
+        self::assertNotNull($subscription);
+        self::assertSame(1200, $subscription->price->amountMinor);
+        self::assertSame(999, $subscription->convertsToPrice?->amountMinor);
+    }
+
     public function testASelectionCannotReachAnotherHouseholdsRows(): void
     {
         $users = new UserRepository($this->db);
@@ -636,13 +713,17 @@ final class BulkActionTest extends DatabaseTestCase
         ], (new TagRepository($this->db))->resolveOrCreate($this->scope(), $tags));
     }
 
+    /**
+     * @param array<string, mixed> $extra
+     */
     private function create(
         string $name,
         int $priceMinor = 999,
         string $currency = 'GBP',
         ?int $categoryId = null,
+        array $extra = [],
     ): int {
-        return $this->subscriptions->create($this->scope(), [
+        return $this->subscriptions->create($this->scope(), $extra + [
             'name' => $name,
             'price_minor' => $priceMinor,
             'currency' => $currency,
@@ -652,6 +733,24 @@ final class BulkActionTest extends DatabaseTestCase
             'category_id' => $categoryId,
             'is_active' => true,
         ], []);
+    }
+
+    private function createTrial(int $priceMinor, int $convertsToMinor, string $currency = 'GBP'): int
+    {
+        $id = $this->create('Trial', priceMinor: $priceMinor, currency: $currency, extra: [
+            'is_trial' => true,
+            'trial_end_date' => '2026-12-01',
+            'converts_to_price_minor' => $convertsToMinor,
+        ]);
+        $this->priceHistory->recordInitialPrice(
+            $this->scope(),
+            $id,
+            \App\Domain\Money::of($priceMinor, $currency),
+            null,
+            $this->alice,
+        );
+
+        return $id;
     }
 
     private function scope(): Scope

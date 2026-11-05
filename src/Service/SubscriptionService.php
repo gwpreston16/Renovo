@@ -321,10 +321,23 @@ final class SubscriptionService
             }
         }
 
-        $convertsToCycle = BillingCycle::tryFromString($this->str($input, 'converts_to_billing_cycle'));
+        // Empty means "converts on its current cycle"; a value that is not a
+        // cycle is refused, not saved as that (K188). Absent on an edit of a
+        // trial keeps the stored cycle, as an absent interval does below.
+        $convertsToRaw = trim($this->str($input, 'converts_to_billing_cycle'));
+        $keepsStored = !array_key_exists('converts_to_billing_cycle', $input) && $existing?->isTrial === true;
+        $convertsToCycle = $keepsStored
+            ? $existing?->convertsToBillingCycle
+            : BillingCycle::tryFromString($convertsToRaw === '' ? null : $convertsToRaw);
+        if (!$keepsStored && $convertsToRaw !== '' && $convertsToCycle === null) {
+            $errors['converts_to_billing_cycle'] = 'error.cycle.required';
+        }
         $convertsToCycleDays = null;
         if ($convertsToCycle !== null && $convertsToCycle->requiresCycleDays()) {
-            $convertsToCycleDays = $this->wholeNumber($this->str($input, 'converts_to_cycle_days')) ?? 0;
+            $convertsToCycleDays = $this->wholeNumber($this->str(
+                $input,
+                'converts_to_cycle_days',
+            ) ?: (string) ($keepsStored ? $existing?->convertsToCycleDays : '')) ?? 0;
             if ($convertsToCycleDays < 1 || $convertsToCycleDays > 3650) {
                 $errors['converts_to_cycle_days'] = 'error.cycle_days.range';
             }

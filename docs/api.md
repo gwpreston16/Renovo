@@ -794,7 +794,7 @@ Add a charge that fell off the cycle, such as a one-time fee. Needs
 | Field | Notes |
 | --- | --- |
 | `date` | **Required.** `YYYY-MM-DD`, today or earlier. One charge a day per subscription. |
-| `amount_minor` | **Required.** Integer minor units, in the subscription's currency. The web form's decimal `amount` is not read. |
+| `amount_minor` | **Required.** Integer minor units, in the subscription's currency, at most `1000000000000` (more is a `422` on the field, as for a price). The web form's decimal `amount` is not read. |
 | `note` | Optional, up to 255 characters. |
 
 Responses: `201` with the `Charge`, `401`, `403`, `404`, `422`.
@@ -806,7 +806,7 @@ Record what a charge really was, skip it, or annotate it. Needs
 
 | Field | Notes |
 | --- | --- |
-| `actual_minor` | Integer minor units, or `null` to clear a recorded amount. Sent without a `status`, it also sets `charged` — recording an amount says the charge happened, as it does on the web. On a `manual` charge the amount entered is its `expected_minor`, so clearing the actual keeps it; once the charge is adopted that amount is the actual (unless it was skipped, when it is gone), and clearing it leaves the price due. |
+| `actual_minor` | Integer minor units, at most `1000000000000` (more is a `422`), or `null` to clear a recorded amount. Sent without a `status`, it also sets `charged` — recording an amount says the charge happened, as it does on the web. On a `manual` charge the amount entered is its `expected_minor`, so clearing the actual keeps it; once the charge is adopted that amount is the actual (unless it was skipped, when it is gone), and clearing it leaves the price due. |
 | `status` | `charged` or `skipped`. Skipping clears the actual; sending both `skipped` and an `actual_minor` is a `422`. |
 | `note` | Up to 255 characters, or `null`. |
 | `is_discount` | `true` says an actual below the expected amount was a discount: the expected amount becomes the charge's `reference_minor`, and what it saved counts in `GET /savings`. `false` takes a discount off; on a charge an offer stands behind it does nothing. Not sent, a discount stays while the actual is still lower — and through a skip, when it saves nothing — and goes when the actual is cleared or raised to the expected amount. A `422` on an actual that is not lower, and on a charge an offer already stands behind — its reference already counts a lower actual. |
@@ -1014,7 +1014,7 @@ category, tag or payment method and to a charge's `note`.
 | `is_trial` | boolean | Default `false`. Besides a JSON boolean the API reads `0`, `1` and the words `"true"`, `"false"`, `"yes"`, `"no"`, `"on"`, `"off"`, `"0"`, `"1"` (any case), here and for `is_active` and `amount_varies`; anything else (`2`, `"abc"`, a list) is a `422` on that field, never read as false. |
 | `trial_end_date` | date, null | A date that does not exist is a `422`. |
 | `converts_to_price_minor` | integer, null | Minor units. `true`, a list, an object and text that is not a number are a `422` on this field, never read as "no price". |
-| `converts_to_billing_cycle` | enum, null | As `billing_cycle`. |
+| `converts_to_billing_cycle` | enum, null | As `billing_cycle`: `weekly`, `monthly`, `quarterly`, `yearly`, `custom_days`, and any other value (`annual`, `daily`, `YEARLY`) is a `422` on this field, never saved as "no cycle". Null or an empty string means it converts on the cycle it has; a `PUT` that omits the key keeps a trial's stored cycle (and its `converts_to_cycle_days`). |
 | `converts_to_cycle_days` | integer, null | |
 | `converts_to_cycle_interval` | integer, null | As `cycle_interval`, for the cycle it converts to — bounded the same way, and an absent key on a PUT that keeps `converts_to_billing_cycle` keeps it. Null when it converts to the cycle it already has. |
 | `is_active` | boolean | Default `true`. `false` pauses it. Stays `false` while the subscription is cancelled. Pausing records the billing dates already passed first (a running trial has none to record: its first payment is its trial end), and keeps the date they move the row to unless the `PUT` sends another: the `next_payment_date` the row was read with is not written back over it. Resuming skips the paused dates: a past `next_payment_date` moves on to the first billing date from today, so the response may not echo the date sent, and each date it steps over is recorded as a `skipped` charge with `source` `paused` — except one that already has a payment added by hand, which becomes that date's `paused` charge, keeping its status. Billed for one of those months after all? `PATCH` that charge's `actual_minor`; a `POST` on its date is a `422`. |

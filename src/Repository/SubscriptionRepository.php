@@ -894,6 +894,17 @@ final class SubscriptionRepository extends AbstractScopedRepository
     }
 
     /**
+     * Rewrite a trial's converts-to price in minor units, in the currency the
+     * row already carries. Only the bulk currency change calls it, in the same
+     * transaction as the new current price, so the two are never in different
+     * currencies' units (K214).
+     */
+    public function setConvertsToPrice(Scope $scope, int $id, int $amountMinor): void
+    {
+        $this->updateScoped($scope, $id, ['converts_to_price_minor' => $amountMinor]);
+    }
+
+    /**
      * Guard for the operations that modify a subscription's associations.
      *
      * It asks the *write* predicate, not the read one. Since shared-cost splits

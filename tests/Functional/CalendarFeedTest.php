@@ -138,6 +138,44 @@ final class CalendarFeedTest extends ApiTestCase
         self::assertStringNotContainsString('SUMMARY:Phone finance', $body);
     }
 
+    public function testATrialsCancelByEventQuotesThePriceItConvertsTo(): void
+    {
+        // K216: a £0.00 trial converting to £9.99 is not "the next charge of
+        // £0.00". A subscription that is not a trial keeps its own price.
+        $this->clock = FrozenClock::at('2026-10-15 12:00:00');
+        $this->boot();
+
+        $this->createSubscription([
+            'name' => 'Trial service',
+            'price_minor' => 0,
+            'is_trial' => true,
+            'trial_end_date' => '2026-12-01',
+            'converts_to_price_minor' => 999,
+            'next_payment_date' => null,
+            'notice_period_amount' => 1,
+            'notice_period_unit' => 'months',
+        ]);
+        $this->createSubscription([
+            'name' => 'Gym',
+            'price_minor' => 1500,
+            'next_payment_date' => '2026-12-01',
+            'notice_period_amount' => 1,
+            'notice_period_unit' => 'months',
+        ]);
+
+        $body = $this->unfold($this->feed());
+
+        self::assertStringContainsString(
+            'Cancel Trial service on or before this date to avoid the next charge of £9.99.',
+            $body,
+        );
+        self::assertStringNotContainsString('next charge of £0.00', $body);
+        self::assertStringContainsString(
+            'Cancel Gym on or before this date to avoid the next charge of £15.00.',
+            $body,
+        );
+    }
+
     public function testATrialConversionAppears(): void
     {
         $this->createSubscription([

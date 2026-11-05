@@ -567,6 +567,28 @@ final class SpendHistoryTest extends DatabaseTestCase
         self::assertSame(2500, $uncategorised['2026-06']);
     }
 
+    public function testTwoCeilingSizedChargesInOneWindowSumAsIntegers(): void
+    {
+        // K215: the ceiling is 10^12 minor units; two of them in a window must
+        // add up exactly, not overflow or fall back to a float.
+        $this->createMonthly('Huge', \App\Domain\Money::MAX_MINOR, '2026-05-01');
+
+        $spent = $this->history->spent(
+            $this->scope(),
+            new DateTimeImmutable('2026-04-30'),
+            new DateTimeImmutable('2026-06-14'),
+        );
+
+        $walk = $this->history->charges(
+            $this->scope(),
+            new DateTimeImmutable('2026-04-30'),
+            new DateTimeImmutable('2026-06-14'),
+        );
+        self::assertCount(2, $walk['charges']);
+        self::assertSame(['GBP' => 2 * \App\Domain\Money::MAX_MINOR], $spent['by_currency']);
+        self::assertSame(2 * \App\Domain\Money::MAX_MINOR, $spent['combined']['amount_minor']);
+    }
+
     /**
      * @param list<array<string, mixed>> $months
      * @return array<string, int|null>

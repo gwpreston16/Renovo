@@ -383,6 +383,64 @@ final class ApiChargesTest extends ApiTestCase
         self::assertSame(401, $this->api('GET', '/api/v1/savings')->getStatusCode());
     }
 
+    public function testAChargeAmountPastTheCeilingIsRefusedLikeAPrice(): void
+    {
+        $date = (new DateTimeImmutable('-3 days'))->format('Y-m-d');
+
+        foreach ([\PHP_INT_MAX, 1_000_000_000_001] as $amount) {
+            $post = $this->api('POST', $this->chargesPath(), $this->ownerToken, [
+                'date' => $date,
+                'amount_minor' => $amount,
+            ]);
+            self::assertSame(422, $post->getStatusCode(), (string) $amount);
+            self::assertArrayHasKey('amount_minor', $this->decode($post)['error']['errors'] ?? []);
+
+            $patch = $this->api('PATCH', '/api/v1/charges/' . $this->chargeId, $this->ownerToken, [
+                'actual_minor' => $amount,
+            ]);
+            self::assertSame(422, $patch->getStatusCode(), (string) $amount);
+            self::assertArrayHasKey('actual_minor', $this->decode($patch)['error']['errors'] ?? []);
+        }
+
+        // Nothing was stored by either refusal.
+        $list = $this->decode($this->api('GET', $this->chargesPath(), $this->ownerToken))['data'];
+        foreach ($list as $charge) {
+            self::assertLessThanOrEqual(1_000_000_000_000, $charge['amount_minor']);
+        }
+    }
+
+    public function testANegativeChargeAmountIsStillAnInvalidAmountNotATooLargeOne(): void
+    {
+        $date = (new DateTimeImmutable('-3 days'))->format('Y-m-d');
+
+        $post = $this->api('POST', $this->chargesPath(), $this->ownerToken, ['date' => $date, 'amount_minor' => -1]);
+        self::assertSame(422, $post->getStatusCode());
+        $message = (string) json_encode($this->decode($post)['error']['errors']['amount_minor'] ?? '');
+        self::assertStringContainsString('minor units', $message);
+        self::assertStringNotContainsString('smaller price', $message);
+
+        $patch = $this->api('PATCH', '/api/v1/charges/' . $this->chargeId, $this->ownerToken, ['actual_minor' => -1]);
+        self::assertSame(422, $patch->getStatusCode());
+        self::assertArrayHasKey('actual_minor', $this->decode($patch)['error']['errors'] ?? []);
+    }
+
+    public function testAChargeAmountAtTheCeilingIsAccepted(): void
+    {
+        $date = (new DateTimeImmutable('-40 days'))->format('Y-m-d');
+
+        $post = $this->api('POST', $this->chargesPath(), $this->ownerToken, [
+            'date' => $date,
+            'amount_minor' => 1_000_000_000_000,
+        ]);
+        self::assertSame(201, $post->getStatusCode(), (string) $post->getBody());
+        self::assertSame(1_000_000_000_000, $this->decode($post)['data']['amount_minor']);
+
+        $patch = $this->api('PATCH', '/api/v1/charges/' . $this->chargeId, $this->ownerToken, [
+            'actual_minor' => 1_000_000_000_000,
+        ]);
+        self::assertSame(200, $patch->getStatusCode(), (string) $patch->getBody());
+    }
+
     public function testAPostReadsMinorUnitsOnly(): void
     {
         $date = (new DateTimeImmutable('-1 day'))->format('Y-m-d');

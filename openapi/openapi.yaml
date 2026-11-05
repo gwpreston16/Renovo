@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.9"
+  version: "1.9.10"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -820,8 +820,10 @@ paths:
                 amount_minor:
                   type: integer
                   minimum: 0
+                  maximum: 1000000000000
                   description: |
-                    Minor units, in the subscription's currency. The web form's
+                    Minor units, in the subscription's currency, up to
+                    `1000000000000` (more is a `422`). The web form's
                     decimal `amount` is not accepted here.
                 note: { type: string, nullable: true, maxLength: 255 }
       responses:
@@ -887,7 +889,7 @@ paths:
             schema:
               type: object
               properties:
-                actual_minor: { type: integer, minimum: 0, nullable: true }
+                actual_minor: { type: integer, minimum: 0, maximum: 1000000000000, nullable: true }
                 status: { type: string, enum: [charged, skipped] }
                 note: { type: string, nullable: true, maxLength: 255 }
                 is_discount: { type: boolean }
@@ -2145,6 +2147,11 @@ components:
           type: string
           nullable: true
           enum: [weekly, monthly, quarterly, yearly, custom_days]
+          description: |
+            The cycle the trial converts to. A value outside the enum
+            (`annual`, `daily`, `YEARLY`) is a 422 on this field. Null or an
+            empty string means it converts on the cycle it has; a PUT that
+            omits the field keeps a trial's stored cycle.
         converts_to_cycle_days: { type: integer, nullable: true }
         converts_to_cycle_interval:
           type: integer
