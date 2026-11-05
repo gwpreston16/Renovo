@@ -660,6 +660,9 @@ final class ApiInputValidationTest extends ApiTestCase
             'no content type' => ['{"actual_minor": 900}', null],
             'a list' => ['[1,2]', 'application/json'],
             'a scalar' => ['"text"', 'application/json'],
+            'text/plain' => ['{"actual_minor": 900, "note": "x"}', 'text/plain'],
+            'application/xml' => ['{"actual_minor": 900, "note": "x"}', 'application/xml'],
+            'text/json' => ['{"actual_minor": 900, "note": "x"}', 'text/json'],
         ];
     }
 
@@ -722,6 +725,9 @@ final class ApiInputValidationTest extends ApiTestCase
             $patch = $this->apiRaw('PATCH', '/api/v1/charges/' . $chargeId, $this->ownerToken, $raw);
             self::assertSame(200, $patch->getStatusCode(), (string) $patch->getBody());
         }
+
+        $emptyText = $this->apiRaw('PATCH', '/api/v1/charges/' . $chargeId, $this->ownerToken, '', 'text/plain');
+        self::assertSame(200, $emptyText->getStatusCode(), 'an empty body is unchanged whatever its type');
 
         $valid = $this->apiRaw('PATCH', '/api/v1/charges/' . $chargeId, $this->ownerToken, '{"actual_minor": 900}');
         self::assertSame(200, $valid->getStatusCode());

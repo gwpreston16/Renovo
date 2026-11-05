@@ -12,7 +12,7 @@ And `docs/api.md` leaves the 400 off the "Responses:" line of every JSON write
 
 ## Depends on
 
-Nothing to build. Phase 75 (planned) edits `SubscriptionPayload`,
+Nothing to build. Phase 75 (done, merged) edited `SubscriptionPayload`,
 `ChargeService` and the same two API pages for other rows; the two phases touch
 different lines, but whichever is built second rebases.
 
@@ -107,19 +107,19 @@ None.
 - **K222:** the log's own list of lines; no decision needed.
 - **Rows — Decided 2026-11-05:** K191, K193, K194, K222. Not chosen: adding K217
   and K196, or a docs-only batch.
-- **Release — Decided 2026-11-05:** its own patch once merged (the last tag is
-  v1.32.0); `/release` picks the number.
+- **Release — Decided 2026-11-05:** its own patch once merged (the last tag was
+  v1.33.0 when this phase started); `/release` picks the number.
 
 ## Status
 
-- [ ] K191: a non-JSON Content-Type on a JSON write is a 400
-- [ ] K193: an unknown filter value on the subscription list is a 422
-- [ ] K194: a 405 carries `Allow`, and is documented
-- [ ] K222: every JSON write's "Responses:" line lists `400`
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 76 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K191: a non-JSON Content-Type on a JSON write is a 400
+- [x] K193: an unknown filter value on the subscription list is a 422
+- [x] K194: a 405 carries `Allow`, and is documented
+- [x] K222: every JSON write's "Responses:" line lists `400`
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 76 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

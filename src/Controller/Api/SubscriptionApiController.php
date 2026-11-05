@@ -9,13 +9,17 @@ use App\Application\Api\Resource;
 use App\Application\Api\SubscriptionPayload;
 use App\Application\Middleware\TokenAuthenticationMiddleware;
 use App\Domain\Entity\ApiToken;
+use App\Domain\Currency;
 use App\Domain\SubscriptionFilter;
+use App\Domain\SubscriptionStatus;
+use App\Domain\SubscriptionType;
 use App\Security\Scope;
 use App\Domain\Entity\Subscription;
 use App\Service\CatchUpService;
 use App\Service\LogoStorage;
 use App\Service\PriceHistoryService;
 use App\Service\SubscriptionService;
+use App\Service\ValidationError;
 use App\Service\ValidationException;
 use App\Support\Clock;
 use Psr\Http\Message\ResponseInterface;
@@ -66,6 +70,8 @@ final class SubscriptionApiController extends ApiController
         // subscriptions page in a browser, which is precisely the kind of
         // divergence between the two doors that this phase exists to avoid.
         $this->catchUp($request, $scope);
+
+        $this->assertKnownFilterValues($query);
 
         $filter = SubscriptionFilter::fromQueryParams($query);
         $perPage = $this->perPage($query);
@@ -341,6 +347,51 @@ final class SubscriptionApiController extends ApiController
 
         if ($token instanceof ApiToken && $token->scopes->allows(TokenScope::SubscriptionsWrite)) {
             $this->catchUp->run($scope);
+        }
+    }
+
+    /**
+     * A filter value outside its documented set is a 422 naming the parameter,
+     * not a silently ignored one: `?status=actve` would otherwise answer 200
+     * with the unfiltered list, which reads as "nothing is wrong". An absent or
+     * empty parameter is no filter. The web list keeps the forgiving parse.
+     *
+     * @param array<string, mixed> $query
+     */
+    private function assertKnownFilterValues(array $query): void
+    {
+        $sets = [
+            'type' => array_map(static fn (SubscriptionType $t): string => $t->value, SubscriptionType::cases()),
+            'status' => array_map(static fn (SubscriptionStatus $s): string => $s->value, SubscriptionStatus::cases()),
+            'sort' => SubscriptionFilter::SORTS,
+            'dir' => ['asc', 'desc'],
+            'inactive' => ['0', '1'],
+        ];
+
+        $errors = [];
+        foreach ($sets as $name => $allowed) {
+            $value = $query[$name] ?? '';
+            if ($value === '') {
+                continue;
+            }
+            if (!is_string($value) || !in_array($value, $allowed, true)) {
+                $errors[$name] = new ValidationError(
+                    'error.api.filter_invalid',
+                    ['allowed' => implode(', ', $allowed)],
+                );
+            }
+        }
+
+        $currency = $query['currency'] ?? '';
+        if ($currency !== '' && (!is_string($currency) || !Currency::isValidCode($currency))) {
+            $errors['currency'] = new ValidationError(
+                'error.api.filter_invalid',
+                ['allowed' => 'a three-letter currency code'],
+            );
+        }
+
+        if ($errors !== []) {
+            throw new ValidationException($errors);
         }
     }
 

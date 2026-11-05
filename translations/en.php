@@ -2560,6 +2560,7 @@ return [
     'error.api.charge_not_found' => 'No such charge.',
     'error.save_failed_network' => 'That did not go through. Check your connection and try again.',
     'error.api.body_not_object' => 'The request body must be a JSON object.',
+    'error.api.filter_invalid' => 'Not a value this filter accepts. Use {allowed}.',
     'error.api.file_part_missing' => 'Send the file as multipart form data in a "file" part.',
     'error.api.logo_part_missing' => 'Send the image as multipart form data in a "logo" part.',
     'error.api.subscription_unreadable' => 'The subscription could not be read back.',

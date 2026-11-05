@@ -84,7 +84,7 @@ can be moved.
 | 73 | [A JavaScript test runner, from the known-issues log](docs/phases/PHASE-73.md) | — | None | ✅ done |
 | 74 | [Re-confirmation, CSV dates and the scenario planner, from the known-issues log](docs/phases/PHASE-74.md) | — | None | ✅ done |
 | 75 | [Trial prices and money limits, from the known-issues log](docs/phases/PHASE-75.md) | — | None | ✅ done |
-| 76 | [API request edges, from the known-issues log](docs/phases/PHASE-76.md) | — | None | 📋 planned |
+| 76 | [API request edges, from the known-issues log](docs/phases/PHASE-76.md) | — | None | ✅ done |
 | 77 | [Date-boundary tests, from the known-issues log](docs/phases/PHASE-77.md) | — | None | 📋 planned |
 | 78 | [Figures, icons, passkey labels and migration order, from the known-issues log](docs/phases/PHASE-78.md) | — | None | 📋 planned |
 | 79 | [Controller flows over HTTP, from the known-issues log](docs/phases/PHASE-79.md) | — | None | 📋 planned |
