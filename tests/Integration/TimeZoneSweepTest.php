@@ -132,6 +132,7 @@ final class TimeZoneSweepTest extends DatabaseTestCase
             ),
             $this->db,
             $this->clock,
+            TestLogoFetcher::storage(),
         );
 
         $rates = new ExchangeRateService(

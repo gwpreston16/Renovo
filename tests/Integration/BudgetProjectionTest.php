@@ -108,6 +108,7 @@ final class BudgetProjectionTest extends DatabaseTestCase
             ),
             $this->db,
             $this->clock,
+            TestLogoFetcher::storage(),
         );
 
         $this->splitService = new SplitService(

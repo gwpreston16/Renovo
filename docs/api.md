@@ -649,7 +649,9 @@ Responses: `201`, `400`, `401`, `403`, `422`.
 
 #### `GET /api/v1/subscriptions/{id}`
 
-Fetch one subscription. Responses: `200`, `401`, `403`, `404`.
+Fetch one subscription. With a `subscriptions:write` token it first runs the
+catch-up the list runs, so an overdue `next_payment_date` reads the same here as
+in the list. Responses: `200`, `401`, `403`, `404`.
 
 #### `PUT /api/v1/subscriptions/{id}`
 
@@ -661,7 +663,8 @@ Responses: `200`, `400`, `401`, `403`, `404`, `422`.
 
 #### `DELETE /api/v1/subscriptions/{id}`
 
-Delete a subscription. Responses: `204`, `401`, `403`, `404`.
+Delete a subscription. Its uploaded logo file is removed with it, unless another
+row still uses the same file. Responses: `204`, `401`, `403`, `404`.
 
 #### `POST /api/v1/subscriptions/{id}/cancel`
 

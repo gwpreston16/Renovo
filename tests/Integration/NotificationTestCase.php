@@ -146,6 +146,7 @@ abstract class NotificationTestCase extends DatabaseTestCase
             ),
             $this->db,
             $this->clock,
+            TestLogoFetcher::storage(),
         );
 
         $splits = new SplitService(

@@ -88,6 +88,7 @@ final class UsageAndCancellationTest extends DatabaseTestCase
             ),
             $this->db,
             $this->clock,
+            TestLogoFetcher::storage(),
         );
 
         $this->usage = new UsageService($this->subscriptions, $this->clock);

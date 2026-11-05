@@ -26,6 +26,12 @@ final class TestLogoFetcher
         return self::with(FakeGuardedClient::returning('', 404), $db, $clock);
     }
 
+    /** The logo storage the fetcher writes to, for a service that releases logos. */
+    public static function storage(): LogoStorage
+    {
+        return new LogoStorage(sys_get_temp_dir() . '/renovo-logo-test/public', 1024 * 1024);
+    }
+
     public static function with(FakeGuardedClient $client, Database $db, Clock $clock): LogoFetcher
     {
         $directory = sys_get_temp_dir() . '/renovo-logo-test';

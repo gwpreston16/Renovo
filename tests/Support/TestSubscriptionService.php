@@ -44,6 +44,7 @@ final class TestSubscriptionService
             new ChargeService(new ChargeRepository($db), $subscriptions, $priceHistory, new ChargeSchedule(), $clock),
             $db,
             $clock,
+            TestLogoFetcher::storage(),
         );
     }
 }

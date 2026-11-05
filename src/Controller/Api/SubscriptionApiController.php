@@ -118,6 +118,11 @@ final class SubscriptionApiController extends ApiController
         string $id,
     ): ResponseInterface {
         $scope = $this->scope($request);
+
+        // Catch up first, as the list does (K189): the same row must not read a
+        // stale next-payment date here and a current one from the list.
+        $this->catchUp($request, $scope);
+
         $subscription = $this->subscriptions->find($scope, (int) $id);
         if ($subscription === null) {
             throw new HttpNotFoundException($request, $this->translator->trans('error.api.subscription_not_found'));

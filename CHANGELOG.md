@@ -8,6 +8,20 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **`GET /api/v1/subscriptions/{id}` reads the same row the list does.** With a
+  `subscriptions:write` token it now runs the catch-up first, as the list does, so
+  a monthly row 40 days overdue reads the same `next_payment_date` and
+  `days_until_next_payment` by id and from the list instead of a stale date and a
+  negative count. A read-only token still reads what the last catch-up wrote.
+  OpenAPI 1.9.12 describes it. *Phase 81.*
+- **Deleting a subscription releases its logo, through the API too.** The
+  delete lives in `SubscriptionService`, so the web and the API share one path and
+  the API no longer leaves the uploaded file in logo storage for good. A file
+  another row still uses, and a logo path that is not a stored upload, are left
+  alone. *Phase 81.*
+
 ## [1.38.0] - 2026-11-05
 
 ### Fixed

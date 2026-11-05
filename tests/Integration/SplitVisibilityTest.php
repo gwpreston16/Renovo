@@ -620,6 +620,7 @@ final class SplitVisibilityTest extends DatabaseTestCase
                 ),
                 $this->db,
                 $this->clock,
+                TestLogoFetcher::storage(),
             ),
             new PriceHistoryRepository($this->db),
             $this->service,

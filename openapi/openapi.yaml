@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.11"
+  version: "1.9.12"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -329,6 +329,10 @@ paths:
       x-token-scope: "subscriptions:read"
       tags: [Subscriptions]
       summary: Fetch one subscription.
+      description: >-
+        With a `subscriptions:write` token the request first runs the catch-up the
+        list runs, so an overdue `next_payment_date` reads the same here as in the
+        list.
       responses:
         "200":
           headers:
@@ -421,6 +425,9 @@ paths:
       x-token-scope: "subscriptions:write"
       tags: [Subscriptions]
       summary: Delete a subscription.
+      description: >-
+        The subscription's uploaded logo file is removed with it, unless another
+        row still uses the same file.
       responses:
         "204":
           headers:

@@ -156,10 +156,12 @@ final class ApiContractTermsTest extends ApiTestCase
     }
 
     /**
+     * Reads the stored row: a write token's read would catch up first (K189).
+     *
      * @return array<string, mixed>
      */
     private function show(int $id): array
     {
-        return $this->decode($this->api('GET', '/api/v1/subscriptions/' . $id, $this->ownerToken))['data'];
+        return $this->decode($this->api('GET', '/api/v1/subscriptions/' . $id, $this->readOnlyToken))['data'];
     }
 }
