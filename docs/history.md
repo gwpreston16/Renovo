@@ -820,6 +820,13 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   any size. No API change and no migrations. See
   [Security](security.md#signing-in) and
   [Tracking](features/tracking.md#importing).
+- **Phase 75 — Trial prices and money limits, from the known-issues log —
+  complete (1.33.0).** A bulk currency change now converts a running trial's
+  "converts to" price as well as its current price, and the last day to cancel
+  and the cancellations page quote the price a trial converts to instead of
+  £0.00. The API refuses a charge above the 10^12 minor-unit ceiling and an
+  unknown `converts_to_billing_cycle` with a `422` on the field. OpenAPI is
+  1.9.10. No migrations. See [Money](features/money.md#trials).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
