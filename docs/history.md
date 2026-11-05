@@ -861,6 +861,15 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   open, and the setup wizard's "Send test email". Each fails under the
   mistake it guards against. Tests only: no behaviour, API or data change,
   and no migrations. See [Development](development.md#tests).
+- **Phase 80 — Service-level test gaps, from the known-issues log —
+  complete (1.38.0).** Tests for three guards that had none: the resolver
+  behind the SSRF guard (asks for both address families, falls back to the
+  hosts file, drops malformed and duplicate answers), the 0-10000 range on a
+  custom split share, and one user's failed reminder run not stopping the
+  next user's reminders. Each fails under the mistake it guards against. The
+  only code change is that `SystemDnsResolver` takes optional lookups so a
+  test can run it offline; behaviour is unchanged. No API change and no
+  migrations. See [Development](development.md#tests).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
