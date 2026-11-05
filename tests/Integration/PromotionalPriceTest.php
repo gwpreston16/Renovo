@@ -195,6 +195,23 @@ final class PromotionalPriceTest extends DatabaseTestCase
         self::assertSame([1199, false], $items['2027-01-15']);
     }
 
+    public function testAChargeOnTheDayAnOfferEndsIsTheFirstAtTheFullPrice(): void
+    {
+        // The offer ends on 15 Dec, which is also a charge date.
+        $this->createOffer('Spotify', '5.99', '2026-12-15', '11.99');
+
+        $byDate = [];
+        foreach ($this->forecast->charges($this->alice) as $charge) {
+            $byDate[$charge['date']->format('Y-m-d')] = [$charge['amount']->amountMinor, $charge['reason']];
+        }
+
+        self::assertSame([599, 'renewal'], $byDate['2026-11-15']);
+        // The charge on the end date is the first at the full price...
+        self::assertSame([1199, 'offer_end'], $byDate['2026-12-15']);
+        // ...and the next is an ordinary renewal.
+        self::assertSame([1199, 'renewal'], $byDate['2027-01-15']);
+    }
+
     public function testMovingTheEndMovesTheAnnouncedRow(): void
     {
         $id = $this->createOffer('Spotify', '5.99', '2026-12-01', '11.99');

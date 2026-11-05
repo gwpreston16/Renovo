@@ -8,6 +8,15 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Four date boundaries are now tested.** An alert is not sent once its date has
+  passed; a trial ending today or on the last day of the "ending soon" window is
+  listed; a quarterly bill keeps its anchor day after a short month; and a trial
+  converting on the forecast's last day, or a charge on the day an offer ends, is
+  placed correctly. Each test fails under the one-day mistake it guards against.
+  Tests only; no behaviour changes. *Phase 77.*
+
 ## [1.34.0] - 2026-11-05
 
 ### Fixed
