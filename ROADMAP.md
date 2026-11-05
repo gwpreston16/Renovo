@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–76
+## Planned — Phases 30–77
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -85,6 +85,7 @@ can be moved.
 | 74 | [Re-confirmation, CSV dates and the scenario planner, from the known-issues log](docs/phases/PHASE-74.md) | — | None | ✅ done |
 | 75 | [Trial prices and money limits, from the known-issues log](docs/phases/PHASE-75.md) | — | None | 📋 planned |
 | 76 | [API request edges, from the known-issues log](docs/phases/PHASE-76.md) | — | None | 📋 planned |
+| 77 | [Date-boundary tests, from the known-issues log](docs/phases/PHASE-77.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -226,6 +227,7 @@ can be moved.
 - **74 — Re-confirmation, CSV dates and the scenario planner.** A batch from the known-issues log (K173, K174, K175, K176, K177, K179): an email change and a passkey add or remove ask for the password, re-confirmation misses are rate-limited, a CSV date with a two-digit year or a time is read correctly, and the forecast scenario planner works past 81 subscriptions.
 - **75 — Trial prices and money limits.** A batch from the known-issues log (K214, K215, K216, K188): a bulk currency change converts a running trial's converts-to price as well as its current price, the API refuses a charge amount above the 10^12 minor-unit ceiling, the cancel-by event and cancellations page quote a trial's converted price, and an unknown `converts_to_billing_cycle` is a 422.
 - **76 — API request edges.** A batch from the known-issues log (K191, K193, K194, K222): a JSON write with a non-JSON Content-Type is a 400, an unknown filter value on the subscription list is a 422, a 405 carries an `Allow` header, and every JSON write in `docs/api.md` documents its 400.
+- **77 — Date-boundary tests.** A tests-only batch from the known-issues log (K200, K201, K202, K208): an alert is not sent once its date has passed, a trial ending today or on the last day of the window is listed, a quarterly bill keeps its anchor day after a short month, and the forecast's last day and an offer's end date are covered.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
