@@ -325,6 +325,23 @@ final class BulkActionService
                     ]);
                 }
 
+                // A running trial's converts-to price is in the same currency,
+                // so it moves at the same rate or it would be re-labelled (K214).
+                // Converted before anything is written: no rate, no change.
+                $convertsTo = null;
+                if ($subscription->isTrial && $subscription->convertsToPrice !== null) {
+                    $convertsTo = $this->rates->convert($subscription->convertsToPrice, $currency);
+                    if ($convertsTo === null) {
+                        throw new ValidationException([
+                            'currency' => new ValidationError('error.bulk.no_rate', [
+                                'from' => $subscription->price->currency,
+                                'to' => $currency,
+                                'name' => $subscription->name,
+                            ]),
+                        ]);
+                    }
+                }
+
                 // Recorded as a price-history row, which is what makes the
                 // conversion visible and reversible: the trend shows the
                 // re-denomination and says what it was.
@@ -340,6 +357,10 @@ final class BulkActionService
                         $this->rates->rateFor($subscription->price->currency, $currency)?->toDecimalString() ?? '?',
                     ),
                 );
+
+                if ($convertsTo !== null) {
+                    $this->subscriptions->setConvertsToPrice($scope, $id, $convertsTo->amountMinor);
+                }
 
                 $changed++;
             }
