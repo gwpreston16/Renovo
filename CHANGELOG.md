@@ -16,13 +16,14 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   written. *Phase 75.*
 - **The API refuses a charge above the ceiling.** `amount_minor` and
   `actual_minor` over 1000000000000 minor units are a `422` on the field, as a
-  price is, instead of being stored. *Phase 75.*
+  price is, instead of being stored. OpenAPI 1.9.10 states the maximum. *Phase 75.*
 - **A trial's last day to cancel quotes the price it converts to.** The calendar
   feed and the cancellations page said the next charge was £0.00 for a free
   trial converting to £9.99. *Phase 75.*
 - **An unknown `converts_to_billing_cycle` is refused.** `annual`, `daily` and
-  `YEARLY` are a `422` on the field instead of being saved as "no cycle"; a `PUT`
-  that leaves the key out keeps the stored cycle. *Phase 75.*
+  `YEARLY` were accepted and saved as "no cycle"; they are now a `422` on the
+  field (OpenAPI 1.9.10). A `PUT` that leaves the key out keeps a trial's stored
+  cycle. *Phase 75.*
 
 ## [1.32.0] - 2026-11-01
 
