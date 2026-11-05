@@ -48,6 +48,10 @@ info:
     refused with `400` and changes nothing. `{}`,
     `[]` and an empty body are read as an empty object.
 
+    **A method a route does not take is a `405`** with an `Allow` header
+    listing the ones it does. Any operation can answer it, so it is declared once,
+    as the shared `MethodNotAllowed` response, rather than on every path.
+
     **Wrong types and impossible dates are refused.** A text field sent as a
     boolean, a list or an object is a `422` on that field and clears nothing,
     and so is a whole-number field (an id, an interval, a notice amount) sent

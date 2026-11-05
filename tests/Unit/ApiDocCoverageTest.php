@@ -120,6 +120,12 @@ final class ApiDocCoverageTest extends TestCase
             }
         }
 
+        self::assertArrayHasKey(
+            'POST /api/v1/subscriptions/{id}/attachments',
+            $responses,
+            'the prose parse found no operations; has the heading format changed?',
+        );
+
         $missing = [];
         foreach ($declared as $operation) {
             if (!isset($responses[$operation])) {

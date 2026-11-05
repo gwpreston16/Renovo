@@ -41,7 +41,35 @@ final class ApiRequestEdgesTest extends ApiTestCase
         $response = $this->api('GET', '/api/v1/subscriptions?' . $parameter . '=' . $value, $this->readOnlyToken);
 
         self::assertSame(422, $response->getStatusCode(), (string) $response->getBody());
-        self::assertArrayHasKey($parameter, $this->decode($response)['error']['errors']);
+        $errors = $this->decode($response)['error']['errors'];
+        self::assertArrayHasKey($parameter, $errors);
+        self::assertStringNotContainsString('error.api.filter_invalid', $errors[$parameter]);
+        self::assertStringContainsString('Use ', $errors[$parameter]);
+    }
+
+    public function testTheMessageListsTheAcceptedValues(): void
+    {
+        $response = $this->api('GET', '/api/v1/subscriptions?status=actve', $this->readOnlyToken);
+
+        self::assertStringContainsString(
+            'active, trial, paused, cancelled',
+            $this->decode($response)['error']['errors']['status'],
+        );
+    }
+
+    public function testAValidFilterStillNarrowsTheList(): void
+    {
+        $this->createSubscription(['name' => 'Recurring One']);
+        $this->createSubscription([
+            'name' => 'Lifetime One',
+            'subscription_type' => 'lifetime',
+            'billing_cycle' => null,
+        ]);
+
+        $response = $this->api('GET', '/api/v1/subscriptions?type=lifetime', $this->readOnlyToken);
+
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        self::assertSame(['Lifetime One'], array_column($this->decode($response)['data'], 'name'));
     }
 
     public function testAnArrayValuedFilterIsRefusedToo(): void
