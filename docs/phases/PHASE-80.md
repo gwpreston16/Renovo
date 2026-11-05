@@ -95,13 +95,13 @@ None.
 
 ## Status
 
-- [ ] K205: the SSRF resolver is tested offline
-- [ ] K206: a split share outside 0-10000 is refused
-- [ ] K207: one user's failed reminder run does not stop the next
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 80 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K205: the SSRF resolver is tested offline
+- [x] K206: a split share outside 0-10000 is refused
+- [x] K207: one user's failed reminder run does not stop the next
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 80 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
