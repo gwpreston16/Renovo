@@ -86,19 +86,19 @@ None.
 - **Rows — Decided 2026-11-05:** K189 and K190. Not chosen: adding K186 (a
   migration), the `reminders:run` performance rows (K180, K221), or the
   duplicate-markup rows (K184, K185).
-- **Release — Decided 2026-11-05:** its own patch once merged (the last tag is
-  v1.32.0; Phases 75 and 76 may release first); `/release` picks the number.
+- **Release — Decided 2026-11-05, updated 2026-11-05:** Phases 75 and 76 have since
+  released (last tag v1.38.0); `/release` picks the number, the next minor by default.
 - **Size:** this batch is two rows, since every other open row overlaps a planned
   phase, needs a migration, or needs measuring or a design pass first.
 
 ## Status
 
-- [ ] K189: GET by id catches up like the list
-- [ ] K190: deleting a subscription releases its logo
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 81 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K189: GET by id catches up like the list
+- [x] K190: deleting a subscription releases its logo
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 81 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

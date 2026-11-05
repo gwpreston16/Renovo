@@ -89,7 +89,7 @@ can be moved.
 | 78 | [Figures, icons, passkey labels and migration order, from the known-issues log](docs/phases/PHASE-78.md) | — | None | ✅ done |
 | 79 | [Controller flows over HTTP, from the known-issues log](docs/phases/PHASE-79.md) | — | None | ✅ done |
 | 80 | [Service-level test gaps, from the known-issues log](docs/phases/PHASE-80.md) | — | None | ✅ done |
-| 81 | [API subscription reads and deletes, from the known-issues log](docs/phases/PHASE-81.md) | — | None | 📋 planned |
+| 81 | [API subscription reads and deletes, from the known-issues log](docs/phases/PHASE-81.md) | — | None | ✅ done |
 | 82 | [API contract documentation, from the known-issues log](docs/phases/PHASE-82.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
