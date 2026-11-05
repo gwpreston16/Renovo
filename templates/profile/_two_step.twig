@@ -117,11 +117,14 @@
                 </details>
 
                 <details class="account-row-more">
-                    <summary class="button button-quiet">{{ t('action.rename') }}</summary>
+                    <summary class="button button-quiet"
+                             aria-label="{{ t('profile.passkey_rename', { 'name': passkey.name }) }}">
+                        {{ t('action.rename') }}
+                    </summary>
                     <form method="post" action="/profile/two-step/passkeys/{{ passkey.id }}/rename" class="field-row">
                         {{ csrf_field() }}
                         <input type="text" name="name" value="{{ passkey.name }}" maxlength="100" required
-                               aria-label="{{ t('security.passkey_name') }}">
+                               aria-label="{{ t('profile.passkey_name_for', { 'name': passkey.name }) }}">
                         <button type="submit" class="button">{{ t('action.save') }}</button>
                     </form>
                 </details>

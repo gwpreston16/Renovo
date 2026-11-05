@@ -204,6 +204,40 @@ final class ProfilePageTest extends DatabaseTestCase
     }
 
     /**
+     * With two passkeys a screen reader must be able to tell which one a
+     * control renames (K220): the summary and the field each carry an
+     * accessible name with their own passkey's name and not the other's, as
+     * Remove already does.
+     */
+    public function testEachPasskeysRenameControlAndFieldNameIt(): void
+    {
+        $this->passkeyFor($this->viewerId, 'Phone');
+        $this->passkeyFor($this->viewerId, 'Laptop');
+        $this->signIn($this->viewerId);
+
+        $document = new \DOMDocument();
+        @$document->loadHTML((string) $this->request('GET', '/profile')->getBody());
+        $xpath = new \DOMXPath($document);
+
+        foreach (['Phone' => 'Laptop', 'Laptop' => 'Phone'] as $own => $other) {
+            $row = $xpath->query(
+                "//li[.//*[contains(@class, 'account-row-name')][normalize-space(.) = '" . $own . "']]",
+            )?->item(0);
+            self::assertInstanceOf(\DOMElement::class, $row, 'the page lists the ' . $own . ' passkey');
+
+            $summary = $xpath->query(".//summary[starts-with(@aria-label, 'Rename')]", $row)?->item(0);
+            $field = $xpath->query(".//input[@name='name']", $row)?->item(0);
+            self::assertInstanceOf(\DOMElement::class, $summary);
+            self::assertInstanceOf(\DOMElement::class, $field);
+
+            self::assertSame('Rename ' . $own, $summary->getAttribute('aria-label'));
+            self::assertSame('New name for ' . $own, $field->getAttribute('aria-label'));
+            self::assertStringNotContainsString($other, $summary->getAttribute('aria-label'));
+            self::assertStringNotContainsString($other, $field->getAttribute('aria-label'));
+        }
+    }
+
+    /**
      * The passkey routes are the only ones on the page that take an id from
      * the request, so they are where "only your own" is really decided: an id
      * belonging to another account renames and removes nothing.

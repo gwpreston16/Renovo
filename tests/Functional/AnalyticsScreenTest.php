@@ -568,6 +568,42 @@ final class AnalyticsScreenTest extends DatabaseTestCase
         self::assertNotSame($this->payload($body, 'analytics-donut-data'), $donut);
     }
 
+    /**
+     * An amount is a figure, and a figure takes the figures face (K198): the
+     * per-row amounts and the "N others" total in the spend breakdowns, as on
+     * the household dashboard.
+     */
+    public function testEveryBreakdownAmountIsSetInTheFiguresFont(): void
+    {
+        // The rows are drawn when there is no single whole to put in a donut,
+        // so a currency with no rate brings them on.
+        (new SubscriptionRepository($this->db))->create($this->scopeFor($this->ownerId), [
+            'name' => 'Unconvertible',
+            'price_minor' => 5000,
+            'currency' => 'XOF',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => (new DateTimeImmutable('+30 days'))->format('Y-m-d'),
+            'is_active' => true,
+        ], []);
+
+        $body = $this->body($this->get('/stats', $this->ownerId));
+
+        $amounts = (new DOMXPath($this->document($body)))
+            ->query("//span[contains(concat(' ', normalize-space(@class), ' '), ' distribution-amount ')]");
+
+        self::assertNotFalse($amounts);
+        self::assertGreaterThan(0, $amounts->length, 'the fixture has spend to break down');
+        foreach ($amounts as $amount) {
+            self::assertInstanceOf(DOMElement::class, $amount);
+            self::assertContains(
+                'num',
+                preg_split('/\s+/', trim($amount->getAttribute('class'))) ?: [],
+                'the amount "' . trim($amount->textContent) . '" is not in the figures font',
+            );
+        }
+    }
+
     public function testThePaymentMethodDonutDegradesToPerCurrencyFigures(): void
     {
         $owner = $this->scopeFor($this->ownerId);

@@ -33,7 +33,9 @@ vendor/bin/phinx rollback    # undo the last one
 Every migration ships a working `down()`. PostgreSQL has transactional DDL, so a
 failed migration rolls back completely; MySQL does not, so migrations are kept
 small and the applied version is tracked in `phinxlog` — `phinx status` will
-show a partially applied set.
+show a partially applied set. Versions are applied in order, and a new
+migration's version is always above the newest; see
+[Migrations](development.md#migrations).
 
 One exception, and it is deliberate. **Upgrading to Phase 21 clears every saved
 dashboard layout once** (`20261101000003_reset_saved_dashboard_layouts`),

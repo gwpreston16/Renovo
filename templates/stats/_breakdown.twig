@@ -58,7 +58,7 @@
                     <li class="distribution-row">
                         {% set row_name = row.name is same as('') ? unassigned_label : row.name %}
                         <span class="distribution-name">{{ row_name }}</span>
-                        <span class="distribution-amount">{{ row.amount_minor|money(group.currency) }}</span>
+                        <span class="distribution-amount num">{{ row.amount_minor|money(group.currency) }}</span>
                         <div class="meter" role="img"
                              aria-label="{{ t('dashboard.share_of_spend', {
                                  'name': row_name,
@@ -73,7 +73,7 @@
                     {% set other_name = t(other_key, {'count': group.other.count}) %}
                     <li class="distribution-row">
                         <span class="distribution-name muted">{{ other_name }}</span>
-                        <span class="distribution-amount">
+                        <span class="distribution-amount num">
                             {{ group.other.amount_minor|money(group.currency) }}
                         </span>
                         <div class="meter" role="img"

@@ -1827,7 +1827,6 @@ return [
     'security.add_a_passkey' => 'Add a passkey',
     'security.passkey_password_label' => 'Confirm your password',
     'security.authenticator_app' => 'Authenticator app',
-    'security.passkey_name' => 'Passkey name',
     'security.passkey_name_label' => 'Name for the new passkey',
     'security.phone_yubikey_laptop' => 'Phone, YubiKey, laptop…',
     'security.recovery_codes_note' =>
@@ -2712,7 +2711,9 @@ return [
     'profile.appearance_heading' => 'Appearance & preferences',
     'profile.new_recovery_codes' => 'New recovery codes',
     'profile.passkey_added' => 'Passkey · added {date}',
+    'profile.passkey_name_for' => 'New name for {name}',
     'profile.passkey_remove' => 'Remove {name}',
+    'profile.passkey_rename' => 'Rename {name}',
     'profile.session_address_unknown' => 'Unknown address',
     'profile.session_meta' => '{address} · last seen {seen}',
     'profile.session_sign_out' => 'Sign out {device}',
