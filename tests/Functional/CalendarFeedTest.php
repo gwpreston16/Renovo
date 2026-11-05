@@ -165,9 +165,15 @@ final class CalendarFeedTest extends ApiTestCase
 
         $body = $this->unfold($this->feed());
 
-        self::assertStringContainsString('Cancel Trial service on or before this date to avoid the next charge of £9.99.', $body);
+        self::assertStringContainsString(
+            'Cancel Trial service on or before this date to avoid the next charge of £9.99.',
+            $body,
+        );
         self::assertStringNotContainsString('next charge of £0.00', $body);
-        self::assertStringContainsString('Cancel Gym on or before this date to avoid the next charge of £15.00.', $body);
+        self::assertStringContainsString(
+            'Cancel Gym on or before this date to avoid the next charge of £15.00.',
+            $body,
+        );
     }
 
     public function testATrialConversionAppears(): void
