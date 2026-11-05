@@ -551,6 +551,24 @@ final class BulkActionTest extends DatabaseTestCase
         self::assertSame(999, $subscription->convertsToPrice?->amountMinor);
     }
 
+    public function testANonTrialsStaleConvertsToPriceIsLeftAlone(): void
+    {
+        // Only a running trial's converts-to price is read; a stale one on a
+        // row that has already converted is not rewritten.
+        $id = $this->create('Converted', priceMinor: 1000, extra: ['converts_to_price_minor' => 999]);
+
+        $this->bulk->apply($this->scope(), [
+            'action' => BulkActionService::ACTION_CURRENCY,
+            'ids' => [$id],
+            'currency' => 'EUR',
+        ]);
+
+        $subscription = $this->subscriptions->find($this->scope(), $id);
+        self::assertNotNull($subscription);
+        self::assertSame(1200, $subscription->price->amountMinor);
+        self::assertSame(999, $subscription->convertsToPrice?->amountMinor);
+    }
+
     public function testASelectionCannotReachAnotherHouseholdsRows(): void
     {
         $users = new UserRepository($this->db);

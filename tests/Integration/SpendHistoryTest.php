@@ -579,6 +579,12 @@ final class SpendHistoryTest extends DatabaseTestCase
             new DateTimeImmutable('2026-06-14'),
         );
 
+        $walk = $this->history->charges(
+            $this->scope(),
+            new DateTimeImmutable('2026-04-30'),
+            new DateTimeImmutable('2026-06-14'),
+        );
+        self::assertCount(2, $walk['charges']);
         self::assertSame(['GBP' => 2 * \App\Domain\Money::MAX_MINOR], $spent['by_currency']);
         self::assertSame(2 * \App\Domain\Money::MAX_MINOR, $spent['combined']['amount_minor']);
     }

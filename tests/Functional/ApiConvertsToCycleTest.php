@@ -102,6 +102,42 @@ final class ApiConvertsToCycleTest extends ApiTestCase
         self::assertSame('Renamed', $this->fetch($id)['name']);
     }
 
+    public function testAPutThatOmitsTheCycleAndItsDaysKeepsACustomDaysCycle(): void
+    {
+        $created = $this->api('POST', '/api/v1/subscriptions', $this->ownerToken, $this->body([
+            'converts_to_billing_cycle' => 'custom_days',
+            'converts_to_cycle_days' => 45,
+        ]));
+        self::assertSame(201, $created->getStatusCode(), (string) $created->getBody());
+        $id = (int) $this->decode($created)['data']['id'];
+
+        $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, $this->body());
+
+        self::assertSame(200, $put->getStatusCode(), (string) $put->getBody());
+        self::assertSame('custom_days', $this->fetch($id)['converts_to_billing_cycle']);
+        self::assertSame(45, $this->fetch($id)['converts_to_cycle_days']);
+    }
+
+    public function testAPutOnANonTrialWithoutTheCycleIsAccepted(): void
+    {
+        $created = $this->api('POST', '/api/v1/subscriptions', $this->ownerToken, $this->body([
+            'is_trial' => false,
+            'trial_end_date' => null,
+            'converts_to_price_minor' => null,
+        ]));
+        self::assertSame(201, $created->getStatusCode(), (string) $created->getBody());
+        $id = (int) $this->decode($created)['data']['id'];
+
+        $put = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, $this->body([
+            'is_trial' => false,
+            'trial_end_date' => null,
+            'converts_to_price_minor' => null,
+        ]));
+
+        self::assertSame(200, $put->getStatusCode(), (string) $put->getBody());
+        self::assertNull($this->fetch($id)['converts_to_billing_cycle']);
+    }
+
     /**
      * @return array<string, mixed>
      */

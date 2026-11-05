@@ -404,6 +404,21 @@ final class ApiChargesTest extends ApiTestCase
         }
     }
 
+    public function testANegativeChargeAmountIsStillAnInvalidAmountNotATooLargeOne(): void
+    {
+        $date = (new DateTimeImmutable('-3 days'))->format('Y-m-d');
+
+        $post = $this->api('POST', $this->chargesPath(), $this->ownerToken, ['date' => $date, 'amount_minor' => -1]);
+        self::assertSame(422, $post->getStatusCode());
+        $message = (string) json_encode($this->decode($post)['error']['errors']['amount_minor'] ?? '');
+        self::assertStringContainsString('minor units', $message);
+        self::assertStringNotContainsString('smaller price', $message);
+
+        $patch = $this->api('PATCH', '/api/v1/charges/' . $this->chargeId, $this->ownerToken, ['actual_minor' => -1]);
+        self::assertSame(422, $patch->getStatusCode());
+        self::assertArrayHasKey('actual_minor', $this->decode($patch)['error']['errors'] ?? []);
+    }
+
     public function testAChargeAmountAtTheCeilingIsAccepted(): void
     {
         $date = (new DateTimeImmutable('-40 days'))->format('Y-m-d');
