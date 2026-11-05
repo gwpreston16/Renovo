@@ -198,6 +198,7 @@ final class SetupWizardStepsTest extends DatabaseTestCase
     // ------------------------------------------------------------------
 
     /**
+     * @param array<string, mixed> $overrides
      * @return array<string, mixed>
      */
     private function remindersForm(array $overrides = []): array

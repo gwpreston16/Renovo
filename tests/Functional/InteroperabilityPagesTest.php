@@ -497,6 +497,7 @@ Imported Beta,12.00,yearly,2027-01-20
 
     /**
      * @param array<string, mixed> $body
+     * @param array<string, \Psr\Http\Message\UploadedFileInterface> $files
      */
     private function request(
         string $method,

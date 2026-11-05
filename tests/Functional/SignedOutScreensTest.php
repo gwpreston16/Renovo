@@ -122,6 +122,7 @@ final class SignedOutScreensTest extends DatabaseTestCase
     // ------------------------------------------------------------------
 
     /**
+     * @param array<string, string> $overrides
      * @return array<string, string>
      */
     private function registration(array $overrides = []): array
