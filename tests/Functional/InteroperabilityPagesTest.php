@@ -451,6 +451,18 @@ Imported Beta,12.00,yearly,2027-01-20
             FakeUpload::cleanUp();
         }
 
+        self::assertSame($before + 2, (int) $this->db->fetchValue('SELECT COUNT(*) FROM subscriptions'));
+        $rows = $this->db->fetchAll(
+            "SELECT name, price_minor, billing_cycle, next_payment_date FROM subscriptions "
+            . "WHERE name LIKE 'Imported %' ORDER BY name",
+        );
+        // Each column landed in the field it was mapped to.
+        self::assertSame(450, (int) $rows[0]['price_minor']);
+        self::assertSame('monthly', $rows[0]['billing_cycle']);
+        self::assertSame('2026-12-15', substr((string) $rows[0]['next_payment_date'], 0, 10));
+        self::assertSame(1200, (int) $rows[1]['price_minor']);
+        self::assertSame('yearly', $rows[1]['billing_cycle']);
+        self::assertSame('2027-01-20', substr((string) $rows[1]['next_payment_date'], 0, 10));
         $names = array_column(
             $this->db->fetchAll("SELECT name FROM subscriptions WHERE name LIKE 'Imported %' ORDER BY name"),
             'name',
