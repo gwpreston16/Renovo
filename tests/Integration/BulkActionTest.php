@@ -695,6 +695,9 @@ final class BulkActionTest extends DatabaseTestCase
         ], (new TagRepository($this->db))->resolveOrCreate($this->scope(), $tags));
     }
 
+    /**
+     * @param array<string, mixed> $extra
+     */
     private function create(
         string $name,
         int $priceMinor = 999,

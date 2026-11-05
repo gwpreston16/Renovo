@@ -567,10 +567,6 @@ final class SpendHistoryTest extends DatabaseTestCase
         self::assertSame(2500, $uncategorised['2026-06']);
     }
 
-    /**
-     * @param list<array<string, mixed>> $months
-     * @return array<string, int|null>
-     */
     public function testTwoCeilingSizedChargesInOneWindowSumAsIntegers(): void
     {
         // K215: the ceiling is 10^12 minor units; two of them in a window must
@@ -584,10 +580,13 @@ final class SpendHistoryTest extends DatabaseTestCase
         );
 
         self::assertSame(['GBP' => 2 * \App\Domain\Money::MAX_MINOR], $spent['by_currency']);
-        self::assertIsInt($spent['by_currency']['GBP']);
         self::assertSame(2 * \App\Domain\Money::MAX_MINOR, $spent['combined']['amount_minor']);
     }
 
+    /**
+     * @param list<array<string, mixed>> $months
+     * @return array<string, int|null>
+     */
     private function byMonth(array $months): array
     {
         $totals = [];

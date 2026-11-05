@@ -2147,6 +2147,11 @@ components:
           type: string
           nullable: true
           enum: [weekly, monthly, quarterly, yearly, custom_days]
+          description: |
+            The cycle the trial converts to. A value outside the enum
+            (`annual`, `daily`, `YEARLY`) is a 422 on this field. Null or an
+            empty string means it converts on the cycle it has; a PUT that
+            omits the field keeps the stored value.
         converts_to_cycle_days: { type: integer, nullable: true }
         converts_to_cycle_interval:
           type: integer
