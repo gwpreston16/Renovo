@@ -441,7 +441,10 @@ final class ApiContractTest extends ApiTestCase
      */
     private function fetch(int $id): array
     {
-        return $this->decode($this->api('GET', '/api/v1/subscriptions/' . $id, $this->ownerToken))['data'];
+        // A read-only token reads what was stored. A write token's read catches
+        // up first (K189), which would convert a trial whose end date has passed
+        // on the real clock and so change what these tests set.
+        return $this->decode($this->api('GET', '/api/v1/subscriptions/' . $id, $this->readOnlyToken))['data'];
     }
 
     /**
