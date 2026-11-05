@@ -98,14 +98,14 @@ None.
 
 ## Status
 
-- [ ] K200: no alert is sent after its date has passed
-- [ ] K201: a trial ending today or on the window's last day is listed
-- [ ] K202: a quarterly bill keeps its anchor day
-- [ ] K208: the forecast's last day and an offer's end date
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 77 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K200: no alert is sent after its date has passed
+- [x] K201: a trial ending today or on the window's last day is listed
+- [x] K202: a quarterly bill keeps its anchor day
+- [x] K208: the forecast's last day and an offer's end date
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 77 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

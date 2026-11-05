@@ -54,6 +54,27 @@ final class BillingDateAdvanceTest extends TestCase
         self::assertSame('2029-02-28', BillingCycle::Yearly->advance($leapDay, null, 29)->format('Y-m-d'));
     }
 
+    public function testAQuarterlyBillKeepsItsAnchorDayAfterAShortMonth(): void
+    {
+        // Billed on the 31st: 31 Jan, 30 Apr (April has 30 days), 31 Jul.
+        $april = new DateTimeImmutable('2026-04-30');
+        self::assertSame('2026-07-31', BillingCycle::Quarterly->advance($april, null, 31)->format('Y-m-d'));
+
+        // Billed on the 30th, clamped to 28 Feb, comes back to the 30th.
+        $february = new DateTimeImmutable('2027-02-28');
+        self::assertSame('2027-05-30', BillingCycle::Quarterly->advance($february, null, 30)->format('Y-m-d'));
+    }
+
+    public function testAQuarterlyBillWithNoAnchorStaysOnTheDayItLanded(): void
+    {
+        // The same two dates with no anchor, to show what the anchor changes.
+        $april = new DateTimeImmutable('2026-04-30');
+        self::assertSame('2026-07-30', BillingCycle::Quarterly->advance($april)->format('Y-m-d'));
+
+        $february = new DateTimeImmutable('2027-02-28');
+        self::assertSame('2027-05-28', BillingCycle::Quarterly->advance($february)->format('Y-m-d'));
+    }
+
     public function testDayBasedCyclesJustAddDays(): void
     {
         $date = new DateTimeImmutable('2026-01-31');

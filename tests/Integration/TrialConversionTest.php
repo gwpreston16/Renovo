@@ -15,6 +15,7 @@ use App\Repository\PriceHistoryRepository;
 use App\Repository\SubscriptionRepository;
 use App\Repository\UserRepository;
 use App\Security\Scope;
+use App\Service\CancellationService;
 use App\Service\ChargeSchedule;
 use App\Service\PriceHistoryService;
 use App\Service\SubscriptionService;
@@ -208,6 +209,45 @@ final class TrialConversionTest extends DatabaseTestCase
             static fn ($subscription): string => $subscription->name,
             $ending,
         ));
+    }
+
+    /**
+     * The windows in use: the shell's due-soon badge (URGENT_DAYS) and the
+     * stats list and Free trials card (30). Both ends of a window are
+     * inclusive (K201).
+     *
+     * @return array<string, array{int}>
+     */
+    public static function trialWindows(): array
+    {
+        return [
+            'the shell badge window' => [CancellationService::URGENT_DAYS],
+            'the stats list window' => [30],
+        ];
+    }
+
+    /**
+     * @dataProvider trialWindows
+     */
+    public function testATrialEndingTodayOrOnTheWindowsLastDayIsListed(int $days): void
+    {
+        // Today is 2026-09-14.
+        $this->createTrial(endDate: '2026-09-13', convertsToMinor: 100, name: 'Day before today');
+        $this->createTrial(endDate: '2026-09-14', convertsToMinor: 100, name: 'Today');
+        $last = $this->clock->today()->modify("+{$days} days");
+        $this->createTrial(endDate: $last->format('Y-m-d'), convertsToMinor: 100, name: 'Last day');
+        $this->createTrial(endDate: $last->modify('+1 day')->format('Y-m-d'), convertsToMinor: 100, name: 'Day after');
+
+        $names = static fn (array $list): array => array_map(
+            static fn ($subscription): string => $subscription->name,
+            $list,
+        );
+
+        self::assertSame(['Today', 'Last day'], $names($this->trials->endingSoon($this->scope(), $days)));
+        self::assertSame(
+            ['Today', 'Last day'],
+            $names($this->subscriptionService()->trialsEndingSoon($this->scope(), $days)),
+        );
     }
 
     public function testConversionTotalsUseTheConvertsToPriceNotTheTrialPrice(): void

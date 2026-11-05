@@ -287,6 +287,25 @@ final class ForecastTest extends DatabaseTestCase
         }
     }
 
+    public function testATrialConvertingOnTheHorizonsLastDayIsForecast(): void
+    {
+        // Today is 2026-01-15, so a twelve-month horizon ends on 2027-01-15.
+        $this->createTrial('On the last day', trialEnd: '2027-01-15', convertsToMinor: 1299);
+
+        $charges = $this->forecast->charges($this->scope(), 12);
+
+        self::assertCount(1, $charges);
+        self::assertSame('2027-01-15', $charges[0]['date']->format('Y-m-d'));
+        self::assertSame(1299, $charges[0]['amount']->amountMinor);
+    }
+
+    public function testATrialConvertingTheDayAfterTheHorizonIsNotForecast(): void
+    {
+        $this->createTrial('A day too late', trialEnd: '2027-01-16', convertsToMinor: 1299);
+
+        self::assertSame([], $this->forecast->charges($this->scope(), 12));
+    }
+
     public function testAnInactiveSubscriptionIsNotForecast(): void
     {
         $this->createSubscription('Cancelled', 1000, 'monthly', '2026-02-01', isActive: false);

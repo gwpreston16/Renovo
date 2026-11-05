@@ -103,4 +103,110 @@ final class AlertScannerTest extends NotificationTestCase
         $this->runOn('2026-09-' . (15 + AlertScanner::BREACH_RETRY_WINDOW_DAYS + 1));
         self::assertSame(0, $this->breachAlerts());
     }
+
+    // ------------------------------------------------------------------
+    // A date that has passed is not warned about (K200)
+    // ------------------------------------------------------------------
+
+    /**
+     * @return list<AlertType>
+     */
+    private function dueTypes(string $name): array
+    {
+        $types = [];
+        foreach (
+            $this->scanner->dueAlerts(
+                $this->scope($this->alice),
+                $this->notificationSettings->preferences($this->alice),
+            ) as $alert
+        ) {
+            if (str_contains($alert->title, $name)) {
+                $types[] = $alert->type;
+            }
+        }
+
+        return $types;
+    }
+
+    public function testAContractThatEndedTwoDaysAgoSendsNothing(): void
+    {
+        // 15 Sep is "today"; 13 Sep is -2 days, inside every lead window.
+        $this->createSubscription('Sky Broadband', 3500, '2027-01-20', $this->alice, [
+            'contract_ends_on' => '2026-09-13',
+        ]);
+
+        self::assertSame([], $this->dueTypes('Sky Broadband'));
+    }
+
+    public function testAContractEndingOnALeadDayStillSends(): void
+    {
+        // The control: the same subscription a week before the end.
+        $this->createSubscription('Sky Broadband', 3500, '2027-01-20', $this->alice, [
+            'contract_ends_on' => '2026-09-22',
+        ]);
+
+        self::assertSame([AlertType::ContractEnding], $this->dueTypes('Sky Broadband'));
+    }
+
+    public function testACancelByDatePastSendsNoCancelByAlert(): void
+    {
+        // Renews 20 Sep with 30 days' notice: the deadline was 21 Aug.
+        $this->createSubscription('Gym', 4000, '2026-09-20', $this->alice, [
+            'notice_period_amount' => 30,
+            'notice_period_unit' => 'days',
+        ]);
+
+        // The renewal, five days out, is still announced; the deadline is not.
+        self::assertSame([AlertType::Renewal], $this->dueTypes('Gym'));
+    }
+
+    public function testACancelByDateOnALeadDayStillSends(): void
+    {
+        // The control: the deadline is 22 Sep, a week away.
+        $this->createSubscription('Gym', 4000, '2026-10-22', $this->alice, [
+            'notice_period_amount' => 30,
+            'notice_period_unit' => 'days',
+        ]);
+
+        self::assertSame([AlertType::CancelBy], $this->dueTypes('Gym'));
+    }
+
+    public function testATrialThatEndedTwoDaysAgoSendsNothing(): void
+    {
+        $this->createSubscription('Streaming trial', 0, null, $this->alice, [
+            'is_trial' => true,
+            'trial_end_date' => '2026-09-13',
+            'converts_to_price_minor' => 1299,
+        ]);
+
+        self::assertSame([], $this->dueTypes('Streaming trial'));
+    }
+
+    public function testATrialEndingOnALeadDayStillSends(): void
+    {
+        $this->createSubscription('Streaming trial', 0, null, $this->alice, [
+            'is_trial' => true,
+            'trial_end_date' => '2026-09-22',
+            'converts_to_price_minor' => 1299,
+        ]);
+
+        self::assertSame([AlertType::TrialConversion], $this->dueTypes('Streaming trial'));
+    }
+
+    public function testAPassedContractEndWritesNoNotificationLogRow(): void
+    {
+        $this->createSubscription('Sky Broadband', 3500, '2027-01-20', $this->alice, [
+            'contract_ends_on' => '2026-09-13',
+        ]);
+
+        $this->runner->run();
+
+        self::assertSame(
+            0,
+            (int) $this->db->fetchValue(
+                'SELECT COUNT(*) FROM notification_log WHERE alert_type = :type',
+                ['type' => AlertType::ContractEnding->value],
+            ),
+        );
+    }
 }
