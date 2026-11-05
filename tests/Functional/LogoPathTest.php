@@ -327,6 +327,62 @@ final class LogoPathTest extends ApiTestCase
         self::assertFileDoesNotExist($file);
     }
 
+    /** K190: the API delete released nothing, so every API-deleted row left its file behind. */
+    public function testDeletingARowThroughTheApiRemovesItsLogo(): void
+    {
+        [$id, $file] = $this->subscriptionWithAStoredLogo();
+
+        $response = $this->api('DELETE', '/api/v1/subscriptions/' . $id, $this->ownerToken);
+
+        self::assertSame(204, $response->getStatusCode(), (string) $response->getBody());
+        self::assertFileDoesNotExist($file);
+        self::assertSame([], $this->storedFiles());
+    }
+
+    public function testDeletingARowThroughTheApiKeepsAFileAnotherRowUses(): void
+    {
+        [$theirs, $file] = $this->subscriptionWithAStoredLogo();
+        $mine = $this->createSubscription();
+        $this->nameLogo($mine, $this->logoOf($theirs));
+
+        $response = $this->api('DELETE', '/api/v1/subscriptions/' . $mine, $this->ownerToken);
+
+        self::assertSame(204, $response->getStatusCode(), (string) $response->getBody());
+        self::assertFileExists($file, "The other row's file is kept.");
+    }
+
+    /**
+     * A row with no logo, or one naming something LogoStorage never wrote, is
+     * deleted and no other file in the directory is touched.
+     *
+     * @return array<string, array{0: ?string}>
+     */
+    public static function logosThatAreNotStoredFiles(): array
+    {
+        return [
+            'no logo' => [null],
+            'a URL' => ['https://attacker.example/0123456789abcdef0123456789abcdef.png'],
+            'climbing out' => ['assets/logos/../0123456789abcdef0123456789abcdef.png'],
+        ];
+    }
+
+    /**
+     * @dataProvider logosThatAreNotStoredFiles
+     */
+    public function testDeletingARowWhoseLogoIsNotAStoredFileRemovesNoOtherFile(?string $path): void
+    {
+        [$other, $otherFile] = $this->subscriptionWithAStoredLogo();
+        $id = $this->createSubscription();
+        $this->nameLogo($id, $path);
+
+        $response = $this->api('DELETE', '/api/v1/subscriptions/' . $id, $this->ownerToken);
+
+        self::assertSame(204, $response->getStatusCode(), (string) $response->getBody());
+        self::assertNull($this->db->fetchOne('SELECT id FROM subscriptions WHERE id = :id', ['id' => $id]));
+        self::assertFileExists($otherFile);
+        self::assertSame($otherFile, $this->logoDirectory . '/' . basename((string) $this->logoOf($other)));
+    }
+
     public function testRemovingAndReplacingALogoKeepsAFileAnotherRowUses(): void
     {
         [$theirs, $file] = $this->subscriptionWithAStoredLogo();

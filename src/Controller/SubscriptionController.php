@@ -407,9 +407,7 @@ final class SubscriptionController extends Controller
         $scope = $this->scope($request);
 
         try {
-            $subscription = $this->subscriptions->find($scope, (int) $id);
             $this->subscriptions->delete($scope, (int) $id);
-            $this->logos->release($subscription?->logoPath);
         } catch (ScopeViolationException) {
             throw $this->notFound($request);
         }

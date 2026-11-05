@@ -51,6 +51,7 @@ final class SubscriptionService
         private readonly ChargeService $charges,
         private readonly Database $db,
         private readonly Clock $clock,
+        private readonly LogoStorage $logos,
     ) {
     }
 
@@ -430,9 +431,19 @@ final class SubscriptionService
         return $a->currency === $b->currency && $a->amountMinor === $b->amountMinor;
     }
 
+    /**
+     * Delete a subscription and release the logo file it named (K190), so the
+     * web and the API share one path and neither leaves the file behind. A
+     * logo path LogoStorage did not write, such as a URL, is left alone by
+     * `release()`, which also keeps a file another row still names.
+     *
+     * @throws \App\Security\ScopeViolationException
+     */
     public function delete(Scope $scope, int $id): void
     {
+        $logoPath = $this->subscriptions->find($scope, $id)?->logoPath;
         $this->subscriptions->delete($scope, $id);
+        $this->logos->release($logoPath);
     }
 
     /**

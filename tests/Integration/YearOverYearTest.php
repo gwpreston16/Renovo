@@ -102,6 +102,7 @@ final class YearOverYearTest extends DatabaseTestCase
             ),
             $this->db,
             $clock,
+            TestLogoFetcher::storage(),
         );
 
         $rates = new ExchangeRateService(
