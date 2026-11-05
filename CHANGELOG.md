@@ -8,6 +8,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.34.0] - 2026-11-05
+
 ### Fixed
 
 - **A JSON write with a body that is not JSON is a `400`.** `text/plain`,
@@ -1437,7 +1439,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.33.0...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.34.0...HEAD
+[1.34.0]: https://github.com/gwpreston16/Renovo/compare/v1.33.0...v1.34.0
 [1.33.0]: https://github.com/gwpreston16/Renovo/compare/v1.32.0...v1.33.0
 [1.32.0]: https://github.com/gwpreston16/Renovo/compare/v1.31.2...v1.32.0
 [1.31.2]: https://github.com/gwpreston16/Renovo/compare/v1.31.1...v1.31.2

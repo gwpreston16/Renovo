@@ -827,6 +827,14 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   £0.00. The API refuses a charge above the 10^12 minor-unit ceiling and an
   unknown `converts_to_billing_cycle` with a `422` on the field. OpenAPI is
   1.9.10. No migrations. See [Money](features/money.md#trials).
+- **Phase 76 — API request edges, from the known-issues log — complete
+  (1.34.0).** A JSON write sent with a body that is not JSON (`text/plain`,
+  `application/xml`) is now a `400` instead of a `200` that saved nothing, and
+  the subscription list answers `422` naming the parameter when `type`,
+  `status`, `sort`, `dir`, `currency` or `inactive` holds a value it does not
+  know; `inactive` takes `0` or `1`. A `405` carries an `Allow` header, and
+  `docs/api.md` lists the `400` on every JSON write. OpenAPI is 1.9.11. No
+  migrations. See [API](api.md#errors).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
