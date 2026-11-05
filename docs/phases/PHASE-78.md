@@ -116,14 +116,14 @@ None.
 
 ## Status
 
-- [ ] K198: Stats breakdown amounts take `.num`
-- [ ] K199: the four unused icons are out of the sprite, and a test keeps it so
-- [ ] K220: each passkey's rename control and field name it
-- [ ] K187: new migration versions must sort last, documented and tested
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 78 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K198: Stats breakdown amounts take `.num`
+- [x] K199: the four unused icons are out of the sprite, and a test keeps it so
+- [x] K220: each passkey's rename control and field name it
+- [x] K187: new migration versions must sort last, documented and tested
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 78 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

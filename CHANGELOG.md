@@ -8,6 +8,23 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Stats breakdown amounts are set in the figures font.** The amounts beside each
+  category and member, and the "N others" total, now use the same face as the
+  household dashboard. *Phase 78.*
+- **The icon sprite no longer carries four unused drawings.** `audit`, `external`,
+  `chevron-down` and `chevrons-up-down` come out of `assets/theme/icons.json`, and
+  a test fails when an icon is listed that nothing draws. *Phase 78.*
+- **Each passkey's rename control names it.** On Profile → Two-step, a screen reader
+  now hears "Rename Phone" and "New name for Phone" rather than the same
+  "Rename" for every passkey, as Remove already did. *Phase 78.*
+- **Contributors are told a new migration must sort after the highest.** `CLAUDE.md`,
+  the development guide, the upgrade page and the migration reviewer say so, and a
+  test fails when a migration is added with a lower version than one before it, since
+  that is applied out of order and `phinx rollback` would undo the wrong one.
+  *Phase 78.*
+
 ## [1.35.0] - 2026-11-05
 
 ### Fixed
