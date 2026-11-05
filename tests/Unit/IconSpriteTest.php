@@ -125,4 +125,58 @@ final class IconSpriteTest extends TestCase
             self::assertContains($icon, $names, sprintf('"%s" is not in assets/theme/icons.json.', $icon));
         }
     }
+
+    /**
+     * The other direction (K199): the sprite is every page's weight, and only
+     * the icons the application draws are built into it. An entry nothing
+     * names fails here, so the map cannot collect drawings that are paid for
+     * on every page and shown on none.
+     *
+     * "Names" is any quoted string equal to the key in a template, a PHP
+     * source file or a script, which finds `icon('add')`, the navigation and
+     * calendar tables and the payment-method list alike; the backup
+     * destinations build theirs from the destination type, so those come from
+     * the enum.
+     */
+    public function testEveryIconInTheMapIsDrawnSomewhere(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $map = json_decode(
+            (string) file_get_contents($root . '/assets/theme/icons.json'),
+            true,
+            8,
+            JSON_THROW_ON_ERROR,
+        );
+        self::assertIsArray($map);
+
+        $source = '';
+        foreach (['templates', 'src', 'assets/js'] as $directory) {
+            $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(
+                $root . '/' . $directory,
+                \FilesystemIterator::SKIP_DOTS,
+            ));
+            foreach ($files as $file) {
+                if ($file instanceof \SplFileInfo && in_array($file->getExtension(), ['twig', 'php', 'js'], true)) {
+                    $source .= (string) file_get_contents($file->getPathname()) . "
+";
+                }
+            }
+        }
+
+        $built = array_map(
+            static fn (\App\Domain\BackupDestinationType $type): string => $type->icon(),
+            \App\Domain\BackupDestinationType::cases(),
+        );
+
+        $unused = [];
+        foreach (array_keys($map['icons']) as $name) {
+            $name = (string) $name;
+            $quoted = '~[' . chr(39) . '"`]' . preg_quote($name, '~') . '[' . chr(39) . '"`]~';
+            if (!in_array($name, $built, true) && preg_match($quoted, $source) !== 1) {
+                $unused[] = $name;
+            }
+        }
+
+        self::assertSame([], $unused, 'icons.json builds drawings nothing names: ' . implode(', ', $unused));
+    }
 }
