@@ -8,6 +8,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.37.0] - 2026-11-05
+
 ### Fixed
 
 - **Four controller flows are now tested over HTTP.** Confirming and disabling the
@@ -1479,7 +1481,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.36.0...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.37.0...HEAD
+[1.37.0]: https://github.com/gwpreston16/Renovo/compare/v1.36.0...v1.37.0
 [1.36.0]: https://github.com/gwpreston16/Renovo/compare/v1.35.0...v1.36.0
 [1.35.0]: https://github.com/gwpreston16/Renovo/compare/v1.34.0...v1.35.0
 [1.34.0]: https://github.com/gwpreston16/Renovo/compare/v1.33.0...v1.34.0

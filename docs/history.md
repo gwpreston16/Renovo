@@ -853,6 +853,14 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   told, and a test enforces, that a new migration's version must sort after
   the highest. No API change and no migrations. See
   [Development](development.md#migrations).
+- **Phase 79 — Controller flows over HTTP, from the known-issues log —
+  complete (1.37.0).** Tests for four controllers that guard or carry
+  something important and had never been sent a request: confirming and
+  disabling the authenticator app and issuing new recovery codes, a CSV
+  import from upload to commit, `/register` while registration is closed and
+  open, and the setup wizard's "Send test email". Each fails under the
+  mistake it guards against. Tests only: no behaviour, API or data change,
+  and no migrations. See [Development](development.md#tests).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
