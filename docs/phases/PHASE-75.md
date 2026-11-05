@@ -123,7 +123,7 @@ None.
 
 - [x] K214: a bulk currency change converts a trial's converts-to price
 - [x] K215: a charge amount above the ceiling is a 422
-- [ ] K216: the cancel-by event and the cancellations page quote the converted price
+- [x] K216: the cancel-by event and the cancellations page quote the converted price
 - [ ] K188: an unknown `converts_to_billing_cycle` is a 422
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed

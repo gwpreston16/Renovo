@@ -322,6 +322,29 @@ final class ContractTermsScreensTest extends DatabaseTestCase
         self::assertStringContainsString('has been out of contract since', $stats);
     }
 
+    public function testTheCancellationsPageQuotesATrialsConvertedPrice(): void
+    {
+        // K216: the price column is the next charge. A £0.00 trial converting
+        // to £9.99 shows £9.99; a plain subscription still shows its price.
+        $this->create('Free Trial TV', 0, [
+            'is_trial' => true,
+            'trial_end_date' => $this->nextMonth->format('Y-m-d'),
+            'converts_to_price_minor' => 999,
+            'notice_period_amount' => 3,
+            'notice_period_unit' => 'days',
+        ]);
+        $this->create('Plain Gym', 1500, [
+            'notice_period_amount' => 3,
+            'notice_period_unit' => 'days',
+        ]);
+
+        $page = $this->page('/cancellations', $this->ownerId);
+
+        self::assertMatchesRegularExpression('~Free Trial TV.*?£9\.99~s', $page);
+        self::assertStringNotContainsString('£0.00', $page);
+        self::assertMatchesRegularExpression('~Plain Gym.*?£15\.00~s', $page);
+    }
+
     public function testARefusedPaymentReopensWithWhatWasTyped(): void
     {
         $id = $this->create('Netflix', 1099);

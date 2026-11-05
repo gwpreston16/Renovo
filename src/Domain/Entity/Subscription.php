@@ -401,6 +401,16 @@ final class Subscription
         return $this->convertsToPrice ?? $this->price;
     }
 
+    /**
+     * What the next charge will be: the converted price for a running trial,
+     * the price it has for anything else. The one figure for "avoid the next
+     * charge of …" wherever a deadline is quoted (K216).
+     */
+    public function nextChargePrice(): Money
+    {
+        return $this->isTrial ? $this->priceAfterConversion() : $this->price;
+    }
+
     public function billingCycleAfterConversion(): ?BillingCycle
     {
         return $this->convertsToBillingCycle ?? $this->billingCycle;
