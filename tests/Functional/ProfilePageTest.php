@@ -465,7 +465,10 @@ final class ProfilePageTest extends DatabaseTestCase
         $this->session->remove(SecurityController::RECOVERY_CODES_KEY);
 
         $this->request('POST', '/profile/two-step/recovery-codes', ['password' => 'not-the-password']);
-        self::assertNull($this->session->get(SecurityController::RECOVERY_CODES_KEY), 'a wrong password issues nothing');
+        self::assertNull(
+            $this->session->get(SecurityController::RECOVERY_CODES_KEY),
+            'a wrong password issues nothing',
+        );
 
         $this->assertLandsOn('/profile#two-step', $this->request(
             'POST',
