@@ -111,6 +111,29 @@ final class SplitShareRangeTest extends DatabaseTestCase
         self::assertSame([$this->ownerId => 10000, $this->memberId => 1], $units);
     }
 
+    /**
+     * K225: the split form posts 0 for each member left out, so 0 is a valid
+     * share that means "not a participant". Tightening the range check to
+     * `$units < 1` would make every such save fail.
+     */
+    public function testACustomShareOfZeroMarksANonParticipantAndSaves(): void
+    {
+        $this->splits->update($this->owner, $this->subscriptionId, [
+            'split_mode' => SplitMode::Custom->value,
+            'shares' => [$this->ownerId => 3, $this->memberId => 0],
+        ]);
+
+        $units = [];
+        foreach ($this->splits->participants($this->owner, $this->subscriptionId) as $participant) {
+            $units[$participant->userId] = $participant->shareUnits;
+        }
+        self::assertSame([$this->ownerId => 3], $units, 'the member at 0 is not stored as a participant');
+        self::assertSame(
+            SplitMode::Custom,
+            $this->subscriptions->find($this->owner, $this->subscriptionId)?->splitMode,
+        );
+    }
+
     public function testAnEqualSplitIgnoresTheNumbersItWasSent(): void
     {
         // Equal gives everyone one unit whatever the form posted, so a stale

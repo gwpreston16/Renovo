@@ -119,12 +119,12 @@ up first, as for any release with a migration.
 
 ## Status
 
-- [ ] K224: a digest leaves out an event whose date has passed (test fails without the check)
-- [ ] K225: a custom split with a share of 0 saves (test fails if 0 is refused)
-- [ ] K186: `api_tokens.expires_at` is a `datetime` on MySQL; a 2040 expiry is issued
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed, with the migration noted
-- [ ] ROADMAP: Phase 83 row marked ✅ done
+- [x] K224: a digest leaves out an event whose date has passed (test fails without the check)
+- [x] K225: a custom split with a share of 0 saves (test fails if 0 is refused)
+- [x] K186: `api_tokens.expires_at` is a `datetime` on MySQL; a 2040 expiry is issued
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed, with the migration noted
+- [x] ROADMAP: Phase 83 row marked ✅ done
 - [ ] composer check, coverage and the API doc tests green on both engines
 
 ## Definition of done

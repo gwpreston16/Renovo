@@ -568,6 +568,43 @@ final class ReminderRunTest extends NotificationTestCase
         self::assertStringContainsString('Netflix', $this->notifier->sent[0]['alert']->body());
     }
 
+    /**
+     * K224: the digest window starts today, so an event dated before today is
+     * left out. Without the `$until < 0` check in `AlertScanner::alertsWithin()`
+     * a contract or trial that ended two days ago would be listed as "in -2
+     * days" beside the real renewals.
+     */
+    public function testADigestLeavesOutAnEventThatHasPassed(): void
+    {
+        $this->addChannel($this->alice);
+        // The control: a renewal inside the window, so a digest is sent at all.
+        $this->createSubscription('Netflix', 1099, '2026-09-23', $this->alice);
+        // Their renewals are well outside the window; only the ended dates are
+        // candidates, and both fell on Saturday 19 September.
+        $this->createSubscription('Old contract', 2000, '2026-12-01', $this->alice, [
+            'contract_ends_on' => '2026-09-19',
+        ]);
+        $this->createSubscription('Old trial', 500, '2026-12-01', $this->alice, [
+            'is_trial' => true,
+            'trial_end_date' => '2026-09-19',
+        ]);
+        $this->notificationSettings->savePreferences($this->alice, [
+            'lead_days' => '30,7,1',
+            'digest_mode' => DigestMode::Weekly->value,
+            'digest_day' => '1',
+        ]);
+
+        // Monday 21 September 2026.
+        $this->clock->advanceTo(new DateTimeImmutable('2026-09-21 08:00:00'));
+        $this->runner->run();
+
+        self::assertCount(1, $this->notifier->sent);
+        $body = $this->notifier->sent[0]['alert']->body();
+        self::assertStringContainsString('Netflix', $body);
+        self::assertStringNotContainsString('Old contract', $body);
+        self::assertStringNotContainsString('Old trial', $body);
+    }
+
     public function testAMonthlyDigestWindowEndsBeforeTheNextMonthsIssue(): void
     {
         $this->addChannel($this->alice);
