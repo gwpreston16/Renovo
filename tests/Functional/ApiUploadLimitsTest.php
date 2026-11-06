@@ -45,12 +45,8 @@ final class ApiUploadLimitsTest extends ApiTestCase
     protected function tearDown(): void
     {
         FakeUpload::cleanUp();
-        foreach ((array) glob($this->directory . '/*/*') as $path) {
-            @unlink((string) $path);
-        }
-        @rmdir($this->directory . '/logos');
-        @rmdir($this->directory . '/attachments');
-        @rmdir($this->directory);
+        // Recursive: an attachment is stored under a folder per household.
+        ApiChargesTest::removeDirectory($this->directory);
 
         parent::tearDown();
     }
@@ -100,22 +96,33 @@ final class ApiUploadLimitsTest extends ApiTestCase
     public function testALogoOfExactlyOneMegabyteIsNotRefusedForItsSize(): void
     {
         $id = $this->createSubscription();
+        $path = '/api/v1/subscriptions/' . $id . '/logo';
 
-        $response = $this->upload(
-            '/api/v1/subscriptions/' . $id . '/logo',
-            'logo',
-            FakeUpload::of($this->paddedPng(self::LOGO_LIMIT), 'edge.png'),
+        // What the size refusal looks like, taken from the API itself so the
+        // comparison below does not depend on the locale or the wording.
+        $over = $this->upload($path, 'logo', FakeUpload::of($this->paddedPng(self::LOGO_LIMIT + 1), 'over.png'));
+        self::assertSame(422, $over->getStatusCode(), (string) $over->getBody());
+        $sizeRefusal = $this->decode($over)['error']['errors']['logo'] ?? null;
+        self::assertNotNull($sizeRefusal);
+
+        $edge = $this->upload($path, 'logo', FakeUpload::of($this->paddedPng(self::LOGO_LIMIT), 'edge.png'));
+
+        // The limit is `>`, not `>=`. The padding may or may not decode as an
+        // image (the type is read from the header), so a 422 is tolerated, but
+        // never a crash and never the size refusal.
+        self::assertContains($edge->getStatusCode(), [200, 422], (string) $edge->getBody());
+        self::assertNotSame(
+            $sizeRefusal,
+            $this->decode($edge)['error']['errors']['logo'] ?? null,
+            'A logo of exactly the limit was refused for its size.',
         );
-
-        // The limit is `>`, not `>=`. The padded bytes may or may not decode as
-        // an image, but whatever is said of them, the size message must not be.
-        self::assertStringNotContainsString('or smaller', (string) $response->getBody());
     }
 
     public function testAnAttachmentOfExactlyTenMegabytesIsAccepted(): void
     {
         $id = $this->createSubscription();
-        $bytes = "%PDF-1.4\n" . str_repeat('0', self::ATTACHMENT_LIMIT - 9);
+        $bytes = "%PDF-1.4
+" . str_repeat('0', self::ATTACHMENT_LIMIT - 9);
         self::assertSame(self::ATTACHMENT_LIMIT, strlen($bytes));
 
         $response = $this->upload(
@@ -124,7 +131,28 @@ final class ApiUploadLimitsTest extends ApiTestCase
             FakeUpload::of($bytes, 'edge.pdf'),
         );
 
-        self::assertStringNotContainsString('or smaller', (string) $response->getBody());
+        self::assertSame(201, $response->getStatusCode(), (string) $response->getBody());
+        self::assertCount(1, $this->storedFiles($this->directory . '/attachments'));
+    }
+
+    /**
+     * Every file under a directory, however deep.
+     *
+     * @return list<string>
+     */
+    private function storedFiles(string $directory): array
+    {
+        $files = [];
+        $entries = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($directory, \FilesystemIterator::SKIP_DOTS),
+        );
+        foreach ($entries as $entry) {
+            if ($entry instanceof \SplFileInfo && $entry->isFile()) {
+                $files[] = $entry->getPathname();
+            }
+        }
+
+        return $files;
     }
 
     /**
