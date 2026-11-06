@@ -138,7 +138,7 @@ build checks the query plan on both engines and adds no migration.
 - [x] Rows marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed
 - [x] ROADMAP: Phase 84 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green on both engines
+- [x] composer check, coverage and the API doc tests green on both engines
 
 ## Definition of done
 

@@ -897,6 +897,16 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   passed, and a custom split saves with a share of 0 for a member who is not
   a participant. No API change. One migration. See
   [Upgrading](upgrading.md#after-upgrading-to-long-api-token-expiries-phase-83).
+- **Phase 84 — Reminder runs do less work, from the known-issues log —
+  complete (1.42.0).** The daily reminder run does the same things in far
+  fewer database statements. A member's run no longer measures budgets it
+  does not act on, and an alert already delivered on every channel it would
+  go to is dropped in one read per user instead of being rebuilt on each day
+  of its lead window; a user's channels and routing are read once per alert
+  type. Who is told what, when and in which language does not change; the
+  rate-limit warning is simply no longer logged for an alert that was already
+  delivered. No API change. No migrations. See
+  [Operations](operations.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
