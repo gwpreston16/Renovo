@@ -8,6 +8,27 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Changed
+
+- **Four screens send far less markup at 300 subscriptions.** Nothing a screen
+  shows or computes changes; what changed is how much is repeated per row.
+  The **subscription list** posts Pause or Resume, Cancel, Undo cancel and
+  Delete through one form instead of three forms (and three CSRF fields) in
+  each row of both layouts, and a `data-confirm` question now rides on the
+  button that sends the form, so Cancel and Delete still ask first
+  (257,187 to 232,179 bytes). The **Stats "Worth it?"** table does the same
+  for "Used it": one form, every row kept (642,827 to 536,922 bytes). The
+  **calendar** sends the grid only: below 768px a small script fetches the
+  month's list from the new `GET /calendar/list`, scoped like the page, and
+  without script a phone reader gets a "Show as list" link to the same month
+  with the list in place of the grid (495,819 to 66,286 bytes a page,
+  473,614 to 44,081 for a month change). The **scenario planner** draws the
+  new price, cycle and days fields only for a row set to Change, fetching a
+  row's fields from the new `GET /forecast/scenario/rows/{id}/controls` when
+  it is switched to Change and redrawing every Change row's fields on the
+  form's own round trip, with or without script (1,518,771 to 923,271 bytes).
+  The scenario figures are unchanged. No API change; no migrations. *Phase 86.*
+
 ## [1.43.0] - 2026-11-06
 
 ### Changed
