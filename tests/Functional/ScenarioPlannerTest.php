@@ -701,6 +701,49 @@ final class ScenarioPlannerTest extends DatabaseTestCase
         self::assertSame(200, $controls($this->streamingId, $this->viewerId));
     }
 
+    /** K181: the controls route is behind sign-in like the planner it serves. */
+    public function testTheRowControlsRequestSendsASignedOutReaderToSignIn(): void
+    {
+        $this->session->clear();
+
+        $response = $this->app->handle(
+            (new ServerRequestFactory())->createServerRequest(
+                'GET',
+                '/forecast/scenario/rows/' . $this->streamingId . '/controls',
+            ),
+        );
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertStringStartsWith('/login', $response->getHeaderLine('Location'));
+        self::assertStringNotContainsString('change[' . $this->streamingId . ']', (string) $response->getBody());
+    }
+
+    /**
+     * K181: only a row's Change radio fetches its controls, into that row's
+     * slot; and the form does not let the browser restore radios the server
+     * did not draw, which would show Change with no fields.
+     */
+    public function testOnlyTheChangeRadioFetchesTheRowsControls(): void
+    {
+        $html = $this->body($this->get('/forecast/scenario', $this->ownerId));
+        $id = $this->streamingId;
+
+        self::assertMatchesRegularExpression('#<form[^>]*id="scenario-form"[^>]*autocomplete="off"#', $html);
+        self::assertMatchesRegularExpression(
+            '#name="choice\[' . $id . '\]" value="change"[^>]*'
+            . 'hx-get="/forecast/scenario/rows/' . $id . '/controls"[^>]*'
+            . 'hx-target="\#scenario-change-' . $id . '"#',
+            $html,
+        );
+        self::assertStringContainsString('id="scenario-change-' . $id . '"', $html);
+        foreach (['keep', 'cancel'] as $choice) {
+            self::assertDoesNotMatchRegularExpression(
+                '#name="choice\[' . $id . '\]" value="' . $choice . '"[^>]*hx-get=#',
+                $html,
+            );
+        }
+    }
+
     // ------------------------------------------------------------ ways in and out
 
     public function testIfYouCancelledAndTheCostPageOpenThePlannerWithTheRowSetToCancel(): void

@@ -912,16 +912,27 @@ final class SubscriptionsScreenTest extends DatabaseTestCase
 
         self::assertNotFalse($buttons);
         self::assertGreaterThan(0, $buttons->length);
-        $deletes = 0;
+        // Delete and Cancel ask first; Pause/Resume and Undo cancel do not.
+        // The question moved from each row's form to its button, so a lost
+        // one would otherwise go unnoticed.
+        $asked = ['delete' => 0, 'cancel' => 0, 'toggle' => 0];
         foreach ($buttons as $button) {
             self::assertInstanceOf(DOMElement::class, $button);
             self::assertSame('list-actions', $button->getAttribute('form'));
-            if (str_ends_with($button->getAttribute('formaction'), '/delete')) {
-                $deletes++;
-                self::assertNotSame('', $button->getAttribute('data-confirm'), 'Delete asks first');
+            $formAction = $button->getAttribute('formaction');
+            $action = substr($formAction, (int) strrpos($formAction, '/') + 1);
+            if (in_array($action, ['delete', 'cancel'], true)) {
+                self::assertNotSame('', $button->getAttribute('data-confirm'), $action . ' asks first');
+            } elseif (in_array($action, ['toggle', 'uncancel'], true)) {
+                self::assertFalse($button->hasAttribute('data-confirm'), $action . ' sends unasked');
+            }
+            if (isset($asked[$action])) {
+                $asked[$action]++;
             }
         }
-        self::assertGreaterThan(0, $deletes);
+        foreach ($asked as $action => $count) {
+            self::assertGreaterThan(0, $count, 'the list draws a ' . $action . ' button');
+        }
 
         // No row has a form of its own any more.
         self::assertStringNotContainsString('class="inline"', $list);

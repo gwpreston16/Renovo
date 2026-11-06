@@ -479,6 +479,55 @@ final class CalendarPageTest extends DatabaseTestCase
         self::assertStringNotContainsString('data-calendar-list', $html);
         // Paging keeps the form the reader asked for.
         self::assertStringContainsString('month=2026-10&amp;view=list', $html);
+
+        // So do Today and the "Just mine" box, or a phone reader without
+        // script lands back on the grid their screen hides.
+        $page = $this->page('/calendar?month=2026-09&view=list');
+        $today = $this->find($page, '//*[@id="calendar-today"]');
+        self::assertNotNull($today);
+        self::assertSame('/calendar?view=list', $today->getAttribute('href'));
+        self::assertSame('/calendar?view=list', $today->getAttribute('hx-get'));
+        self::assertNotNull($this->find($page, '//form[@action="/calendar"]//input[@name="view"][@value="list"]'));
+
+        $mine = $this->page('/calendar?month=2026-09&mine=1&view=list');
+        $today = $this->find($mine, '//*[@id="calendar-today"]');
+        self::assertNotNull($today);
+        self::assertSame('/calendar?mine=1&view=list', $today->getAttribute('href'));
+
+        // The grid page keeps its plain Today and adds no list field.
+        $grid = $this->page('/calendar?month=2026-09');
+        $today = $this->find($grid, '//*[@id="calendar-today"]');
+        self::assertNotNull($today);
+        self::assertSame('/calendar', $today->getAttribute('href'));
+        self::assertNull($this->find($grid, '//form[@action="/calendar"]//input[@name="view"]'));
+    }
+
+    /** K184: "Just mine" reaches the list the script fetches and the link it falls back to. */
+    public function testJustMineIsCarriedIntoTheListRequestAndItsLink(): void
+    {
+        $this->monthly('Streaming', 1000, '2026-09-20');
+
+        $page = $this->page('/calendar?month=2026-09&mine=1');
+        $narrow = $this->find($page, '//*[contains(@class, "calendar-narrow")]');
+        self::assertNotNull($narrow);
+        self::assertSame('/calendar/list?month=2026-09&mine=1', $narrow->getAttribute('data-calendar-list'));
+
+        $link = $this->find($page, '//*[@data-calendar-list]//a');
+        self::assertNotNull($link);
+        self::assertSame('/calendar?month=2026-09&view=list&mine=1', $link->getAttribute('href'));
+    }
+
+    /** K184: the list route is behind sign-in like the page it serves. */
+    public function testTheListRouteSendsASignedOutReaderToSignIn(): void
+    {
+        $this->monthly('Streaming', 1000, '2026-09-20');
+        $this->session->clear();
+
+        $response = $this->request('GET', '/calendar/list?month=2026-09');
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertStringStartsWith('/login', $response->getHeaderLine('Location'));
+        self::assertStringNotContainsString('Streaming', (string) $response->getBody());
     }
 
     /** K184: the list route answers the month asked for, in the reader's locale, with the grid's events. */

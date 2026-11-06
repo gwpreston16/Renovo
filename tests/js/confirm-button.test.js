@@ -48,3 +48,44 @@ test('a button without a question sends unasked', () => {
     expect(send('pause').defaultPrevented).toBe(false);
     expect(ask).not.toHaveBeenCalled();
 });
+
+/*
+ * Every form that asks as a whole (`<form data-confirm>`) still relies on the
+ * fallback: a button without a question, or no submitter at all (a
+ * `requestSubmit()` from `data-autosubmit`), asks the form's question.
+ */
+function sendWhole(submitter) {
+    document.body.insertAdjacentHTML(
+        'beforeend',
+        `<form id="whole" method="post" data-confirm="Leave the household?">
+            <button id="whole-send" type="submit">Leave</button>
+        </form>`,
+    );
+    const event = new SubmitEvent('submit', {
+        bubbles: true,
+        cancelable: true,
+        submitter: submitter ? document.getElementById('whole-send') : null,
+    });
+    document.getElementById('whole').dispatchEvent(event);
+    return event;
+}
+
+test('a form with a question asks when its plain button sends it', () => {
+    const ask = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    expect(sendWhole(true).defaultPrevented).toBe(true);
+    expect(ask).toHaveBeenCalledWith('Leave the household?');
+});
+
+test('a form with a question asks when it is sent with no submitter', () => {
+    const ask = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    expect(sendWhole(false).defaultPrevented).toBe(true);
+    expect(ask).toHaveBeenCalledWith('Leave the household?');
+});
+
+test('a form with a question sends once it is accepted', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    expect(sendWhole(true).defaultPrevented).toBe(false);
+});

@@ -42,8 +42,15 @@
     {% endif %}
 
     <div class="scenario-planner" id="scenario-planner">
+        {#
+            autocomplete="off": a browser that restored the radios after a
+            reload or Back could show a row on Change with no fields, because
+            the server drew it as Keep and no change event fires to fetch them
+            (K181). The page's address already holds every valid change, so
+            the server's rendering is the state to show.
+        #}
         <form class="card scenario-rows" id="scenario-form" method="post" action="/forecast/scenario"
-              aria-labelledby="scenario-rows-heading"
+              aria-labelledby="scenario-rows-heading" autocomplete="off"
               hx-get="/forecast/scenario" hx-target="#scenario-results" hx-swap="outerHTML"
               hx-trigger="change, renovo:typed delay:500ms" data-typed-trigger
               hx-sync="this:replace">

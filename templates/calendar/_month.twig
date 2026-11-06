@@ -13,8 +13,10 @@
 {% import 'calendar/_figures.twig' as figures %}
 {% import 'calendar/_kind.twig' as kind %}
 
-{# Paging and choosing a day keep the list form a phone reader asked for. #}
+{# Paging, Today and choosing a day keep the list form a phone reader asked for. #}
 {% set mine_query = (mine_only ? '&mine=1' : '') ~ (list_view ? '&view=list' : '') %}
+{# Today names no month, so the same filters open its query string. #}
+{% set today_url = '/calendar' ~ (mine_query ? '?' ~ mine_query|slice(1) : '') %}
 {% set month_key = calendar.month|date('Y-m') %}
 
 <div id="calendar-month" class="calendar-month">
@@ -34,8 +36,8 @@
 
             <nav class="calendar-nav" aria-label="{{ t('calendar.month_navigation') }}">
                 <a id="calendar-today" class="button button-outline calendar-today"
-                   href="/calendar{{ mine_only ? '?mine=1' : '' }}"
-                   hx-get="/calendar{{ mine_only ? '?mine=1' : '' }}"
+                   href="{{ today_url }}"
+                   hx-get="{{ today_url }}"
                    hx-target="#calendar-month" hx-sync="#calendar-month:replace" hx-swap="outerHTML" hx-push-url="true">{{ t('state.today') }}</a>
 
                 {#
