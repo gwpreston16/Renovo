@@ -1,0 +1,40 @@
+{
+  "hook": {
+    "enabled": true,
+    "limits": {
+      "maxFindings": 5,
+      "maxChars": 8000
+    }
+  },
+  "detector": {
+    "extensions": [
+      {
+        "ext": ".twig",
+        "engine": "html"
+      }
+    ],
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "templates/partials/avatar.twig",
+          "templates/partials/logo.twig"
+        ],
+        "createdAt": "2026-11-06T04:50:41.517Z",
+        "reason": "Claude: the <img> is inside a Twig comment, not markup"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "templates/**/*.twig"
+        ],
+        "createdAt": "2026-11-06T04:50:41.537Z",
+        "reason": "Claude: templates are scanned without the stylesheet, so every element reads as default black; colours are enforced by tokens.json and ThemeContrastTest"
+      }
+    ]
+  }
+}

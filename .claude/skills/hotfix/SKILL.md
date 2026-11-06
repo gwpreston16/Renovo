@@ -109,6 +109,8 @@ for approval** before writing code — then:
 git switch -c hotfix-N.M/<slug>
 # fix + regression test, commented per CLAUDE.md; vendor/bin/phpunit, phpcs, phpstan analyse
 # then the code-simplifier pass (below) and the three gates again
+# a fix touching templates/, assets/css or assets/js: /impeccable audit <those files>
+# first, fixing what it finds in the fix's own lines (refinement only; see /next-phase step 5)
 git add docs/phases/PHASE-N.M.md <the files of the fix>
 git commit -m "Phase N.M: <title>" -m "<attribution trailer from the system reminder>"
 git push -u origin hotfix-N.M/<slug>

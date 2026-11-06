@@ -69,6 +69,19 @@ return PASS with "No UI changes."
 If the dev app is running and you can reach it, compare rendered pages
 against the prototype; otherwise review from source and say so.
 
+**Run the Impeccable detector** on the UI files the diff changes, if the
+skill is installed (`~/.claude/skills/impeccable` or `.claude/skills/impeccable`):
+
+```bash
+~/.claude/skills/impeccable/scripts/impeccable detect --no-advisory <changed templates/css/js>
+```
+
+It reads `DESIGN.md` and the shared ignores in `.impeccable/config.json`.
+Report each finding it raises on a changed line, with your own severity: a
+real one in the categories above, or a false positive you name and explain.
+Advisories (without `--no-advisory`) on changed lines are MINOR at most. If
+the skill isn't installed, say so under *Checked* and carry on.
+
 ## Rules
 
 - Report only concrete deviations: name the template/CSS line and the

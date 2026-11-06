@@ -99,3 +99,7 @@ Thumbs.db
 Desktop.ini
 .directory
 /design-import
+
+# Impeccable: per-developer overrides and the hook cache (the shared config is committed)
+.impeccable/config.local.json
+.impeccable/hook.cache.json

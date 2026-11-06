@@ -39,6 +39,8 @@ public/uploads
 .phpunit.cache
 .php-cs-fixer.cache
 .phpcs-cache
+.impeccable/config.local.json
+.impeccable/hook.cache.json
 
 # Editors and operating systems.
 .idea
