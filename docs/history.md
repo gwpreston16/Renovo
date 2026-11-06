@@ -907,6 +907,14 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   rate-limit warning is simply no longer logged for an alert that was already
   delivered. No API change. No migrations. See
   [Operations](operations.md).
+- **Phase 85 — API reminder strings and translated 400/401 titles, from the
+  known-issues log — complete (1.43.0).** The API's 400 and 401 errors now
+  carry a translated title ("Bad request", "Unauthorized") in the language of
+  the response, like every other status; a client that matched the old
+  English "400 Bad Request" text should match the status instead. The string
+  forms of `reminder_days` the API has always accepted (`"30,7,1"`, `"never"`,
+  `""`) are now documented, with what is refused, and pinned by tests. OpenAPI
+  1.9.14; no new endpoint or field. No migrations. See [API](api.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
