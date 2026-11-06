@@ -324,9 +324,11 @@ final class ApiTaxonomyTest extends ApiTestCase
         ]))['data']['id'];
         $first = $this->createSubscription(['category_id' => $category]);
         $second = $this->createSubscription(['category_id' => $category]);
-        self::assertSame($category, $this->decode($this->api('GET', '/api/v1/subscriptions/' . $first, $this->ownerToken))['data']['category_id']);
+        $before = $this->api('GET', '/api/v1/subscriptions/' . $first, $this->ownerToken);
+        self::assertSame($category, $this->decode($before)['data']['category_id']);
 
-        self::assertSame(204, $this->api('DELETE', '/api/v1/categories/' . $category, $this->ownerToken)->getStatusCode());
+        $deleted = $this->api('DELETE', '/api/v1/categories/' . $category, $this->ownerToken);
+        self::assertSame(204, $deleted->getStatusCode());
 
         foreach ([$first, $second] as $id) {
             $read = $this->api('GET', '/api/v1/subscriptions/' . $id, $this->ownerToken);
