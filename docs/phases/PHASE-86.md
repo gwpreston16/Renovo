@@ -186,6 +186,13 @@ None.
 - **Audit findings already on master (K226-K229) — Decided 2026-11-06:** fix
   them in this phase (section E). Not chosen: record them and schedule a later
   phase through `/known-issues-batch`; a separate branch after this merges.
+- **K228 departs from the prototype — Decided 2026-11-06:** the prototype
+  draws the rail's tagline and section headings and the calendar's chips and
+  day totals at 10px; they go to the 11px caption size (`--size-caption`)
+  because they are functional text, and `DESIGN.md` records the exception.
+  Not chosen: keeping the prototype's 10px. K226 likewise keeps a paused
+  row's name at full strength, as the prototype draws it, and mutes only its
+  plain text.
 - **Release — Decided 2026-11-06:** with the next minor release, alongside the
   other unreleased phases. Not chosen: its own patch.
 - **Assumed:** the `form` attribute and `formaction` are enough for the shared
@@ -204,6 +211,7 @@ None.
 - [x] Before and after sizes recorded for all four (300 subscriptions, weekly and monthly, measured on this branch against its start commit)
 - [x] Browser check on a 300-subscription instance (1024 px and 375 px; shared-form actions, per-row confirm, Used it, calendar list incl. month change, planner Change/Keep)
 - [x] Browser check at 768 and 1280 px, light and dark, on the demo household (19 subscriptions), after the merge-review fixes. No page scrolls sideways. The calendar shows the grid from 768 px and fetches the list only below it (checked at 767). `?view=list` and its Today link keep the list. The planner's Change control fetches its fields with no error and Keep removes them. The form is `autocomplete="off"`. Keyboard: a row's tab order is unchanged (checkbox, name, Edit, Pause, Cancel, Delete). Enter on Pause and Space on Resume send that row's own action through the shared form. The shared forms hold only hidden fields, so Enter in a text field cannot press a row's button. Cancel and Delete were not pressed: the confirm dialog stalls browser automation, so `tests/js/confirm-button.test.js` covers them. Already on master, unchanged here: the subscriptions table is 15 px wider than its card at 1280 px and scrolls inside it.
+- [x] Browser check at 375 px, dark, after the merge-review fixes (demo household): no page scrolls sideways; a paused card reads at full strength with its "Paused" badge, and its menu's Edit, Resume, Cancel and Delete open at 40 px; the calendar loads its 10-day list with no grid, and `?view=list` shows the list with no day panel and no "Show as grid"; the planner's Change price fetches its three fields with no error and Keep removes them; each Stats "Used it" is named for its row.
 - [x] `/impeccable audit` on the four templates (17/20), then harden, adapt and polish. The detector found nothing in the changed sources and nothing on the rendered pages that this phase drew; every rendered finding is already on master (the shell's 10 px labels, the calendar grid's 10 px chips, a paused row's badge contrast, one name for every "Used it" button). Fixed here:
   - the phone calendar shows "Loading the list…" (`aria-busy`) in place of its link while the list loads, and the link comes back if the request fails;
   - the planner's controls slot is no longer a live region; controls that fail to load put the row back on Keep and say so in the page's status line, and choosing Change again retries;
@@ -220,7 +228,7 @@ Every row is fixed with a test that fails without its fix. `composer check` and
 `npm test` are green, on Postgres and MySQL for the PHP, the changed lines are
 at least 80% covered and the suite at least 85%. The four screens look and
 behave as they did, at the three widths and in both themes, and each is smaller
-by the figure recorded. No migration. The one new string is in every catalogue
+by the figure recorded. No migration. The new strings are in every catalogue
 in `translations/` and `i18n:check` passes, and `assets:offline-check` passes.
 Then mark it ✅ in `ROADMAP.md`.
 

@@ -46,7 +46,7 @@ final class LegibleTextTest extends TestCase
 
     public function testAPausedRowMutesItsTextRatherThanFadingIt(): void
     {
-        $text = $this->rule('components.css', '.table tr.is-paused .cell-title');
+        $text = $this->rule('components.css', '.table tr.is-paused td');
         self::assertStringNotContainsString('opacity', $text);
         self::assertStringContainsString('var(--muted)', $text);
         self::assertSame(

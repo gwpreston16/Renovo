@@ -936,6 +936,18 @@ final class SubscriptionsScreenTest extends DatabaseTestCase
 
         // No row has a form of its own any more.
         self::assertStringNotContainsString('class="inline"', $list);
+
+        // Every row action now rides on this form's one token, and a form
+        // nested in another is dropped by the parser (its buttons would then
+        // post the outer form), so both are pinned here.
+        $xpath = new DOMXPath($document);
+        $token = $xpath->query(
+            '//form[@id="list-actions"]/input[@name="' . CsrfTokenManager::FIELD_NAME . '"]/@value',
+        );
+        self::assertNotFalse($token);
+        self::assertSame(1, $token->length, 'the shared form carries the CSRF field');
+        self::assertNotSame('', trim((string) $token->item(0)?->nodeValue));
+        self::assertSame(0, $xpath->query('//form[@id="list-actions"]/ancestor::form')?->length);
     }
 
     public function testTheBulkBarIsBackAndItsCheckboxesJoinItsForm(): void

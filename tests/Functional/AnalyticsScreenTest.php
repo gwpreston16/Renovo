@@ -18,6 +18,7 @@ use App\Repository\PaymentMethodRepository;
 use App\Repository\PriceHistoryRepository;
 use App\Repository\SubscriptionRepository;
 use App\Repository\UserRepository;
+use App\Security\CsrfTokenManager;
 use App\Security\Scope;
 use App\Security\SessionInterface;
 use App\Service\AnalyticsScreenService;
@@ -833,6 +834,19 @@ final class AnalyticsScreenTest extends DatabaseTestCase
         self::assertCount(count($matches[1]), array_unique($matches[1]), 'one button per subscription');
         // No row carries a form of its own any more.
         self::assertStringNotContainsString(' action="/subscriptions/' . $this->hostingId . '/usage"', $body);
+
+        // Every "Used it" rides on the shared form's one token; the form sits
+        // in no other form, or the parser would drop it.
+        $document = new DOMDocument();
+        $document->loadHTML('<?xml encoding="utf-8" ?>' . $body, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        $xpath = new DOMXPath($document);
+        $token = $xpath->query(
+            '//form[@id="usage-form"]/input[@name="' . CsrfTokenManager::FIELD_NAME . '"]/@value',
+        );
+        self::assertNotFalse($token);
+        self::assertSame(1, $token->length, 'the shared form carries the CSRF field');
+        self::assertNotSame('', trim((string) $token->item(0)?->nodeValue));
+        self::assertSame(0, $xpath->query('//form[@id="usage-form"]/ancestor::form')?->length);
 
         // Each button is named for its row, so a screen reader can tell them apart.
         self::assertMatchesRegularExpression(
