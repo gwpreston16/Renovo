@@ -8,6 +8,24 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **The daily reminder run does less work, and sends the same things.** A
+  member's run no longer measures budgets it does not act on: it measures the
+  budgets they own, reads the limit of the ones they are the subject of, and
+  skips the rest, so a member who owns none costs the same whether the
+  household has one budget or six (23 statements became 5 in the test
+  household; a large shared household spent most of its run here). And an
+  alert the ledger has already finished with on every channel it would go to
+  (sent, or its attempts used up) is dropped in one read per user, and a user's
+  channels and routing are read once per alert type, instead of rebuilding each
+  already-delivered alert on every day of its lead window: 33 settled alerts
+  went from 199 statements to 4. A failed alert with an attempt left, one
+  still pending, one with no record and one sent on only one of its two
+  channels are all handled as before. The rate-limit warning is no longer
+  logged for an alert that was already delivered. No migration, no new
+  setting. *Phase 84.*
+
 ## [1.41.0] - 2026-11-06
 
 ### Fixed

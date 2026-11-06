@@ -117,21 +117,66 @@ final class BudgetService
         $progress = [];
 
         foreach ($budgets as $budget) {
-            if (!$this->isMeasurableBy($scope, $budget)) {
-                $progress[] = $this->unavailable($budget);
-                continue;
-            }
-
-            $key = ($budget->subjectUserId ?? 'household') . ':' . $budget->period->months();
-            $chargeCache[$key] ??= $this->withinWindow(
-                $this->forecast->charges($scope, $budget->period->months(), $budget->subjectUserId),
-                $budget->period->months(),
-            );
-
-            $progress[] = $this->progressFor($budget, $chargeCache[$key]);
+            $progress[] = $this->measure($scope, $budget, $chargeCache);
         }
 
         return $progress;
+    }
+
+    /**
+     * The budgets one member's daily run acts on, and nothing else (K180).
+     *
+     * The run (`AlertScanner::evaluateBudgets()`) measures the budgets the
+     * member owns and advances their state; for a budget they are only the
+     * subject of, it reads the crossing the owner's run saved and needs just
+     * the limit and whether the budget is readable; every other budget in the
+     * household it skips. `progress()` measured all of them first, which in a
+     * large shared household was most of the run's cost. So here an owned
+     * budget gets the same entry `progress()` gives it, a subject-only one
+     * gets the limit and its availability with no forecast walk, and any other
+     * budget is left out. The order is the order of `progress()`, so the run's
+     * alerts and saved states are what they always were.
+     *
+     * @return list<BudgetProgress>
+     */
+    public function progressForRun(Scope $scope): array
+    {
+        $chargeCache = [];
+        $progress = [];
+
+        foreach ($this->all($scope) as $budget) {
+            if ($budget->ownerUserId === $scope->userId) {
+                $progress[] = $this->measure($scope, $budget, $chargeCache);
+            } elseif ($budget->subjectUserId === $scope->userId) {
+                $entry = $this->unavailable($budget);
+                $entry['unavailable'] = !$this->isMeasurableBy($scope, $budget);
+                $progress[] = $entry;
+            }
+        }
+
+        return $progress;
+    }
+
+    /**
+     * One budget's entry for `progress()` and `progressForRun()`: its position,
+     * or the "unavailable" placeholder when this scope cannot measure it whole.
+     *
+     * @param array<string, list<WindowCharge>> $chargeCache The forecast walks already made, by subject and horizon.
+     * @return BudgetProgress
+     */
+    private function measure(Scope $scope, Budget $budget, array &$chargeCache): array
+    {
+        if (!$this->isMeasurableBy($scope, $budget)) {
+            return $this->unavailable($budget);
+        }
+
+        $key = ($budget->subjectUserId ?? 'household') . ':' . $budget->period->months();
+        $chargeCache[$key] ??= $this->withinWindow(
+            $this->forecast->charges($scope, $budget->period->months(), $budget->subjectUserId),
+            $budget->period->months(),
+        );
+
+        return $this->progressFor($budget, $chargeCache[$key]);
     }
 
     /**

@@ -215,6 +215,72 @@ final class NotificationLogRepository extends AbstractRepository
         ) > 0;
     }
 
+    /**
+     * Which of these occurrences this user has already finished with on a
+     * channel, read once so a run can leave them out before it builds a
+     * message for them (K221).
+     *
+     * "Finished with" is exactly what `claim()` refuses for good: a `sent` row,
+     * or one whose attempts are used up. A `failed` row with an attempt left, a
+     * `pending` row (live or past its lease) and an occurrence with no row are
+     * not here, so they go on to `claim()` as they always did. Read-only, and
+     * it uses the columns the unique index starts with, so it adds no index.
+     *
+     * @param list<string> $occurrenceKeys The keys of the alerts about to be dispatched.
+     * @return array<string, true> Set of `settledKey()` values.
+     */
+    public function settledFor(int $userId, array $occurrenceKeys, int $maxAttempts): array
+    {
+        if ($occurrenceKeys === []) {
+            return [];
+        }
+
+        $params = ['user' => $userId, 'sent' => self::STATUS_SENT, 'max' => $maxAttempts];
+        $placeholders = [];
+        foreach (array_values(array_unique($occurrenceKeys)) as $index => $key) {
+            $placeholders[] = ':k' . $index;
+            $params['k' . $index] = mb_substr($key, 0, 64);
+        }
+
+        $rows = $this->db->fetchAll(
+            'SELECT ' . $this->quote('channel_id') . ', ' . $this->quote('alert_type') . ', '
+            . $this->quote('subject_type') . ', ' . $this->quote('subject_id') . ', '
+            . $this->quote('occurrence_key')
+            . ' FROM ' . $this->quote($this->table())
+            . ' WHERE ' . $this->quote('user_id') . ' = :user'
+            . ' AND ' . $this->quote('occurrence_key') . ' IN (' . implode(', ', $placeholders) . ')'
+            . ' AND (' . $this->quote('status') . ' = :sent OR ' . $this->quote('attempts') . ' >= :max)',
+            $params,
+        );
+
+        $settled = [];
+        foreach ($rows as $row) {
+            $settled[self::settledKey(
+                (int) $row['channel_id'],
+                (string) $row['alert_type'],
+                (string) $row['subject_type'],
+                (int) $row['subject_id'],
+                (string) $row['occurrence_key'],
+            )] = true;
+        }
+
+        return $settled;
+    }
+
+    /**
+     * The identity of one alert on one channel, as the ledger's unique index
+     * sees it: the occurrence key is cut to 64 characters, as `claim()` stores it.
+     */
+    public static function settledKey(
+        int $channelId,
+        string $alertType,
+        string $subjectType,
+        int $subjectId,
+        string $occurrenceKey,
+    ): string {
+        return implode('|', [$channelId, $alertType, $subjectType, $subjectId, mb_substr($occurrenceKey, 0, 64)]);
+    }
+
     public function markSent(int $id): void
     {
         $now = $this->clock->now()->format('Y-m-d H:i:s');
