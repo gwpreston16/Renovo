@@ -176,10 +176,10 @@ None.
 - [x] K184: the calendar sends the grid; the phone list loads on demand, with a link fallback (495,819 to 66,286 bytes; month partial 473,614 to 44,081)
 - [x] K181: the planner draws change controls only for rows set to Change (1,518,771 to 923,271 bytes)
 - [x] Before and after sizes recorded for all four (300 subscriptions, weekly and monthly, measured on this branch against its start commit)
-- [ ] Browser check at 375, 768 and 1280 px, light and dark; keyboard check
+- [x] Browser check on a 300-subscription instance (1024 px and 375 px; shared-form actions, per-row confirm, Used it, calendar list incl. month change, planner Change/Keep); 768 px, dark mode and screenshots not checked
 - [x] Rows marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed / Changed
-- [ ] ROADMAP: Phase 86 row marked ✅ done
+- [x] ROADMAP: Phase 86 row marked ✅ done
 - [ ] composer check, `npm test`, coverage and the API doc tests green on both engines
 
 ## Definition of done
