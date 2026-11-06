@@ -318,6 +318,51 @@ final class ApiDocCoverageTest extends TestCase
     }
 
     /**
+     * K217: `reminder_days` is accepted as a list, as a comma-separated string,
+     * as "none"/"never" in any case and as an empty string, and both API pages
+     * say so. If the parsing changes, the pages have to be reread.
+     */
+    public function testBothPagesNameTheAcceptedReminderDaysForms(): void
+    {
+        // Line endings normalised: a checkout may hold either.
+        $spec = str_replace("\r\n", "\n", (string) file_get_contents(dirname(__DIR__, 2) . '/openapi/openapi.yaml'));
+        $field = (string) preg_replace(
+            '/\s+/',
+            ' ',
+            $this->between($spec, "        reminder_days:\n", "        is_trial:\n"),
+        );
+
+        $document = str_replace("\r\n", "\n", $this->document());
+        $sections = [
+            'api.md field row' => $this->between($document, '| `reminder_days` | int[], null |', "\n| `is_trial`"),
+            'api.md conventions' => $this->between(
+                $document,
+                '**`reminder_days` has three distinct states**',
+                '**Envelopes.**',
+            ),
+            'openapi.yaml' => $field,
+        ];
+
+        foreach ($sections as $name => $text) {
+            $text = (string) preg_replace('/\s+/', ' ', $text);
+            self::assertStringContainsString('"30,7,1"', $text, $name . ' does not name the comma-separated string.');
+            self::assertStringContainsString('"never"', $text, $name . ' does not name "never".');
+            self::assertStringContainsString('""', $text, $name . ' does not name the empty string.');
+            self::assertStringContainsString('422', $text, $name . ' does not say what is refused.');
+        }
+    }
+
+    private function between(string $text, string $from, string $to): string
+    {
+        $start = strpos($text, $from);
+        self::assertIsInt($start, 'The text has no "' . trim($from) . '".');
+        $end = strpos($text, $to, $start);
+        self::assertIsInt($end, 'The text has no "' . trim($to) . '" after "' . trim($from) . '".');
+
+        return substr($text, $start, $end - $start);
+    }
+
+    /**
      * Slim's registered API routes, as "METHOD /path".
      *
      * The same normalisation OpenApiCoverageTest uses: Slim writes

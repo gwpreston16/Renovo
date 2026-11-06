@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.13"
+  version: "1.9.14"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -1766,7 +1766,11 @@ components:
           required: [status, title, message]
           properties:
             status: { type: integer }
-            title: { type: string }
+            title:
+              type: string
+              description: >-
+                Human-readable and translated into the language of the response,
+                so its wording is not stable: match on `status`.
             message: { type: string }
             errors:
               type: object
@@ -2151,11 +2155,16 @@ components:
           items: { type: integer, minimum: 0, maximum: 365 }
           maxItems: 6
           description: |
-            Three states. Omitted or null means "use my notification
-            preference"; an empty array means "never remind me about this one";
-            a list of lead times overrides the preference for this subscription.
-            The string `"none"` is read as the empty array. Anything else that
-            is not a list of integers is a `422` on the field.
+            Three states. Omitted, `null` or the empty string `""` means "use my
+            notification preference"; an empty array, `"none"` or `"never"` (any
+            case) means "never remind me about this one"; a list of lead times
+            overrides the preference for this subscription. The list may also be
+            sent as a comma-separated string, `"30,7,1"`, which is the same as
+            `[30, 7, 1]` (empty parts are ignored, and the lead times are stored
+            largest first with duplicates removed). A `422` on the field is
+            what a part that is not a whole number, a number above 365, more
+            than six lead times, a boolean, a number, an object or a list
+            holding anything but integers gets.
         is_trial:
           type: boolean
           default: false

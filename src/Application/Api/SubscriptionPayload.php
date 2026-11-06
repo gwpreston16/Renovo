@@ -232,7 +232,12 @@ final class SubscriptionPayload
             && array_filter($value, static fn (mixed $name): bool => !is_string($name)) === [];
     }
 
-    /** Null, a string (the service reads "none" and refuses the rest), or a list of integers. */
+    /**
+     * Null, a string, or a list of integers. A string is passed to the service,
+     * which reads "none"/"never" (any case) as "never remind", an empty one as
+     * "use my preference", a comma-separated list of whole numbers 0-365 as that
+     * list, and refuses anything else with a 422 on the field.
+     */
     private static function isReminderDays(mixed $value): bool
     {
         if ($value === null || is_string($value)) {

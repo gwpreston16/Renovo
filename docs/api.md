@@ -88,10 +88,14 @@ A few things worth knowing before writing a client:
 - **`reminder_days` has three states**, and they are all different: omitted or
   `null` means "use my notification preference", `[]` means "never remind me
   about this one", and `[30, 7, 1]` sets lead times for this subscription alone.
+  The strings `"none"`, `"never"`, `""` and `"30,7,1"` are accepted too; see the
+  table under [Conventions](#conventions).
 - **A 404 means "no such row, or not yours"**, deliberately indistinguishable,
   so probing for another household's ids tells you nothing.
 - Errors are JSON: `{"error": {"status", "title", "message", "errors"}}`, where
-  `errors` maps a field name to a message and appears on a 422.
+  `errors` maps a field name to a message and appears on a 422. `title` is
+  human text, translated into the language of the response, so match on
+  `status` rather than on its wording.
 
 Start with `GET /api/v1/me`, which reports the role, the isolation mode and the
 resolved permission list for the token you are holding.
@@ -384,9 +388,15 @@ easiest mistake to make:
 
 | Value | Meaning |
 | --- | --- |
-| omitted, or `null` | Use the account's notification preference. |
-| `[]` | Never remind me about this one. |
-| `[30, 7, 1]` | Lead times in days, for this subscription alone. |
+| omitted, `null` or `""` | Use the account's notification preference. |
+| `[]`, `"none"` or `"never"` (any case) | Never remind me about this one. |
+| `[30, 7, 1]` or `"30,7,1"` | Lead times in days, for this subscription alone. |
+
+In a string, empty parts are ignored and the lead times are stored largest
+first with duplicates removed. A `422` on `reminder_days` is what a part that is
+not a whole number (`"abc"`), a number above 365 (`"400"`), more than six lead
+times, a boolean, a number, an object or a list holding anything but integers
+gets.
 
 **Envelopes.** A successful response wraps its payload in `data`. A list adds
 `meta` with the page. An error replaces both with `error`.
@@ -1021,7 +1031,7 @@ category, tag or payment method and to a charge's `note`.
 | `start_date` | date, null | The rules below follow the type the request submits: a one-off turning recurring keeps its payment as history. On a one-off or lifetime entry, changing it moves the entry's own payment (`source: one_off`) to the new date — today included — with any amount, note and invoice on it; a future date removes it until that day passes, when it is written again and its invoice returns to it. A date that already has another payment is a `422` on `start_date`. Other payments, including those the row recorded while it was recurring, are not touched. |
 | `notice_period_amount` | integer, null | 0–3650. |
 | `notice_period_unit` | enum, null | `days`, `weeks`, `months`. |
-| `reminder_days` | int[], null | Max 6 items, each 0–365. Three states — see [Conventions](#conventions). The string `"none"` is read as `[]`; a boolean, a number, an object or a list holding anything but integers is a `422` on `reminder_days`. |
+| `reminder_days` | int[], null | Max 6 items, each 0–365. Three states — see [Conventions](#conventions). The strings `"none"` and `"never"` are read as `[]`, `""` as `null`, and a comma-separated string such as `"30,7,1"` as the list. Anything else — a part that is not a whole number, a number above 365, a boolean, a number, an object or a list holding anything but integers — is a `422` on `reminder_days`. |
 | `is_trial` | boolean | Default `false`. Besides a JSON boolean the API reads `0`, `1` and the words `"true"`, `"false"`, `"yes"`, `"no"`, `"on"`, `"off"`, `"0"`, `"1"` (any case), here and for `is_active` and `amount_varies`; anything else (`2`, `"abc"`, a list) is a `422` on that field, never read as false. |
 | `trial_end_date` | date, null | A date that does not exist is a `422`. |
 | `converts_to_price_minor` | integer, null | Minor units, zero or more (a negative value is a `422`, "Enter a price of zero or more."). `true`, a list, an object and text that is not a number are a `422` on this field, never read as "no price". |
