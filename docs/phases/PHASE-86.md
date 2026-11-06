@@ -212,7 +212,7 @@ None.
 - [x] Rows marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed / Changed
 - [x] ROADMAP: Phase 86 row marked ✅ done
-- [ ] composer check, `npm test`, coverage and the API doc tests green on both engines
+- [x] composer check, `npm test`, coverage and the API doc tests green on both engines (CI run 42288286110 at 5bad3b2: lint and static analysis, Tests on Postgres, MySQL and MySQL with the flag off, the asset build and offline rule, the Docker image and the dependency audit all pass; changed lines 54/54 covered (100%), suite 93.79%)
 
 ## Definition of done
 
