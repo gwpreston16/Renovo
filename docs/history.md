@@ -870,6 +870,14 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   only code change is that `SystemDnsResolver` takes optional lookups so a
   test can run it offline; behaviour is unchanged. No API change and no
   migrations. See [Development](development.md#tests).
+- **Phase 81 — API subscription reads and deletes, from the known-issues log —
+  complete (1.39.0).** Fetching one subscription by id through the API now
+  runs the same catch-up the list does, so a row that is overdue reads the
+  same next payment date and day count both ways, and deleting a subscription
+  through the API releases its uploaded logo as the web already did, because
+  the delete now lives in `SubscriptionService`. A logo another row still uses
+  is left alone. OpenAPI 1.9.12 describes the read; no new endpoints or
+  fields. No migrations. See [API](api.md#get-apiv1subscriptionsid).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
