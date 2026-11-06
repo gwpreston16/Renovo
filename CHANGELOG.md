@@ -8,6 +8,19 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **An API token can expire after January 2038 on MySQL and MariaDB.** Issuing a
+  token with a later expiry was a server error and no token was issued, because
+  `api_tokens.expires_at` was a `timestamp`, which stops at 19 January 2038
+  there. One migration makes it a `datetime` (a value already stored is kept;
+  PostgreSQL is untouched). Rolling it back sets any later expiry to
+  2038-01-19 03:14:07 first, so the rollback cannot fail. **Back up first.**
+  *Phase 83.*
+- **Two guards now have tests.** A digest leaves out an event whose date has
+  passed, and a custom split saves with a share of 0 for a member who is not a
+  participant. Neither changes behaviour. *Phase 83.*
+
 ## [1.40.0] - 2026-11-06
 
 ### Fixed
