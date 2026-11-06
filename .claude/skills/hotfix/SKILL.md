@@ -107,12 +107,19 @@ for approval** before writing code — then:
 
 ```bash
 git switch -c hotfix-N.M/<slug>
-# fix + regression test; vendor/bin/phpunit, phpcs, phpstan analyse
+# fix + regression test, commented per CLAUDE.md; vendor/bin/phpunit, phpcs, phpstan analyse
+# then the code-simplifier pass (below) and the three gates again
 git add docs/phases/PHASE-N.M.md <the files of the fix>
 git commit -m "Phase N.M: <title>" -m "<attribution trailer from the system reminder>"
 git push -u origin hotfix-N.M/<slug>
 gh pr create --base master --title "Phase N.M: <title>" --body "<summary, tests>"
 ```
+
+**The code-simplifier pass** (before the `git add` above): launch the `code-simplifier:code-simplifier`
+agent on the fix's files, with the same instructions as `/next-phase` step 5
+(PHP/`CLAUDE.md` rules, keep every docblock and comment, no change to
+behaviour, signatures, SQL, routes or scoping), re-run the three gates, and
+revert any part that fails them or isn't clearly simpler.
 
 Wait for the PR's CI to go green (`gh pr checks --watch`), show the user, and
 **merge only on their go** (`gh pr merge --merge`, matching the phase merges).

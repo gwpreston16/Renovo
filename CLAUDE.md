@@ -219,6 +219,15 @@ reference and locale completeness. Don't merge red CI.
 - **New user-visible feature:** document it in its `docs/features/` page (or
   the operator page it belongs to), not in the README. The README changes only
   when a feature group gains a headline item.
+- **Comments, written with the code:** every class and every public or
+  protected method gets a docblock saying what it does and, where it isn't
+  obvious, why (the house style is `src/Service/BudgetService.php`). Any block
+  whose logic isn't self-evident — money maths, scoping and isolation,
+  billing/trial/date rules, security checks, a workaround for an engine
+  difference — gets an inline comment explaining it. Lines that say what they
+  do get none. Comment as you write, not afterwards, and update a comment when
+  its code changes: a stale comment is a bug. Twig, JS and CSS follow the same
+  rule in their own comment syntax.
 
 ## Testing expectations
 

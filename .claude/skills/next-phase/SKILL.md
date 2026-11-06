@@ -105,6 +105,18 @@ code.
   Co-Authored-By line. Tick its *Status* item in `PHASE-<n>.md` as it lands.
 - **Tests with every step**, including a permission test for anything that
   touches data. Changed lines ≥ 80% covered; the suite stays ≥ 85%.
+- **Comments as you write**, per `CLAUDE.md` (*Comments, written with the
+  code*): docblocks on classes and public/protected methods, inline comments
+  on the non-obvious logic.
+- **Simplify before each commit.** Once a section's code and tests are written
+  and green, launch the `code-simplifier:code-simplifier` agent (Agent tool) on
+  that section's uncommitted files. Its prompt names the files and says: this
+  is PHP 8.4 / Slim 4 / Twig — follow `CLAUDE.md` (non-negotiables, PSR-12)
+  and ignore your JS/React defaults; **keep every docblock and explanatory
+  comment**, fixing any a refactor makes stale; never change behaviour, public
+  signatures, SQL, routes or scoping calls. Then re-run `vendor/bin/phpunit`,
+  `vendor/bin/phpcs` and `vendor/bin/phpstan analyse`; revert any part of its
+  change that fails them or isn't clearly simpler. Then commit.
 - **Migrations:** Phinx, one concern each, a working `down()`, portable SQL;
   `migrate`, `rollback`, `migrate` clean on Postgres and MySQL.
 - **API:** every new endpoint in `openapi/openapi.yaml` *and* `docs/api.md`,
