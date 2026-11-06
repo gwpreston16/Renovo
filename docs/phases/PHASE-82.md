@@ -107,17 +107,21 @@ None.
   patch.
 - **Assumed:** the lines the log names are still the right ones; Phases 75 and 76
   shift them, so the build finds each by content, not by number.
+- **Confirmed 2026-11-06:** all of the above hold at the start of the build.
+  Phases 75 and 76 have merged (✅), none of the four rows was touched by them,
+  and each was found by content. The limits are documented for the payment
+  method's logo too, since one `LogoStorage` serves both.
 
 ## Status
 
-- [ ] K192: the PUT subscription 422 is the shared validation response
-- [ ] K196: the price fields declare `minimum: 0`
-- [ ] K197: deleting a category is documented as unassigning it
-- [ ] K223: the logo and attachment limits are documented
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 82 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K192: the PUT subscription 422 is the shared validation response
+- [x] K196: the price fields declare `minimum: 0`
+- [x] K197: deleting a category is documented as unassigning it
+- [x] K223: the logo and attachment limits are documented
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 82 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
