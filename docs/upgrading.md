@@ -438,6 +438,22 @@ WHERE revoked_at IS NULL AND scopes = 'calendar:read' AND expires_at IS NULL
 If one of them was meant to read everything, its owner reissues it from
 **Settings → Data & integrations → API tokens** as **Read everything**.
 
+## After upgrading to long API token expiries (Phase 83)
+
+This only matters on **MySQL or MariaDB**. There, `api_tokens.expires_at` was a
+`timestamp`, which stops at 19 January 2038, so issuing a token that expires
+later was a server error and no token was issued. PostgreSQL never had the
+limit.
+
+**Back up your database first.** One migration
+(`20271101000001_widen_api_token_expiry`) changes the column to a `datetime`
+with one `ALTER`; every expiry already stored is kept as it is, and nothing else
+is needed beyond `vendor/bin/phinx migrate`. Running it again changes nothing.
+
+Rolling it back sets any expiry later than 2038-01-19 03:14:07 to that instant
+before putting the `timestamp` back, so the rollback cannot fail; those tokens
+then expire at that instant.
+
 ## After upgrading to MySQL 9.7 and the PHP 8.5 image
 
 Two images changed after 1.31.1. Neither needs a Renovo migration.

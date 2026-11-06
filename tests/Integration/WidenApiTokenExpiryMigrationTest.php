@@ -58,11 +58,13 @@ final class WidenApiTokenExpiryMigrationTest extends DatabaseTestCase
         $this->narrowTheColumn();
 
         $this->migrate('up');
+        $this->insertToken('2040-01-01 23:59:59');
         $this->executed = [];
         $this->migrate('up');
 
         self::assertSame([], $this->executed);
         self::assertSame('datetime', $this->columnType());
+        self::assertSame('2040-01-01 23:59:59', $this->storedExpiry(), 'the repeat run left the value alone');
     }
 
     public function testDownClampsALaterExpiryAndRestoresTheTimestamp(): void

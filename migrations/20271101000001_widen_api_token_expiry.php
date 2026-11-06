@@ -20,7 +20,15 @@ use Phinx\Migration\AbstractMigration;
  * `down()` puts the `timestamp` back. A token that expires after the limit
  * could not be stored in it, so such a value is first set to the limit itself
  * (a token that, in effect, lasts as long as the column can say) and the
- * rollback cannot fail on a token the wider column let in.
+ * rollback cannot fail on a token the wider column let in. A value at or before
+ * 1970-01-01, which only a hand-edited row can hold, is not handled: a
+ * `timestamp` cannot store it either.
+ *
+ * Each direction is one `ALTER` (plus, for `down()`, one `UPDATE` before it),
+ * and a statement either happens or does not, so a failure leaves the column as
+ * it was. By hand, the same undo is: set every `expires_at` later than
+ * '2038-01-19 03:14:07' to that instant, then `ALTER TABLE api_tokens MODIFY
+ * expires_at TIMESTAMP NULL DEFAULT NULL`.
  */
 final class WidenApiTokenExpiry extends AbstractMigration
 {
