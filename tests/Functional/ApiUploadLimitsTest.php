@@ -121,8 +121,7 @@ final class ApiUploadLimitsTest extends ApiTestCase
     public function testAnAttachmentOfExactlyTenMegabytesIsAccepted(): void
     {
         $id = $this->createSubscription();
-        $bytes = "%PDF-1.4
-" . str_repeat('0', self::ATTACHMENT_LIMIT - 9);
+        $bytes = "%PDF-1.4\n" . str_repeat('0', self::ATTACHMENT_LIMIT - 9);
         self::assertSame(self::ATTACHMENT_LIMIT, strlen($bytes));
 
         $response = $this->upload(
