@@ -126,6 +126,27 @@ code.
   `assets/theme/icons.json`; new colours in `assets/theme/tokens.json`. Check
   it in the browser (the `run` skill or `bin/dev-setup.sh`) at 375, 768 and
   1280 px, light and dark. Never commit `public/build/`.
+- **Impeccable, on UI work** (the `impeccable` skill; `PRODUCT.md` and
+  `DESIGN.md` are its context, the prototype in `design-import/` and
+  `CLAUDE.md` outrank both):
+  - **Before** a new screen or a substantial new component:
+    `/impeccable shape <screen>` to plan it from the existing idioms. Present
+    the plan with the phase's other questions; skip it for small changes.
+  - **After** building it, before the browser check:
+    `/impeccable audit <changed templates>` and fix what it finds, then
+    `/impeccable polish <screen>`. Both are refinement: Operate mode, keep the
+    incumbent look.
+  - **Never** `bolder`, `overdrive`, `delight`, `colorize` or `live` unless
+    the brief asks for a redesign. Whatever Impeccable suggests, no
+    third-party font, script or style, no colour literal (new colours go in
+    `tokens.json` with their `ThemeContrastTest` pairs), no inline script or
+    style.
+  - The design hook flags drift after each UI edit. Fix a real finding;
+    record a false positive with
+    `impeccable hooks ignore-value <rule> <value> --file <path> --reason "..."`,
+    as narrowly as possible, and say so in the commit.
+  - If the UI changes the design system itself (a new token, component or
+    radius), re-run `/impeccable document` so `DESIGN.md` keeps up.
 - **Docs:** the feature in its `docs/features/` page (or the operator page it
   belongs to), not the README.
 - **Known issues:** a scheduled row fixed here is marked *Fixed (Phase <n>)*.

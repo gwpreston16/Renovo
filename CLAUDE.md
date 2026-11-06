@@ -216,6 +216,14 @@ reference and locale completeness. Don't merge red CI.
   count, date in a table) takes the `.num` class.
 - **New feature touching data:** it must respect roles + isolation via the
   scoping layer, and be covered by tests, including a permission test.
+- **UI design (Impeccable):** `PRODUCT.md` and `DESIGN.md` at the root are the
+  context the `impeccable` skill reads; `.impeccable/config.json` holds its
+  design hook's shared settings and ignores. They record the design, they don't
+  set it: the prototype in `design-import/`, `assets/theme/tokens.json` and
+  this file win any disagreement. Use its refinement commands (`shape`,
+  `audit`, `polish`, `harden`, `clarify`, `adapt`) in Operate mode; never let
+  a suggestion add a third-party asset, a colour literal or inline code.
+  `/next-phase` step 5 says when each runs.
 - **New user-visible feature:** document it in its `docs/features/` page (or
   the operator page it belongs to), not in the README. The README changes only
   when a feature group gains a headline item.
