@@ -800,7 +800,7 @@ final class AnalyticsScreenTest extends DatabaseTestCase
     public function testTheRetainedUsageFormStillPostsAndReturnsHere(): void
     {
         $body = $this->body($this->get('/stats', $this->ownerId));
-        self::assertStringContainsString('action="/subscriptions/' . $this->hostingId . '/usage"', $body);
+        self::assertStringContainsString('formaction="/subscriptions/' . $this->hostingId . '/usage"', $body);
         self::assertStringContainsString('name="return_to" value="/stats"', $body);
 
         $response = $this->post('/subscriptions/' . $this->hostingId . '/usage', $this->ownerId, [
@@ -813,6 +813,26 @@ final class AnalyticsScreenTest extends DatabaseTestCase
         $recorded = (new SubscriptionRepository($this->db))
             ->find($this->scopeFor($this->ownerId), $this->hostingId);
         self::assertSame(1, $recorded?->usageCount);
+    }
+
+    /**
+     * K183: the "Worth it?" table posts every "Used it" through one form, so the
+     * page holds one usage form however many subscriptions it lists, and each
+     * button names it and posts to its own subscription.
+     */
+    public function testTheWorthItTablePostsThroughOneUsageForm(): void
+    {
+        $body = $this->body($this->get('/stats', $this->ownerId));
+
+        self::assertSame(1, substr_count($body, 'id="usage-form"'));
+        self::assertSame(1, substr_count($body, 'name="return_to" value="/stats"'));
+
+        $pattern = '/<button[^>]*form="usage-form"[^>]*formaction="(\/subscriptions\/\d+\/usage)"/';
+        preg_match_all($pattern, $body, $matches);
+        self::assertContains('/subscriptions/' . $this->hostingId . '/usage', $matches[1]);
+        self::assertCount(count($matches[1]), array_unique($matches[1]), 'one button per subscription');
+        // No row carries a form of its own any more.
+        self::assertStringNotContainsString(' action="/subscriptions/' . $this->hostingId . '/usage"', $body);
     }
 
     /**

@@ -172,7 +172,7 @@ None.
 ## Status
 
 - [x] K185: the list posts every row action through one form; both layouts kept
-- [ ] K183: the Stats table posts through one form; every row kept
+- [x] K183: the Stats table posts through one form; every row kept
 - [ ] K184: the calendar sends the grid; the phone list loads on demand, with a link fallback
 - [ ] K181: the planner draws change controls only for rows set to Change
 - [ ] Before and after sizes recorded for all four
