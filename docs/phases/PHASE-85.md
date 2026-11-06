@@ -114,12 +114,12 @@ None.
 
 ## Status
 
-- [ ] K217: the accepted `reminder_days` forms are documented and pinned by a test
-- [ ] K195: the 400 and 401 titles come from the catalogue
-- [ ] OpenAPI version bumped and named in the CHANGELOG
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed / Changed
-- [ ] ROADMAP: Phase 85 row marked ✅ done
+- [x] K217: the accepted `reminder_days` forms are documented and pinned by a test
+- [x] K195: the 400 and 401 titles come from the catalogue
+- [x] OpenAPI version bumped and named in the CHANGELOG
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed / Changed
+- [x] ROADMAP: Phase 85 row marked ✅ done
 - [ ] composer check, coverage and the API doc tests green on both engines
 
 ## Definition of done

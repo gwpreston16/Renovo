@@ -13,10 +13,12 @@ use App\Service\ValidationException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
+use Slim\Exception\HttpBadRequestException;
 use Slim\Exception\HttpException;
 use Slim\Exception\HttpForbiddenException;
 use Slim\Exception\HttpMethodNotAllowedException;
 use Slim\Exception\HttpNotFoundException;
+use Slim\Exception\HttpUnauthorizedException;
 use Slim\Handlers\ErrorHandler;
 use Slim\Views\Twig;
 use Throwable;
@@ -71,6 +73,22 @@ final class HttpErrorHandler extends ErrorHandler
         parent::__construct($callableResolver, $responseFactory, $logger);
     }
 
+    /**
+     * The title for a 400 or 401: the catalogue's, unless the throw site gave
+     * the exception a title of its own (the CSRF check titles an expired form
+     * "Session expired" rather than "Bad request").
+     *
+     * Slim's own default ("400 Bad Request", "401 Unauthorized", English and
+     * with the status number) is what an exception carries when nobody set
+     * one, so that is the only value replaced (K195).
+     */
+    private function titleOrDefault(HttpException $exception, string $slimDefault, string $key): string
+    {
+        return $exception->getTitle() === $slimDefault
+            ? $this->translator->trans($key)
+            : $exception->getTitle();
+    }
+
     protected function respond(): ResponseInterface
     {
         $exception = $this->exception;
@@ -115,6 +133,14 @@ final class HttpErrorHandler extends ErrorHandler
             $status = 405;
             $title = $this->translator->trans('error.page.method_title');
             $message = $this->translator->trans('error.page.method_message');
+        } elseif ($exception instanceof HttpBadRequestException) {
+            $status = 400;
+            $title = $this->titleOrDefault($exception, '400 Bad Request', 'error.page.bad_request_title');
+            $message = $exception->getMessage();
+        } elseif ($exception instanceof HttpUnauthorizedException) {
+            $status = 401;
+            $title = $this->titleOrDefault($exception, '401 Unauthorized', 'error.page.unauthorized_title');
+            $message = $exception->getMessage();
         } elseif ($exception instanceof HttpException) {
             $status = $exception->getCode() >= 400 && $exception->getCode() < 600
                 ? (int) $exception->getCode()

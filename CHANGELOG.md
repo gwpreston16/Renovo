@@ -8,6 +8,27 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Changed
+
+- **The API's 400 and 401 errors have translated titles.** They carried Slim's
+  English "400 Bad Request" and "401 Unauthorized"; they now read "Bad request"
+  and "Unauthorized" from the catalogue, in the language the response is
+  written in, like every other status. The message is unchanged, an expired
+  form still says "Session expired", and a missing row's 404 is untouched. A
+  client that matched the literal old titles should match the status instead.
+  OpenAPI 1.9.14 describes it. *Phase 85.*
+
+### Fixed
+
+- **The accepted `reminder_days` forms are documented.** Documentation and
+  tests only, no behaviour change: OpenAPI and `docs/api.md` said anything but
+  a list of integers or `"none"` was a 422, while the API has always also read
+  a comma-separated string (`"30,7,1"`), `"never"`, any case of either word,
+  and the empty string (use my preference). They now say so, with what is
+  refused (a part that is not a whole number, a number above 365, more than six
+  lead times, a boolean, a number or an object), and a test sends each form on
+  a POST and a PUT. *Phase 85.*
+
 ## [1.42.0] - 2026-11-06
 
 ### Fixed

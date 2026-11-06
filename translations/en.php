@@ -610,6 +610,8 @@ return [
     'error.permission.denied' => 'Your role does not permit "{permission}".',
     'error.page.forbidden_message' => 'Your role does not permit that action.',
     'error.page.method_title' => 'Method not allowed',
+    'error.page.bad_request_title' => 'Bad request',
+    'error.page.unauthorized_title' => 'Unauthorized',
     'error.page.rate_limited_title' => 'Too many requests',
     'error.page.method_message' => 'That address does not accept this kind of request.',
 
