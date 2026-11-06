@@ -552,6 +552,12 @@ final class CalendarPageTest extends DatabaseTestCase
         self::assertStringNotContainsString('Therapy', $viewer);
         self::assertStringNotContainsString('Other household thing', $viewer);
 
+        // "Just mine" narrows the list as it narrows the grid.
+        $this->signIn($this->ownerId);
+        $mine = $this->body('/calendar/list?month=2026-09&mine=1');
+        self::assertStringContainsString('Mine', $mine);
+        self::assertStringNotContainsString('Editors plan', $mine);
+
         // The payer sees their private row in the list, as in the grid.
         $this->signIn($this->editorId);
         self::assertStringContainsString('Therapy', $this->body('/calendar/list?month=2026-09'));

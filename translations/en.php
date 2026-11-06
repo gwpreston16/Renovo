@@ -1244,10 +1244,10 @@ return [
     'calendar.more' => '+{count} more',
     'calendar.next_month' => 'Next month',
     'calendar.nothing_due' => 'Nothing due this month.',
-    'calendar.show_as_list' => 'Show as list',
     'calendar.nothing_on_day' => 'Nothing due on this day.',
     'calendar.previous_month' => 'Previous month',
     'calendar.selected' => 'selected',
+    'calendar.show_as_list' => 'Show as list',
     'calendar.summary' => 'Month summary',
 
     // cancellations

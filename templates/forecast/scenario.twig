@@ -141,7 +141,7 @@
                                 (`scenario-form.js`). Without script the form's own round
                                 trip redraws the page with every Change row's controls.
                             #}
-                            <div class="scenario-change" id="scenario-change-{{ id }}">
+                            <div class="scenario-change" id="scenario-change-{{ id }}" aria-live="polite">
                                 {% if row.choice == 'change' %}
                                     {% include 'forecast/_scenario_change.twig' %}
                                 {% endif %}

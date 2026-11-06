@@ -2350,10 +2350,6 @@ a.segmented-option {
     min-width: 11rem;
 }
 
-.row-menu .row-actions form {
-    display: block;
-}
-
 .row-menu .icon-action {
     justify-content: flex-start;
     gap: 0.5rem;

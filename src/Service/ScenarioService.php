@@ -104,7 +104,7 @@ final class ScenarioService
      *
      * Read through the same scoped list as the planner, so a subscription the
      * member cannot see, or one that is not plannable, is null exactly as it
-     * is absent from the page.
+     * is absent from the page. A row with nothing typed carries no errors.
      *
      * @param array<mixed> $query The request's query parameters.
      * @return array<string, mixed>|null
@@ -116,7 +116,16 @@ final class ScenarioService
             return null;
         }
 
-        return $this->rowOf($eligible[$id], Scenario::fromQuery($query, $eligible), $this->filters($query));
+        $row = $this->rowOf($eligible[$id], Scenario::fromQuery($query, $eligible), $this->filters($query));
+
+        // Asked for on a click, with nothing typed yet: an empty price is
+        // "not filled in", not "wrong". The refusal belongs to a form that was
+        // sent, so the fresh fields are drawn without it.
+        if (implode('', $row['input']) === '') {
+            $row['errors'] = [];
+        }
+
+        return $row;
     }
 
     /**

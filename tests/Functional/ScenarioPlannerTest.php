@@ -622,7 +622,7 @@ final class ScenarioPlannerTest extends DatabaseTestCase
 
         $page = $this->body($this->get('/forecast/scenario?' . $query, $this->ownerId));
         self::assertSame(1, preg_match(
-            '#<div class="scenario-change" id="scenario-change-' . $this->adobeId . '">(.*?)</div>\s*</li>#s',
+            '#<div class="scenario-change" id="scenario-change-' . $this->adobeId . '"[^>]*>(.*?)</div>\s*</li>#s',
             $page,
             $drawn,
         ));
@@ -643,6 +643,16 @@ final class ScenarioPlannerTest extends DatabaseTestCase
         ));
         self::assertStringContainsString('name="change[' . $this->adobeId . '][days]"', $bare);
         self::assertStringNotContainsString('7.77', $bare);
+        // Nothing typed yet is not a mistake: the fresh fields carry no error.
+        self::assertStringNotContainsString('aria-invalid', $bare);
+        self::assertStringNotContainsString('field-error', $bare);
+
+        // A mistyped price, on the other hand, is shown on the fetched fields.
+        $typo = $this->body($this->get(
+            '/forecast/scenario/rows/' . $this->adobeId . '/controls?change[' . $this->adobeId . '][price]=lots',
+            $this->ownerId,
+        ));
+        self::assertStringContainsString('aria-invalid="true"', $typo);
     }
 
     /**
