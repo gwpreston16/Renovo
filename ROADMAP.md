@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–85
+## Planned — Phases 30–86
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -94,6 +94,7 @@ can be moved.
 | 83 | [Digest and split tests, and API token expiry on MySQL, from the known-issues log](docs/phases/PHASE-83.md) | — | None | 📋 planned |
 | 84 | [Reminder runs do less work, from the known-issues log](docs/phases/PHASE-84.md) | — | None | 📋 planned |
 | 85 | [API reminder strings and translated 400/401 titles, from the known-issues log](docs/phases/PHASE-85.md) | — | None | 📋 planned |
+| 86 | [Lighter pages for big households, from the known-issues log](docs/phases/PHASE-86.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -244,6 +245,7 @@ can be moved.
 - **83 — Digest and split tests, and API token expiry on MySQL.** A batch from the known-issues log (K224, K225, K186): a digest is shown to leave out an event whose date has passed, a custom split with a share of 0 is shown to save, and a migration widens `api_tokens.expires_at` to a `datetime` on MySQL/MariaDB so a token can expire after January 2038.
 - **84 — Reminder runs do less work.** A performance batch from the known-issues log (K180, K221): a member's daily `reminders:run` measures only the budgets it owns or is the subject of, reads a user's channels once per alert type, and drops alerts already delivered before they reach the rate limiter and the claim. What is sent, and to whom, does not change.
 - **85 — API reminder strings and translated 400/401 titles.** A batch from the known-issues log (K217, K195): the string forms of `reminder_days` the API already accepts (`"30,7,1"`, `"never"`, `""`) are documented in OpenAPI and `docs/api.md` and pinned by a test, and the API's 400 and 401 errors take their titles from the catalogue like every other status.
+- **86 — Lighter pages for big households.** A page-weight batch from the known-issues log (K181, K183, K184, K185): the subscription list and the Stats "Worth it?" table post their row actions through one form each, the calendar sends the grid and loads the phone list on demand, and the scenario planner draws change-price controls only for rows set to Change.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
