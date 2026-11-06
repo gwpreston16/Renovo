@@ -93,7 +93,7 @@ can be moved.
 | 82 | [API contract documentation, from the known-issues log](docs/phases/PHASE-82.md) | — | None | ✅ done |
 | 83 | [Digest and split tests, and API token expiry on MySQL, from the known-issues log](docs/phases/PHASE-83.md) | — | None | ✅ done |
 | 84 | [Reminder runs do less work, from the known-issues log](docs/phases/PHASE-84.md) | — | None | ✅ done |
-| 85 | [API reminder strings and translated 400/401 titles, from the known-issues log](docs/phases/PHASE-85.md) | — | None | 📋 planned |
+| 85 | [API reminder strings and translated 400/401 titles, from the known-issues log](docs/phases/PHASE-85.md) | — | None | 🚧 in progress |
 | 86 | [Lighter pages for big households, from the known-issues log](docs/phases/PHASE-86.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
