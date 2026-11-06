@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–84
+## Planned — Phases 30–85
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -93,6 +93,7 @@ can be moved.
 | 82 | [API contract documentation, from the known-issues log](docs/phases/PHASE-82.md) | — | None | ✅ done |
 | 83 | [Digest and split tests, and API token expiry on MySQL, from the known-issues log](docs/phases/PHASE-83.md) | — | None | 📋 planned |
 | 84 | [Reminder runs do less work, from the known-issues log](docs/phases/PHASE-84.md) | — | None | 📋 planned |
+| 85 | [API reminder strings and translated 400/401 titles, from the known-issues log](docs/phases/PHASE-85.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -242,6 +243,7 @@ can be moved.
 - **82 — API contract documentation.** A docs-only batch from the known-issues log (K192, K196, K197, K223): the PUT subscription 422 uses the shared validation response, the price fields declare `minimum: 0`, a category delete is documented as unassigning its subscriptions, and the logo and attachment upload limits are documented with their environment variables.
 - **83 — Digest and split tests, and API token expiry on MySQL.** A batch from the known-issues log (K224, K225, K186): a digest is shown to leave out an event whose date has passed, a custom split with a share of 0 is shown to save, and a migration widens `api_tokens.expires_at` to a `datetime` on MySQL/MariaDB so a token can expire after January 2038.
 - **84 — Reminder runs do less work.** A performance batch from the known-issues log (K180, K221): a member's daily `reminders:run` measures only the budgets it owns or is the subject of, reads a user's channels once per alert type, and drops alerts already delivered before they reach the rate limiter and the claim. What is sent, and to whom, does not change.
+- **85 — API reminder strings and translated 400/401 titles.** A batch from the known-issues log (K217, K195): the string forms of `reminder_days` the API already accepts (`"30,7,1"`, `"never"`, `""`) are documented in OpenAPI and `docs/api.md` and pinned by a test, and the API's 400 and 401 errors take their titles from the catalogue like every other status.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
