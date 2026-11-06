@@ -84,18 +84,78 @@ final class NotificationDispatcher
     /**
      * Deliver alerts to whichever of the user's channels are routed to them.
      *
+     * Two things keep a daily run cheap when most of what it finds was told on
+     * an earlier day (K221). A user's channels and routing are read once per
+     * alert type for the whole call, not once per alert. And an alert already
+     * finished with on every channel it would go to (the ledger says `sent`, or
+     * its attempts are used up) is dropped here, in one read per user, before
+     * the rate limiter or the claim is reached. Anything not settled, such as a
+     * failed row with an attempt left, a pending one or no row at all, goes on
+     * to `claim()` exactly as before, and `claim()` still runs for everything
+     * that remains, so a refusal there cannot leave a pending row (K13, K51).
+     *
      * @param list<Alert> $alerts
      * @return int Messages actually sent.
      */
     public function dispatch(User $user, array $alerts): int
     {
-        $sent = 0;
+        if ($alerts === []) {
+            return 0;
+        }
 
+        /** @var array<string, list<NotificationChannel>> $channelsByType */
+        $channelsByType = [];
         foreach ($alerts as $alert) {
-            $sent += $this->dispatchTo($user, $alert, $this->settings->channelsFor($user->id, $alert->type));
+            $channelsByType[$alert->type->value] ??= $this->settings->channelsFor($user->id, $alert->type);
+        }
+
+        $settled = $this->log->settledFor(
+            $user->id,
+            array_map(static fn (Alert $alert): string => $alert->occurrenceKey, $alerts),
+            $this->maxAttempts,
+        );
+
+        $sent = 0;
+        foreach ($alerts as $alert) {
+            $channels = $channelsByType[$alert->type->value];
+            if ($this->isSettled($alert, $channels, $settled)) {
+                continue;
+            }
+
+            $sent += $this->dispatchTo($user, $alert, $channels);
         }
 
         return $sent;
+    }
+
+    /**
+     * Whether an alert is finished with on every channel it would go to. With
+     * no channels there is nothing to be settled on, and the alert falls
+     * through to a delivery loop that does nothing.
+     *
+     * @param list<NotificationChannel> $channels
+     * @param array<string, true> $settled
+     */
+    private function isSettled(Alert $alert, array $channels, array $settled): bool
+    {
+        if ($channels === []) {
+            return false;
+        }
+
+        foreach ($channels as $channel) {
+            $key = NotificationLogRepository::settledKey(
+                $channel->id,
+                $alert->type->value,
+                $alert->subjectType,
+                $alert->subjectId,
+                $alert->occurrenceKey,
+            );
+            if (!isset($settled[$key])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

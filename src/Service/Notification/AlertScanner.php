@@ -176,7 +176,7 @@ final class AlertScanner
         $now = $this->clock->now();
         $today = $this->clock->today();
 
-        foreach ($this->budgets->progress($scope) as $progress) {
+        foreach ($this->budgets->progressForRun($scope) as $progress) {
             $budget = $progress['budget'];
 
             if ($budget->ownerUserId !== $scope->userId) {

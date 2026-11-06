@@ -132,12 +132,12 @@ build checks the query plan on both engines and adds no migration.
 
 ## Status
 
-- [ ] K180: a run measures only the budgets it owns or is the subject of; alerts unchanged
-- [ ] K221: channels are read once per alert type; settled alerts are dropped before dispatch
-- [ ] The before and after statement counts are recorded
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 84 row marked ✅ done
+- [x] K180: a run measures only the budgets it owns or is the subject of; alerts unchanged
+- [x] K221: channels are read once per alert type; settled alerts are dropped before dispatch
+- [x] The before and after statement counts are recorded
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 84 row marked ✅ done
 - [ ] composer check, coverage and the API doc tests green on both engines
 
 ## Definition of done
