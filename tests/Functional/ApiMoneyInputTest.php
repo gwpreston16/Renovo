@@ -121,6 +121,22 @@ final class ApiMoneyInputTest extends ApiTestCase
         self::assertArrayNotHasKey('converts_to_price', $errors);
     }
 
+    /**
+     * K196: the `minimum: 0` the contract declares is enforced. A negative
+     * price, or a negative converts-to price, is a 422 on that API field and
+     * stores nothing.
+     */
+    public function testANegativePriceIsRefusedOnTheFieldThatWasSent(): void
+    {
+        foreach (['price_minor', 'converts_to_price_minor'] as $field) {
+            $response = $this->api('POST', '/api/v1/subscriptions', $this->ownerToken, $this->body($field, -1));
+
+            self::assertSame(422, $response->getStatusCode(), $field . ': ' . $response->getBody());
+            self::assertArrayHasKey($field, $this->decode($response)['error']['errors'], $field);
+            self::assertSame(0, $this->countSubscriptions());
+        }
+    }
+
     public function testAPriceAboveTheCeilingIsRefusedAndOneAtItIsNot(): void
     {
         foreach ([99999999999999999999, 1_000_000_000_001, '1000000000001'] as $price) {

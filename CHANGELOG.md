@@ -8,6 +8,21 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **The API contract says what the API does in four places.** The 422 of
+  `PUT /api/v1/subscriptions/{id}` is the shared validation response instead of
+  a description of a `logo` part a PUT does not have; `price_minor` and
+  `converts_to_price_minor` declare `minimum: 0`, since a negative price is a
+  422; deleting a category is documented as unassigning it from every
+  subscription using it (their `category_id` becomes null, none is deleted), in
+  OpenAPI and `docs/api.md`; and a subscription logo over 1 MB or an attachment
+  over 10 MB is documented as a 422 on `logo` or `file`, with the limit and the
+  variable that changes it. `UPLOAD_MAX_LOGO_BYTES` and
+  `UPLOAD_MAX_ATTACHMENT_BYTES` join `UPLOAD_MAX_AVATAR_BYTES` on the
+  configuration page. OpenAPI 1.9.13 describes it. Documentation and tests
+  only: no behaviour, no new field or endpoint, and no migration. *Phase 82.*
+
 ## [1.39.0] - 2026-11-06
 
 ### Fixed

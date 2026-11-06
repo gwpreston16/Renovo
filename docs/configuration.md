@@ -42,4 +42,6 @@ list. `.env` is never committed. The ones that matter most:
 | `METRICS_TOKEN`             | Unset means `/metrics` does not exist. Set it to expose Prometheus metrics to a scrape job carrying the same bearer token. |
 | `LOGO_CACHE_DIRECTORY`      | Where fetched site icons are cached, one file per domain. Under `var/` by default. |
 | `AVATAR_DIRECTORY`          | Where members' pictures are stored. Outside the web root, under `var/` by default — back it up with the attachments. |
+| `UPLOAD_MAX_LOGO_BYTES`     | Ceiling on a logo upload, for a subscription or a payment method, from the web or the API. 1 MB (1048576 bytes) by default; a larger file is refused with a validation error. |
+| `UPLOAD_MAX_ATTACHMENT_BYTES` | Ceiling on an invoice or receipt attached to a subscription, from the web or the API. 10 MB (10485760 bytes) by default; a larger file is refused with a validation error. |
 | `UPLOAD_MAX_AVATAR_BYTES`   | Ceiling on an avatar upload before it is re-encoded. 2 MB by default. |

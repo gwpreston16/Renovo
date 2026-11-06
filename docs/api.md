@@ -702,7 +702,10 @@ resume it. A resume whose end is still before that billing date is a `422` on
 
 Replace the subscription's logo. `multipart/form-data` with a `logo` part —
 PNG, JPEG, GIF or WebP. The type is read from the file's contents, not from its
-name or its declared content type.
+name or its declared content type. The file may be up to 1 MB (1,048,576 bytes);
+a larger one is a `422` on `logo`. An operator changes the limit with
+`UPLOAD_MAX_LOGO_BYTES` (see [Configuration](configuration.md)); the same limit
+applies to a [payment method's logo](#logos).
 
 ```bash
 curl -X POST \
@@ -711,10 +714,10 @@ curl -X POST \
      https://your-instance.example/api/v1/subscriptions/12/logo
 ```
 
-Returns the updated subscription. A `logo` part that carries no file, or a file
-that is not one of those image types, is a `422` on `logo` and leaves the
-existing logo in place; removing a logo is what `DELETE` is for. Responses:
-`200`, `400`, `401`, `403`, `404`, `422`.
+Returns the updated subscription. A `logo` part that carries no file, a file
+that is not one of those image types, or a file over the size limit is a `422`
+on `logo` and leaves the existing logo in place; removing a logo is what
+`DELETE` is for. Responses: `200`, `400`, `401`, `403`, `404`, `422`.
 
 When no logo has been uploaded, the icon is fetched from the domain in
 `website_url` — through the instance's guarded HTTP client, and cached per
@@ -742,7 +745,7 @@ Attach a document. `multipart/form-data`:
 
 | Part | Notes |
 | --- | --- |
-| `file` | **Required.** PDF, PNG, JPEG, WebP or GIF. Type determined from contents; filename and declared content type are ignored. |
+| `file` | **Required.** PDF, PNG, JPEG, WebP or GIF, up to 10 MB (10,485,760 bytes); a larger file is a `422` on `file`. Type determined from contents; filename and declared content type are ignored. An operator changes the limit with `UPLOAD_MAX_ATTACHMENT_BYTES` (see [Configuration](configuration.md)). |
 | `period_date` | Optional `YYYY-MM-DD`. The billing period this document covers. A date that does not exist, or a value that is not a date, is a `422` on `period_date`, even when `charge_id` is sent. |
 | `charge_id` | Optional. The payment this is the invoice for — one of this subscription's charges. The attachment is dated to it, whatever `period_date` says. Anything that is not one of its charge ids is a `422`. |
 
@@ -882,7 +885,9 @@ Responses: `201`/`200`, `400`, `401`, `403`, `404` (on `PUT`), `422`.
 
 #### `DELETE /api/v1/categories/{id}`
 
-Responses: `204`, `401`, `403`, `404`.
+Removes the category and unassigns it: every subscription in it gets a null
+`category_id`. No subscription is deleted. The category's budgets are deleted
+with it. Responses: `204`, `401`, `403`, `404`.
 
 #### `GET /api/v1/payment-methods`
 
@@ -1006,7 +1011,7 @@ category, tag or payment method and to a charge's `note`.
 | `name` | string | Max 150. |
 | `notes` | string, null | Max 5000. |
 | `website_url` | string, null | Max 300. A bare host is accepted and stored as https. |
-| `price_minor` | integer | Minor units. £19.99 is `1999`. |
+| `price_minor` | integer | Minor units. £19.99 is `1999`. Zero or more, up to `1000000000000`: a negative value is a `422` ("Enter a price of zero or more."). |
 | `currency` | string | ISO 4217 code. |
 | `subscription_type` | enum | `recurring` (default), `one_off`, `lifetime`. |
 | `billing_cycle` | enum, null | `weekly`, `monthly`, `quarterly`, `yearly`, `custom_days`. |
@@ -1019,7 +1024,7 @@ category, tag or payment method and to a charge's `note`.
 | `reminder_days` | int[], null | Max 6 items, each 0–365. Three states — see [Conventions](#conventions). The string `"none"` is read as `[]`; a boolean, a number, an object or a list holding anything but integers is a `422` on `reminder_days`. |
 | `is_trial` | boolean | Default `false`. Besides a JSON boolean the API reads `0`, `1` and the words `"true"`, `"false"`, `"yes"`, `"no"`, `"on"`, `"off"`, `"0"`, `"1"` (any case), here and for `is_active` and `amount_varies`; anything else (`2`, `"abc"`, a list) is a `422` on that field, never read as false. |
 | `trial_end_date` | date, null | A date that does not exist is a `422`. |
-| `converts_to_price_minor` | integer, null | Minor units. `true`, a list, an object and text that is not a number are a `422` on this field, never read as "no price". |
+| `converts_to_price_minor` | integer, null | Minor units, zero or more (a negative value is a `422`, "Enter a price of zero or more."). `true`, a list, an object and text that is not a number are a `422` on this field, never read as "no price". |
 | `converts_to_billing_cycle` | enum, null | As `billing_cycle`: `weekly`, `monthly`, `quarterly`, `yearly`, `custom_days`, and any other value (`annual`, `daily`, `YEARLY`) is a `422` on this field, never saved as "no cycle". Null or an empty string means it converts on the cycle it has; a `PUT` that omits the key keeps a trial's stored cycle (and its `converts_to_cycle_days`). |
 | `converts_to_cycle_days` | integer, null | |
 | `converts_to_cycle_interval` | integer, null | As `cycle_interval`, for the cycle it converts to — bounded the same way, and an absent key on a PUT that keeps `converts_to_billing_cycle` keeps it. Null when it converts to the cycle it already has. |

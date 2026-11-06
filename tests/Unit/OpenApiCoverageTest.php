@@ -128,6 +128,71 @@ final class OpenApiCoverageTest extends TestCase
         self::assertSame($declared, $described);
     }
 
+    /**
+     * K192: a PUT has no `logo` part, so its 422 is the shared field-validation
+     * response, not a description of an upload failure.
+     */
+    public function testTheSubscriptionPutAnswersTheSharedValidationFailure(): void
+    {
+        $paths = $this->document()->toArray()['paths'];
+
+        self::assertSame(
+            '#/components/responses/ValidationFailed',
+            $paths['/api/v1/subscriptions/{id}']['put']['responses']['422']['$ref'] ?? null,
+        );
+
+        // The fault was a 422 describing a multipart `logo` part on an operation
+        // that has no multipart body; no such operation may do it again.
+        foreach ($paths as $path => $methods) {
+            foreach ($methods as $method => $operation) {
+                if (!is_array($operation) || !isset($operation['responses']['422']['description'])) {
+                    continue;
+                }
+
+                $hasMultipart = isset($operation['requestBody']['content']['multipart/form-data']);
+                if (!$hasMultipart) {
+                    self::assertStringNotContainsString(
+                        '`logo` part',
+                        (string) $operation['responses']['422']['description'],
+                        strtoupper((string) $method) . ' ' . $path . ' has no logo part.',
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * K196: a money field that declares a ceiling declares its floor too, so a
+     * generated client knows a negative amount is refused. The price fields
+     * floor at 0, as the validation message says.
+     */
+    public function testEveryMoneyFieldWithAMaximumAlsoDeclaresAMinimum(): void
+    {
+        $checked = [];
+        $walk = function (mixed $node, string $trail) use (&$walk, &$checked): void {
+            if (!is_array($node)) {
+                return;
+            }
+
+            foreach ($node as $key => $value) {
+                $here = $trail . '/' . $key;
+                if (is_string($key) && str_ends_with($key, '_minor') && is_array($value) && isset($value['maximum'])) {
+                    $checked[] = $here;
+                    self::assertArrayHasKey('minimum', $value, $here . ' declares a maximum but no minimum.');
+                }
+                $walk($value, $here);
+            }
+        };
+        $document = $this->document()->toArray();
+        $walk($document, '');
+
+        self::assertNotEmpty($checked, 'No money field with a maximum was found: the walk is vacuous.');
+
+        $schema = $document['components']['schemas']['SubscriptionInput']['properties'];
+        self::assertSame(0, $schema['price_minor']['minimum']);
+        self::assertSame(0, $schema['converts_to_price_minor']['minimum']);
+    }
+
     public function testTheScopesAreListedOnTheBearerScheme(): void
     {
         $listed = array_keys($this->document()->toArray()['components']['securitySchemes']['bearerToken']['x-scopes']);

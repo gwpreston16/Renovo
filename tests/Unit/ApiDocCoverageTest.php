@@ -296,6 +296,28 @@ final class ApiDocCoverageTest extends TestCase
     }
 
     /**
+     * K197: both deletes that unassign say so, in the prose and in the
+     * contract, so a client knows what happens to the subscriptions using one.
+     */
+    public function testTheCategoryAndPaymentMethodDeletesDocumentTheUnassigning(): void
+    {
+        $spec = Yaml::parse((string) file_get_contents(dirname(__DIR__, 2) . '/openapi/openapi.yaml'));
+
+        foreach (['categories' => 'category_id', 'payment-methods' => 'payment_method_id'] as $resource => $field) {
+            $heading = '#### `DELETE /api/v1/' . $resource . '/{id}`';
+            // The prose is hard-wrapped, so compare it with its whitespace collapsed.
+            $section = (string) preg_replace('/\s+/', ' ', $this->section($heading));
+            self::assertStringContainsString('unassigns it', $section, $heading . ' does not say it unassigns.');
+            self::assertStringContainsString('null `' . $field . '`', $section);
+            self::assertStringContainsString('No subscription is deleted', $section);
+
+            $description = (string) $spec['paths']['/api/v1/' . $resource . '/{id}']['delete']['description'];
+            self::assertStringContainsString('unassigned', $description);
+            self::assertStringContainsString('`' . $field . '`', $description);
+        }
+    }
+
+    /**
      * Slim's registered API routes, as "METHOD /path".
      *
      * The same normalisation OpenApiCoverageTest uses: Slim writes

@@ -90,7 +90,7 @@ can be moved.
 | 79 | [Controller flows over HTTP, from the known-issues log](docs/phases/PHASE-79.md) | — | None | ✅ done |
 | 80 | [Service-level test gaps, from the known-issues log](docs/phases/PHASE-80.md) | — | None | ✅ done |
 | 81 | [API subscription reads and deletes, from the known-issues log](docs/phases/PHASE-81.md) | — | None | ✅ done |
-| 82 | [API contract documentation, from the known-issues log](docs/phases/PHASE-82.md) | — | None | 📋 planned |
+| 82 | [API contract documentation, from the known-issues log](docs/phases/PHASE-82.md) | — | None | ✅ done |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
