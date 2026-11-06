@@ -1766,7 +1766,11 @@ components:
           required: [status, title, message]
           properties:
             status: { type: integer }
-            title: { type: string }
+            title:
+              type: string
+              description: >-
+                Human-readable and translated into the language of the response,
+                so its wording is not stable: match on `status`.
             message: { type: string }
             errors:
               type: object
@@ -2156,9 +2160,11 @@ components:
             case) means "never remind me about this one"; a list of lead times
             overrides the preference for this subscription. The list may also be
             sent as a comma-separated string, `"30,7,1"`, which is the same as
-            `[30, 7, 1]`. Anything else is a `422` on the field: a part that is
-            not a whole number, a number above 365, more than six lead times, a
-            boolean, a number, an object or a list holding anything but integers.
+            `[30, 7, 1]` (empty parts are ignored, and the lead times are stored
+            largest first with duplicates removed). A `422` on the field is
+            what a part that is not a whole number, a number above 365, more
+            than six lead times, a boolean, a number, an object or a list
+            holding anything but integers gets.
         is_trial:
           type: boolean
           default: false

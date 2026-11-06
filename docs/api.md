@@ -88,10 +88,14 @@ A few things worth knowing before writing a client:
 - **`reminder_days` has three states**, and they are all different: omitted or
   `null` means "use my notification preference", `[]` means "never remind me
   about this one", and `[30, 7, 1]` sets lead times for this subscription alone.
+  The strings `"none"`, `"never"`, `""` and `"30,7,1"` are accepted too; see the
+  table under [Conventions](#conventions).
 - **A 404 means "no such row, or not yours"**, deliberately indistinguishable,
   so probing for another household's ids tells you nothing.
 - Errors are JSON: `{"error": {"status", "title", "message", "errors"}}`, where
-  `errors` maps a field name to a message and appears on a 422.
+  `errors` maps a field name to a message and appears on a 422. `title` is
+  human text, translated into the language of the response, so match on
+  `status` rather than on its wording.
 
 Start with `GET /api/v1/me`, which reports the role, the isolation mode and the
 resolved permission list for the token you are holding.
@@ -388,9 +392,11 @@ easiest mistake to make:
 | `[]`, `"none"` or `"never"` (any case) | Never remind me about this one. |
 | `[30, 7, 1]` or `"30,7,1"` | Lead times in days, for this subscription alone. |
 
-Anything else is a `422` on `reminder_days`: a part that is not a whole number
-(`"abc"`), a number above 365 (`"400"`), more than six lead times, a boolean, a
-number, an object or a list holding anything but integers.
+In a string, empty parts are ignored and the lead times are stored largest
+first with duplicates removed. A `422` on `reminder_days` is what a part that is
+not a whole number (`"abc"`), a number above 365 (`"400"`), more than six lead
+times, a boolean, a number, an object or a list holding anything but integers
+gets.
 
 **Envelopes.** A successful response wraps its payload in `data`. A list adds
 `meta` with the page. An error replaces both with `error`.

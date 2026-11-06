@@ -34,6 +34,11 @@ final class ApiReminderDaysFormsTest extends ApiTestCase
             'never' => ['never', []],
             'NONE' => ['NONE', []],
             'Never' => ['Never', []],
+            'the lowest lead time' => ['0', [0]],
+            'the highest lead time' => ['365', [365]],
+            'six lead times' => ['1,2,3,4,5,6', [6, 5, 4, 3, 2, 1]],
+            'empty parts' => ['30,,7', [30, 7]],
+            'duplicates' => ['7,30,7', [30, 7]],
             'the empty string' => ['', null],
             'null' => [null, null],
         ];

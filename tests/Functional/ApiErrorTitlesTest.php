@@ -96,6 +96,22 @@ PHP);
         self::assertSame('Nicht autorisiert', $this->decode($response)['error']['title']);
     }
 
+    public function testATitleSetAtTheThrowSiteIsKept(): void
+    {
+        // An expired form is a 400 the CSRF check titles for what it is. The
+        // catalogue's "Bad request" must not replace it.
+        $request = (new ServerRequestFactory())
+            ->createServerRequest('POST', 'http://localhost/login', ['REMOTE_ADDR' => '127.0.0.1'])
+            ->withParsedBody(['email' => 'owner@example.test', 'password' => 'whatever']);
+
+        $response = $this->app->handle($request);
+        $html = (string) $response->getBody();
+
+        self::assertSame(400, $response->getStatusCode());
+        self::assertStringContainsString('Session expired', $html);
+        self::assertStringNotContainsString('Bad request', $html);
+    }
+
     public function testATokenThatIsNotValidIsA401WithTheCataloguesTitle(): void
     {
         $response = $this->api('GET', '/api/v1/subscriptions', 'not-a-token');

@@ -324,12 +324,26 @@ final class ApiDocCoverageTest extends TestCase
      */
     public function testBothPagesNameTheAcceptedReminderDaysForms(): void
     {
-        $spec = (string) file_get_contents(dirname(__DIR__, 2) . '/openapi/openapi.yaml');
-        $field = (string) preg_replace('/\s+/', ' ', $this->between($spec, "        reminder_days:
-", "        is_trial:
-"));
+        // Line endings normalised: a checkout may hold either.
+        $spec = str_replace("\r\n", "\n", (string) file_get_contents(dirname(__DIR__, 2) . '/openapi/openapi.yaml'));
+        $field = (string) preg_replace(
+            '/\s+/',
+            ' ',
+            $this->between($spec, "        reminder_days:\n", "        is_trial:\n"),
+        );
 
-        foreach (['api.md' => $this->document(), 'openapi.yaml' => $field] as $name => $text) {
+        $document = str_replace("\r\n", "\n", $this->document());
+        $sections = [
+            'api.md field row' => $this->between($document, '| `reminder_days` | int[], null |', "\n| `is_trial`"),
+            'api.md conventions' => $this->between(
+                $document,
+                '**`reminder_days` has three distinct states**',
+                '**Envelopes.**',
+            ),
+            'openapi.yaml' => $field,
+        ];
+
+        foreach ($sections as $name => $text) {
             $text = (string) preg_replace('/\s+/', ' ', $text);
             self::assertStringContainsString('"30,7,1"', $text, $name . ' does not name the comma-separated string.');
             self::assertStringContainsString('"never"', $text, $name . ' does not name "never".');
