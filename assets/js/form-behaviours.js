@@ -6,9 +6,12 @@
  * want with data attributes instead, and one listener on the document answers
  * for every form on the page, including forms an htmx swap brings in later.
  *
- *   - `data-confirm="Question?"` on a form: asks before it is sent, and a
- *     declined question stops it. Without script the form sends unasked, as
- *     it did when JavaScript was off before.
+ *   - `data-confirm="Question?"` on a form, or on the button that sends it:
+ *     asks before it is sent, and a declined question stops it. On a button
+ *     it asks only when that button sent the form, which is how a list of
+ *     rows sharing one form (`form="..."` and `formaction`) asks per row.
+ *     Without script the form sends unasked, as it did when JavaScript was
+ *     off before.
  *   - `data-autosubmit` on a control: sends its form when it changes.
  *   - `data-clears="name"` on a control: changing it unticks the checkbox of
  *     that name in its form. A colour picked beside an "Automatic colour"
@@ -30,11 +33,20 @@
  */
 function confirmBeforeSending(event) {
     const form = event.target;
-    if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-confirm')) {
+    if (!(form instanceof HTMLFormElement)) {
         return;
     }
 
-    if (!window.confirm(form.getAttribute('data-confirm'))) {
+    // The button that sent the form speaks first: a shared form cannot carry
+    // one question for every row's button.
+    const asker = event.submitter instanceof Element && event.submitter.hasAttribute('data-confirm')
+        ? event.submitter
+        : form;
+    if (!asker.hasAttribute('data-confirm')) {
+        return;
+    }
+
+    if (!window.confirm(asker.getAttribute('data-confirm'))) {
         event.preventDefault();
         event.stopImmediatePropagation();
     }
