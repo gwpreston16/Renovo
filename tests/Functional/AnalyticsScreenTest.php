@@ -833,6 +833,12 @@ final class AnalyticsScreenTest extends DatabaseTestCase
         self::assertCount(count($matches[1]), array_unique($matches[1]), 'one button per subscription');
         // No row carries a form of its own any more.
         self::assertStringNotContainsString(' action="/subscriptions/' . $this->hostingId . '/usage"', $body);
+
+        // Each button is named for its row, so a screen reader can tell them apart.
+        self::assertMatchesRegularExpression(
+            '#formaction="/subscriptions/' . $this->hostingId . '/usage"\s+aria-label="Used it: Hosting">Used it<#',
+            $body,
+        );
     }
 
     /**

@@ -33,6 +33,13 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   If a row's fields fail to load it goes back to Keep and the page says so;
   choosing Change price again retries. The scenario figures are unchanged.
   No API change; no migrations. *Phase 86.*
+- **Easier to read and to hear on the same four screens.** A paused
+  subscription on the list keeps readable text: it now mutes its words and
+  fades only its logo and the payer's face, where before the whole row faded
+  below the contrast WCAG asks for. Each Stats "Used it" button tells a
+  screen reader which subscription it records. The rail's small labels, the
+  calendar's chips and the top bar's subtitle are a size larger, and help
+  text keeps a readable line length. *Phase 86.*
 
 ## [1.43.0] - 2026-11-06
 

@@ -173,8 +173,10 @@
                                 </td>
                                 <td class="actions">
                                     {% if can(scope, 'usage.record') and can_edit_row(scope, subscription) %}
+                                        {# Named per row: eighteen identical "Used it" buttons say nothing to a screen reader. #}
                                         <button type="submit" form="usage-form" class="button button-quiet"
-                                                formaction="/subscriptions/{{ subscription.id }}/usage">{{ t('stats.used_it') }}</button>
+                                                formaction="/subscriptions/{{ subscription.id }}/usage"
+                                                aria-label="{{ t('stats.used_it_name', {'name': subscription.name}) }}">{{ t('stats.used_it') }}</button>
                                     {% endif %}
                                 </td>
                             </tr>

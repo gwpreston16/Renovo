@@ -123,15 +123,37 @@ Regression tests:
 - Before and after size at 300 subscriptions recorded; the scenario results
   (the forecast figures) are identical to those before.
 
-### Common to A-D
+### E. K226-K229 — the design audit's findings on these four screens (added 2026-11-06)
+
+The `/impeccable audit` this phase runs on its four screens found four
+problems that were already on master. The owner chose to fix them here rather
+than log them for a later phase (see *Decisions*).
+
+- **K226:** a paused list row mutes its text instead of fading the whole row,
+  so its payment name and "Paused" badge meet 4.5:1; only the logo tile and
+  the payer's face fade.
+- **K227:** each Stats "Used it" button is named for its row ("Used it:
+  Hosting") for a screen reader; the visible text is unchanged.
+- **K228:** the rail's tagline and group heading, and a calendar chip's name
+  and day total, go from 10px to 11px; the top bar's subtitle from the caption
+  size (11px) to the label size (12px).
+- **K229:** a paragraph of help (`p.hint`, `p.field-hint`) keeps a measure of
+  60ch.
+- Tests: `tests/Unit/LegibleTextTest.php` (sizes, the paused row, the measure),
+  and the Stats test asserts each button's name. The detector finds nothing on
+  the four screens at 1280, 768 and 390 px.
+
+### Common to A-E
 
 - Each change is checked in the browser at 375, 768 and 1280 px, light and dark,
   and with the keyboard (the shared form must not change tab order or the way
   Enter behaves).
 - `/impeccable audit` on the four changed templates, then `polish`, in Operate
   mode; no new colour, no third-party asset, no inline script or style.
-- Strings, icons and colours: none are added except the "Show as list" link's
-  text, which goes in every catalogue in `translations/`.
+- Strings, icons and colours: no icon or colour is added. The strings are the
+  "Show as list" link's text and, after review, `calendar.list_loading`,
+  `calendar.show_as_grid`, `scenario.change_failed` and `stats.used_it_name`,
+  each in every catalogue in `translations/`.
 
 ## Data-model changes
 
@@ -143,7 +165,8 @@ None.
   stays uncompressed because of BREACH (K166).
 - Paginating or capping the planner, the Stats table or the calendar, and
   restyling the list as one markup for both widths: considered and not chosen.
-- Any change to what a screen shows or to a figure on it.
+- Any change to a figure on a screen, or to what it shows beyond E's
+  legibility fixes.
 - The API and the notification scheduler (Phase 84).
 
 ## Decisions & assumptions (confirm or correct before build)
@@ -160,6 +183,9 @@ None.
   Not chosen: building the list in the browser from the grid; keeping both.
 - **K181 — Decided 2026-11-06:** change controls only for rows set to Change.
   Not chosen: paginating or capping the rows; whitespace trimming alone.
+- **Audit findings already on master (K226-K229) — Decided 2026-11-06:** fix
+  them in this phase (section E). Not chosen: record them and schedule a later
+  phase through `/known-issues-batch`; a separate branch after this merges.
 - **Release — Decided 2026-11-06:** with the next minor release, alongside the
   other unreleased phases. Not chosen: its own patch.
 - **Assumed:** the `form` attribute and `formaction` are enough for the shared
@@ -182,6 +208,7 @@ None.
   - the phone calendar shows "Loading the list…" (`aria-busy`) in place of its link while the list loads, and the link comes back if the request fails;
   - the planner's controls slot is no longer a live region; controls that fail to load put the row back on Keep and say so in the page's status line, and choosing Change again retries;
   - `?view=list` draws no open-day panel beside the list, and offers "Show as grid" from tablet width up.
+- [x] E, K226-K229: the audit's already-on-master findings fixed. Paused rows mute their text, "Used it" buttons are named per row, functional text is at least 11px, and help paragraphs keep a 60ch measure. The detector went from 38 findings (1280 px) and 31 (768 px) to none at 1280, 768 and 390 px, and the browser check shows the paused row and the calendar chips at 768 and 1280 px.
 - [x] Rows marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed / Changed
 - [x] ROADMAP: Phase 86 row marked ✅ done

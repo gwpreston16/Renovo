@@ -2083,6 +2083,7 @@ return [
         . 'per-currency figures below are the complete picture; a combined number leaving that spending '
         . 'out would not be.',
     'stats.used_it' => 'Used it',
+    'stats.used_it_name' => 'Used it: {name}',
     'stats.uses_per_month' => '{count} / month',
     'stats.value_empty' => 'No active recurring subscriptions to rank.',
     'stats.value_note' =>

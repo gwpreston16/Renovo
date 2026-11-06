@@ -383,3 +383,12 @@ table below it:
 | # | Severity | Area | Issue | Where | Since | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | K225 | MINOR | Tests | No test saves a custom split with a share of 0, which is how the form marks a member who is not a participant (`form.twig:476` posts 0 for each one). If the range check were tightened to refuse 0 (`$units < 1`), every custom split that leaves a member out would be refused with a 422 `error.split.share_range`, and every split, form, household and money-page test would still pass (33 test files, reproduced on Postgres). Missing: a Custom-mode save with one member at 0, asserting it succeeds and only the other members are stored. | `src/Service/SplitService.php:337-344`, `tests/Integration/SplitShareRangeTest.php`, `templates/subscriptions/form.twig:475-476` | master | Fixed (Phase 83) |
+
+## Found in Phase 86 (`/impeccable audit` at b8e08d3, 2026-11-06; measured by the detector on the rendered pages and checked in the browser, not through finding-reviewer)
+
+| # | Severity | Area | Issue | Where | Since | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| K226 | MAJOR | UI | A paused subscription row on the list fades the whole row to 55% opacity, which takes its text below WCAG AA: the payment method's name measures 3.3:1 and the "Paused" badge 3.4:1 (4.5:1 needed), in the default dark palette at 768 and 1280 px. | `assets/css/components.css` (`.table tr.is-paused`) | master | Fixed (Phase 86) |
+| K227 | MINOR | UI | Every "Used it" button in the Stats "Worth it?" table has the same accessible name, so a screen-reader user tabbing through 18 of them hears "Used it" each time with no subscription named. | `templates/stats/index.twig` (the `usage-form` buttons) | master | Fixed (Phase 86) |
+| K228 | MINOR | UI | Functional text below 11px: the rail's tagline and its "Household tools" heading, and a calendar grid chip's name and its day total, are 10px; the top bar's subtitle is 11px body text. | `assets/css/components.css` (`.sidebar-tagline`, `.sidebar-group-heading`, `.topbar-subtitle`), `assets/css/screens.css` (`.calendar-chip`, `.calendar-day-total`) | master | Fixed (Phase 86) |
+| K229 | MINOR | UI | A paragraph of help has no measure: the year-over-year card's note on Stats runs to about 96 characters a line at 1280 px. | `assets/css/components.css` (`.hint`), `templates/stats/_year_against_year.twig` | master | Fixed (Phase 86) |

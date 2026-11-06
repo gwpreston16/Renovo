@@ -1563,7 +1563,7 @@ tr.is-passed > td {
 }
 
 .calendar-day-total {
-    font-size: 0.625rem;
+    font-size: 0.6875rem;
     color: var(--faint);
     white-space: nowrap;
     overflow: hidden;
@@ -1581,7 +1581,8 @@ tr.is-passed > td {
     min-width: 0;
     padding: 0.125rem 0.3rem;
     border-radius: var(--radius-small);
-    font-size: 0.625rem;
+    /* 11px, the floor for a name a reader has to read; the cell ellipsises it. */
+    font-size: 0.6875rem;
     font-weight: var(--weight-bold);
     line-height: 1.35;
     white-space: nowrap;
