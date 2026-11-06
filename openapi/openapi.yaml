@@ -404,20 +404,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "422":
-          headers:
-            RateLimit-Limit:
-              $ref: "#/components/headers/RateLimit-Limit"
-            RateLimit-Remaining:
-              $ref: "#/components/headers/RateLimit-Remaining"
-            RateLimit-Reset:
-              $ref: "#/components/headers/RateLimit-Reset"
-          description: >-
-            The `logo` part carried no file, or the file is not a PNG, JPEG, GIF or WebP
-            image. The existing logo is left in place.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+          $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -550,7 +537,10 @@ paths:
                 logo:
                   type: string
                   format: binary
-                  description: PNG, JPEG, GIF or WebP. The type is read from the file, not its name.
+                  description: |
+                    PNG, JPEG, GIF or WebP, up to 1 MB (1048576 bytes; the
+                    operator's `UPLOAD_MAX_LOGO_BYTES`). The type is read from
+                    the file, not its name. A larger file is a `422` on `logo`.
       responses:
         "200":
           headers:
@@ -657,9 +647,11 @@ paths:
                   type: string
                   format: binary
                   description: |
-                    PDF, PNG, JPEG, WebP or GIF. The type is determined from the
-                    file's contents; the filename and the declared content type
-                    are ignored.
+                    PDF, PNG, JPEG, WebP or GIF, up to 10 MB (10485760 bytes;
+                    the operator's `UPLOAD_MAX_ATTACHMENT_BYTES`). The type is
+                    determined from the file's contents; the filename and the
+                    declared content type are ignored. A larger file is a `422`
+                    on `file`.
                 period_date:
                   type: string
                   format: date
@@ -1124,6 +1116,9 @@ paths:
       x-token-scope: "catalogue:write"
       tags: [Taxonomy]
       summary: Delete a category.
+      description: |
+        Its subscriptions are unassigned (their `category_id` becomes null);
+        none of them is deleted.
       responses:
         "204":
           headers:
@@ -1331,7 +1326,10 @@ paths:
                 logo:
                   type: string
                   format: binary
-                  description: PNG, JPEG, GIF or WebP. The type is read from the file, not its name.
+                  description: |
+                    PNG, JPEG, GIF or WebP, up to 1 MB (1048576 bytes; the
+                    operator's `UPLOAD_MAX_LOGO_BYTES`). The type is read from
+                    the file, not its name. A larger file is a `422` on `logo`.
       responses:
         "200":
           headers:
@@ -2086,11 +2084,13 @@ components:
             stored as https.
         price_minor:
           type: integer
+          minimum: 0
           maximum: 1000000000000
           description: >-
             Minor units. £19.99 is 1999. A fraction, text, a boolean or a list
             is a 422 asking for a whole number of minor units; more than the
-            maximum is a 422 too.
+            maximum is a 422 too, and so is a negative value ("Enter a price of
+            zero or more.").
         currency: { type: string, description: ISO 4217 code. }
         subscription_type:
           type: string
@@ -2171,11 +2171,13 @@ components:
         converts_to_price_minor:
           type: integer
           nullable: true
+          minimum: 0
           maximum: 1000000000000
           description: |
             Minor units. A fraction is a 422 asking for a whole number of
             minor units, and so are `true`, a list, an object and text that is
-            not a number.
+            not a number. A negative value is a 422 too ("Enter a price of
+            zero or more.").
         converts_to_billing_cycle:
           type: string
           nullable: true

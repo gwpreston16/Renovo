@@ -311,6 +311,30 @@ final class ApiTaxonomyTest extends ApiTestCase
         self::assertSame([], (array) glob($this->logoDirectory . '/*'));
     }
 
+    /**
+     * K197: deleting a category unassigns it. The two subscriptions in it stay,
+     * with a null `category_id`, exactly as a deleted payment method leaves
+     * its subscriptions.
+     */
+    public function testDeletingACategoryUnassignsItsSubscriptionsAndDeletesNone(): void
+    {
+        $category = $this->decode($this->api('POST', '/api/v1/categories', $this->ownerToken, [
+            'name' => 'Utilities',
+            'colour' => '#ff0000',
+        ]))['data']['id'];
+        $first = $this->createSubscription(['category_id' => $category]);
+        $second = $this->createSubscription(['category_id' => $category]);
+        self::assertSame($category, $this->decode($this->api('GET', '/api/v1/subscriptions/' . $first, $this->ownerToken))['data']['category_id']);
+
+        self::assertSame(204, $this->api('DELETE', '/api/v1/categories/' . $category, $this->ownerToken)->getStatusCode());
+
+        foreach ([$first, $second] as $id) {
+            $read = $this->api('GET', '/api/v1/subscriptions/' . $id, $this->ownerToken);
+            self::assertSame(200, $read->getStatusCode(), 'A subscription was deleted with its category.');
+            self::assertNull($this->decode($read)['data']['category_id']);
+        }
+    }
+
     private function createMethod(): int
     {
         $response = $this->api('POST', '/api/v1/payment-methods', $this->ownerToken, ['name' => 'Joint card']);
