@@ -888,6 +888,15 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   OpenAPI 1.9.13 describes it. Documentation and tests only: no behaviour
   change, no new endpoint or field. No migrations. See
   [API](api.md) and [Configuration](configuration.md).
+- **Phase 83 — Digest and split tests, and API token expiry on MySQL, from
+  the known-issues log — complete (1.41.0).** An API token can now expire after
+  January 2038 on MySQL and MariaDB, where issuing one was a server error
+  because the expiry column was a `timestamp`; one migration makes it a
+  `datetime`, keeping every stored value, and PostgreSQL is untouched. Two
+  guards also gained tests: a digest leaves out an event whose date has
+  passed, and a custom split saves with a share of 0 for a member who is not
+  a participant. No API change. One migration. See
+  [Upgrading](upgrading.md#after-upgrading-to-long-api-token-expiries-phase-83).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says

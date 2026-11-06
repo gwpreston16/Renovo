@@ -125,7 +125,7 @@ up first, as for any release with a migration.
 - [x] Rows marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed, with the migration noted
 - [x] ROADMAP: Phase 83 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green on both engines
+- [x] composer check, coverage and the API doc tests green on both engines
 
 ## Definition of done
 
