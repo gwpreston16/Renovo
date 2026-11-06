@@ -878,6 +878,16 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   the delete now lives in `SubscriptionService`. A logo another row still uses
   is left alone. OpenAPI 1.9.12 describes the read; no new endpoints or
   fields. No migrations. See [API](api.md#get-apiv1subscriptionsid).
+- **Phase 82 — API contract documentation, from the known-issues log —
+  complete (1.40.0).** The API contract and prose now say what the API does
+  in four places: the 422 of `PUT /api/v1/subscriptions/{id}` is the shared
+  validation response, `price_minor` and `converts_to_price_minor` declare
+  `minimum: 0`, deleting a category is documented as unassigning it from
+  every subscription using it, and the logo (1 MB) and attachment (10 MB)
+  upload limits are documented with the variables that change them.
+  OpenAPI 1.9.13 describes it. Documentation and tests only: no behaviour
+  change, no new endpoint or field. No migrations. See
+  [API](api.md) and [Configuration](configuration.md).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
