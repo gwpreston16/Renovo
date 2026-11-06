@@ -93,29 +93,20 @@ final class ApiUploadLimitsTest extends ApiTestCase
         self::assertSame([], (array) glob($this->directory . '/attachments/*'));
     }
 
-    public function testALogoOfExactlyOneMegabyteIsNotRefusedForItsSize(): void
+    public function testALogoOfExactlyOneMegabyteIsAccepted(): void
     {
         $id = $this->createSubscription();
-        $path = '/api/v1/subscriptions/' . $id . '/logo';
 
-        // What the size refusal looks like, taken from the API itself so the
-        // comparison below does not depend on the locale or the wording.
-        $over = $this->upload($path, 'logo', FakeUpload::of($this->paddedPng(self::LOGO_LIMIT + 1), 'over.png'));
-        self::assertSame(422, $over->getStatusCode(), (string) $over->getBody());
-        $sizeRefusal = $this->decode($over)['error']['errors']['logo'] ?? null;
-        self::assertNotNull($sizeRefusal);
-
-        $edge = $this->upload($path, 'logo', FakeUpload::of($this->paddedPng(self::LOGO_LIMIT), 'edge.png'));
-
-        // The limit is `>`, not `>=`. The padding may or may not decode as an
-        // image (the type is read from the header), so a 422 is tolerated, but
-        // never a crash and never the size refusal.
-        self::assertContains($edge->getStatusCode(), [200, 422], (string) $edge->getBody());
-        self::assertNotSame(
-            $sizeRefusal,
-            $this->decode($edge)['error']['errors']['logo'] ?? null,
-            'A logo of exactly the limit was refused for its size.',
+        // The type is read from the header (`getimagesize`), so the padding
+        // after the PNG does not stop it decoding: the limit is `>`, not `>=`.
+        $response = $this->upload(
+            '/api/v1/subscriptions/' . $id . '/logo',
+            'logo',
+            FakeUpload::of($this->paddedPng(self::LOGO_LIMIT), 'edge.png'),
         );
+
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        self::assertCount(1, $this->storedFiles($this->directory . '/logos'));
     }
 
     public function testAnAttachmentOfExactlyTenMegabytesIsAccepted(): void

@@ -716,9 +716,8 @@ curl -X POST \
 
 Returns the updated subscription. A `logo` part that carries no file, a file
 that is not one of those image types, or a file over the size limit is a `422`
-on `logo` and leaves the
-existing logo in place; removing a logo is what `DELETE` is for. Responses:
-`200`, `400`, `401`, `403`, `404`, `422`.
+on `logo` and leaves the existing logo in place; removing a logo is what
+`DELETE` is for. Responses: `200`, `400`, `401`, `403`, `404`, `422`.
 
 When no logo has been uploaded, the icon is fetched from the domain in
 `website_url` — through the instance's guarded HTTP client, and cached per
@@ -888,8 +887,7 @@ Responses: `201`/`200`, `400`, `401`, `403`, `404` (on `PUT`), `422`.
 
 Removes the category and unassigns it: every subscription in it gets a null
 `category_id`. No subscription is deleted. The category's budgets are deleted
-with it. Responses: `204`, `401`, `403`,
-`404`.
+with it. Responses: `204`, `401`, `403`, `404`.
 
 #### `GET /api/v1/payment-methods`
 
