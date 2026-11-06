@@ -1,0 +1,37 @@
+{#
+    The phone list: the days of a month that have something on them.
+
+    Each day names its own weekday, from the reader's locale, because there
+    are no column headings to lean on. Drawn in place of the grid on a
+    `?view=list` page, and fetched on its own by `assets/js/calendar-list.js`
+    from `/calendar/list` below 768px.
+
+    `calendar`  a CalendarService month
+#}
+{% import 'calendar/_figures.twig' as figures %}
+
+{% if calendar.days is empty %}
+    <p class="muted empty">{{ t('calendar.nothing_due') }}</p>
+{% else %}
+    <ol class="plain calendar-list">
+        {% for day in calendar.days %}
+            <li class="calendar-list-day{{ day.is_today ? ' is-today' : '' }}"
+                data-weekday="{{ day.date|local_date('EEE') }}">
+                <h3 class="calendar-list-heading">
+                    <span>
+                        {{- day.date|local_date('EEE d MMM') -}}
+                        {%- if day.is_today %} <span class="badge badge-ok">{{ t('state.today') }}</span>{% endif -%}
+                    </span>
+                    {% if day.figures %}
+                        <span class="num">{{ figures.inline(day.figures) }}</span>
+                    {% endif %}
+                </h3>
+                <ul class="plain calendar-items">
+                    {% for item in day.items %}
+                        {% include 'calendar/_item.twig' %}
+                    {% endfor %}
+                </ul>
+            </li>
+        {% endfor %}
+    </ol>
+{% endif %}

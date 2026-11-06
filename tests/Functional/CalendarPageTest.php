@@ -415,7 +415,8 @@ final class CalendarPageTest extends DatabaseTestCase
         $this->monthly('Streaming', 1000, '2026-09-20');
         $this->monthly('Music', 500, '2026-09-22');
 
-        $narrow = $this->find($this->page('/calendar'), '//*[contains(@class, "calendar-narrow")]');
+        // The list is its own request now (K184), not part of the month page.
+        $narrow = $this->find($this->page('/calendar/list'), '//*[contains(@class, "calendar-list")]');
         self::assertNotNull($narrow);
 
         $days = $this->all($narrow, 'calendar-list-day');
@@ -434,9 +435,133 @@ final class CalendarPageTest extends DatabaseTestCase
         // Charged once, in September, so October has nothing in it.
         $this->oneOff('Once', 500, '2026-09-18');
 
-        $empty = $this->find($this->page('/calendar?month=2026-10'), '//*[contains(@class, "calendar-narrow")]');
-        self::assertNotNull($empty);
-        self::assertSame('Nothing due this month.', $this->squash($empty->textContent));
+        $list = $this->body('/calendar/list?month=2026-10');
+        self::assertSame('Nothing due this month.', $this->squash(strip_tags($list)));
+    }
+
+    /**
+     * K184: the month page and its htmx partial carry the grid and a link to
+     * the list, not the list itself; the list is a request of its own.
+     */
+    public function testTheMonthPageAndPartialSendNoListItems(): void
+    {
+        $this->monthly('Streaming', 1000, '2026-09-20');
+
+        foreach (
+            [
+            $this->body('/calendar'),
+            (string) $this->request('GET', '/calendar?month=2026-09', [], ['HX-Request' => 'true'])->getBody(),
+            ] as $html
+        ) {
+            $page = $this->parse($html);
+            $narrow = $this->find($page, '//*[contains(@class, "calendar-narrow")]');
+            self::assertNotNull($narrow);
+            self::assertSame(0, substr_count($html, 'calendar-list-day'));
+            self::assertSame('/calendar/list?month=2026-09', $narrow->getAttribute('data-calendar-list'));
+            self::assertStringContainsString('calendar-grid', $html);
+
+            $link = $this->find($page, '//*[@data-calendar-list]//a');
+            self::assertNotNull($link);
+            self::assertSame('/calendar?month=2026-09&view=list', $link->getAttribute('href'));
+            self::assertSame('Show as list', $this->squash($link->textContent));
+        }
+    }
+
+    /** K184: without script, `?view=list` is the month with the list in place of the grid. */
+    public function testTheShowAsListLinkWorksWithoutScript(): void
+    {
+        $this->monthly('Streaming', 1000, '2026-09-20');
+
+        $html = $this->body('/calendar?month=2026-09&view=list');
+
+        self::assertStringContainsString('calendar-list-day', $html);
+        self::assertStringNotContainsString('calendar-grid', $html);
+        self::assertStringNotContainsString('data-calendar-list', $html);
+        // Paging keeps the form the reader asked for.
+        self::assertStringContainsString('month=2026-10&amp;view=list', $html);
+    }
+
+    /** K184: the list route answers the month asked for, in the reader's locale, with the grid's events. */
+    public function testTheListRouteReturnsTheMonthsDaysForTheCurrentAndAnotherMonth(): void
+    {
+        $this->monthly('Streaming', 1000, '2026-09-20');
+        $this->monthly('Gym', 3500, '2026-09-22', notice: 30);
+
+        $september = $this->body('/calendar/list?month=2026-09');
+        self::assertStringNotContainsString('<body', $september, 'a fragment, not a page');
+        self::assertStringContainsString('Streaming', $september);
+        self::assertMatchesRegularExpression('/Sun,? 20 Sept/', $september);
+
+        // The grid counts the same events as the list holds.
+        $page = $this->page('/calendar?month=2026-09');
+        $gridElement = $this->find($page, '//table[contains(@class, "calendar-grid")]');
+        self::assertNotNull($gridElement);
+        $grid = $gridElement->textContent;
+        foreach (['Streaming', 'Gym'] as $name) {
+            self::assertStringContainsString($name, $grid);
+            self::assertStringContainsString($name, $september);
+        }
+
+        $october = $this->body('/calendar/list?month=2026-10');
+        self::assertStringContainsString('Streaming', $october);
+        self::assertMatchesRegularExpression('/Tue,? 20 Oct/', $october);
+        self::assertSame(404, $this->request('GET', '/calendar/list?month=2020-01')->getStatusCode());
+    }
+
+    /**
+     * K184, scoping: the list reads like the grid does. Another household's
+     * rows never appear, a Viewer sees what the grid shows them, a private row
+     * stays with its payer, and ISOLATED hides other members' rows.
+     */
+    public function testTheListIsScopedLikeTheGrid(): void
+    {
+        $this->monthly('Mine', 1000, '2026-09-18');
+        $this->monthly('Therapy', 1000, '2026-09-18', owner: $this->editorId, private: true);
+        $this->monthly('Editors plan', 500, '2026-09-19', owner: $this->editorId);
+
+        // A second household, with a row on the same day.
+        $users = new UserRepository($this->db);
+        $outsider = $users->create('out@example.test', 'Out', 'hash', false, new DateTimeImmutable());
+        $other = (new HouseholdRepository($this->db))->create('Other', $outsider);
+        (new MembershipRepository($this->db))->create($other, $outsider, Role::OwnerAdmin);
+        $this->subscriptions()->create(
+            Scope::forMember($outsider, false, $other, Role::OwnerAdmin, IsolationMode::Shared),
+            [
+                'name' => 'Other household thing',
+                'price_minor' => 100,
+                'currency' => 'GBP',
+                'subscription_type' => 'recurring',
+                'billing_cycle' => 'monthly',
+                'next_payment_date' => '2026-09-18',
+                'anchor_day' => 18,
+                'is_active' => true,
+            ],
+            [],
+        );
+
+        $owner = $this->body('/calendar/list?month=2026-09');
+        self::assertStringContainsString('Mine', $owner);
+        self::assertStringContainsString('Editors plan', $owner);
+        self::assertStringNotContainsString('Therapy', $owner, 'a private row stays with its payer');
+        self::assertStringNotContainsString('Other household thing', $owner);
+
+        // A Viewer may read the calendar, so may read its list.
+        $this->signIn($this->viewerId);
+        $viewer = $this->body('/calendar/list?month=2026-09');
+        self::assertStringContainsString('Mine', $viewer);
+        self::assertStringNotContainsString('Therapy', $viewer);
+        self::assertStringNotContainsString('Other household thing', $viewer);
+
+        // The payer sees their private row in the list, as in the grid.
+        $this->signIn($this->editorId);
+        self::assertStringContainsString('Therapy', $this->body('/calendar/list?month=2026-09'));
+
+        // ISOLATED: the owner no longer sees the editor's own rows.
+        $this->container()->get(InstanceSettingsService::class)->setIsolationMode(IsolationMode::Isolated);
+        $this->signIn($this->ownerId);
+        $isolated = $this->body('/calendar/list?month=2026-09');
+        self::assertStringContainsString('Mine', $isolated);
+        self::assertStringNotContainsString('Editors plan', $isolated);
     }
 
     public function testEverythingThatNavigatesSwapsTheWholeMonth(): void

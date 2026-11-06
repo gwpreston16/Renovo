@@ -86,6 +86,9 @@ final class CalendarController extends Controller
                     $day,
                 ),
                 'mine_only' => $mineOnly,
+                // The no-script phone form: the same month with its list in
+                // place of the grid (K184).
+                'list_view' => ($query['view'] ?? '') === 'list',
                 'feed' => [
                     'token' => $this->tokens->feedToken($user, $scope->householdId),
                     'url' => $issued === null
@@ -94,6 +97,40 @@ final class CalendarController extends Controller
                 ],
             ],
         );
+    }
+
+    /**
+     * The month's phone list, as a fragment for `assets/js/calendar-list.js`.
+     *
+     * The month page carries the grid only; below 768px the script asks for
+     * this and puts it in place, so a desktop reader never downloads a list
+     * their screen hides (K184). It is built by the same service call as the
+     * grid, for the same scope, so it holds exactly the days and items the
+     * grid counts and nothing the reader may not see; the route names the same
+     * permission as the page.
+     */
+    public function list(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $scope = $this->scope($request);
+        $user = $this->user($request);
+
+        $query = $request->getQueryParams();
+        $month = $this->calendar->resolveMonth(is_string($query['month'] ?? null) ? $query['month'] : null, $scope);
+        if ($month === null) {
+            throw $this->notFound($request);
+        }
+
+        $this->catchUp->run($scope);
+
+        return $this->render($request, $response, 'calendar/_list.twig', [
+            'calendar' => $this->calendar->month(
+                $scope,
+                $month,
+                $user->weekStartPreference(),
+                ($query['mine'] ?? '') === '1' ? $scope->userId : null,
+                null,
+            ),
+        ]);
     }
 
     /**

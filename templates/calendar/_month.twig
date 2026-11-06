@@ -13,7 +13,8 @@
 {% import 'calendar/_figures.twig' as figures %}
 {% import 'calendar/_kind.twig' as kind %}
 
-{% set mine_query = mine_only ? '&mine=1' : '' %}
+{# Paging and choosing a day keep the list form a phone reader asked for. #}
+{% set mine_query = (mine_only ? '&mine=1' : '') ~ (list_view ? '&view=list' : '') %}
 {% set month_key = calendar.month|date('Y-m') %}
 
 <div id="calendar-month" class="calendar-month">
@@ -65,6 +66,7 @@
             </nav>
         </header>
 
+        {% if not list_view %}
         <div class="calendar-wide">
             <div class="table-scroll">
             <table class="calendar-grid">
@@ -138,38 +140,28 @@
             </ul>
         </div>
 
+        {% endif %}
+
         {#
-            The phone form: the days with something on them, as a list. Each
-            names its own weekday — there are no column headings to lean on —
-            from the reader's locale.
+            The phone form: the days with something on them, as a list. It is
+            not sent with the month (K184): a desktop reader would download a
+            list their screen hides. Below 768px `calendar-list.js` fetches it
+            from `data-calendar-list` and puts it here, after the first load
+            and after each month or day swap. Without script, the link is the
+            way to it: the same month with the list in place of the grid.
         #}
-        <div class="calendar-narrow">
-            {% if calendar.days is empty %}
-                <p class="muted empty">{{ t('calendar.nothing_due') }}</p>
-            {% else %}
-                <ol class="plain calendar-list">
-                    {% for day in calendar.days %}
-                        <li class="calendar-list-day{{ day.is_today ? ' is-today' : '' }}"
-                            data-weekday="{{ day.date|local_date('EEE') }}">
-                            <h3 class="calendar-list-heading">
-                                <span>
-                                    {{- day.date|local_date('EEE d MMM') -}}
-                                    {%- if day.is_today %} <span class="badge badge-ok">{{ t('state.today') }}</span>{% endif -%}
-                                </span>
-                                {% if day.figures %}
-                                    <span class="num">{{ figures.inline(day.figures) }}</span>
-                                {% endif %}
-                            </h3>
-                            <ul class="plain calendar-items">
-                                {% for item in day.items %}
-                                    {% include 'calendar/_item.twig' %}
-                                {% endfor %}
-                            </ul>
-                        </li>
-                    {% endfor %}
-                </ol>
-            {% endif %}
-        </div>
+        {% if list_view %}
+            <div class="calendar-narrow is-listed">
+                {% include 'calendar/_list.twig' %}
+            </div>
+        {% else %}
+            <div class="calendar-narrow" data-calendar-list="/calendar/list?month={{ month_key }}{{ mine_only ? '&mine=1' : '' }}">
+                <p>
+                    <a class="button button-outline"
+                       href="/calendar?month={{ month_key }}&amp;view=list{{ mine_query }}">{{ t('calendar.show_as_list') }}</a>
+                </p>
+            </div>
+        {% endif %}
     </section>
 
     {% include 'calendar/_day.twig' with {'day': calendar.selected} %}

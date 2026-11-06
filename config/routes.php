@@ -340,6 +340,11 @@ return static function (App $app): void {
             ->setName('calendar')
             ->add($requires(Permission::ViewSubscriptions));
 
+        // Phase 86: the month's phone list, fetched on its own below 768px.
+        $group->get('/calendar/list', [CalendarController::class, 'list'])
+            ->setName('calendar-list')
+            ->add($requires(Permission::ViewSubscriptions));
+
         // Phase 25: the calendar feed's link. Like the API-token routes it acts
         // only on the member's own read-only token, so it names no permission.
         $group->post('/calendar/feed-link', [CalendarController::class, 'replaceFeed'])

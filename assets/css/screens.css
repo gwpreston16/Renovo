@@ -1819,6 +1819,14 @@ tr.is-passed > td {
     }
 }
 
+/*
+ * The list drawn in place of the grid on a `?view=list` page: shown at every
+ * width, since the grid is not on that page at all.
+ */
+.calendar-narrow.is-listed {
+    display: block;
+}
+
 /* ------------------------------------------------------- my subscriptions */
 
 /* The KPI tiles give up their card margin; the strip keeps the row's spacing. */
