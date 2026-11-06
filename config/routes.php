@@ -325,6 +325,11 @@ return static function (App $app): void {
             ->setName('forecast-scenario')
             ->add($requires(Permission::ViewSubscriptions));
 
+        // Phase 86: a row's change-price controls, fetched when it is set to Change.
+        $group->get('/forecast/scenario/rows/{id:[0-9]+}/controls', [ForecastController::class, 'rowControls'])
+            ->setName('forecast-scenario-row-controls')
+            ->add($requires(Permission::ViewSubscriptions));
+
         $group->post('/forecast/scenario', [ForecastController::class, 'submit'])
             ->setName('forecast-scenario-submit')
             ->add($requires(Permission::ViewSubscriptions));

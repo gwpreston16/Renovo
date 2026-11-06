@@ -174,7 +174,7 @@ None.
 - [x] K185: the list posts every row action through one form; both layouts kept
 - [x] K183: the Stats table posts through one form; every row kept
 - [x] K184: the calendar sends the grid; the phone list loads on demand, with a link fallback
-- [ ] K181: the planner draws change controls only for rows set to Change
+- [x] K181: the planner draws change controls only for rows set to Change
 - [ ] Before and after sizes recorded for all four
 - [ ] Browser check at 375, 768 and 1280 px, light and dark; keyboard check
 - [ ] Rows marked Fixed in known-issues.md

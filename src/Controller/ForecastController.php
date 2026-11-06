@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Domain\BillingCycle;
 use App\I18n\Translator;
 use App\Security\SessionInterface;
 use App\Service\CatchUpService;
@@ -90,6 +91,35 @@ final class ForecastController extends Controller
         }
 
         return $this->render($request, $response, 'forecast/scenario.twig', $data);
+    }
+
+    /**
+     * One row's change-price controls (K181).
+     *
+     * The planner draws a price, cycle and days field only for a row whose
+     * choice is Change; choosing Change on a row asks for that row's here.
+     * The row is read through the scoped list like the page's, so another
+     * household's id and one the member cannot see are the same 404 as any
+     * other missing row. Nothing is written.
+     */
+    public function rowControls(
+        ServerRequestInterface $request,
+        ResponseInterface $response,
+        string $id,
+    ): ResponseInterface {
+        $scope = $this->scope($request);
+        $id = (int) $id;
+
+        $row = $this->scenarios->rowFor($scope, $id, $request->getQueryParams());
+        if ($row === null) {
+            throw $this->notFound($request);
+        }
+
+        return $this->render($request, $response, 'forecast/_scenario_change.twig', [
+            'row' => $row,
+            'id' => $id,
+            'cycles' => BillingCycle::cases(),
+        ]);
     }
 
     /**

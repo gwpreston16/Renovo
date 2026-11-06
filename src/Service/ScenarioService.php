@@ -99,6 +99,54 @@ final class ScenarioService
     }
 
     /**
+     * One planner row on its own, for the change-price controls a row asks for
+     * when its choice becomes Change (K181).
+     *
+     * Read through the same scoped list as the planner, so a subscription the
+     * member cannot see, or one that is not plannable, is null exactly as it
+     * is absent from the page.
+     *
+     * @param array<mixed> $query The request's query parameters.
+     * @return array<string, mixed>|null
+     */
+    public function rowFor(Scope $scope, int $id, array $query): ?array
+    {
+        $eligible = $this->eligible($scope);
+        if (!isset($eligible[$id])) {
+            return null;
+        }
+
+        return $this->rowOf($eligible[$id], Scenario::fromQuery($query, $eligible), $this->filters($query));
+    }
+
+    /**
+     * The planner's data for one subscription: its choice, what was typed and
+     * what was refused, and the figures the row shows. Shared by the page and
+     * the row-controls request, so the two cannot describe a row differently.
+     *
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     */
+    private function rowOf(Subscription $subscription, Scenario $scenario, array $filters): array
+    {
+        return [
+            'subscription' => $subscription,
+            'is_shown' => $this->matches($subscription, $filters),
+            'choice' => $scenario->choiceFor($subscription->id),
+            'input' => $scenario->inputFor($subscription->id),
+            'errors' => $scenario->errorsFor($subscription->id),
+            'price' => $this->priceOf($subscription),
+            'cycle_value' => $this->cycleOf($subscription)?->value,
+            'cycle_days' => $subscription->isTrial
+                ? $subscription->cycleDaysAfterConversion()
+                : $subscription->cycleDays,
+            'cycle_interval' => $subscription->isTrial
+                ? $subscription->cycleIntervalAfterConversion()
+                : $subscription->cycleInterval,
+        ];
+    }
+
+    /**
      * The whole planner: its rows, the filters that narrow them, and the
      * results panel.
      *
@@ -117,21 +165,7 @@ final class ScenarioService
 
         $rows = [];
         foreach ($eligible as $subscription) {
-            $rows[] = [
-                'subscription' => $subscription,
-                'is_shown' => $this->matches($subscription, $filters),
-                'choice' => $scenario->choiceFor($subscription->id),
-                'input' => $scenario->inputFor($subscription->id),
-                'errors' => $scenario->errorsFor($subscription->id),
-                'price' => $this->priceOf($subscription),
-                'cycle_value' => $this->cycleOf($subscription)?->value,
-                'cycle_days' => $subscription->isTrial
-                    ? $subscription->cycleDaysAfterConversion()
-                    : $subscription->cycleDays,
-                'cycle_interval' => $subscription->isTrial
-                    ? $subscription->cycleIntervalAfterConversion()
-                    : $subscription->cycleInterval,
-            ];
+            $rows[] = $this->rowOf($subscription, $scenario, $filters);
         }
 
         return [
