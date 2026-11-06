@@ -887,7 +887,8 @@ Responses: `201`/`200`, `400`, `401`, `403`, `404` (on `PUT`), `422`.
 #### `DELETE /api/v1/categories/{id}`
 
 Removes the category and unassigns it: every subscription in it gets a null
-`category_id`. No subscription is deleted. Responses: `204`, `401`, `403`,
+`category_id`. No subscription is deleted. The category's budgets are deleted
+with it. Responses: `204`, `401`, `403`,
 `404`.
 
 #### `GET /api/v1/payment-methods`

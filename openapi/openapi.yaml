@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.12"
+  version: "1.9.13"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -1118,7 +1118,8 @@ paths:
       summary: Delete a category.
       description: |
         Its subscriptions are unassigned (their `category_id` becomes null);
-        none of them is deleted.
+        none of them is deleted. Budgets set on the category are deleted with
+        it.
       responses:
         "204":
           headers:

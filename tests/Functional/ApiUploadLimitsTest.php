@@ -17,8 +17,11 @@ use Slim\Psr7\Factory\ServerRequestFactory;
  * for an attachment).
  *
  * The other upload tests shrink the limits so they can use small fixtures;
- * this one wires the shipped defaults, so a change to a default fails here and
- * the documented numbers have to move with it.
+ * this one wires the shipped defaults. The constants below are the numbers
+ * `UploadLimitDocsTest::testTheStatedLimitsAreTheShippedDefaults` pins to
+ * `config/settings.php`, so a changed default fails there and the constants and
+ * the documentation have to move together. Both sides of the line are tested:
+ * one byte over is refused, and exactly the limit is not refused for its size.
  */
 final class ApiUploadLimitsTest extends ApiTestCase
 {
@@ -56,7 +59,10 @@ final class ApiUploadLimitsTest extends ApiTestCase
     {
         return [
             LogoStorage::class => new LogoStorage($this->directory . '/logos', self::LOGO_LIMIT),
-            AttachmentStorage::class => new AttachmentStorage($this->directory . '/attachments', self::ATTACHMENT_LIMIT),
+            AttachmentStorage::class => new AttachmentStorage(
+                $this->directory . '/attachments',
+                self::ATTACHMENT_LIMIT,
+            ),
         ];
     }
 
@@ -89,6 +95,36 @@ final class ApiUploadLimitsTest extends ApiTestCase
         self::assertSame(422, $response->getStatusCode(), (string) $response->getBody());
         self::assertArrayHasKey('file', $this->decode($response)['error']['errors'] ?? []);
         self::assertSame([], (array) glob($this->directory . '/attachments/*'));
+    }
+
+    public function testALogoOfExactlyOneMegabyteIsNotRefusedForItsSize(): void
+    {
+        $id = $this->createSubscription();
+
+        $response = $this->upload(
+            '/api/v1/subscriptions/' . $id . '/logo',
+            'logo',
+            FakeUpload::of($this->paddedPng(self::LOGO_LIMIT), 'edge.png'),
+        );
+
+        // The limit is `>`, not `>=`. The padded bytes may or may not decode as
+        // an image, but whatever is said of them, the size message must not be.
+        self::assertStringNotContainsString('or smaller', (string) $response->getBody());
+    }
+
+    public function testAnAttachmentOfExactlyTenMegabytesIsAccepted(): void
+    {
+        $id = $this->createSubscription();
+        $bytes = "%PDF-1.4\n" . str_repeat('0', self::ATTACHMENT_LIMIT - 9);
+        self::assertSame(self::ATTACHMENT_LIMIT, strlen($bytes));
+
+        $response = $this->upload(
+            '/api/v1/subscriptions/' . $id . '/attachments',
+            'file',
+            FakeUpload::of($bytes, 'edge.pdf'),
+        );
+
+        self::assertStringNotContainsString('or smaller', (string) $response->getBody());
     }
 
     /**

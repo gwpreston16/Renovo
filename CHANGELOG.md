@@ -20,8 +20,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   over 10 MB is documented as a 422 on `logo` or `file`, with the limit and the
   variable that changes it. `UPLOAD_MAX_LOGO_BYTES` and
   `UPLOAD_MAX_ATTACHMENT_BYTES` join `UPLOAD_MAX_AVATAR_BYTES` on the
-  configuration page. Documentation and tests only: no behaviour, no new field
-  or endpoint, and no migration. *Phase 82.*
+  configuration page. OpenAPI 1.9.13 describes it. Documentation and tests
+  only: no behaviour, no new field or endpoint, and no migration. *Phase 82.*
 
 ## [1.39.0] - 2026-11-06
 

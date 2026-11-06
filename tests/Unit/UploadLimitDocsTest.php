@@ -28,7 +28,11 @@ final class UploadLimitDocsTest extends TestCase
         $example = $this->read('.env.example');
 
         foreach ($names as $name) {
-            self::assertStringContainsString('`' . $name . '`', $configuration, $name . ' is not in docs/configuration.md.');
+            self::assertStringContainsString(
+                '`' . $name . '`',
+                $configuration,
+                $name . ' is not in docs/configuration.md.',
+            );
             self::assertStringContainsString($name . '=', $example, $name . ' is not in .env.example.');
         }
     }
@@ -38,10 +42,34 @@ final class UploadLimitDocsTest extends TestCase
         $prose = $this->read('docs/api.md');
         $spec = $this->read('openapi/openapi.yaml');
 
-        foreach (['UPLOAD_MAX_LOGO_BYTES' => '1048576', 'UPLOAD_MAX_ATTACHMENT_BYTES' => '10485760'] as $name => $bytes) {
+        $limits = [
+            'UPLOAD_MAX_LOGO_BYTES' => ['bytes' => '1048576', 'prose' => '1 MB (1,048,576 bytes)'],
+            'UPLOAD_MAX_ATTACHMENT_BYTES' => ['bytes' => '10485760', 'prose' => '10 MB (10,485,760 bytes)'],
+        ];
+
+        foreach ($limits as $name => $limit) {
             self::assertStringContainsString($name, $prose);
+            self::assertStringContainsString($limit['prose'], $prose, $name . ': the prose states a different limit.');
             self::assertStringContainsString($name, $spec);
-            self::assertStringContainsString($bytes, $spec);
+            self::assertStringContainsString($limit['bytes'], $spec);
+        }
+    }
+
+    /**
+     * The numbers the API pages state are the defaults the application ships
+     * with: change a default in `config/settings.php` and this fails until the
+     * documentation, the example env file and the upload test move with it.
+     */
+    public function testTheStatedLimitsAreTheShippedDefaults(): void
+    {
+        $settings = $this->read('config/settings.php');
+        $example = $this->read('.env.example');
+
+        $defaults = ['UPLOAD_MAX_LOGO_BYTES' => '1048576', 'UPLOAD_MAX_ATTACHMENT_BYTES' => '10485760'];
+
+        foreach ($defaults as $name => $bytes) {
+            self::assertStringContainsString("\$env('" . $name . "', '" . $bytes . "')", $settings);
+            self::assertStringContainsString($name . '=' . $bytes, $example);
         }
     }
 
