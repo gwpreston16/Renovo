@@ -729,6 +729,10 @@ final class ScenarioPlannerTest extends DatabaseTestCase
         $id = $this->streamingId;
 
         self::assertMatchesRegularExpression('#<form[^>]*id="scenario-form"[^>]*autocomplete="off"#', $html);
+        // A failed fetch is reported once, from the form, through the page's
+        // status line; the slot is not a live region reading out form fields.
+        self::assertSame(1, substr_count($html, 'data-change-failed="The price fields did not load.'));
+        self::assertDoesNotMatchRegularExpression('#id="scenario-change-' . $id . '"[^>]*aria-live#', $html);
         self::assertMatchesRegularExpression(
             '#name="choice\[' . $id . '\]" value="change"[^>]*'
             . 'hx-get="/forecast/scenario/rows/' . $id . '/controls"[^>]*'

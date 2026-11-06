@@ -30,6 +30,7 @@ async function load(container) {
         return;
     }
     container.dataset.listState = 'loading';
+    showLoading(container, true);
 
     try {
         const response = await fetch(container.getAttribute('data-calendar-list'), {
@@ -42,10 +43,33 @@ async function load(container) {
         // A swap may have replaced the month while the request was out.
         if (container.isConnected) {
             container.innerHTML = html;
+            container.removeAttribute('aria-busy');
             container.dataset.listState = 'loaded';
         }
     } catch {
         delete container.dataset.listState;
+        showLoading(container, false);
+    }
+}
+
+/**
+ * While the list loads, a "Loading the list…" line stands where the link was
+ * and the container is marked busy. A reader is never offered a button that
+ * is about to vanish under their finger. A failure puts the link back.
+ */
+function showLoading(container, loading) {
+    const link = container.querySelector('.calendar-list-link');
+    const status = container.querySelector('.calendar-list-loading');
+    if (link) {
+        link.hidden = loading;
+    }
+    if (status) {
+        status.hidden = !loading;
+    }
+    if (loading) {
+        container.setAttribute('aria-busy', 'true');
+    } else {
+        container.removeAttribute('aria-busy');
     }
 }
 

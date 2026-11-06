@@ -1827,6 +1827,29 @@ tr.is-passed > td {
     display: block;
 }
 
+/* The way back to the grid: from tablet width up, where the grid shows. */
+.calendar-to-grid {
+    margin: 0 0 1rem;
+}
+
+@media (max-width: 767px) {
+    .calendar-to-grid {
+        display: none;
+    }
+}
+
+/* Holds the link's line while the list loads, so the card does not jump twice. */
+.calendar-list-loading {
+    margin: 0;
+    min-height: 2.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.calendar-list-loading[hidden] {
+    display: none;
+}
+
 /* ------------------------------------------------------- my subscriptions */
 
 /* The KPI tiles give up their card margin; the strip keeps the row's spacing. */

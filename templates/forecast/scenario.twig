@@ -51,6 +51,7 @@
         #}
         <form class="card scenario-rows" id="scenario-form" method="post" action="/forecast/scenario"
               aria-labelledby="scenario-rows-heading" autocomplete="off"
+              data-change-failed="{{ t('scenario.change_failed') }}"
               hx-get="/forecast/scenario" hx-target="#scenario-results" hx-swap="outerHTML"
               hx-trigger="change, renovo:typed delay:500ms" data-typed-trigger
               hx-sync="this:replace">
@@ -147,8 +148,12 @@
                                 and choosing another choice empties it
                                 (`scenario-form.js`). Without script the form's own round
                                 trip redraws the page with every Change row's controls.
+                                Not a live region: focus stays on the radio and the fields
+                                follow it in reading order. If the fetch fails the row goes
+                                back to Keep and the page's status line says so, with the
+                                form's `data-change-failed` sentence (once, not per row).
                             #}
-                            <div class="scenario-change" id="scenario-change-{{ id }}" aria-live="polite">
+                            <div class="scenario-change" id="scenario-change-{{ id }}">
                                 {% if row.choice == 'change' %}
                                     {% include 'forecast/_scenario_change.twig' %}
                                 {% endif %}

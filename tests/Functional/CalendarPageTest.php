@@ -494,8 +494,26 @@ final class CalendarPageTest extends DatabaseTestCase
         self::assertNotNull($today);
         self::assertSame('/calendar?mine=1&view=list', $today->getAttribute('href'));
 
+        // The list holds every item of every day, so there is no open-day
+        // panel beside it; the way back to the grid is a link (hidden on a
+        // phone by the stylesheet).
+        self::assertNull($this->find($page, '//*[@id="calendar-day"]'));
+        $back = $this->find($page, '//*[contains(@class, "calendar-to-grid")]//a');
+        self::assertNotNull($back);
+        self::assertSame('/calendar?month=2026-09', $back->getAttribute('href'));
+        self::assertSame('Show as grid', $this->squash($back->textContent));
+        $back = $this->find($mine, '//*[contains(@class, "calendar-to-grid")]//a');
+        self::assertNotNull($back);
+        self::assertSame('/calendar?month=2026-09&mine=1', $back->getAttribute('href'));
+
         // The grid page keeps its plain Today and adds no list field.
         $grid = $this->page('/calendar?month=2026-09');
+        self::assertNotNull($this->find($grid, '//*[@id="calendar-day"]'));
+        self::assertNull($this->find($grid, '//*[contains(@class, "calendar-to-grid")]'));
+        $loading = $this->find($grid, '//*[@data-calendar-list]//*[contains(@class, "calendar-list-loading")]');
+        self::assertNotNull($loading, 'the script has a loading line to show');
+        self::assertTrue($loading->hasAttribute('hidden'));
+        self::assertSame('status', $loading->getAttribute('role'));
         $today = $this->find($grid, '//*[@id="calendar-today"]');
         self::assertNotNull($today);
         self::assertSame('/calendar', $today->getAttribute('href'));

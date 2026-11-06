@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, expect, test } from 'vitest';
-import { loadApp, unloadApp } from './load-app.js';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { htmx, loadApp, unloadApp } from './load-app.js';
 
 /*
  * K181: a row's price, cycle and days fields exist only while it is set to
@@ -7,7 +7,11 @@ import { loadApp, unloadApp } from './load-app.js';
  * server); switching away drops the fields here.
  */
 beforeEach(async () => {
-    document.body.innerHTML = `<form id="scenario-form" method="post" action="/forecast/scenario">
+    // jsdom has no layout, so scrollIntoView is absent.
+    Element.prototype.scrollIntoView = vi.fn();
+    document.body.innerHTML = `<div data-save-error role="status"></div>
+    <form id="scenario-form" method="post" action="/forecast/scenario"
+          data-change-failed="The price fields did not load.">
         <input type="radio" name="choice[5]" value="keep">
         <input type="radio" name="choice[5]" value="cancel">
         <input type="radio" name="choice[5]" value="change" checked>
@@ -42,4 +46,32 @@ test('choosing Change leaves the slot for the radio\'s own request to fill', () 
     choose('change');
 
     expect(document.getElementById('scenario-change-5').children).toHaveLength(1);
+});
+
+test('controls that fail to load put the row back on Keep and say so', () => {
+    const radio = document.querySelector('input[name="choice[5]"][value="change"]');
+    htmx('responseError', radio, { target: document.getElementById('scenario-change-5') });
+
+    expect(document.querySelector('input[name="choice[5]"][value="keep"]').checked).toBe(true);
+    expect(document.getElementById('scenario-change-5').children).toHaveLength(0);
+    expect(document.querySelector('[data-save-error]').textContent).toBe('The price fields did not load.');
+});
+
+test('a failure somewhere else on the page leaves the planner alone', () => {
+    const other = document.createElement('div');
+    other.id = 'somewhere-else';
+    document.body.append(other);
+    htmx('sendError', other, { target: other });
+
+    expect(document.querySelector('input[name="choice[5]"][value="change"]').checked).toBe(true);
+    expect(document.querySelector('[data-save-error]').textContent).toBe('');
+});
+
+test('choosing Change again clears the failure from the status line', () => {
+    const slot = document.getElementById('scenario-change-5');
+    const radio = document.querySelector('input[name="choice[5]"][value="change"]');
+    htmx('responseError', radio, { target: slot });
+    htmx('beforeRequest', radio, { target: slot });
+
+    expect(document.querySelector('[data-save-error]').textContent).toBe('');
 });

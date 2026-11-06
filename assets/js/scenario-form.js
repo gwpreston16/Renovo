@@ -129,6 +129,50 @@ function onChoiceChange(event) {
     document.getElementById(`scenario-change-${choice[1]}`)?.replaceChildren();
 }
 
+const SLOT = /^scenario-change-(\d+)$/;
+
+/**
+ * A row's controls that fail to load leave it on Keep, not on Change with no
+ * fields to type in, and the page's status line (`data-save-error`, the one
+ * every failed save uses) says what happened. Back on Keep, choosing Change
+ * again fires a fresh change event, which is the retry.
+ */
+function onControlsFailed(event) {
+    const slot = event.detail && event.detail.target;
+    const row = slot instanceof Element ? SLOT.exec(slot.id) : null;
+    const form = document.getElementById(FORM);
+    if (!row || !form) {
+        return;
+    }
+
+    slot.replaceChildren();
+    const keep = form.querySelector(`input[name="choice[${row[1]}]"][value="keep"]`);
+    if (keep instanceof HTMLInputElement) {
+        keep.checked = true;
+    }
+
+    const status = document.querySelector('[data-save-error]');
+    if (status) {
+        // Cleared and refilled so a repeat of the same failure is read out again.
+        status.textContent = '';
+        status.textContent = form.dataset.changeFailed || '';
+        status.scrollIntoView({block: 'nearest'});
+    }
+}
+
+/** A fresh fetch of a row's controls starts clean: the old failure is no longer news. */
+function onControlsRequest(event) {
+    const slot = event.detail && event.detail.target;
+    const form = document.getElementById(FORM);
+    const status = document.querySelector('[data-save-error]');
+    if (!(slot instanceof Element) || !SLOT.test(slot.id) || !form || !status) {
+        return;
+    }
+    if (status.textContent === form.dataset.changeFailed) {
+        status.textContent = '';
+    }
+}
+
 let bound = false;
 
 export function enhanceScenarioForm() {
@@ -140,4 +184,8 @@ export function enhanceScenarioForm() {
     document.addEventListener('htmx:configRequest', onConfigRequest);
     document.addEventListener('submit', onSubmit);
     document.addEventListener('change', onChoiceChange);
+    document.addEventListener('htmx:responseError', onControlsFailed);
+    document.addEventListener('htmx:sendError', onControlsFailed);
+    document.addEventListener('htmx:timeout', onControlsFailed);
+    document.addEventListener('htmx:beforeRequest', onControlsRequest);
 }
