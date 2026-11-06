@@ -176,7 +176,8 @@ None.
 - [x] K184: the calendar sends the grid; the phone list loads on demand, with a link fallback (495,819 to 66,286 bytes; month partial 473,614 to 44,081)
 - [x] K181: the planner draws change controls only for rows set to Change (1,518,771 to 923,271 bytes)
 - [x] Before and after sizes recorded for all four (300 subscriptions, weekly and monthly, measured on this branch against its start commit)
-- [x] Browser check on a 300-subscription instance (1024 px and 375 px; shared-form actions, per-row confirm, Used it, calendar list incl. month change, planner Change/Keep); 768 px, dark mode and screenshots not checked
+- [x] Browser check on a 300-subscription instance (1024 px and 375 px; shared-form actions, per-row confirm, Used it, calendar list incl. month change, planner Change/Keep)
+- [x] Browser check at 768 and 1280 px, light and dark, on the demo household (19 subscriptions), after the merge-review fixes. No page scrolls sideways. The calendar shows the grid from 768 px and fetches the list only below it (checked at 767). `?view=list` and its Today link keep the list. The planner's Change control fetches its fields with no error and Keep removes them. The form is `autocomplete="off"`. Keyboard: a row's tab order is unchanged (checkbox, name, Edit, Pause, Cancel, Delete). Enter on Pause and Space on Resume send that row's own action through the shared form. The shared forms hold only hidden fields, so Enter in a text field cannot press a row's button. Cancel and Delete were not pressed: the confirm dialog stalls browser automation, so `tests/js/confirm-button.test.js` covers them. Already on master, unchanged here: the subscriptions table is 15 px wider than its card at 1280 px and scrolls inside it.
 - [x] Rows marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed / Changed
 - [x] ROADMAP: Phase 86 row marked ✅ done
