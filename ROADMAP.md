@@ -91,7 +91,7 @@ can be moved.
 | 80 | [Service-level test gaps, from the known-issues log](docs/phases/PHASE-80.md) | — | None | ✅ done |
 | 81 | [API subscription reads and deletes, from the known-issues log](docs/phases/PHASE-81.md) | — | None | ✅ done |
 | 82 | [API contract documentation, from the known-issues log](docs/phases/PHASE-82.md) | — | None | ✅ done |
-| 83 | [Digest and split tests, and API token expiry on MySQL, from the known-issues log](docs/phases/PHASE-83.md) | — | None | 📋 planned |
+| 83 | [Digest and split tests, and API token expiry on MySQL, from the known-issues log](docs/phases/PHASE-83.md) | — | None | 🚧 in progress |
 | 84 | [Reminder runs do less work, from the known-issues log](docs/phases/PHASE-84.md) | — | None | 📋 planned |
 | 85 | [API reminder strings and translated 400/401 titles, from the known-issues log](docs/phases/PHASE-85.md) | — | None | 📋 planned |
 | 86 | [Lighter pages for big households, from the known-issues log](docs/phases/PHASE-86.md) | — | None | 📋 planned |
