@@ -6,6 +6,7 @@ namespace App\Tests\Integration;
 
 use App\Domain\AlertType;
 use App\Notification\Alert;
+use DateTimeImmutable;
 
 /**
  * What a run costs when most of what it finds was told on an earlier day
@@ -34,6 +35,9 @@ final class ReminderRunCostTest extends NotificationTestCase
         self::assertSame(0, $sentMany);
         self::assertSame([], $this->notifier->sent);
         self::assertSame($costFew, $costMany, 'thirty-three settled alerts cost what three do');
+        // Not load-bearing (the equality above is): a ceiling a little over
+        // what a batch costs now (4 on MySQL), so a query added per alert is
+        // caught at once.
         self::assertLessThanOrEqual(6, $costMany, 'a bounded number of reads for the whole batch');
     }
 
@@ -74,6 +78,36 @@ final class ReminderRunCostTest extends NotificationTestCase
         $sent = $this->dispatcher->dispatch($this->user($this->alice), [$alert]);
 
         self::assertSame(0, $sent);
+        self::assertSame([], $this->notifier->sent);
+    }
+
+    public function testAPendingClaimIsNotSettledAndIsTakenOverOncePastItsLease(): void
+    {
+        $channel = $this->addChannel($this->alice);
+        $alert = $this->alert(1);
+        $id = $this->log->claim(
+            $this->alice,
+            $channel,
+            $alert->type,
+            $alert->subjectType,
+            $alert->subjectId,
+            $alert->occurrenceKey,
+            self::MAX_ATTEMPTS,
+        );
+        self::assertNotNull($id);
+
+        // Another run holds it, within its lease: refused, as claim() always did.
+        self::assertSame(0, $this->dispatcher->dispatch($this->user($this->alice), [$alert]));
+
+        // Past the lease the run is presumed dead and the claim is taken over.
+        $this->clock->advanceTo(new DateTimeImmutable('2026-09-15 08:20:00'));
+        self::assertSame(1, $this->dispatcher->dispatch($this->user($this->alice), [$alert]));
+    }
+
+    public function testAUserWithNoChannelsAndNoAlertsDispatchesNothing(): void
+    {
+        self::assertSame(0, $this->dispatcher->dispatch($this->user($this->alice), [$this->alert(1)]));
+        self::assertSame(0, $this->dispatcher->dispatch($this->user($this->alice), []));
         self::assertSame([], $this->notifier->sent);
     }
 

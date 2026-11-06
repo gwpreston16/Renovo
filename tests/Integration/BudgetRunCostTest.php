@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration;
 
 use App\Domain\BudgetPeriod;
+use App\Domain\IsolationMode;
 use App\Domain\Role;
 use App\Service\BudgetService;
 
@@ -98,15 +99,49 @@ final class BudgetRunCostTest extends NotificationTestCase
     public function testTheAlertsOfARunAreWhatTheyWereForOwnerAndSubject(): void
     {
         // Bob owns a budget he is over, and is the subject of Alice's, which
-        // Alice's run recorded as crossed.
-        $this->addChannel($this->bob);
-        $this->budget($this->bob, BudgetPeriod::Monthly, (string) $this->bob, '5.00');
-        $this->budget($this->alice, BudgetPeriod::Monthly, (string) $this->alice, '5.00');
+        // Alice's own run measures as crossed and saves. Carol's budget is
+        // nothing to do with him.
+        $own = $this->budget($this->bob, BudgetPeriod::Monthly, (string) $this->bob, '5.00');
+        $aboutBob = $this->budget($this->alice, BudgetPeriod::Monthly, (string) $this->bob, '5.00');
         $this->budget($this->carol, BudgetPeriod::Monthly, (string) $this->carol, '5.00');
 
+        $this->scanner->evaluateBudgets($this->scope($this->alice));
         $alerts = $this->scanner->evaluateBudgets($this->scope($this->bob));
 
-        self::assertCount(1, $alerts, 'the owner is told of his own crossing, and of no one else\'s');
+        $ids = array_map(static fn ($alert): int => $alert->subjectId, $alerts);
+        sort($ids);
+        self::assertSame([$own, $aboutBob], $ids, 'his own crossing and the one about him, and no one else\'s');
+    }
+
+    public function testARunInAnIsolatedHouseholdMeasuresOnlyWhatItActsOnAndAsProgressDoes(): void
+    {
+        $ownAboutCarol = $this->budget($this->bob, BudgetPeriod::Monthly, (string) $this->carol, '5.00');
+        $own = $this->budget($this->bob, BudgetPeriod::Monthly, (string) $this->bob, '5.00');
+        $aboutBob = $this->budget($this->alice, BudgetPeriod::Monthly, (string) $this->bob, '5.00');
+        $carols = $this->budget($this->carol, BudgetPeriod::Monthly, (string) $this->carol, '5.00');
+
+        $scope = $this->scope($this->bob, IsolationMode::Isolated);
+        $full = [];
+        foreach ($this->budgets->progress($scope) as $row) {
+            $full[$row['budget']->id] = $row;
+        }
+        $forRun = [];
+        foreach ($this->budgets->progressForRun($scope) as $row) {
+            $forRun[$row['budget']->id] = $row;
+        }
+
+        self::assertArrayNotHasKey($carols, $forRun, 'no other member\'s own budget is in a run');
+        // The isolated scope sees exactly the budgets the run acts on, and
+        // each is what progress() gives it.
+        self::assertSame([$ownAboutCarol, $own, $aboutBob], array_keys($forRun));
+        foreach ([$ownAboutCarol, $own] as $id) {
+            self::assertEquals($full[$id], $forRun[$id]);
+        }
+        self::assertTrue(
+            $forRun[$ownAboutCarol]['unavailable'],
+            'he cannot measure Carol in an isolated household',
+        );
+        self::assertFalse($forRun[$aboutBob]['unavailable'], 'a budget about him is always readable by him');
     }
 
     private function statementsForARunOf(int $userId): int
