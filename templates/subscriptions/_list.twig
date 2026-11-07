@@ -33,7 +33,8 @@
     {% else %}
         {#
             The bulk bar is its own form, not a form around the table: the row
-            actions are forms of their own, and a form cannot contain another.
+            actions post through a form of their own, and a form cannot contain
+            another.
             The row checkboxes join it with the `form` attribute instead. It is
             drawn open, so it works without script; `subscription-list.js`
             hides it until something is selected and keeps the count.
@@ -96,6 +97,18 @@
             {% if can_bulk %}
                 <p class="hint bulk-hint">{{ t('subscriptions_list.convert_note') }}</p>
             {% endif %}
+        </form>
+
+        {#
+            The one form every row action posts through (K185). The buttons in
+            both layouts name it with `form` and carry their own `formaction`,
+            so the page holds one form and one CSRF field however many rows it
+            lists, instead of three of each per row in each copy. It has no
+            controls of its own. Each action's route still checks the role and
+            the row on its own: sharing a form is not the enforcement.
+        #}
+        <form id="list-actions" method="post">
+            {{ csrf_field() }}
         </form>
 
         <div class="table-scroll subscription-table">
@@ -409,44 +422,36 @@
             </a>
             {% if subscription.isCancelled %}
                 {# Undoing a cancel lands on Paused, so it cannot restart charges unasked. #}
-                <form method="post" action="/subscriptions/{{ subscription.id }}/uncancel" class="inline">
-                    {{ csrf_field() }}
-                    <button type="submit" class="icon-action" title="{{ t('subscriptions_list.uncancel') }}"
-                            aria-label="{{ t('subscriptions_list.uncancel_name', {'name': subscription.name}) }}">
-                        {{ icon('refresh') }}<span class="icon-action-label">{{ t('subscriptions_list.uncancel') }}</span>
-                    </button>
-                </form>
+                <button type="submit" form="list-actions" formaction="/subscriptions/{{ subscription.id }}/uncancel"
+                        class="icon-action" title="{{ t('subscriptions_list.uncancel') }}"
+                        aria-label="{{ t('subscriptions_list.uncancel_name', {'name': subscription.name}) }}">
+                    {{ icon('refresh') }}<span class="icon-action-label">{{ t('subscriptions_list.uncancel') }}</span>
+                </button>
             {% else %}
                 {% set pause_label = subscription.isActive ? t('subscriptions_list.pause') : t('subscriptions_list.resume') %}
-                <form method="post" action="/subscriptions/{{ subscription.id }}/toggle" class="inline">
-                    {{ csrf_field() }}
-                    <button type="submit" class="icon-action" title="{{ pause_label }}"
-                            aria-label="{{ subscription.isActive
-                                ? t('subscriptions_list.pause_name', {'name': subscription.name})
-                                : t('subscriptions_list.resume_name', {'name': subscription.name}) }}">
-                        {{ icon(subscription.isActive ? 'pause' : 'play') }}<span class="icon-action-label">{{ pause_label }}</span>
-                    </button>
-                </form>
+                <button type="submit" form="list-actions" formaction="/subscriptions/{{ subscription.id }}/toggle"
+                        class="icon-action" title="{{ pause_label }}"
+                        aria-label="{{ subscription.isActive
+                            ? t('subscriptions_list.pause_name', {'name': subscription.name})
+                            : t('subscriptions_list.resume_name', {'name': subscription.name}) }}">
+                    {{ icon(subscription.isActive ? 'pause' : 'play') }}<span class="icon-action-label">{{ pause_label }}</span>
+                </button>
                 {% set cancel_label = subscription.isTrial ? t('subscriptions_list.cancel_trial') : t('subscriptions_list.cancel') %}
-                <form method="post" action="/subscriptions/{{ subscription.id }}/cancel" class="inline"
-                      data-confirm="{{ t('confirm.cancel_subscription', {'name': subscription.name}) }}">
-                    {{ csrf_field() }}
-                    <button type="submit" class="icon-action" title="{{ cancel_label }}"
-                            aria-label="{{ t('subscriptions_list.cancel_name', {'name': subscription.name}) }}">
-                        {{ icon('close') }}<span class="icon-action-label">{{ cancel_label }}</span>
-                    </button>
-                </form>
+                <button type="submit" form="list-actions" formaction="/subscriptions/{{ subscription.id }}/cancel"
+                        class="icon-action" title="{{ cancel_label }}"
+                        data-confirm="{{ t('confirm.cancel_subscription', {'name': subscription.name}) }}"
+                        aria-label="{{ t('subscriptions_list.cancel_name', {'name': subscription.name}) }}">
+                    {{ icon('close') }}<span class="icon-action-label">{{ cancel_label }}</span>
+                </button>
             {% endif %}
         {% endif %}
         {% if row.can_delete %}
-            <form method="post" action="/subscriptions/{{ subscription.id }}/delete" class="inline"
-                  data-confirm="{{ t('confirm.delete_subscription', {'name': subscription.name}) }}">
-                {{ csrf_field() }}
-                <button type="submit" class="icon-action icon-action-danger" title="{{ t('action.delete') }}"
-                        aria-label="{{ t('subscriptions_list.delete_name', {'name': subscription.name}) }}">
-                    {{ icon('delete') }}<span class="icon-action-label">{{ t('action.delete') }}</span>
-                </button>
-            </form>
+            <button type="submit" form="list-actions" formaction="/subscriptions/{{ subscription.id }}/delete"
+                    class="icon-action icon-action-danger" title="{{ t('action.delete') }}"
+                    data-confirm="{{ t('confirm.delete_subscription', {'name': subscription.name}) }}"
+                    aria-label="{{ t('subscriptions_list.delete_name', {'name': subscription.name}) }}">
+                {{ icon('delete') }}<span class="icon-action-label">{{ t('action.delete') }}</span>
+            </button>
         {% endif %}
         {% if not row.can_update %}
             <a class="icon-action" href="/subscriptions/{{ subscription.id }}/money"

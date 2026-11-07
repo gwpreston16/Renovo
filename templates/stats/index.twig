@@ -104,6 +104,17 @@
             {% if value_signals is empty %}
                 <p class="muted empty">{{ t('stats.value_empty') }}</p>
             {% else %}
+                {#
+                    The one form every "Used it" button posts through (K183): the
+                    buttons name it with `form` and carry their own `formaction`,
+                    so 300 rows cost one form and one CSRF field, not 300 of
+                    each. The route still refuses a Viewer or a row the member
+                    may not change; drawing the button is not the enforcement.
+                #}
+                <form id="usage-form" method="post">
+                    {{ csrf_field() }}
+                    <input type="hidden" name="return_to" value="/stats">
+                </form>
                 <div class="table-scroll">
                     <table class="table">
                         <thead>
@@ -162,12 +173,10 @@
                                 </td>
                                 <td class="actions">
                                     {% if can(scope, 'usage.record') and can_edit_row(scope, subscription) %}
-                                        <form method="post" action="/subscriptions/{{ subscription.id }}/usage"
-                                              class="inline">
-                                            {{ csrf_field() }}
-                                            <input type="hidden" name="return_to" value="/stats">
-                                            <button type="submit" class="button button-quiet">{{ t('stats.used_it') }}</button>
-                                        </form>
+                                        {# Named per row: eighteen identical "Used it" buttons say nothing to a screen reader. #}
+                                        <button type="submit" form="usage-form" class="button button-quiet"
+                                                formaction="/subscriptions/{{ subscription.id }}/usage"
+                                                aria-label="{{ t('stats.used_it_name', {'name': subscription.name}) }}">{{ t('stats.used_it') }}</button>
                                     {% endif %}
                                 </td>
                             </tr>

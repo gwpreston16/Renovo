@@ -1239,6 +1239,7 @@ return [
     'calendar.kind_charge' => 'Charge',
     'calendar.kind_trial' => 'Trial ends',
     'calendar.legend' => 'Key',
+    'calendar.list_loading' => 'Loading the list…',
     'calendar.month_navigation' => 'Month navigation',
     'calendar.month_total' => 'Month total',
     'calendar.more' => '+{count} more',
@@ -1247,6 +1248,8 @@ return [
     'calendar.nothing_on_day' => 'Nothing due on this day.',
     'calendar.previous_month' => 'Previous month',
     'calendar.selected' => 'selected',
+    'calendar.show_as_grid' => 'Show as grid',
+    'calendar.show_as_list' => 'Show as list',
     'calendar.summary' => 'Month summary',
 
     // cancellations
@@ -1775,6 +1778,7 @@ return [
     'scenario.any_tag' => 'Any tag',
     'scenario.by_row' => 'Change by change',
     'scenario.change_action' => 'Change the price',
+    'scenario.change_failed' => 'The price fields did not load. Choose Change price to try again.',
     'scenario.change_name' => 'Change the price of {name}',
     'scenario.choice_cancel' => 'Cancel',
     'scenario.choice_change' => 'Change price',
@@ -2079,6 +2083,7 @@ return [
         . 'per-currency figures below are the complete picture; a combined number leaving that spending '
         . 'out would not be.',
     'stats.used_it' => 'Used it',
+    'stats.used_it_name' => 'Used it: {name}',
     'stats.uses_per_month' => '{count} / month',
     'stats.value_empty' => 'No active recurring subscriptions to rank.',
     'stats.value_note' =>

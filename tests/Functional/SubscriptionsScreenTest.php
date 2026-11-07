@@ -861,6 +861,95 @@ final class SubscriptionsScreenTest extends DatabaseTestCase
         );
     }
 
+    /**
+     * K185: every row action posts through the page's one shared form, so the
+     * number of forms and CSRF fields is the same for 9 rows as for 25.
+     */
+    public function testTheListHasOneActionsFormHoweverManyRowsItShows(): void
+    {
+        $before = $this->section($this->body($this->get('/subscriptions', $this->ownerId)), 'subscription-list');
+
+        $subscriptions = new SubscriptionRepository($this->db);
+        $owner = $this->scopeFor($this->ownerId);
+        for ($i = 1; $i <= 16; $i++) {
+            $subscriptions->create($owner, [
+                'name' => 'Extra ' . $i,
+                'price_minor' => 100 * $i,
+                'currency' => 'GBP',
+                'subscription_type' => 'recurring',
+                'billing_cycle' => 'monthly',
+                'next_payment_date' => (new DateTimeImmutable('+30 days'))->format('Y-m-d'),
+                'start_date' => '2025-01-01',
+                'is_active' => true,
+            ], []);
+        }
+        $after = $this->section($this->body($this->get('/subscriptions', $this->ownerId)), 'subscription-list');
+
+        self::assertGreaterThan(
+            substr_count($before, 'class="subscription-card '),
+            substr_count($after, 'class="subscription-card '),
+            'the second page must show more rows',
+        );
+
+        // The bulk bar and the shared actions form: two, whatever the rows.
+        self::assertSame(2, substr_count($before, '<form '));
+        self::assertSame(2, substr_count($after, '<form '));
+        self::assertSame(
+            substr_count($before, CsrfTokenManager::FIELD_NAME),
+            substr_count($after, CsrfTokenManager::FIELD_NAME),
+        );
+        self::assertSame(1, substr_count($after, 'id="list-actions"'));
+    }
+
+    /** K185: each action button joins the shared form and keeps its own URL and question. */
+    public function testEveryRowActionButtonNamesTheSharedForm(): void
+    {
+        $list = $this->section($this->body($this->get('/subscriptions', $this->ownerId)), 'subscription-list');
+
+        $document = new DOMDocument();
+        $document->loadHTML('<?xml encoding="utf-8" ?>' . $list, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        $buttons = (new DOMXPath($document))->query('//button[@formaction][contains(@formaction, "/subscriptions/")]');
+
+        self::assertNotFalse($buttons);
+        self::assertGreaterThan(0, $buttons->length);
+        // Delete and Cancel ask first; Pause/Resume and Undo cancel do not.
+        // The question moved from each row's form to its button, so a lost
+        // one would otherwise go unnoticed.
+        $asked = ['delete' => 0, 'cancel' => 0, 'toggle' => 0];
+        foreach ($buttons as $button) {
+            self::assertInstanceOf(DOMElement::class, $button);
+            self::assertSame('list-actions', $button->getAttribute('form'));
+            $formAction = $button->getAttribute('formaction');
+            $action = substr($formAction, (int) strrpos($formAction, '/') + 1);
+            if (in_array($action, ['delete', 'cancel'], true)) {
+                self::assertNotSame('', $button->getAttribute('data-confirm'), $action . ' asks first');
+            } elseif (in_array($action, ['toggle', 'uncancel'], true)) {
+                self::assertFalse($button->hasAttribute('data-confirm'), $action . ' sends unasked');
+            }
+            if (isset($asked[$action])) {
+                $asked[$action]++;
+            }
+        }
+        foreach ($asked as $action => $count) {
+            self::assertGreaterThan(0, $count, 'the list draws a ' . $action . ' button');
+        }
+
+        // No row has a form of its own any more.
+        self::assertStringNotContainsString('class="inline"', $list);
+
+        // Every row action now rides on this form's one token, and a form
+        // nested in another is dropped by the parser (its buttons would then
+        // post the outer form), so both are pinned here.
+        $xpath = new DOMXPath($document);
+        $token = $xpath->query(
+            '//form[@id="list-actions"]/input[@name="' . CsrfTokenManager::FIELD_NAME . '"]/@value',
+        );
+        self::assertNotFalse($token);
+        self::assertSame(1, $token->length, 'the shared form carries the CSRF field');
+        self::assertNotSame('', trim((string) $token->item(0)?->nodeValue));
+        self::assertSame(0, $xpath->query('//form[@id="list-actions"]/ancestor::form')?->length);
+    }
+
     public function testTheBulkBarIsBackAndItsCheckboxesJoinItsForm(): void
     {
         $list = $this->section($this->body($this->get('/subscriptions', $this->ownerId)), 'subscription-list');

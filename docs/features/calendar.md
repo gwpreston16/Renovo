@@ -74,3 +74,11 @@ Weeks start on Monday or Sunday, per account, under **Profile → Appearance & p
 It is a preference rather than a property of the locale on purpose: `en_GB` and
 `en_US` disagree, and plenty of people read a Monday-first calendar in an
 American locale because that is how their working week runs.
+
+On a phone (below 768px) the grid gives way to a list of the days that have
+something on them. The page sends the grid only; a small script asks for the
+list (`/calendar/list?month=`, scoped exactly like the grid) and puts it in
+place, again after each month or day change, so a desktop never downloads a
+list its screen hides. Without script a phone reader gets a **Show as list**
+link to the same month with the list in place of the grid
+(`?month=…&view=list`).

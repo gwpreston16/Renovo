@@ -9,8 +9,11 @@
  * left out of the request, and the request is as long as the changes made
  * rather than the number of subscriptions.
  *
- * The form is still complete in the page: what was typed into a row stays in
- * its fields, so choosing Change again shows it. Only the request is trimmed.
+ * A row's price, cycle and days fields exist only while the row is set to
+ * Change (K181): choosing Change fetches them (an htmx request from the radio
+ * itself), and choosing Keep or Cancel here drops them again, so a row left on
+ * Keep sends nothing and the page carries three fields only for the rows being
+ * changed. The form's own round trip redraws every Change row's fields.
  *
  * Without script the form posts whole (it is a POST, so no address length
  * applies) and the server answers with the short address
@@ -108,6 +111,68 @@ function onSubmit(event) {
     }, 0);
 }
 
+/**
+ * A row switched to Keep or Cancel gives up its change-price controls.
+ * Switching to Change is the radio's own htmx request, which fills them.
+ */
+function onChoiceChange(event) {
+    const radio = event.target;
+    if (!(radio instanceof HTMLInputElement) || radio.type !== 'radio' || !radio.checked) {
+        return;
+    }
+
+    const choice = CHOICE_FIELD.exec(radio.name);
+    if (!choice || radio.value === 'change' || !radio.form || radio.form.id !== FORM) {
+        return;
+    }
+
+    document.getElementById(`scenario-change-${choice[1]}`)?.replaceChildren();
+}
+
+const SLOT = /^scenario-change-(\d+)$/;
+
+/**
+ * A row's controls that fail to load leave it on Keep, not on Change with no
+ * fields to type in, and the page's status line (`data-save-error`, the one
+ * every failed save uses) says what happened. Back on Keep, choosing Change
+ * again fires a fresh change event, which is the retry.
+ */
+function onControlsFailed(event) {
+    const slot = event.detail && event.detail.target;
+    const row = slot instanceof Element ? SLOT.exec(slot.id) : null;
+    const form = document.getElementById(FORM);
+    if (!row || !form) {
+        return;
+    }
+
+    slot.replaceChildren();
+    const keep = form.querySelector(`input[name="choice[${row[1]}]"][value="keep"]`);
+    if (keep instanceof HTMLInputElement) {
+        keep.checked = true;
+    }
+
+    const status = document.querySelector('[data-save-error]');
+    if (status) {
+        // Cleared and refilled so a repeat of the same failure is read out again.
+        status.textContent = '';
+        status.textContent = form.dataset.changeFailed || '';
+        status.scrollIntoView({block: 'nearest'});
+    }
+}
+
+/** A fresh fetch of a row's controls starts clean: the old failure is no longer news. */
+function onControlsRequest(event) {
+    const slot = event.detail && event.detail.target;
+    const form = document.getElementById(FORM);
+    const status = document.querySelector('[data-save-error]');
+    if (!(slot instanceof Element) || !SLOT.test(slot.id) || !form || !status) {
+        return;
+    }
+    if (status.textContent === form.dataset.changeFailed) {
+        status.textContent = '';
+    }
+}
+
 let bound = false;
 
 export function enhanceScenarioForm() {
@@ -118,4 +183,9 @@ export function enhanceScenarioForm() {
 
     document.addEventListener('htmx:configRequest', onConfigRequest);
     document.addEventListener('submit', onSubmit);
+    document.addEventListener('change', onChoiceChange);
+    document.addEventListener('htmx:responseError', onControlsFailed);
+    document.addEventListener('htmx:sendError', onControlsFailed);
+    document.addEventListener('htmx:timeout', onControlsFailed);
+    document.addEventListener('htmx:beforeRequest', onControlsRequest);
 }

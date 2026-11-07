@@ -575,6 +575,179 @@ final class ScenarioPlannerTest extends DatabaseTestCase
         );
     }
 
+    /**
+     * K181: a row hidden by a filter and set to Change still carries its
+     * fields, so the filters narrow what is shown and never what is planned.
+     */
+    public function testAHiddenChangeRowKeepsItsFields(): void
+    {
+        $category = $this->db->insert('categories', [
+            'household_id' => $this->householdId,
+            'name' => 'Fitness',
+            'created_at' => '2026-01-01 00:00:00',
+            'updated_at' => '2026-01-01 00:00:00',
+        ]);
+        $this->db->execute(
+            'UPDATE subscriptions SET category_id = :category WHERE id = :id',
+            ['category' => $category, 'id' => $this->gymId],
+        );
+
+        $html = $this->body($this->get(
+            sprintf(
+                '/forecast/scenario?category=%d&change[%d][price]=7.77',
+                $category,
+                $this->streamingId,
+            ),
+            $this->ownerId,
+        ));
+
+        self::assertMatchesRegularExpression(
+            '#id="scenario-row-' . $this->streamingId . '"\s+hidden>#',
+            $html,
+        );
+        self::assertStringContainsString('name="change[' . $this->streamingId . '][price]"', $html);
+        self::assertStringContainsString('value="7.77"', $html);
+        // The shown Keep row has none.
+        self::assertStringNotContainsString('name="change[' . $this->gymId . '][price]"', $html);
+    }
+
+    /**
+     * K181: the row-controls request answers the same markup the full page
+     * draws for that row.
+     */
+    public function testTheRowControlsAreTheMarkupThePageDrawsForThatRow(): void
+    {
+        // A typed price alone makes the row a Change; no `choice` means no redirect.
+        $query = sprintf('change[%d][price]=7.77', $this->adobeId);
+
+        $page = $this->body($this->get('/forecast/scenario?' . $query, $this->ownerId));
+        self::assertSame(1, preg_match(
+            '#<div class="scenario-change" id="scenario-change-' . $this->adobeId . '"[^>]*>(.*?)</div>\s*</li>#s',
+            $page,
+            $drawn,
+        ));
+
+        $response = $this->get('/forecast/scenario/rows/' . $this->adobeId . '/controls?' . $query, $this->ownerId);
+        self::assertSame(200, $response->getStatusCode());
+        $fragment = $this->body($response);
+
+        $squash = static fn (string $html): string => preg_replace('/\s+/', ' ', trim($html)) ?? '';
+        self::assertStringNotContainsString('<html', $fragment);
+        self::assertSame($squash($drawn[1]), $squash($fragment));
+        self::assertStringContainsString('name="change[' . $this->adobeId . '][price]"', $fragment);
+
+        // Asked for with just the radio's own value, as htmx sends it: empty fields.
+        $bare = $this->body($this->get(
+            '/forecast/scenario/rows/' . $this->adobeId . '/controls?choice[' . $this->adobeId . ']=change',
+            $this->ownerId,
+        ));
+        self::assertStringContainsString('name="change[' . $this->adobeId . '][days]"', $bare);
+        self::assertStringNotContainsString('7.77', $bare);
+        // Nothing typed yet is not a mistake: the fresh fields carry no error.
+        self::assertStringNotContainsString('aria-invalid', $bare);
+        self::assertStringNotContainsString('field-error', $bare);
+
+        // A mistyped price, on the other hand, is shown on the fetched fields.
+        $typo = $this->body($this->get(
+            '/forecast/scenario/rows/' . $this->adobeId . '/controls?change[' . $this->adobeId . '][price]=lots',
+            $this->ownerId,
+        ));
+        self::assertStringContainsString('aria-invalid="true"', $typo);
+    }
+
+    /**
+     * K181, scoping: the row-controls route reads through the scoped list, so
+     * an id the member cannot see, another household's row and one that is not
+     * plannable are the 404 any missing row is; a Viewer, who may plan, may ask.
+     */
+    public function testTheRowControlsRequestIsScoped(): void
+    {
+        $users = new UserRepository($this->db);
+        $other = $users->create('out@example.test', 'Out', 'hash', false, new DateTimeImmutable());
+        $otherHousehold = (new HouseholdRepository($this->db))->create('Other', $other);
+        (new MembershipRepository($this->db))->create($otherHousehold, $other, Role::OwnerAdmin);
+        $foreign = $this->create(
+            Scope::forMember($other, false, $otherHousehold, Role::OwnerAdmin, IsolationMode::Shared),
+            'Foreign thing',
+            900,
+            'monthly',
+            '2026-02-09',
+        );
+        $controls = fn (int $id, int $user): int => $this->get(
+            '/forecast/scenario/rows/' . $id . '/controls',
+            $user,
+        )->getStatusCode();
+        self::assertSame(404, $controls($foreign, $this->ownerId));
+
+        // Paused rows are not offered by the planner, so not by its controls.
+        self::assertSame(404, $controls($this->pausedId, $this->ownerId));
+        self::assertSame(404, $controls(999999, $this->ownerId));
+
+        $private = $this->create(
+            $this->scopeFor($this->ownerId, Role::OwnerAdmin),
+            'Private thing',
+            900,
+            'monthly',
+            '2026-02-09',
+            ['visibility' => 'payer'],
+        );
+        self::assertSame(404, $controls($private, $this->editorId));
+
+        $this->container()->get(InstanceSettingsService::class)->setIsolationMode(IsolationMode::Isolated);
+        self::assertSame(404, $controls($this->streamingId, $this->editorId));
+        self::assertSame(200, $controls($this->editorsId, $this->editorId));
+
+        $this->container()->get(InstanceSettingsService::class)->setIsolationMode(IsolationMode::Shared);
+        self::assertSame(200, $controls($this->streamingId, $this->viewerId));
+    }
+
+    /** K181: the controls route is behind sign-in like the planner it serves. */
+    public function testTheRowControlsRequestSendsASignedOutReaderToSignIn(): void
+    {
+        $this->session->clear();
+
+        $response = $this->app->handle(
+            (new ServerRequestFactory())->createServerRequest(
+                'GET',
+                '/forecast/scenario/rows/' . $this->streamingId . '/controls',
+            ),
+        );
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertStringStartsWith('/login', $response->getHeaderLine('Location'));
+        self::assertStringNotContainsString('change[' . $this->streamingId . ']', (string) $response->getBody());
+    }
+
+    /**
+     * K181: only a row's Change radio fetches its controls, into that row's
+     * slot; and the form does not let the browser restore radios the server
+     * did not draw, which would show Change with no fields.
+     */
+    public function testOnlyTheChangeRadioFetchesTheRowsControls(): void
+    {
+        $html = $this->body($this->get('/forecast/scenario', $this->ownerId));
+        $id = $this->streamingId;
+
+        self::assertMatchesRegularExpression('#<form[^>]*id="scenario-form"[^>]*autocomplete="off"#', $html);
+        // A failed fetch is reported once, from the form, through the page's
+        // status line; the slot is not a live region reading out form fields.
+        self::assertSame(1, substr_count($html, 'data-change-failed="The price fields did not load.'));
+        self::assertDoesNotMatchRegularExpression('#id="scenario-change-' . $id . '"[^>]*aria-live#', $html);
+        self::assertMatchesRegularExpression(
+            '#name="choice\[' . $id . '\]" value="change"[^>]*'
+            . 'hx-get="/forecast/scenario/rows/' . $id . '/controls"[^>]*'
+            . 'hx-target="\#scenario-change-' . $id . '"#',
+            $html,
+        );
+        self::assertStringContainsString('id="scenario-change-' . $id . '"', $html);
+        foreach (['keep', 'cancel'] as $choice) {
+            self::assertDoesNotMatchRegularExpression(
+                '#name="choice\[' . $id . '\]" value="' . $choice . '"[^>]*hx-get=#',
+                $html,
+            );
+        }
+    }
+
     // ------------------------------------------------------------ ways in and out
 
     public function testIfYouCancelledAndTheCostPageOpenThePlannerWithTheRowSetToCancel(): void

@@ -13,7 +13,10 @@
 {% import 'calendar/_figures.twig' as figures %}
 {% import 'calendar/_kind.twig' as kind %}
 
-{% set mine_query = mine_only ? '&mine=1' : '' %}
+{# Paging, Today and choosing a day keep the list form a phone reader asked for. #}
+{% set mine_query = (mine_only ? '&mine=1' : '') ~ (list_view ? '&view=list' : '') %}
+{# Today names no month, so the same filters open its query string. #}
+{% set today_url = '/calendar' ~ (mine_query ? '?' ~ mine_query|slice(1) : '') %}
 {% set month_key = calendar.month|date('Y-m') %}
 
 <div id="calendar-month" class="calendar-month">
@@ -33,8 +36,8 @@
 
             <nav class="calendar-nav" aria-label="{{ t('calendar.month_navigation') }}">
                 <a id="calendar-today" class="button button-outline calendar-today"
-                   href="/calendar{{ mine_only ? '?mine=1' : '' }}"
-                   hx-get="/calendar{{ mine_only ? '?mine=1' : '' }}"
+                   href="{{ today_url }}"
+                   hx-get="{{ today_url }}"
                    hx-target="#calendar-month" hx-sync="#calendar-month:replace" hx-swap="outerHTML" hx-push-url="true">{{ t('state.today') }}</a>
 
                 {#
@@ -65,6 +68,7 @@
             </nav>
         </header>
 
+        {% if not list_view %}
         <div class="calendar-wide">
             <div class="table-scroll">
             <table class="calendar-grid">
@@ -138,40 +142,48 @@
             </ul>
         </div>
 
+        {% endif %}
+
         {#
-            The phone form: the days with something on them, as a list. Each
-            names its own weekday — there are no column headings to lean on —
-            from the reader's locale.
+            The phone form: the days with something on them, as a list. It is
+            not sent with the month (K184): a desktop reader would download a
+            list their screen hides. Below 768px `calendar-list.js` fetches it
+            from `data-calendar-list` and puts it here, after the first load
+            and after each month or day swap. Without script, the link is the
+            way to it: the same month with the list in place of the grid.
         #}
-        <div class="calendar-narrow">
-            {% if calendar.days is empty %}
-                <p class="muted empty">{{ t('calendar.nothing_due') }}</p>
-            {% else %}
-                <ol class="plain calendar-list">
-                    {% for day in calendar.days %}
-                        <li class="calendar-list-day{{ day.is_today ? ' is-today' : '' }}"
-                            data-weekday="{{ day.date|local_date('EEE') }}">
-                            <h3 class="calendar-list-heading">
-                                <span>
-                                    {{- day.date|local_date('EEE d MMM') -}}
-                                    {%- if day.is_today %} <span class="badge badge-ok">{{ t('state.today') }}</span>{% endif -%}
-                                </span>
-                                {% if day.figures %}
-                                    <span class="num">{{ figures.inline(day.figures) }}</span>
-                                {% endif %}
-                            </h3>
-                            <ul class="plain calendar-items">
-                                {% for item in day.items %}
-                                    {% include 'calendar/_item.twig' %}
-                                {% endfor %}
-                            </ul>
-                        </li>
-                    {% endfor %}
-                </ol>
-            {% endif %}
-        </div>
+        {#
+            While the script fetches the list it shows the loading line in
+            place of the link, and puts the link back if the request fails.
+            A `?view=list` page reached at tablet or desktop width (a shared
+            link, a widened window) offers the grid back; a phone hides that
+            link, since its screen hides the grid.
+        #}
+        {% if list_view %}
+            <div class="calendar-narrow is-listed">
+                <p class="calendar-to-grid">
+                    <a class="button button-outline"
+                       href="/calendar?month={{ month_key }}{{ mine_only ? '&mine=1' : '' }}">{{ t('calendar.show_as_grid') }}</a>
+                </p>
+                {% include 'calendar/_list.twig' %}
+            </div>
+        {% else %}
+            <div class="calendar-narrow" data-calendar-list="/calendar/list?month={{ month_key }}{{ mine_only ? '&mine=1' : '' }}">
+                <p class="calendar-list-link">
+                    <a class="button button-outline"
+                       href="/calendar?month={{ month_key }}&amp;view=list{{ mine_query }}">{{ t('calendar.show_as_list') }}</a>
+                </p>
+                <p class="muted calendar-list-loading" role="status" hidden>{{ t('calendar.list_loading') }}</p>
+            </div>
+        {% endif %}
     </section>
 
-    {% include 'calendar/_day.twig' with {'day': calendar.selected} %}
+    {#
+        The list already holds every item of every day, so the list form has
+        no open-day panel: beside the list at a wide width it only repeated it.
+    #}
+    {% if not list_view %}
+        {% include 'calendar/_day.twig' with {'day': calendar.selected} %}
+    {% endif %}
     {% include 'calendar/_summary.twig' %}
 </div>

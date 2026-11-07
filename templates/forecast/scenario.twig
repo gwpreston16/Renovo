@@ -42,8 +42,16 @@
     {% endif %}
 
     <div class="scenario-planner" id="scenario-planner">
+        {#
+            autocomplete="off": a browser that restored the radios after a
+            reload or Back could show a row on Change with no fields, because
+            the server drew it as Keep and no change event fires to fetch them
+            (K181). The page's address already holds every valid change, so
+            the server's rendering is the state to show.
+        #}
         <form class="card scenario-rows" id="scenario-form" method="post" action="/forecast/scenario"
-              aria-labelledby="scenario-rows-heading"
+              aria-labelledby="scenario-rows-heading" autocomplete="off"
+              data-change-failed="{{ t('scenario.change_failed') }}"
               hx-get="/forecast/scenario" hx-target="#scenario-results" hx-swap="outerHTML"
               hx-trigger="change, renovo:typed delay:500ms" data-typed-trigger
               hx-sync="this:replace">
@@ -121,48 +129,34 @@
                                     {% for choice in ['keep', 'cancel', 'change'] %}
                                         <label class="segmented-option">
                                             <input type="radio" name="choice[{{ id }}]" value="{{ choice }}"
-                                                   {{ row.choice == choice ? 'checked' : '' }}>
+                                                   {{ row.choice == choice ? 'checked' : '' }}
+                                                   {%- if choice == 'change' %}
+                                                   hx-get="/forecast/scenario/rows/{{ id }}/controls"
+                                                   hx-target="#scenario-change-{{ id }}" hx-swap="innerHTML"
+                                                   hx-trigger="change" hx-sync="this:replace"
+                                                   {%- endif %}>
                                             {{ t('scenario.choice_' ~ choice) }}
                                         </label>
                                     {% endfor %}
                                 </span>
                             </fieldset>
+                            {#
+                                The change-price controls are drawn only for a row set to
+                                Change (K181), so a household of 300 does not send 900
+                                fields it mostly hides. A row set to Keep or Cancel has an
+                                empty slot; choosing Change fetches its controls into it
+                                and choosing another choice empties it
+                                (`scenario-form.js`). Without script the form's own round
+                                trip redraws the page with every Change row's controls.
+                                Not a live region: focus stays on the radio and the fields
+                                follow it in reading order. If the fetch fails the row goes
+                                back to Keep and the page's status line says so, with the
+                                form's `data-change-failed` sentence (once, not per row).
+                            #}
                             <div class="scenario-change" id="scenario-change-{{ id }}">
-                                <div class="field">
-                                    <label for="scenario-price-{{ id }}">{{ t('scenario.new_price') }}</label>
-                                    <div class="input-group">
-                                        <input type="text" id="scenario-price-{{ id }}" name="change[{{ id }}][price]"
-                                               inputmode="decimal" class="num" value="{{ row.input.price }}"
-                                               placeholder="{{ row.price.toDecimalString }}"
-                                               {% if row.errors.price is defined %}aria-invalid="true" aria-describedby="scenario-price-error-{{ id }}"{% endif %}>
-                                        <span class="input-unit">{{ row.price.currency }}</span>
-                                    </div>
-                                    {% if row.errors.price is defined %}
-                                        <p class="field-error" id="scenario-price-error-{{ id }}">{{ error_message(row.errors.price) }}</p>
-                                    {% endif %}
-                                </div>
-                                <div class="field">
-                                    <label for="scenario-cycle-{{ id }}">{{ t('scenario.new_cycle') }}</label>
-                                    <select id="scenario-cycle-{{ id }}" name="change[{{ id }}][cycle]"
-                                            {% if row.errors.cycle is defined %}aria-invalid="true"{% endif %}>
-                                        <option value="">{{ t('scenario.same_cycle') }}</option>
-                                        {% for cycle in cycles %}
-                                            <option value="{{ cycle.value }}" {{ row.input.cycle == cycle.value ? 'selected' : '' }}>{{ cycle_label(cycle.value) }}</option>
-                                        {% endfor %}
-                                    </select>
-                                    {% if row.errors.cycle is defined %}
-                                        <p class="field-error">{{ error_message(row.errors.cycle) }}</p>
-                                    {% endif %}
-                                </div>
-                                <div class="field scenario-days">
-                                    <label for="scenario-days-{{ id }}">{{ t('scenario.cycle_days') }}</label>
-                                    <input type="number" id="scenario-days-{{ id }}" name="change[{{ id }}][days]"
-                                           min="1" max="3650" class="num" value="{{ row.input.days }}"
-                                           {% if row.errors.days is defined %}aria-invalid="true" aria-describedby="scenario-days-error-{{ id }}"{% endif %}>
-                                    {% if row.errors.days is defined %}
-                                        <p class="field-error" id="scenario-days-error-{{ id }}">{{ error_message(row.errors.days) }}</p>
-                                    {% endif %}
-                                </div>
+                                {% if row.choice == 'change' %}
+                                    {% include 'forecast/_scenario_change.twig' %}
+                                {% endif %}
                             </div>
                         </li>
                     {% endfor %}

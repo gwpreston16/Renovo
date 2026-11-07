@@ -18,6 +18,7 @@ use App\Repository\PaymentMethodRepository;
 use App\Repository\PriceHistoryRepository;
 use App\Repository\SubscriptionRepository;
 use App\Repository\UserRepository;
+use App\Security\CsrfTokenManager;
 use App\Security\Scope;
 use App\Security\SessionInterface;
 use App\Service\AnalyticsScreenService;
@@ -800,7 +801,7 @@ final class AnalyticsScreenTest extends DatabaseTestCase
     public function testTheRetainedUsageFormStillPostsAndReturnsHere(): void
     {
         $body = $this->body($this->get('/stats', $this->ownerId));
-        self::assertStringContainsString('action="/subscriptions/' . $this->hostingId . '/usage"', $body);
+        self::assertStringContainsString('formaction="/subscriptions/' . $this->hostingId . '/usage"', $body);
         self::assertStringContainsString('name="return_to" value="/stats"', $body);
 
         $response = $this->post('/subscriptions/' . $this->hostingId . '/usage', $this->ownerId, [
@@ -813,6 +814,45 @@ final class AnalyticsScreenTest extends DatabaseTestCase
         $recorded = (new SubscriptionRepository($this->db))
             ->find($this->scopeFor($this->ownerId), $this->hostingId);
         self::assertSame(1, $recorded?->usageCount);
+    }
+
+    /**
+     * K183: the "Worth it?" table posts every "Used it" through one form, so the
+     * page holds one usage form however many subscriptions it lists, and each
+     * button names it and posts to its own subscription.
+     */
+    public function testTheWorthItTablePostsThroughOneUsageForm(): void
+    {
+        $body = $this->body($this->get('/stats', $this->ownerId));
+
+        self::assertSame(1, substr_count($body, 'id="usage-form"'));
+        self::assertSame(1, substr_count($body, 'name="return_to" value="/stats"'));
+
+        $pattern = '/<button[^>]*form="usage-form"[^>]*formaction="(\/subscriptions\/\d+\/usage)"/';
+        preg_match_all($pattern, $body, $matches);
+        self::assertContains('/subscriptions/' . $this->hostingId . '/usage', $matches[1]);
+        self::assertCount(count($matches[1]), array_unique($matches[1]), 'one button per subscription');
+        // No row carries a form of its own any more.
+        self::assertStringNotContainsString(' action="/subscriptions/' . $this->hostingId . '/usage"', $body);
+
+        // Every "Used it" rides on the shared form's one token; the form sits
+        // in no other form, or the parser would drop it.
+        $document = new DOMDocument();
+        $document->loadHTML('<?xml encoding="utf-8" ?>' . $body, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        $xpath = new DOMXPath($document);
+        $token = $xpath->query(
+            '//form[@id="usage-form"]/input[@name="' . CsrfTokenManager::FIELD_NAME . '"]/@value',
+        );
+        self::assertNotFalse($token);
+        self::assertSame(1, $token->length, 'the shared form carries the CSRF field');
+        self::assertNotSame('', trim((string) $token->item(0)?->nodeValue));
+        self::assertSame(0, $xpath->query('//form[@id="usage-form"]/ancestor::form')?->length);
+
+        // Each button is named for its row, so a screen reader can tell them apart.
+        self::assertMatchesRegularExpression(
+            '#formaction="/subscriptions/' . $this->hostingId . '/usage"\s+aria-label="Used it: Hosting">Used it<#',
+            $body,
+        );
     }
 
     /**

@@ -1563,7 +1563,7 @@ tr.is-passed > td {
 }
 
 .calendar-day-total {
-    font-size: 0.625rem;
+    font-size: var(--size-caption);
     color: var(--faint);
     white-space: nowrap;
     overflow: hidden;
@@ -1581,7 +1581,8 @@ tr.is-passed > td {
     min-width: 0;
     padding: 0.125rem 0.3rem;
     border-radius: var(--radius-small);
-    font-size: 0.625rem;
+    /* 11px, the floor for a name a reader has to read; the cell ellipsises it. */
+    font-size: var(--size-caption);
     font-weight: var(--weight-bold);
     line-height: 1.35;
     white-space: nowrap;
@@ -1817,6 +1818,37 @@ tr.is-passed > td {
     .calendar-narrow {
         display: block;
     }
+}
+
+/*
+ * The list drawn in place of the grid on a `?view=list` page: shown at every
+ * width, since the grid is not on that page at all.
+ */
+.calendar-narrow.is-listed {
+    display: block;
+}
+
+/* The way back to the grid: from tablet width up, where the grid shows. */
+.calendar-to-grid {
+    margin: 0 0 1rem;
+}
+
+@media (max-width: 767px) {
+    .calendar-to-grid {
+        display: none;
+    }
+}
+
+/* Holds the link's line while the list loads, so the card does not jump twice. */
+.calendar-list-loading {
+    margin: 0;
+    min-height: 2.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.calendar-list-loading[hidden] {
+    display: none;
 }
 
 /* ------------------------------------------------------- my subscriptions */
@@ -2340,10 +2372,6 @@ a.segmented-option {
     flex-direction: column;
     align-items: stretch;
     min-width: 11rem;
-}
-
-.row-menu .row-actions form {
-    display: block;
 }
 
 .row-menu .icon-action {

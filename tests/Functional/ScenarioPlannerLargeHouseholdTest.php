@@ -187,6 +187,86 @@ final class ScenarioPlannerLargeHouseholdTest extends DatabaseTestCase
     }
 
     /**
+     * K181: only a row set to Change carries a price, cycle and days field. A
+     * Keep or Cancel row has none, a Change row has all three with what was
+     * typed and what was refused.
+     */
+    public function testOnlyAChangeRowCarriesChangeFields(): void
+    {
+        $html = $this->page(http_build_query([
+            'choice' => [$this->ids[7] => 'change', $this->ids[8] => 'cancel'],
+            'change' => [$this->ids[7] => ['price' => 'lots', 'cycle' => 'yearly', 'days' => '']],
+        ]));
+
+        self::assertSame(3, substr_count($html, 'name="change['), 'three fields, for the one Change row');
+        foreach (['price', 'cycle', 'days'] as $field) {
+            self::assertStringContainsString('name="change[' . $this->ids[7] . '][' . $field . ']"', $html);
+            self::assertStringNotContainsString('name="change[' . $this->ids[8] . '][' . $field . ']"', $html);
+            self::assertStringNotContainsString('name="change[' . $this->ids[9] . '][' . $field . ']"', $html);
+        }
+        self::assertStringContainsString('value="lots"', $html);
+        self::assertStringContainsString('aria-invalid="true"', $html);
+        self::assertMatchesRegularExpression('/<option value="yearly"\s+selected>/', $html);
+
+        // Every row still carries its three choices, so a Keep row can be changed.
+        self::assertSame(self::ROWS * 3, substr_count($html, 'name="choice['));
+    }
+
+    /** K181: the page's weight per subscription is bounded now that Keep rows draw no fields. */
+    public function testThePlannerPageIsLightPerRow(): void
+    {
+        $html = $this->page('');
+
+        // About 4.8 KB a row before (1,471 KB at 300); the choices and the
+        // row's own text are what is left, a little over 3 KB.
+        self::assertLessThan(self::ROWS * 3400, strlen($html));
+    }
+
+    /**
+     * K181, the no-script round trip: several rows set to Change redraw with
+     * every choice and every typed value kept.
+     */
+    public function testSeveralChangeRowsRedrawWithEveryTypedValue(): void
+    {
+        $html = $this->page(http_build_query([
+            'choice' => [$this->ids[10] => 'change', $this->ids[200] => 'change', $this->ids[299] => 'cancel'],
+            'change' => [
+                $this->ids[10] => ['price' => '11.50'],
+                $this->ids[200] => ['price' => '12.25', 'days' => ''],
+            ],
+        ]));
+
+        self::assertSame(6, substr_count($html, 'name="change['));
+        self::assertStringContainsString('value="11.50"', $html);
+        self::assertStringContainsString('value="12.25"', $html);
+        foreach ([[10, 'change'], [200, 'change'], [299, 'cancel']] as [$position, $choice]) {
+            self::assertMatchesRegularExpression(
+                '/name="choice\[' . $this->ids[$position] . '\]" value="' . $choice . '"\s+checked/',
+                $html,
+            );
+        }
+    }
+
+    private function page(string $query): string
+    {
+        $request = (new ServerRequestFactory())->createServerRequest('GET', '/forecast/scenario?' . $query);
+
+        $this->session->set(AuthenticationMiddleware::SESSION_USER_ID, $this->ownerId);
+        $this->session->set(AuthenticationMiddleware::SESSION_HOUSEHOLD_ID, $this->householdId);
+        $response = $this->app->handle($request);
+
+        // A clean scenario is answered with its short address, as in a browser.
+        if ($response->getStatusCode() === 302) {
+            $request = (new ServerRequestFactory())
+                ->createServerRequest('GET', $response->getHeaderLine('Location'));
+            $response = $this->app->handle($request);
+        }
+        self::assertSame(200, $response->getStatusCode());
+
+        return (string) $response->getBody();
+    }
+
+    /**
      * @param array<string, mixed> $form
      */
     private function post(array $form): ResponseInterface

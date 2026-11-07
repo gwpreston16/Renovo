@@ -234,7 +234,8 @@ main.container {
     border-radius: var(--radius-pill);
     background: var(--surface-2);
     color: var(--muted);
-    font-size: var(--size-caption);
+    /* The label size, not the caption: it is a sentence a member reads, not a tag. */
+    font-size: var(--size-label);
     font-weight: var(--weight-medium);
     white-space: nowrap;
 }
@@ -296,6 +297,17 @@ main.container {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/*
+ * Where the subtitle shows, the page title keeps its full width: the
+ * subtitle gives way first (it shrinks a hundred times faster and ends in an
+ * ellipsis), so a longer subtitle never cuts "Analytics" to "Analyti…".
+ */
+@media (min-width: 900px) {
+    .topbar-title {
+        flex-shrink: 0;
+    }
 }
 
 .topbar-actions {
@@ -556,7 +568,8 @@ a.rates-chip:hover {
 
 .sidebar-tagline {
     color: var(--rail-accent);
-    font-size: 0.625rem;
+    /* 11px: the smallest size a label is still read at, not glanced past. */
+    font-size: var(--size-caption);
     font-weight: var(--weight-semibold);
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -818,7 +831,7 @@ a.sidebar-version:hover {
         margin: 0;
         padding: 1.125rem 0.75rem 0.375rem;
         color: var(--rail-faint);
-        font-size: 0.625rem;
+        font-size: var(--size-caption);
         font-weight: var(--weight-bold);
         text-transform: uppercase;
         letter-spacing: 0.08em;
@@ -1224,6 +1237,16 @@ a.sidebar-version:hover {
     margin: 0;
 }
 
+/*
+ * A paragraph of help keeps a readable measure however wide its card is:
+ * about 75 characters, since `ch` is a zero's width and a sentence's
+ * letters run narrower.
+ */
+p.hint,
+p.field-hint {
+    max-width: 60ch;
+}
+
 .empty {
     padding: 1rem 0;
 }
@@ -1294,7 +1317,20 @@ a.sidebar-version:hover {
     text-align: right;
 }
 
-.table tr.is-paused {
+/*
+ * A paused row recedes without losing its words. Fading the whole row (the
+ * old `opacity: 0.55`) took its payment name and status badge below 4.5:1;
+ * now the row's plain text turns muted, a colour every palette passes on the
+ * card, and only the pictures (the logo tile, the payer's face) fade. The
+ * name keeps its link colour (`.cell-title a`), as the prototype draws a
+ * paused row's name, and the badge keeps its own colours and says "Paused"
+ * in words.
+ */
+.table tr.is-paused td {
+    color: var(--muted);
+}
+
+.table tr.is-paused :is(.service-tile, .avatar) {
     opacity: 0.55;
 }
 

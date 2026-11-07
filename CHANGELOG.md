@@ -8,6 +8,39 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Changed
+
+- **Four screens send far less markup at 300 subscriptions.** Nothing a screen
+  shows or computes changes; what changed is how much is repeated per row.
+  The **subscription list** posts Pause or Resume, Cancel, Undo cancel and
+  Delete through one form instead of three forms (and three CSRF fields) in
+  each row of both layouts, and a `data-confirm` question now rides on the
+  button that sends the form, so Cancel and Delete still ask first
+  (257,187 to 232,179 bytes). The **Stats "Worth it?"** table does the same
+  for "Used it": one form, every row kept (642,827 to 536,922 bytes). The
+  **calendar** sends the grid only: below 768px a small script fetches the
+  month's list from the new `GET /calendar/list`, scoped like the page, and
+  without script a phone reader gets a "Show as list" link to the same month
+  with the list in place of the grid (495,819 to 66,286 bytes a page,
+  473,614 to 44,081 for a month change). While the list loads the phone shows
+  "Loading the list…", and the link comes back if the request fails. Today
+  and "Just mine" keep the list form, which has no open-day panel and offers
+  "Show as grid" from tablet width up. The **scenario planner** draws the
+  new price, cycle and days fields only for a row set to Change, fetching a
+  row's fields from the new `GET /forecast/scenario/rows/{id}/controls` when
+  it is switched to Change and redrawing every Change row's fields on the
+  form's own round trip, with or without script (1,518,771 to 923,271 bytes).
+  If a row's fields fail to load it goes back to Keep and the page says so;
+  choosing Change price again retries. The scenario figures are unchanged.
+  No API change; no migrations. *Phase 86.*
+- **Easier to read and to hear on the same four screens.** A paused
+  subscription on the list keeps readable text: it now mutes its words and
+  fades only its logo and the payer's face, where before the whole row faded
+  below the contrast WCAG asks for. Each Stats "Used it" button tells a
+  screen reader which subscription it records. The rail's small labels, the
+  calendar's chips and the top bar's subtitle are a size larger, and help
+  text keeps a readable line length. *Phase 86.*
+
 ## [1.43.0] - 2026-11-06
 
 ### Changed

@@ -325,6 +325,11 @@ return static function (App $app): void {
             ->setName('forecast-scenario')
             ->add($requires(Permission::ViewSubscriptions));
 
+        // Phase 86: a row's change-price controls, fetched when it is set to Change.
+        $group->get('/forecast/scenario/rows/{id:[0-9]+}/controls', [ForecastController::class, 'rowControls'])
+            ->setName('forecast-scenario-row-controls')
+            ->add($requires(Permission::ViewSubscriptions));
+
         $group->post('/forecast/scenario', [ForecastController::class, 'submit'])
             ->setName('forecast-scenario-submit')
             ->add($requires(Permission::ViewSubscriptions));
@@ -338,6 +343,11 @@ return static function (App $app): void {
         // ------------------------------------------------------------------
         $group->get('/calendar', [CalendarController::class, 'index'])
             ->setName('calendar')
+            ->add($requires(Permission::ViewSubscriptions));
+
+        // Phase 86: the month's phone list, fetched on its own below 768px.
+        $group->get('/calendar/list', [CalendarController::class, 'list'])
+            ->setName('calendar-list')
             ->add($requires(Permission::ViewSubscriptions));
 
         // Phase 25: the calendar feed's link. Like the API-token routes it acts

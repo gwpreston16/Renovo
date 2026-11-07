@@ -123,15 +123,37 @@ Regression tests:
 - Before and after size at 300 subscriptions recorded; the scenario results
   (the forecast figures) are identical to those before.
 
-### Common to A-D
+### E. K226-K229 — the design audit's findings on these four screens (added 2026-11-06)
+
+The `/impeccable audit` this phase runs on its four screens found four
+problems that were already on master. The owner chose to fix them here rather
+than log them for a later phase (see *Decisions*).
+
+- **K226:** a paused list row mutes its text instead of fading the whole row,
+  so its payment name and "Paused" badge meet 4.5:1; only the logo tile and
+  the payer's face fade.
+- **K227:** each Stats "Used it" button is named for its row ("Used it:
+  Hosting") for a screen reader; the visible text is unchanged.
+- **K228:** the rail's tagline and group heading, and a calendar chip's name
+  and day total, go from 10px to 11px; the top bar's subtitle from the caption
+  size (11px) to the label size (12px).
+- **K229:** a paragraph of help (`p.hint`, `p.field-hint`) keeps a measure of
+  60ch.
+- Tests: `tests/Unit/LegibleTextTest.php` (sizes, the paused row, the measure),
+  and the Stats test asserts each button's name. The detector finds nothing on
+  the four screens at 1280, 768 and 390 px.
+
+### Common to A-E
 
 - Each change is checked in the browser at 375, 768 and 1280 px, light and dark,
   and with the keyboard (the shared form must not change tab order or the way
   Enter behaves).
 - `/impeccable audit` on the four changed templates, then `polish`, in Operate
   mode; no new colour, no third-party asset, no inline script or style.
-- Strings, icons and colours: none are added except the "Show as list" link's
-  text, which goes in every catalogue in `translations/`.
+- Strings, icons and colours: no icon or colour is added. The strings are the
+  "Show as list" link's text and, after review, `calendar.list_loading`,
+  `calendar.show_as_grid`, `scenario.change_failed` and `stats.used_it_name`,
+  each in every catalogue in `translations/`.
 
 ## Data-model changes
 
@@ -143,7 +165,8 @@ None.
   stays uncompressed because of BREACH (K166).
 - Paginating or capping the planner, the Stats table or the calendar, and
   restyling the list as one markup for both widths: considered and not chosen.
-- Any change to what a screen shows or to a figure on it.
+- Any change to a figure on a screen, or to what it shows beyond E's
+  legibility fixes.
 - The API and the notification scheduler (Phase 84).
 
 ## Decisions & assumptions (confirm or correct before build)
@@ -160,6 +183,16 @@ None.
   Not chosen: building the list in the browser from the grid; keeping both.
 - **K181 — Decided 2026-11-06:** change controls only for rows set to Change.
   Not chosen: paginating or capping the rows; whitespace trimming alone.
+- **Audit findings already on master (K226-K229) — Decided 2026-11-06:** fix
+  them in this phase (section E). Not chosen: record them and schedule a later
+  phase through `/known-issues-batch`; a separate branch after this merges.
+- **K228 departs from the prototype — Decided 2026-11-06:** the prototype
+  draws the rail's tagline and section headings and the calendar's chips and
+  day totals at 10px; they go to the 11px caption size (`--size-caption`)
+  because they are functional text, and `DESIGN.md` records the exception.
+  Not chosen: keeping the prototype's 10px. K226 likewise keeps a paused
+  row's name at full strength, as the prototype draws it, and mutes only its
+  plain text.
 - **Release — Decided 2026-11-06:** with the next minor release, alongside the
   other unreleased phases. Not chosen: its own patch.
 - **Assumed:** the `form` attribute and `formaction` are enough for the shared
@@ -171,16 +204,23 @@ None.
 
 ## Status
 
-- [ ] K185: the list posts every row action through one form; both layouts kept
-- [ ] K183: the Stats table posts through one form; every row kept
-- [ ] K184: the calendar sends the grid; the phone list loads on demand, with a link fallback
-- [ ] K181: the planner draws change controls only for rows set to Change
-- [ ] Before and after sizes recorded for all four
-- [ ] Browser check at 375, 768 and 1280 px, light and dark; keyboard check
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed / Changed
-- [ ] ROADMAP: Phase 86 row marked ✅ done
-- [ ] composer check, `npm test`, coverage and the API doc tests green on both engines
+- [x] K185: the list posts every row action through one form; both layouts kept (257,187 to 232,179 bytes)
+- [x] K183: the Stats table posts through one form; every row kept (642,827 to 536,922 bytes)
+- [x] K184: the calendar sends the grid; the phone list loads on demand, with a link fallback (495,819 to 66,286 bytes; month partial 473,614 to 44,081)
+- [x] K181: the planner draws change controls only for rows set to Change (1,518,771 to 923,271 bytes)
+- [x] Before and after sizes recorded for all four (300 subscriptions, weekly and monthly, measured on this branch against its start commit)
+- [x] Browser check on a 300-subscription instance (1024 px and 375 px; shared-form actions, per-row confirm, Used it, calendar list incl. month change, planner Change/Keep)
+- [x] Browser check at 768 and 1280 px, light and dark, on the demo household (19 subscriptions), after the merge-review fixes. No page scrolls sideways. The calendar shows the grid from 768 px and fetches the list only below it (checked at 767). `?view=list` and its Today link keep the list. The planner's Change control fetches its fields with no error and Keep removes them. The form is `autocomplete="off"`. Keyboard: a row's tab order is unchanged (checkbox, name, Edit, Pause, Cancel, Delete). Enter on Pause and Space on Resume send that row's own action through the shared form. The shared forms hold only hidden fields, so Enter in a text field cannot press a row's button. Cancel and Delete were not pressed: the confirm dialog stalls browser automation, so `tests/js/confirm-button.test.js` covers them. Already on master, unchanged here: the subscriptions table is 15 px wider than its card at 1280 px and scrolls inside it.
+- [x] Browser check at 375 px, dark, after the merge-review fixes (demo household): no page scrolls sideways; a paused card reads at full strength with its "Paused" badge, and its menu's Edit, Resume, Cancel and Delete open at 40 px; the calendar loads its 10-day list with no grid, and `?view=list` shows the list with no day panel and no "Show as grid"; the planner's Change price fetches its three fields with no error and Keep removes them; each Stats "Used it" is named for its row.
+- [x] `/impeccable audit` on the four templates (17/20), then harden, adapt and polish. The detector found nothing in the changed sources and nothing on the rendered pages that this phase drew; every rendered finding is already on master (the shell's 10 px labels, the calendar grid's 10 px chips, a paused row's badge contrast, one name for every "Used it" button). Fixed here:
+  - the phone calendar shows "Loading the list…" (`aria-busy`) in place of its link while the list loads, and the link comes back if the request fails;
+  - the planner's controls slot is no longer a live region; controls that fail to load put the row back on Keep and say so in the page's status line, and choosing Change again retries;
+  - `?view=list` draws no open-day panel beside the list, and offers "Show as grid" from tablet width up.
+- [x] E, K226-K229: the audit's already-on-master findings fixed. Paused rows mute their text, "Used it" buttons are named per row, functional text is at least 11px, and help paragraphs keep a 60ch measure. The detector went from 38 findings (1280 px) and 31 (768 px) to none at 1280, 768 and 390 px, and the browser check shows the paused row and the calendar chips at 768 and 1280 px.
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed / Changed
+- [x] ROADMAP: Phase 86 row marked ✅ done
+- [x] composer check, `npm test`, coverage and the API doc tests green on both engines (CI run 42288286110 at 5bad3b2: lint and static analysis, Tests on Postgres, MySQL and MySQL with the flag off, the asset build and offline rule, the Docker image and the dependency audit all pass; changed lines 54/54 covered (100%), suite 93.79%)
 
 ## Definition of done
 
@@ -188,7 +228,7 @@ Every row is fixed with a test that fails without its fix. `composer check` and
 `npm test` are green, on Postgres and MySQL for the PHP, the changed lines are
 at least 80% covered and the suite at least 85%. The four screens look and
 behave as they did, at the three widths and in both themes, and each is smaller
-by the figure recorded. No migration. The one new string is in every catalogue
+by the figure recorded. No migration. The new strings are in every catalogue
 in `translations/` and `i18n:check` passes, and `assets:offline-check` passes.
 Then mark it ✅ in `ROADMAP.md`.
 

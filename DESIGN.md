@@ -220,9 +220,12 @@ numbers are a ledger.
 - **Body** (400, 0.875rem, 1.5): everything else; headings use `text-wrap: balance`.
 - **Dense** (400, 0.8125rem): compact lists and tables.
 - **Label** (500, 0.75rem): field labels, chips, table headers.
-- **Caption** (500, 0.6875rem): the floor for readable text. The only things
-  below it are a few uppercase micro-labels (0.625rem): the rail's tagline and
-  section headings, the auth mark's tagline and three calendar labels.
+- **Caption** (500, 0.6875rem): the floor for readable text. Phase 86 (K228)
+  raised the rail's tagline and section headings and the calendar's chips and
+  day totals to it, where the prototype draws them at 10px: the prototype
+  wins on look, but these are words a member has to read. The only things
+  still below it are uppercase micro-labels at 0.625rem: the auth mark's
+  tagline and the calendar's "+n more".
 
 ### Named Rules
 **The Figure Rule.** An amount, count or date in a table takes the `.num` class,

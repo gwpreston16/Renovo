@@ -24,6 +24,7 @@
  */
 
 import { enhanceAuthForms } from './auth-forms.js';
+import { enhanceCalendarLists } from './calendar-list.js';
 import { enhanceCardLayouts } from './card-layout.js';
 import { onThemeChange, renderChart } from './charts.js';
 import { drawCategoryDonuts } from './category-donut.js';
@@ -76,6 +77,7 @@ function hydrate() {
     enhanceSubscriptionLists(document);
     enhanceCopyFields(document);
     enhanceCardLayouts(document);
+    enhanceCalendarLists(document);
     enhanceScenarioForm();
     drawCharts();
 }
@@ -107,6 +109,8 @@ function enhanceArrived(event) {
     // The whole document rather than the event's target: an outerHTML swap's
     // target is the element that was just replaced.
     enhanceSubscriptionLists(document);
+    // A month swap brings a fresh phone-list container, like the list above.
+    enhanceCalendarLists(document);
 }
 
 document.addEventListener('htmx:afterSwap', enhanceArrived);

@@ -6,6 +6,10 @@
 {% block page_actions %}
     <form method="get" action="/calendar" class="inline-form">
         <input type="hidden" name="month" value="{{ calendar.month|date('Y-m') }}">
+        {# The no-script list form survives ticking the box (K184). #}
+        {% if list_view %}
+            <input type="hidden" name="view" value="list">
+        {% endif %}
         <label class="choice">
             <input type="checkbox" name="mine" value="1" {{ mine_only ? 'checked' : '' }}
                    data-autosubmit>
