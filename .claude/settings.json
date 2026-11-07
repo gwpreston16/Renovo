@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(cat *)",
+      "Bash(diff *)",
+      "Bash(echo *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(head *)",
+      "Bash(ls *)",
+      "Bash(pwd)",
+      "Bash(sort *)",
+      "Bash(tail *)",
+      "Bash(tree *)",
+      "Bash(wc *)",
+      "Bash(which *)",
+
+      "Bash(git status *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git fetch *)",
+      "Bash(git switch *)",
+      "Bash(git merge --ff-only *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git describe *)",
+      "Bash(git rev-list *)",
+      "Bash(git rev-parse *)",
+      "Bash(git ls-files *)",
+      "Bash(git check-ignore *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh pr diff *)",
+      "Bash(gh run list *)",
+      "Bash(gh run view *)",
+      "Bash(gh release view *)",
+      "Bash(gh release list *)",
+
+      "Bash(composer install *)",
+      "Bash(composer check)",
+      "Bash(composer test *)",
+      "Bash(composer lint *)",
+      "Bash(composer stan *)",
+      "Bash(composer coverage)",
+      "Bash(DB_NAME=renovo_test composer coverage)",
+      "Bash(vendor/bin/phpunit *)",
+      "Bash(vendor/bin/phpcs *)",
+      "Bash(vendor/bin/phpcbf *)",
+      "Bash(vendor/bin/phpstan *)",
+      "Bash(vendor/bin/phinx migrate *)",
+      "Bash(vendor/bin/phinx rollback *)",
+      "Bash(vendor/bin/phinx status *)",
+      "Bash(vendor/bin/phinx seed:run *)",
+      "Bash(php bin/console *)",
+      "Bash(pipx run --spec diff-cover==10.6.0 diff-cover *)",
+
+      "Bash(npm ci *)",
+      "Bash(npm install *)",
+      "Bash(npm run build *)",
+      "Bash(npm run watch *)",
+      "Bash(npm test *)",
+      "Bash(npm version * --no-git-tag-version)",
+
+      "Bash(docker compose *)",
+      "Bash(./bin/dev-setup.sh *)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(git tag *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean *)",
+      "Bash(git rebase *)",
+      "Bash(git branch -D *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr merge *)",
+      "Bash(gh pr close *)",
+      "Bash(gh pr comment *)",
+      "Bash(gh release create *)",
+      "Bash(gh release edit *)",
+      "Bash(gh release delete *)",
+      "Bash(gh api *)",
+      "Bash(docker compose down *)"
+    ],
+    "deny": [
+      "Bash(rm *)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./.env.*.local)",
+      "Read(./.env.production)",
+      "Read(./.env.staging)",
+      "Read(./.env.testing)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ ! -f \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/impeccable\" ] || \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/impeccable\" hook",
+            "timeout": 5,
+            "statusMessage": "Preparing build session"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ ! -f \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/impeccable\" ] || \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/impeccable\" hook",
+            "timeout": 5,
+            "statusMessage": "Checking UI changes"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ ! -f \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/impeccable\" ] || \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/impeccable\" hook",
+            "timeout": 30,
+            "statusMessage": "Design deep pass"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "code-simplifier@claude-plugins-official": true,
+    "php-lsp@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true
+  }
+}
