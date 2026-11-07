@@ -103,3 +103,7 @@ Desktop.ini
 # Impeccable: per-developer overrides and the hook cache (the shared config is committed)
 .impeccable/config.local.json
 .impeccable/hook.cache.json
+# The Impeccable skill's engine binary is per-platform (about 20 MB); its
+# launcher downloads the right one on first run and checks it against
+# scripts/engine-checksums.txt, so only the launcher and its data are committed.
+/.claude/skills/impeccable/scripts/bin/
