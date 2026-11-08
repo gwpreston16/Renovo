@@ -2220,14 +2220,33 @@ legend {
     display: none;
 }
 
-/* A heads-up rather than a problem: the warm hue, as a leading rule. */
+/*
+ * A heads-up rather than a problem: the warn tint, as the prototype draws its
+ * "Price change" tile — `--warn-bg` ground, `--warn` icon and heading. Not a
+ * coloured side rule: the prototype's only left border is the navigation's
+ * active marker. Every pair here is one ThemeContrastTest already holds
+ * (`warn` and `text` on `warn-bg:surface`), so it reads in every palette.
+ */
 .callout {
-    border-left: 4px solid var(--warn);
+    background: var(--warn-bg);
+}
+
+.callout > h2,
+.callout > h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--warn);
+}
+
+.callout > h2 .icon,
+.callout > h3 .icon {
+    flex: none;
 }
 
 /*
  * A newer release is out: the dashboard's banner for instance
- * administrators. A callout on the page's surface, the message and its link
+ * administrators. A callout on the page's surface (the info icon in the warn hue carries the tone), the message and its link
  * on one side and Dismiss on the other, wrapping onto two lines on a phone.
  */
 .update-banner {
@@ -2238,7 +2257,6 @@ legend {
     margin-bottom: 1rem;
     background: var(--surface);
     border-color: var(--border);
-    border-left-color: var(--warn);
     color: var(--text);
 }
 

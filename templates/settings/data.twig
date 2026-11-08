@@ -21,7 +21,7 @@
 
     {% if issued_token %}
         <section class="card callout" id="new-token" aria-labelledby="new-token-heading">
-            <h2 id="new-token-heading">{{ t('tokens.your_new_token') }}</h2>
+            <h2 id="new-token-heading">{{ icon('warn') }}{{ t('tokens.your_new_token') }}</h2>
             <p>{{ t('tokens.new_token_note') }}</p>
             <p><code class="token">{{ issued_token }}</code></p>
         </section>

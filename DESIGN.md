@@ -269,12 +269,33 @@ a size that already exists; 11px is the floor for new text.
 
 ## Layout
 
-A fixed shell on every signed-in page: a 240px rail down the left, a 64px top bar
+A fixed shell on every signed-in page: a 240px rail (`--rail-width`) down the left, a 64px top bar (`--topbar-height`, 4rem)
 across the rest, and the content column, which is the part that scrolls. Below
 768px the rail becomes a tab bar along the bottom with a raised add button.
 Content is cards stacked 1rem apart with 1.25rem of padding; forms are flat
 fieldsets of fields under a legend. Lists offer comfortable and compact density.
-Breakpoints in use: 640, 720, 768 (the shell switch), 860, 900 and 1440px.
+Breakpoints in use (read from `grep -n "@media" assets/css/*.css`; widths are
+viewport widths, and a screen picks the ones its layout needs rather than all):
+
+- **768 / 767px is the shell switch**: from 768 up the rail takes a left
+  padding and the tab bar is hidden; at 767 and below the tab bar returns, the
+  subscriptions table gives way to cards, the members table collapses its
+  header, and the bento grid, calendar and list toolbar stack.
+- **Content grids:** `min-width` 640 (the stat grid's columns), 720 (the
+  two-column grid and the filter row), 860 (the profile row and `.columns`),
+  900 (the sign-in pitch beside the form, below it at 899.98, and the top
+  bar's subtitle), 1100 (the two-column scenario planner, calendar and
+  analytics review, and the top bar's search) and `max-width` 1439 (the top
+  bar's page-action buttons tighten under it).
+- **Phone stages below the shell switch:** `max-width` 599 (single-column
+  lists and scenario rows), 559 (the subscription card's grid) and 479 (chart axis labels thin
+  out, rows drop their logos), with 359 for the narrowest filter toggle;
+  `min-width: 30rem` (480px, in rem so it follows the text size) opens the
+  deadline rows' columns.
+- **Bands:** 480-899 and 900-1099 thin the analytics month labels and set the
+  breakdown to two columns.
+- **Container query:** `@container form (min-width: 34rem)` lays a settings
+  form's fields side by side by the form's own width, not the viewport's.
 Mobile-first; check every screen at 375, 768 and 1280px, light and dark.
 
 ## Elevation & Depth
@@ -326,6 +347,17 @@ and fields that are quiet until focused.
 - **Internal Padding:** 1.25rem. Each card has a fixed section id a redirect can
   land on.
 
+### Callouts
+- **Use:** a heads-up that is not an error: a one-time secret to copy now, a
+  temporary password, a backup that is not off the server. Not a failure (that
+  is Bad) and not a status (that is a chip).
+- **Style:** the Warn tint (`--warn-bg`) as the ground, a leading `warn` icon
+  and the heading in `--warn`, as the prototype's "Price change" tile is drawn.
+  Text stays `--text`. The class is `.callout`, on a `.card` or an `.alert`.
+- **Never:** a coloured side rule. The prototype's only left border is the
+  navigation's active marker. The dashboard's update banner stays on the
+  surface with its info icon in the warn hue.
+
 ### Inputs / Fields
 - **Style:** slate fill, light Field Edge, 8px corners, 0.55rem by 0.7rem.
 - **Focus:** the 2px focus ring.
@@ -336,7 +368,8 @@ and fields that are quiet until focused.
   medium-weight body size, 8px corners. "You are here" is one treatment
   everywhere: the accent's soft fill and a 3px accent bar on the leading edge,
   decided on the server from the route.
-- **Mobile:** a bottom tab bar; the add button raised in the ink fill.
+- **Mobile:** a bottom tab bar (4.25rem, `--tabbar-height`); the add button
+  raised in the ink fill.
 - **Tabs:** tabs are links (`settings/_tabs.twig`), not script-driven panels.
 
 ### Account Rows
@@ -364,3 +397,5 @@ select or button) at its end, grouped in a card. Reuse it for any new setting.
   `data-css-*` and `data-*` behaviours.
 - **Don't** set new text below 11px, or invent a size outside the scale.
 - **Don't** add glows, heavy or coloured shadows, or gradient text.
+- **Don't** draw a heads-up as a coloured side stripe (`border-left` wider than
+  1px as an accent); use the callout's tint and icon.

@@ -27,14 +27,14 @@
 <div class="field">
     <label for="scenario-cycle-{{ id }}">{{ t('scenario.new_cycle') }}</label>
     <select id="scenario-cycle-{{ id }}" name="change[{{ id }}][cycle]"
-            {% if row.errors.cycle is defined %}aria-invalid="true"{% endif %}>
+            {% if row.errors.cycle is defined %}aria-invalid="true" aria-describedby="scenario-cycle-error-{{ id }}"{% endif %}>
         <option value="">{{ t('scenario.same_cycle') }}</option>
         {% for cycle in cycles %}
             <option value="{{ cycle.value }}" {{ row.input.cycle == cycle.value ? 'selected' : '' }}>{{ cycle_label(cycle.value) }}</option>
         {% endfor %}
     </select>
     {% if row.errors.cycle is defined %}
-        <p class="field-error">{{ error_message(row.errors.cycle) }}</p>
+        <p class="field-error" id="scenario-cycle-error-{{ id }}">{{ error_message(row.errors.cycle) }}</p>
     {% endif %}
 </div>
 <div class="field scenario-days">

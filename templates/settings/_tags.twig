@@ -33,10 +33,12 @@
                                     {{ csrf_field() }}
                                     <input type="text" name="name" maxlength="50" required
                                            value="{{ is_failed ? values.name|default(tag.name) : tag.name }}"
-                                           aria-label="{{ t('settings.rename_tag', {'name': tag.name}) }}">
+                                           aria-label="{{ t('settings.rename_tag', {'name': tag.name}) }}"
+                                           {% if is_failed and errors.name is defined %}aria-invalid="true" aria-describedby="tag-{{ tag.id }}-name-error"{% endif %}>
                                     <button type="submit" class="button button-outline">{{ t('action.save') }}</button>
+                                    {# The id carries the row's id: several chips can render at once. #}
+                                    {% if is_failed and errors.name is defined %}<p class="field-error" id="tag-{{ tag.id }}-name-error">{{ error_message(errors.name) }}</p>{% endif %}
                                 </form>
-                                {% if is_failed and errors.name is defined %}<p class="field-error">{{ error_message(errors.name) }}</p>{% endif %}
 
                                 <form method="post" action="/tags/{{ tag.id }}/delete" class="inline"
                                       data-confirm="{{ t('confirm.delete_tag', {'name': tag.name}) }}">
@@ -65,9 +67,10 @@
             <label for="new_tag" class="visually-hidden">{{ t('settings.new_tag') }}</label>
             <input type="text" id="new_tag" name="name" maxlength="50" required
                    placeholder="{{ t('settings.new_tag') }}"
-                   value="{{ new_failed ? values.name|default('') : '' }}">
+                   value="{{ new_failed ? values.name|default('') : '' }}"
+                   {% if new_failed and errors.name is defined %}aria-invalid="true" aria-describedby="tag-new-name-error"{% endif %}>
             <button type="submit" class="button button-outline">{{ icon('add') }}{{ t('action.add') }}</button>
+            {% if new_failed and errors.name is defined %}<p class="field-error" id="tag-new-name-error">{{ error_message(errors.name) }}</p>{% endif %}
         </form>
-        {% if new_failed and errors.name is defined %}<p class="field-error">{{ error_message(errors.name) }}</p>{% endif %}
     {% endif %}
 </section>

@@ -132,10 +132,11 @@
                 </div>
                 <input type="range" id="budget-warn" name="warn_threshold_percent" class="range-input"
                        min="1" max="100" step="1" value="{{ threshold }}"
-                       aria-describedby="budget-warn-hint" data-range-output="budget-warn-output">
+                       {% if errors.warn_threshold_percent is defined %}aria-invalid="true"{% endif %}
+                       aria-describedby="budget-warn-hint{% if errors.warn_threshold_percent is defined %} budget-warn-error{% endif %}" data-range-output="budget-warn-output">
                 <p class="hint" id="budget-warn-hint">{{ t('budgets_form.threshold_hint') }}</p>
                 {% if errors.warn_threshold_percent is defined %}
-                    <p class="field-error">{{ error_message(errors.warn_threshold_percent) }}</p>
+                    <p class="field-error" id="budget-warn-error">{{ error_message(errors.warn_threshold_percent) }}</p>
                 {% endif %}
             </div>
         </form>
