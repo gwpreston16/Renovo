@@ -64,7 +64,13 @@ final class ThemeContrastTest extends TestCase
         // The accent rule: a filled accent carries its ink, and accent-coloured
         // text is always the accent's text shade.
         'accent-ink' => ['accent', 'accent-hover'],
-        'accent-text' => ['bg', 'surface', 'surface-2', 'accent-soft:surface'],
+        // A link is accent text, and the cancel-by table (and the low-use
+        // signals) tint a whole row warn or bad with the link to the
+        // subscription inside it.
+        'accent-text' => [
+            'bg', 'surface', 'surface-2', 'accent-soft:surface',
+            'warn-bg:surface', 'bad-bg:surface',
+        ],
 
         // Each semantic ink on its own tint, and on the surfaces it is also
         // used on bare (a price that went up, a peak month, a field error).

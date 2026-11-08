@@ -933,12 +933,6 @@ tr.is-passed > td {
     background: var(--bad-bg);
 }
 
-/* A failed sign-in should be findable by eye in a long log. */
-.row-warning td:first-child {
-    border-left: 3px solid var(--warn);
-    padding-left: 0.5rem;
-}
-
 /* ---------------------------------------------------------- price history */
 
 /*
@@ -2361,6 +2355,48 @@ a.segmented-option {
     display: none;
 }
 
+/*
+ * On a phone the price and its badge never wrap, so beside the name they took
+ * the row and left the name a few pixels ("G." at 320px). Here they drop to a
+ * second line under the name, which keeps the full width; the tile and the
+ * row's menu span both lines. Wider card widths keep the figure at the side.
+ */
+@media (max-width: 559px) {
+    .subscription-card {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-areas:
+            "tile main menu"
+            "tile figure menu";
+        row-gap: 0.35rem;
+    }
+
+    .subscription-card > .service-tile {
+        grid-area: tile;
+    }
+
+    .subscription-card-main {
+        grid-area: main;
+    }
+
+    /* With the row to itself, a long name wraps rather than losing its end. */
+    .subscription-card-name {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .subscription-card-figure {
+        grid-area: figure;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.25rem 0.5rem;
+    }
+
+    .subscription-card > .row-menu {
+        grid-area: menu;
+    }
+}
+
 .row-menu .menu-panel {
     left: auto;
     right: 0;
@@ -2456,20 +2492,6 @@ a.segmented-option {
         grid-column: auto;
         justify-self: auto;
     }
-}
-
-/*
- * Urgency is a rule down the side rather than a filled row: these sit inside a
- * card, where a background wash would read as a second card.
- */
-.deadline.is-urgent {
-    border-left: 3px solid var(--warn);
-    padding-left: 0.5rem;
-}
-
-.deadline.is-passed {
-    border-left: 3px solid var(--bad);
-    padding-left: 0.5rem;
 }
 
 /* The cancel-by card beneath the list: compact rows, a link to the full view. */
@@ -4432,9 +4454,9 @@ a.segmented-option {
     border-color: var(--border-control);
 }
 
-/* A trial's conversion, edged in the colour its marker is drawn in. */
-.timeline-item.is-trial {
-    border-left: 3px solid var(--warn);
+/* A trial's badge keeps its words; the name gives way to it. */
+.timeline-item .badge {
+    flex-shrink: 0;
 }
 
 .timeline-date {

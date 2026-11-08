@@ -35,10 +35,26 @@ final class NginxConfigTest extends TestCase
     {
         $out = $this->dir . '/real-ip.conf';
         $script = dirname(__DIR__, 2) . '/docker/nginx/30-real-ip.sh';
-        $env = 'REAL_IP_CONF=' . escapeshellarg($out)
-            . ($proxies === null ? '' : ' WEB_TRUSTED_PROXIES=' . escapeshellarg($proxies));
+        $env = getenv();
+        unset($env['WEB_TRUSTED_PROXIES']);
+        $env['REAL_IP_CONF'] = $out;
+        if ($proxies !== null) {
+            $env['WEB_TRUSTED_PROXIES'] = $proxies;
+        }
 
-        exec('env -u WEB_TRUSTED_PROXIES ' . $env . ' sh ' . escapeshellarg($script) . ' 2>/dev/null', $lines, $status);
+        // An argument list, not a command line: no shell parses it, so the
+        // same call runs `sh` on Linux and on Windows (Git's), where exec()
+        // would hand the line to cmd.exe and its `2>/dev/null` to nowhere.
+        $null = PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null';
+        $process = proc_open(
+            ['sh', $script],
+            [0 => ['file', $null, 'r'], 1 => ['file', $null, 'w'], 2 => ['file', $null, 'w']],
+            $pipes,
+            null,
+            $env,
+        );
+        self::assertIsResource($process, 'sh is on the PATH');
+        $status = proc_close($process);
 
         return [$status, is_file($out) ? (string) file_get_contents($out) : ''];
     }

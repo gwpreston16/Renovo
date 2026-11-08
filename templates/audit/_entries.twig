@@ -14,9 +14,16 @@
         </thead>
         <tbody>
         {% for entry in entries %}
-            <tr class="{{ entry.action.isFailure ? 'row-warning' : '' }}">
+            <tr>
                 <td class="num">{{ entry.occurredAt|local_date('d MMM y HH:mm') }}</td>
-                <td>{{ t(entry.action.labelKey()) }}</td>
+                {# A failure is findable by eye in a long log: its event is a badge. #}
+                <td>
+                    {%- if entry.action.isFailure -%}
+                        <span class="badge badge-warn">{{ t(entry.action.labelKey()) }}</span>
+                    {%- else -%}
+                        {{ t(entry.action.labelKey()) }}
+                    {%- endif -%}
+                </td>
                 <td>
                     {{ entry.actorName }}
                     {% if entry.targetLabel and entry.targetUserId != entry.actorUserId %}

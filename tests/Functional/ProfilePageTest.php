@@ -128,6 +128,49 @@ final class ProfilePageTest extends DatabaseTestCase
     }
 
     /**
+     * Every label on the page names a field. The cards carry fixed ids a
+     * redirect lands on (`#password` among them), and a field sharing one
+     * would hand its label to the card: `for` resolves to the first element
+     * with the id, and the field is left with no accessible name.
+     */
+    public function testEveryLabelOnThePageNamesAUniqueField(): void
+    {
+        $this->signIn($this->viewerId);
+
+        $html = (string) $this->request('GET', '/profile')->getBody();
+
+        $document = new \DOMDocument();
+        // The parser predates HTML5 and complains about its elements; the
+        // tree it builds is still the one the ids and labels live in.
+        @$document->loadHTML($html);
+
+        $seen = [];
+        foreach ((new \DOMXPath($document))->query('//*[@id]') ?: [] as $element) {
+            assert($element instanceof \DOMElement);
+            $id = $element->getAttribute('id');
+            self::assertArrayNotHasKey($id, $seen, "id \"{$id}\" is used twice");
+            $seen[$id] = $element;
+        }
+
+        $labels = $document->getElementsByTagName('label');
+        self::assertGreaterThan(0, $labels->length);
+        foreach ($labels as $label) {
+            $for = $label->getAttribute('for');
+            if ($for === '') {
+                continue;
+            }
+            self::assertArrayHasKey($for, $seen, "label for=\"{$for}\" names nothing");
+            self::assertContains(
+                $seen[$for]->nodeName,
+                ['input', 'select', 'textarea'],
+                "label for=\"{$for}\" names a <{$seen[$for]->nodeName}>, not a field",
+            );
+        }
+
+        self::assertStringContainsString('<label for="new_password">', $html);
+    }
+
+    /**
      * No route on the page takes the account it acts on from the request, so
      * naming somebody else's id changes only your own.
      */

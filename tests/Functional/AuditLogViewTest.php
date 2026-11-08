@@ -223,6 +223,24 @@ final class AuditLogViewTest extends DatabaseTestCase
     }
 
     /**
+     * A failure is findable by eye in a long log, and said in words rather
+     * than by a coloured edge alone (WCAG 1.4.1): its event is a badge.
+     */
+    public function testAFailureIsShownAsABadgeAndASuccessIsNot(): void
+    {
+        $this->seedEvent(AuditAction::LoginFailed, $this->ownerId, 'owner@example.test', $this->householdId);
+        $this->seedEvent(AuditAction::LoginSucceeded, $this->ownerId, 'owner@example.test', $this->householdId);
+
+        $this->signIn($this->ownerId, $this->householdId);
+        $body = (string) $this->request('GET', '/audit', [], true)->getBody();
+
+        $failed = htmlspecialchars($this->label(AuditAction::LoginFailed), ENT_QUOTES);
+        $succeeded = htmlspecialchars($this->label(AuditAction::LoginSucceeded), ENT_QUOTES);
+        self::assertStringContainsString('<span class="badge badge-warn">' . $failed . '</span>', $body);
+        self::assertStringContainsString('<td>' . $succeeded . '</td>', $body);
+    }
+
+    /**
      * The read path is guarded in the repository, not only by the route: a
      * caller that reached it without the administrator flag gets nothing.
      */

@@ -21,7 +21,7 @@ colors:
   warn: "#B45309"
   warn-bg: "#FEF3C7"
   bad: "#B91C1C"
-  bad-bg: "#FEE2E2"
+  bad-bg: "#FEE4E4"
   info: "#1D4ED8"
   info-bg: "#EFF6FF"
   brand-teal: "#0DAA9C"
@@ -189,7 +189,7 @@ that always come as a colour on its own pale tint.
 
 ### Status
 - **OK** (#137333 on #E6F4EA), **Warn** (#B45309 on #FEF3C7), **Bad** (#B91C1C on
-  #FEE2E2), **Info** (#1D4ED8 on #EFF6FF): budget states, alerts, badges.
+  #FEE4E4), **Info** (#1D4ED8 on #EFF6FF): budget states, alerts, badges.
 
 ### Named Rules
 **The Token Rule.** A colour is written down once, in `assets/theme/tokens.json`,
