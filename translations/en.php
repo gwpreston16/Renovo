@@ -2118,6 +2118,7 @@ return [
     'subscriptions.expiring_heading' => 'Expiring soon',
     'subscriptions.export' => 'Export',
     'subscriptions.filter_placeholder' => 'Filter subscriptions…',
+    'subscriptions.filters' => 'Filters',
     'subscriptions.include_paused' => 'Include paused',
     'subscriptions.name_or_notes' => 'Name or notes',
     'subscriptions.paused_heading' => 'Paused',

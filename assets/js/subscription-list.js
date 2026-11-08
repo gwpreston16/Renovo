@@ -73,3 +73,78 @@ document.addEventListener('change', (event) => {
         update(list);
     }
 });
+
+/*
+ * The toolbar's Filters button, for a phone (the stylesheet hides it from
+ * 768px up and folds nothing there).
+ *
+ * The server draws it hidden, so a browser with no script keeps every filter
+ * open. With script it appears, and the chips, segments and tools fold behind
+ * it when no filter is on: a list someone has narrowed opens with the reason
+ * showing. The fold is a class on the toolbar, which htmx never replaces, so
+ * it survives every out-of-band swap of `#list-filters` and `#list-tools`.
+ */
+const TOOLBAR = '.subscriptions-toolbar';
+const TOGGLE = '[data-filters-toggle]';
+
+/* The chosen link of each group when nothing narrows the list. */
+const UNFILTERED = new Set(['filter-category-all', 'filter-status-all', 'filter-scope-household']);
+
+/**
+ * How many filters are narrowing the list: the chosen chips and segments,
+ * other than each group's "everything" choice. Read from `aria-current`,
+ * which the server sets, so it is right after every swap.
+ *
+ * @param {Element} toolbar
+ * @returns {number}
+ */
+export function countChosenFilters(toolbar) {
+    return [...toolbar.querySelectorAll('#list-filters [aria-current="true"]')]
+        .filter((link) => !UNFILTERED.has(link.id))
+        .length;
+}
+
+function setFolded(toolbar, toggle, folded) {
+    toolbar.classList.toggle('is-folded', folded);
+    toggle.setAttribute('aria-expanded', folded ? 'false' : 'true');
+}
+
+/**
+ * Shows the Filters button, folds the filters the first time (when none is
+ * on), and refreshes the count. Safe to call again after every swap.
+ *
+ * @param {ParentNode} [root] Where to look; the whole document by default.
+ */
+export function enhanceFilterToggles(root = document) {
+    root.querySelectorAll(TOOLBAR).forEach((toolbar) => {
+        const toggle = toolbar.querySelector(TOGGLE);
+        if (toggle === null) {
+            return;
+        }
+
+        const chosen = countChosenFilters(toolbar);
+
+        if (toggle.hidden) {
+            toggle.hidden = false;
+            setFolded(toolbar, toggle, chosen === 0);
+        }
+
+        const count = toggle.querySelector('[data-filters-count]');
+        if (count !== null) {
+            count.hidden = chosen === 0;
+            count.textContent = chosen === 0 ? '' : String(chosen);
+        }
+    });
+}
+
+document.addEventListener('click', (event) => {
+    const toggle = event.target instanceof Element ? event.target.closest(TOGGLE) : null;
+    if (toggle === null) {
+        return;
+    }
+
+    const toolbar = toggle.closest(TOOLBAR);
+    if (toolbar !== null) {
+        setFolded(toolbar, toggle, !toolbar.classList.contains('is-folded'));
+    }
+});
