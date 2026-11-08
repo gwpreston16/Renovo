@@ -26,7 +26,25 @@ colors:
   info-bg: "#EFF6FF"
   brand-teal: "#0DAA9C"
   brand-blue: "#1069BB"
+  qr-plate: "#FFFFFF"
 typography:
+  display:
+    fontFamily: "JetBrains Mono Variable, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+    fontSize: "2.5rem"
+    fontWeight: 700
+  figure-lg:
+    fontFamily: "JetBrains Mono Variable, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+    fontSize: "1.75rem"
+    fontWeight: 700
+    fontFeature: "tnum"
+  headline:
+    fontFamily: "Plus Jakarta Sans Variable, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    fontSize: "1.5rem"
+    fontWeight: 700
+  lead:
+    fontFamily: "Plus Jakarta Sans Variable, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    fontSize: "1.25rem"
+    fontWeight: 700
   kpi:
     fontFamily: "JetBrains Mono Variable, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
     fontSize: "1.375rem"
@@ -59,10 +77,15 @@ typography:
     fontFamily: "Plus Jakarta Sans Variable, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
     fontSize: "0.6875rem"
     fontWeight: 500
+  micro:
+    fontFamily: "Plus Jakarta Sans Variable, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    fontSize: "0.625rem"
+    fontWeight: 600
   figure:
     fontFamily: "JetBrains Mono Variable, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
     fontFeature: "tnum"
 rounded:
+  micro: "3px"
   small: "6px"
   control: "8px"
   button: "10px"
@@ -179,6 +202,8 @@ that always come as a colour on its own pale tint.
 ### Neutral
 - **Page Mist** (#F8FAFC): the page background.
 - **Card White** (#FFFFFF): cards and the top bar.
+- **QR Plate** (#FFFFFF): the field behind the two-factor QR code. The one
+  token no palette or theme overrides, so the code stays scannable in dark.
 - **Slate Surfaces** (#F1F5F9, #E2E8F0): quiet buttons, fields, chips, hover
   steps.
 - **Hairline** (#E2E8F0): card and table borders.
@@ -213,6 +238,13 @@ monospace for every amount, count and date in a table: the words are warm, the
 numbers are a ledger.
 
 ### Hierarchy
+- **Display steps**, for a hero or a brand and never for a heading in a card,
+  each the prototype's own: **Display** (2.5rem, figures face) for the month
+  hero's paid amount, **Figure-lg** (1.75rem, figures face) for per-currency
+  subtotal lines that stand in for a total, **Headline** (1.5rem) for the
+  auth card's heading, and **Lead** (1.25rem) for the brand name and the
+  month hero's side figures. The sign-in pitch runs fluidly from Figure-lg to
+  Display.
 - **KPI** (bold 700, 1.375rem, figures face): the headline numbers on the
   dashboard and summary strips.
 - **Title** (bold 700, 1.125rem, 1.25): page titles (`h1`).
@@ -224,16 +256,16 @@ numbers are a ledger.
   raised the rail's tagline and section headings and the calendar's chips and
   day totals to it, where the prototype draws them at 10px: the prototype
   wins on look, but these are words a member has to read. The only things
-  still below it are uppercase micro-labels at 0.625rem: the auth mark's
-  tagline and the calendar's "+n more".
+  still below it are uppercase micro-labels at **Micro** (0.625rem,
+  `--size-micro`): the auth mark's tagline and the calendar's "+n more".
 
 ### Named Rules
 **The Figure Rule.** An amount, count or date in a table takes the `.num` class,
 and `.num` is the only rule that names the figures face.
 
-**The Fixed Scale Rule.** Sizes come from `--size-*` in `assets/css/tokens.css`.
-A new heading lands on a size that already exists; 11px is the floor for new
-text.
+**The Fixed Scale Rule.** Sizes come from `--size-*` in `assets/css/tokens.css`,
+and no stylesheet writes a literal font size or radius. A new heading lands on
+a size that already exists; 11px is the floor for new text.
 
 ## Layout
 
@@ -261,9 +293,11 @@ step, not by its shadow. Never add a heavier shadow, a glow or a coloured shadow
 ## Shapes
 
 Softly rounded and graded by size: 12px on a card, 14px on a modal, 10px on a
-button, 8px on a field or a nav item, 6px on small inner elements, and a full
-pill on chips and badges. A single radius everywhere would make a chip look like
-a card that failed to grow. Focus is a 2px ring in `--focus-ring`, offset 2px,
+button, 8px on a field or a nav item, 6px on small inner elements, 3px
+(`--radius-micro`) on marks smaller than a line of text (chart keys, swatches,
+the rounded top of a bar), and a full pill on chips and badges. A single
+radius everywhere would make a chip look like a card that failed to grow.
+Focus is a 2px ring in `--focus-ring`, offset 2px,
 held to 3:1 on every surface (and `currentColor` in forced-colours mode).
 
 ## Components

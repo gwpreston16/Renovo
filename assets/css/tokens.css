@@ -53,6 +53,12 @@
     --radius-control: 8px;
     --radius-small: 6px;
     --radius-pill: 999px;
+    /*
+     * For marks smaller than a line of text: a chart key, a colour swatch, the
+     * rounded top of a bar, an inline focus ring. 6px on a 10px square is
+     * nearly a circle, which reads as a different mark.
+     */
+    --radius-micro: 3px;
 
     /*
      * Plus Jakarta Sans for words and JetBrains Mono for figures, both
@@ -77,6 +83,24 @@
      */
     --size-kpi: 1.375rem;
     --size-title: 1.125rem;
+
+    /*
+     * The display steps above the KPI figure, each the prototype's own: the
+     * month hero's paid amount (40px), the per-currency subtotal lines that
+     * stand in for a total (28px), the auth card's heading (24px), and the
+     * brand name and the month hero's side figures (20px). For a hero or a
+     * brand, not for a heading in a card.
+     */
+    --size-display: 2.5rem;
+    --size-figure-lg: 1.75rem;
+    --size-headline: 1.5rem;
+    --size-lead: 1.25rem;
+
+    /*
+     * Below the floor, for uppercase micro-labels only: the auth mark's tagline
+     * and the calendar's "+n more". Never for new text (DESIGN.md, Phase 86).
+     */
+    --size-micro: 0.625rem;
     --size-heading: 1rem;
     --size-body: 0.875rem;
     --size-dense: 0.8125rem;

@@ -560,7 +560,7 @@ a.rates-chip:hover {
 
 .sidebar-brand-name {
     font-weight: var(--weight-bold);
-    font-size: 1.25rem;
+    font-size: var(--size-lead);
     line-height: 1.1;
     letter-spacing: -0.02em;
     overflow-wrap: anywhere;
@@ -626,7 +626,7 @@ a.rates-chip:hover {
 }
 
 .household-label-meta {
-    font-size: 0.6875rem;
+    font-size: var(--size-caption);
     color: var(--muted);
 }
 
@@ -702,7 +702,7 @@ a.sidebar-version:hover {
 }
 
 .user-card-email {
-    font-size: 0.6875rem;
+    font-size: var(--size-caption);
     color: var(--muted);
 }
 
@@ -1608,7 +1608,7 @@ p.field-hint {
     display: inline-block;
     width: 0.8rem;
     height: 0.8rem;
-    border-radius: 3px;
+    border-radius: var(--radius-micro);
     vertical-align: middle;
     margin-right: 0.35rem;
 }
@@ -2140,7 +2140,7 @@ legend {
     border: 0;
     color: var(--muted);
     cursor: pointer;
-    font-size: 1rem;
+    font-size: var(--size-heading);
     line-height: 1;
     padding: 0 0.15rem;
 }
@@ -2261,7 +2261,7 @@ legend {
 
 .trace {
     overflow-x: auto;
-    font-size: 0.75rem;
+    font-size: var(--size-label);
     background: var(--surface-2);
     padding: 0.75rem;
     border-radius: var(--radius-control);
@@ -2283,7 +2283,7 @@ legend {
     margin: 0.5rem 0;
     padding: 0.75rem;
     font-family: var(--font-figures);
-    font-size: 0.8125rem;
+    font-size: var(--size-dense);
     background: var(--surface-2);
     border-radius: var(--radius-control);
 }
@@ -2422,7 +2422,7 @@ kbd {
     font-size: var(--size-label);
     border: 1px solid var(--border-control);
     border-bottom-width: 2px;
-    border-radius: 5px;
+    border-radius: var(--radius-small);
     padding: 0.05rem 0.35rem;
     background: var(--surface-2);
 }

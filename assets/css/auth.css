@@ -47,7 +47,7 @@
 
 .auth-instance {
     margin: 0;
-    font-size: 1.375rem;
+    font-size: var(--size-kpi);
     font-weight: var(--weight-bold);
     letter-spacing: -0.02em;
     line-height: 1.1;
@@ -56,7 +56,7 @@
 
 .auth-tagline {
     margin: 0;
-    font-size: 0.625rem;
+    font-size: var(--size-micro);
     font-weight: var(--weight-semibold);
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -69,7 +69,7 @@
 
 .auth-pitch-title {
     margin: 0;
-    font-size: clamp(1.625rem, 3vw, 2.25rem);
+    font-size: clamp(var(--size-figure-lg), 2.75vw, var(--size-display));
     line-height: 1.15;
     font-weight: var(--weight-bold);
     letter-spacing: -0.02em;
@@ -223,7 +223,7 @@
 
 .auth-card-head h1 {
     margin: 0;
-    font-size: 1.5rem;
+    font-size: var(--size-headline);
     font-weight: var(--weight-bold);
     letter-spacing: -0.01em;
     overflow-wrap: anywhere;
@@ -676,7 +676,7 @@
     border: 1px solid var(--border-control);
     border-radius: var(--radius-control);
     background: var(--surface-2);
-    font-size: 1.375rem;
+    font-size: var(--size-kpi);
     font-weight: var(--weight-bold);
 }
 
@@ -789,7 +789,7 @@
     }
 
     .auth-instance {
-        font-size: 1.125rem;
+        font-size: var(--size-title);
     }
 
     .auth-pitch,
