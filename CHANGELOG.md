@@ -50,6 +50,17 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   calendar's chips and the top bar's subtitle are a size larger, and help
   text keeps a readable line length. *Phase 86.*
 
+### Fixed
+
+- **The browser tab shows the Renovo mark.** Every page asked for
+  `/favicon.ico` and got a 404; the layout now links an SVG icon the instance
+  serves itself (`/assets/favicon.svg`). Behind it, the stylesheets now take
+  every font size and corner radius from a token (four display steps and a
+  3px micro radius are new, all at the sizes already drawn), and the QR code's
+  white plate is the `--qr-plate` token instead of the last colour literal.
+  Nothing else changes on screen, apart from the spend bars' rounded tops
+  and the shortcut keys' corners, which move from 5px to 6px.
+
 ## [1.43.0] - 2026-11-06
 
 ### Changed

@@ -46,6 +46,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    {# The tab's icon, served by the instance like everything else. Without it a
+       browser asks for /favicon.ico on every page and gets a 404. #}
+    <link rel="icon" type="image/svg+xml" href="{{ asset('/assets/favicon.svg') }}">
     {#
         Read by htmx when it loads, so it must come before htmx's script.
         The Content-Security-Policy runs no eval and no inline style, so htmx

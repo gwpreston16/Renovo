@@ -208,6 +208,19 @@ final class ThemeContrastTest extends TestCase
     }
 
     /**
+     * The QR code's plate is white in every palette and theme. A camera reads
+     * dark modules on a light field, and a dark theme or palette that tinted
+     * the plate would make the two-factor setup code unscannable on many
+     * phones.
+     */
+    public function testTheQrPlateIsWhiteEverywhere(): void
+    {
+        foreach (self::palettesAndThemes() as $label => [$palette, $theme]) {
+            self::assertSame('#FFFFFF', strtoupper(self::resolve($palette, $theme)['qr-plate']), $label);
+        }
+    }
+
+    /**
      * The palettes a member can choose are exactly the palettes that exist.
      * One without the other is a picker option that renders unstyled, or a
      * palette nobody can reach.

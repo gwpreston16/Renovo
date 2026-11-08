@@ -31,17 +31,6 @@ use PHPUnit\Framework\TestCase;
  */
 final class DesignTokensTest extends TestCase
 {
-    /**
-     * The colours a stylesheet is allowed to write.
-     *
-     * One entry, and it is documented where it is written: the QR code's plate
-     * stays white on the dark theme because a camera reads dark modules on a
-     * light field.
-     *
-     * @var array<string, list<string>>
-     */
-    private const COLOUR_EXCEPTIONS = ['screens.css' => ['#ffffff']];
-
     private string $css;
 
     protected function setUp(): void
@@ -269,6 +258,9 @@ final class DesignTokensTest extends TestCase
      * another. One hard `#hex` in a component rule breaks that chain
      * silently: it looks correct in whichever palette its author had on.
      *
+     * There are no exceptions. The last one, the QR code's white plate, is the
+     * `--qr-plate` token, which ThemeContrastTest holds white everywhere.
+     *
      * @dataProvider styleSheets
      */
     public function testOnlyTheTokensWriteAColour(string $file): void
@@ -281,7 +273,7 @@ final class DesignTokensTest extends TestCase
         preg_match_all('/#[0-9a-fA-F]{3,8}\b|rgba?\(/', $source, $matches);
 
         self::assertSame(
-            self::COLOUR_EXCEPTIONS[$file] ?? [],
+            [],
             $matches[0],
             sprintf('%s writes a colour literal. Every colour is a token in assets/theme/tokens.json.', $file),
         );
