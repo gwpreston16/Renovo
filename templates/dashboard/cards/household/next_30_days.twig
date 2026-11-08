@@ -53,10 +53,9 @@
                 {% set is_trial = marker.reason == 'trial_conversion' %}
                 <li class="timeline-item{{ is_trial ? ' is-trial' : '' }}">
                     <span class="timeline-date num">{{ marker.date|local_date('d MMM') }}</span>
-                    <span class="timeline-name">
-                        {%- if is_trial %}<span class="visually-hidden">{{ t('calendar.kind_trial') }}: </span>{% endif -%}
-                        {{ marker.subscription.name }}
-                    </span>
+                    <span class="timeline-name">{{ marker.subscription.name }}</span>
+                    {#- A trial's conversion is named in a badge, not only by its marker's colour. -#}
+                    {% if is_trial %}<span class="badge badge-warn">{{ t('state.trial') }}</span>{% endif %}
                     <span class="num">{{ marker.amount.amountMinor|money(marker.amount.currency) }}</span>
                 </li>
             {% endfor %}

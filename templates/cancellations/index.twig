@@ -50,14 +50,18 @@
                                             <span class="badge badge-warn">{{ t('cancellations.contract_ended') }}</span>
                                             {{ t('cancellations.contract_ended_days', {'days': row.days_remaining * -1}) }}
                                         {% else %}
+                                            {% set days_label = row.days_remaining == 0 ? t('state.today') : t('cancellations.days_left', {'days': row.days_remaining}) %}
                                             {{ t('cancellations.contract_ends') }} ·
-                                            {{ row.days_remaining == 0 ? t('state.today') : t('cancellations.days_left', {'days': row.days_remaining}) }}
+                                            {% if row.is_urgent %}<span class="badge badge-warn">{{ days_label }}</span>{% else %}{{ days_label }}{% endif %}
                                         {% endif %}
                                     {% elseif row.is_passed %}
                                         <span class="badge badge-bad">{{ t('cancellations.deadline_passed') }}</span>
                                         {{ t('cancellations.passed_days', {'days': row.days_remaining * -1}) }}
+                                    {#- The row's wash marks urgency by colour; the badge says it in words. -#}
                                     {% elseif row.days_remaining == 0 %}
                                         <span class="badge badge-warn">{{ t('state.today') }}</span>
+                                    {% elseif row.is_urgent %}
+                                        <span class="badge badge-warn">{{ t('cancellations.days_left', {'days': row.days_remaining}) }}</span>
                                     {% else %}
                                         {{ t('cancellations.days_left', {'days': row.days_remaining}) }}
                                     {% endif %}

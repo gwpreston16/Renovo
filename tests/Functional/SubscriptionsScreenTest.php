@@ -1015,10 +1015,13 @@ final class SubscriptionsScreenTest extends DatabaseTestCase
             self::assertTrue($row['is_urgent'], 'the fixture should put every cancel-by row inside the urgent window');
         }
 
-        self::assertStringContainsString('deadline is-urgent', $this->section(
-            $this->body($this->get('/subscriptions', $this->ownerId)),
-            'cancel-by',
-        ));
+        $section = $this->section($this->body($this->get('/subscriptions', $this->ownerId)), 'cancel-by');
+        self::assertStringContainsString('deadline is-urgent', $section);
+        // Urgency is said in words too, not only in colour (WCAG 1.4.1).
+        self::assertMatchesRegularExpression(
+            '~<span class="badge badge-warn">(Today|\d+ days? left)</span>~',
+            $section,
+        );
     }
 
     public function testTrialsAndTheCategoryWidgetHaveMovedToTheDashboard(): void

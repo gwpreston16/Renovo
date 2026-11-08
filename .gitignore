@@ -107,3 +107,4 @@ Desktop.ini
 # Impeccable engine binary: platform-specific and ~20 MB; the launcher downloads a
 # checksum-verified, version-pinned copy into ~/.impeccable/bin/ when it is missing.
 /.claude/skills/impeccable/scripts/bin/
+/.playwright-mcp

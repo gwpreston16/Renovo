@@ -147,6 +147,31 @@ final class TopBarAndButtonStatesTest extends TestCase
     }
 
     /**
+     * Found by the design audit: on a phone the subscription cards' price and
+     * badge never wrap, and beside the name they left it a few pixels ("G."
+     * at 320px). Below 560px they move under the name, which takes the row
+     * and may wrap. Whitespace is matched loosely so a CRLF checkout passes.
+     */
+    public function testASubscriptionCardKeepsItsNameReadableOnAPhone(): void
+    {
+        $screens = (string) file_get_contents(dirname(__DIR__, 2) . '/assets/css/screens.css');
+        self::assertSame(
+            1,
+            preg_match('~@media \(max-width: 559px\) \{\s*\.subscription-card \{(.*?)\n\}~s', $screens, $match),
+            'No phone rule for the subscription cards.',
+        );
+        $block = $match[1];
+
+        self::assertMatchesRegularExpression('~grid-template-columns: auto minmax\(0, 1fr\) auto;~', $block);
+        self::assertMatchesRegularExpression('~"tile main menu"\s*"tile figure menu";~', $block);
+        self::assertMatchesRegularExpression('~\.subscription-card-figure \{\s*grid-area: figure;~', $block);
+        self::assertMatchesRegularExpression(
+            '~\.subscription-card-name \{\s*white-space: normal;\s*overflow-wrap: anywhere;~',
+            $block,
+        );
+    }
+
+    /**
      * The body of the first top-level `@media <query>` block that contains a
      * rule, found by walking braces.
      */

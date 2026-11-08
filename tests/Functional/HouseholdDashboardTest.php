@@ -290,7 +290,9 @@ final class HouseholdDashboardTest extends DatabaseTestCase
         self::assertStringContainsString('class="plain timeline-legend"', $card);
         self::assertStringContainsString('<span class="timeline-key is-trial"></span>Trial ends', $card);
         self::assertMatchesRegularExpression(
-            '/<li class="timeline-item is-trial">.*?Trial ends: <\/span>Trial plan/s',
+            // Named in a visible badge, not only by its marker's colour.
+            '/<li class="timeline-item is-trial">.*?Trial plan<\/span>\s*'
+                . '<span class="badge badge-warn">Trial<\/span>/s',
             $card,
         );
         self::assertSame(1, substr_count($card, 'timeline-item is-trial'), 'Only the conversion is a trial.');
