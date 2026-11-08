@@ -83,6 +83,8 @@
     grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 1rem;
     align-items: start;
+    /* The grid's own width is what the narrow-grid rule below asks about. */
+    container-type: inline-size;
 }
 
 .bento-item {
@@ -122,6 +124,23 @@
  * change shape at the same width rather than at two widths near each other.
  */
 @media (max-width: 767px) {
+    .bento-item,
+    .bento-span-2,
+    .bento-span-3,
+    .bento-span-4,
+    .bento-span-6 {
+        grid-column: span 6;
+    }
+}
+
+/*
+ * One column when the grid itself is narrow *in rem*, which is what a larger
+ * text size does to it: at 768px the grid is about 29rem wide at the default
+ * size, so nothing changes there, but at 200% it is about 14rem and a third-
+ * width tile (a budgets row, "Cancel trial") would be narrower than its own
+ * words and push the page sideways. Rem, not px, is the point.
+ */
+@container (max-width: 24rem) {
     .bento-item,
     .bento-span-2,
     .bento-span-3,
@@ -1486,6 +1505,7 @@ tr.is-passed > td {
 
 .calendar-nav {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.4rem;
 }
@@ -1906,6 +1926,8 @@ tr.is-passed > td {
 .list-search-bar {
     grid-column: 2;
     display: flex;
+    flex-wrap: wrap;
+    min-width: 0;
     align-items: center;
     gap: 0.75rem;
     padding-left: 1rem;
@@ -3057,6 +3079,7 @@ a.segmented-option {
 
 .top-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
     gap: 0.625rem;
 }
@@ -4074,6 +4097,8 @@ a.segmented-option {
 
 .charge-row {
     display: flex;
+    /* A larger text size wraps the badge under the name rather than past the card. */
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.75rem;
     padding: 0.6875rem 0.5rem;
@@ -4235,9 +4260,30 @@ a.segmented-option {
     margin-top: 0.5rem;
 }
 
+/*
+ * The next-price-rise tile. It is a third of the dashboard grid, which at 768px
+ * is about 155px wide, narrower than its icon, text column and button side by
+ * side: the button ran 17px past the card and the page scrolled sideways. The
+ * text column may shrink and drops under the icon when it has less than 10rem,
+ * so the tile wraps instead of overflowing; where there is room it is unchanged.
+ */
 .price-banner {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.75rem;
+}
+
+.price-banner > div {
+    flex: 1 1 10rem;
+    min-width: 0;
+}
+
+/* The button's words wrap inside the tile at a larger text size instead of running past its edge. */
+.price-banner .button {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: start;
 }
 
 .price-banner-label {
