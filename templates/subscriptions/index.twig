@@ -43,6 +43,18 @@
                 <noscript><button type="submit" class="button">{{ t('subscriptions.apply_filters') }}</button></noscript>
             </form>
 
+            {#
+                On a phone the chips, segments and tools fold away behind this,
+                so the list starts on the first screen. Drawn hidden: without
+                script there is nothing to fold them, and they stay open.
+                `subscription-list.js` shows it and keeps its count current.
+            #}
+            <button type="button" class="button button-quiet list-filters-toggle" data-filters-toggle
+                    aria-controls="list-filters list-tools" aria-expanded="true" hidden>
+                {{ icon('filter') }}<span class="list-filters-label">{{ t('subscriptions.filters') }}</span>
+                <span class="list-filters-count num" data-filters-count hidden></span>
+            </button>
+
             {% if can(scope, 'subscription.create') %}
                 <a class="button button-primary list-search-add" href="/subscriptions/new"
                    data-opens-dialog="quick-add">

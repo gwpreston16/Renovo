@@ -78,6 +78,14 @@ page load. The list fragment carries fresh copies of the toolbar's
 filter-dependent parts out of band, so a chip clicked after a search still
 links to the search.
 
+On a phone (below 768px) the top of the screen is kept short so the list
+starts on the first screen. The three counts share a row above Per month, the
+search takes its line alone, and the page's own Add button gives way to the
+tab bar's, which opens the same quick-add dialog. The chips, segments, saved
+views, density and export fold behind a **Filters** button that shows how many
+filters are on. It starts folded when none is, and open when one is, so a
+narrowed list shows why. Without script there is no button and nothing folds.
+
 ### The list is the list
 
 It is the existing list fragment, rearranged rather than rebuilt, which is why

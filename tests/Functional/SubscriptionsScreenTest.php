@@ -465,6 +465,27 @@ final class SubscriptionsScreenTest extends DatabaseTestCase
         self::assertStringNotContainsString('scope=mine', $toolbar);
     }
 
+    /**
+     * The phone's Filters button is drawn hidden, so without script nothing
+     * folds; it names both parts it folds, and is offered to every role,
+     * since filtering is reading.
+     */
+    public function testTheFiltersButtonIsDrawnHiddenAndControlsBothFoldedParts(): void
+    {
+        foreach ([$this->editorId, $this->viewerId] as $userId) {
+            $body = $this->body($this->get('/subscriptions', $userId));
+
+            self::assertMatchesRegularExpression(
+                '/<button type="button" class="button button-quiet list-filters-toggle" data-filters-toggle'
+                    . '\s+aria-controls="list-filters list-tools" aria-expanded="true" hidden>/',
+                $body,
+            );
+            self::assertStringContainsString('<span class="list-filters-label">Filters</span>', $body);
+            self::assertStringContainsString('id="list-filters"', $body);
+            self::assertStringContainsString('id="list-tools"', $body);
+        }
+    }
+
     public function testTheAddButtonBesideTheSearchIsOnlyForThoseWhoMayCreate(): void
     {
         $editor = $this->body($this->get('/subscriptions', $this->editorId));

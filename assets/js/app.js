@@ -35,7 +35,7 @@ import { icon } from './icons.js';
 import { enhancePaymentMethodFields } from './payment-method-field.js';
 import { enhanceScenarioForm } from './scenario-form.js';
 import { enhanceSubscriptionForms } from './subscription-form.js';
-import { enhanceSubscriptionLists } from './subscription-list.js';
+import { enhanceFilterToggles, enhanceSubscriptionLists } from './subscription-list.js';
 import { enhanceTagFields } from './tag-field.js';
 
 /*
@@ -75,6 +75,7 @@ function hydrate() {
     enhancePaymentMethodFields(document);
     enhanceSubscriptionForms(document);
     enhanceSubscriptionLists(document);
+    enhanceFilterToggles(document);
     enhanceCopyFields(document);
     enhanceCardLayouts(document);
     enhanceCalendarLists(document);
@@ -109,6 +110,8 @@ function enhanceArrived(event) {
     // The whole document rather than the event's target: an outerHTML swap's
     // target is the element that was just replaced.
     enhanceSubscriptionLists(document);
+    // The out-of-band toolbar arrives with the list: its Filters count follows.
+    enhanceFilterToggles(document);
     // A month swap brings a fresh phone-list container, like the list above.
     enhanceCalendarLists(document);
 }

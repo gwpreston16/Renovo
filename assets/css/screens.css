@@ -142,6 +142,31 @@
     line-height: 1.1;
 }
 
+/*
+ * The subscriptions strip on a phone: stacked one to a row, the four tiles
+ * filled the first screen before the list began. The three counts are short
+ * and share a row; Per month, which may carry per-currency subtotals, takes
+ * the row beneath. The icons go: their labels already say what each is.
+ */
+@media (max-width: 767px) {
+    .subscription-strip {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.75rem;
+    }
+
+    .subscription-strip .kpi {
+        padding: 1rem;
+    }
+
+    .subscription-strip .kpi:last-child {
+        grid-column: 1 / -1;
+    }
+
+    .subscription-strip .kpi-icon {
+        display: none;
+    }
+}
+
 /* The one-off and lifetime line under the tiles is set apart from them. */
 .one-off-note {
     margin-top: 1rem;
@@ -1977,6 +2002,77 @@ tr.is-passed > td {
         justify-content: flex-start;
         padding-top: 0;
         border-top: 0;
+    }
+}
+
+/*
+ * On a phone the toolbar was taller than the screen before the first row of
+ * the list. The search takes its line alone; the page's Add button gives way
+ * to the tab bar's raised one, which opens the same quick-add dialog; and the
+ * chips, segments and tools fold behind the Filters button, which script
+ * shows (`subscription-list.js`). Without script nothing folds.
+ */
+.list-filters-toggle[hidden],
+.list-filters-count[hidden] {
+    display: none;
+}
+
+.list-filters-count {
+    min-width: 1.25rem;
+    padding: 0 0.35rem;
+    border-radius: var(--radius-pill);
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: var(--size-caption);
+    line-height: 1.25rem;
+    text-align: center;
+}
+
+@media (min-width: 768px) {
+    .list-filters-toggle {
+        display: none;
+    }
+}
+
+@media (max-width: 767px) {
+    .list-search-add {
+        display: none;
+    }
+
+    /* The strip's tiles take 1rem on a phone; the toolbar matches them. */
+    .subscriptions-toolbar {
+        padding: 1rem;
+    }
+
+    .list-search-bar {
+        gap: 0.5rem;
+    }
+
+    .list-filters-toggle {
+        flex: none;
+    }
+
+    .subscriptions-toolbar.is-folded > .list-filters,
+    .subscriptions-toolbar.is-folded > .list-tools {
+        display: none;
+    }
+}
+
+/* The narrowest phones give the search the room: the button keeps its icon
+   and count, and its word stays for a screen reader. */
+@media (max-width: 359px) {
+    .list-filters-toggle {
+        padding-inline: 0.75rem;
+    }
+
+    .list-filters-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
     }
 }
 

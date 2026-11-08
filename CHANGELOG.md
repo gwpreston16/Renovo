@@ -10,6 +10,15 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ### Changed
 
+- **The subscriptions screen starts with the list on a phone.** Below 768px
+  the first row was more than a screen and a half down. Active, Trials and
+  Paused now share one row above Per month; the search box takes its line
+  alone (the tab bar's raised Add opens the same quick-add); and the chips,
+  status and scope, saved views, density and export fold behind a new
+  **Filters** button that counts the filters that are on. It starts folded
+  when none is and open when one is. Without script nothing folds. At 375px
+  the first subscription moves from 1,204px down to 442px. Wider screens are
+  unchanged.
 - **Four screens send far less markup at 300 subscriptions.** Nothing a screen
   shows or computes changes; what changed is how much is repeated per row.
   The **subscription list** posts Pause or Resume, Cancel, Undo cancel and
