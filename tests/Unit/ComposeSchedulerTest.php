@@ -59,20 +59,30 @@ final class ComposeSchedulerTest extends TestCase
         // Compose reads `$$` as a literal `$`.
         $loop = str_replace('$$', '$', (string) $command[0]);
 
+        // The fakes find their files through $FAKES, the shell's own name for
+        // this directory: a Windows path written into a script would have its
+        // backslashes read as escapes, and its drive colon split PATH.
         file_put_contents($this->dir . '/clock', "1000000\n" . (1000000 + $seconds) . "\n");
         $this->fake('php', 'exit 0');
-        $clock = $this->dir . '/clock';
-        $this->fake('date', sprintf(
-            'line=$(head -n 1 %1$s); tail -n +2 %1$s > %1$s.next; mv %1$s.next %1$s; echo "$line"',
-            $clock,
-        ));
-        $this->fake('sleep', sprintf('echo "$1" > %s/slept; kill $PPID', $this->dir));
+        $this->fake(
+            'date',
+            'c="$FAKES/clock"; line=$(head -n 1 "$c"); tail -n +2 "$c" > "$c.next"; mv "$c.next" "$c"; echo "$line"',
+        );
+        $this->fake('sleep', 'echo "$1" > "$FAKES/slept"; kill $PPID');
+        file_put_contents($this->dir . '/loop.sh', $loop);
 
-        $script = $this->dir . '/loop.sh';
-        file_put_contents($script, $loop);
-        // One shell more than needed, so the "Terminated" notice for the killed loop goes to /dev/null.
-        $run = sprintf('PATH=%s:$PATH sh %s', escapeshellarg($this->dir), escapeshellarg($script));
-        exec('sh -c ' . escapeshellarg($run . '; true') . ' >/dev/null 2>&1');
+        // An argument list, not a command line, so no cmd.exe on Windows. One
+        // shell more than needed, so the "Terminated" notice for the killed
+        // loop lands in the null device with the rest of its output.
+        $null = PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null';
+        $process = proc_open(
+            ['sh', '-c', 'FAKES=$(pwd); export FAKES; PATH="$FAKES:$PATH" sh ./loop.sh; true'],
+            [0 => ['file', $null, 'r'], 1 => ['file', $null, 'w'], 2 => ['file', $null, 'w']],
+            $pipes,
+            $this->dir,
+        );
+        self::assertIsResource($process, 'sh is on the PATH');
+        proc_close($process);
         self::assertFileExists($this->dir . '/slept', 'the loop reached its sleep');
 
         return trim((string) file_get_contents($this->dir . '/slept'));

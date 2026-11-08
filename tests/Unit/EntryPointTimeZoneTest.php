@@ -90,7 +90,7 @@ final class EntryPointTimeZoneTest extends TestCase
     {
         return [
             'bin/console' => [['bin/console'], []],
-            'public/index.php' => [['public/index.php'], ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/health']],
+            'public/index.php' => [['public/index.php'], ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/healthz']],
         ];
     }
 
@@ -106,6 +106,12 @@ final class EntryPointTimeZoneTest extends TestCase
         file_put_contents($probe, '<?php register_shutdown_function(static function (): void {'
             . ' fwrite(STDERR, "\nZONE " . ini_get("date.timezone") . " " . date_default_timezone_get() . "\n"); });');
 
+        // Only stderr is read, so stdout goes to the null device. Reading both
+        // pipes in turn deadlocks once the child writes more to the second than
+        // its buffer holds (about 4 KB on Windows, 64 KB on Linux): the child
+        // blocks on stderr while the parent waits for stdout to end.
+        $null = PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null';
+
         try {
             $process = proc_open(
                 [
@@ -116,16 +122,14 @@ final class EntryPointTimeZoneTest extends TestCase
                     'auto_prepend_file=' . $probe,
                     ...$arguments,
                 ],
-                [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+                [0 => ['file', $null, 'r'], 1 => ['file', $null, 'w'], 2 => ['pipe', 'w']],
                 $pipes,
                 $this->root,
                 [...getenv(), ...$server],
             );
             self::assertIsResource($process);
 
-            stream_get_contents($pipes[1]);
             $err = (string) stream_get_contents($pipes[2]);
-            fclose($pipes[1]);
             fclose($pipes[2]);
             proc_close($process);
         } finally {
@@ -247,7 +251,9 @@ final class EntryPointTimeZoneTest extends TestCase
             $paths = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($this->root . '/' . $directory));
             foreach ($paths as $path) {
                 if ($path->isFile() && $path->getExtension() === 'php') {
-                    $files[] = substr($path->getPathname(), strlen($this->root) + 1);
+                    // Named with `/` whatever the platform's separator, as the
+                    // checks below and the entry-point list name them.
+                    $files[] = str_replace('\\', '/', substr($path->getPathname(), strlen($this->root) + 1));
                 }
             }
         }

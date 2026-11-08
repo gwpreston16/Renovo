@@ -101,7 +101,7 @@ final class TimeZoneSites
      */
     public static function scan(string $root): array
     {
-        $src = rtrim($root, '/') . '/src';
+        $src = rtrim(str_replace('\\', '/', $root), '/') . '/src';
         if (!is_dir($src)) {
             throw new RuntimeException('No src/ under ' . $root);
         }
@@ -110,7 +110,10 @@ final class TimeZoneSites
         $tree = new \RecursiveDirectoryIterator($src, \FilesystemIterator::SKIP_DOTS);
         foreach (new \RecursiveIteratorIterator($tree) as $file) {
             if ($file instanceof \SplFileInfo && $file->getExtension() === 'php') {
-                $files[] = $file->getPathname();
+                // Windows hands back `src/Repository\X.php`; the list and the
+                // classes are written with `/`, so a site is named the same on
+                // every platform (and sorts the same).
+                $files[] = str_replace('\\', '/', $file->getPathname());
             }
         }
         sort($files);
