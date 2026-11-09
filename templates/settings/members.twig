@@ -45,7 +45,7 @@
     #}
     {% if temporary_password %}
         <section class="card callout">
-            <h2>{{ t('members.temporary_password_heading') }}</h2>
+            <h2>{{ icon('warn') }}{{ t('members.temporary_password_heading') }}</h2>
             <p>{{ t('members.temporary_password_note', { 'name': temporary_password_for }) }}</p>
             <ul class="code-list">
                 <li><code>{{ temporary_password }}</code></li>

@@ -89,11 +89,20 @@ export async function drawInCard(canvas, config) {
  * Read a design token, so a chart is drawn in the same colours as everything
  * around it and follows the palette rather than restating it.
  *
+ * There is deliberately no colour written here as a fallback: a literal would
+ * be a second copy of the token that goes stale the day the token changes, and
+ * the generated theme defines every chart token in every palette and theme, so
+ * it would never be painted. When a property resolves empty — the stylesheet
+ * has not loaded — the colour is `currentColor`, which a canvas resolves from
+ * the page's own text colour: derived, never hard-coded. A caller reading
+ * something that is not a colour (a font stack) passes its own fallback.
+ *
  * @param {string} name The custom property, including its leading dashes.
- * @param {string} fallback What to use when the stylesheet has not loaded.
- * @returns {string} The resolved colour.
+ * @param {string} [fallback] What to use when the property is empty; defaults
+ *     to `currentColor`.
+ * @returns {string} The resolved value.
  */
-export function token(name, fallback) {
+export function token(name, fallback = 'currentColor') {
     const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
     return value === '' ? fallback : value;
@@ -106,9 +115,9 @@ export function token(name, fallback) {
  * This is the one place a chart gets a colour. The six series are
  * categorical — they tell one thing from another and mean nothing — and are
  * written out as literal values by the token build, so a canvas can use them
- * directly. The fallbacks are the default palette's light values and only
- * matter if the stylesheet has not loaded, in which case the page has bigger
- * problems than its chart.
+ * directly. None carries a literal fallback (see `token`): an unloaded
+ * stylesheet gives `currentColor`, and the page has bigger problems than its
+ * chart.
  *
  * Read afresh on every draw rather than cached, because the palette under a
  * drawn chart can change (see `onThemeChange`).
@@ -119,20 +128,20 @@ export function token(name, fallback) {
 export function themeColours() {
     return {
         series: [
-            token('--s1', '#0A2540'),
-            token('--s2', '#047857'),
-            token('--s3', '#3B82F6'),
-            token('--s4', '#D97706'),
-            token('--s5', '#8B5CF6'),
-            token('--s6', '#475569'),
+            token('--s1'),
+            token('--s2'),
+            token('--s3'),
+            token('--s4'),
+            token('--s5'),
+            token('--s6'),
         ],
-        other: token('--s-other', '#8792A2'),
-        accent: token('--accent', '#00D084'),
-        border: token('--border', '#E2E8F0'),
-        muted: token('--muted', '#4A5568'),
-        text: token('--text', '#0A2540'),
-        surface: token('--surface', '#FFFFFF'),
-        band: token('--chart-band', 'rgba(180, 83, 9, 0.14)'),
+        other: token('--s-other'),
+        accent: token('--accent'),
+        border: token('--border'),
+        muted: token('--muted'),
+        text: token('--text'),
+        surface: token('--surface'),
+        band: token('--chart-band'),
     };
 }
 

@@ -23,8 +23,9 @@
 
             <label for="code">{{ t('security_totp_setup.six_digit_code') }}</label>
             <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code"
-                   pattern="[0-9]{6}" maxlength="6" required autofocus>
-            {% if errors.code is defined %}<p class="field-error">{{ error_message(errors.code) }}</p>{% endif %}
+                   pattern="[0-9]{6}" maxlength="6" required autofocus
+                   {% if errors.code is defined %}aria-invalid="true" aria-describedby="code-error"{% endif %}>
+            {% if errors.code is defined %}<p class="field-error" id="code-error">{{ error_message(errors.code) }}</p>{% endif %}
 
             <button type="submit" class="button button-primary">{{ t('security_totp_setup.confirm') }}</button>
         </form>

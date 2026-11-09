@@ -10,6 +10,13 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ### Changed
 
+- **A heads-up no longer has a coloured side stripe.** The one-time token and
+  temporary-password cards, the recovery codes and the import notice now use
+  the warm tint and a warm heading (with a warning icon on the token and
+  password cards), as the design's own notices do, instead of a 4px rule down the left edge. The meaning is the same: a
+  heads-up, not an error. The dashboard's update banner loses its stripe too.
+  Charts no longer carry a second copy of the default colours; they read the
+  theme's.
 - **The subscriptions screen starts with the list on a phone.** Below 768px
   the first row was more than a screen and a half down. Active, Trials and
   Paused now share one row above Per month; the search box takes its line
@@ -52,6 +59,13 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ### Fixed
 
+- **Form errors are tied to their fields for screen readers.** A rejected
+  category, tag, payment method, notification channel, notification schedule,
+  backup destination, household or scenario change used to show its message
+  after the form, with nothing connecting it to the field. The field now says
+  it is invalid and names the message, which sits beside it; where the field
+  already had a hint, both are read. Each message's id carries its row, so
+  several open chips never share one.
 - **The browser tab shows the Renovo mark.** Every page asked for
   `/favicon.ico` and got a 404; the layout now links an SVG icon the instance
   serves itself (`/assets/favicon.svg`). Behind it, the stylesheets now take

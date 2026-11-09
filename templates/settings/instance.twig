@@ -456,11 +456,15 @@
                                 {{ csrf_field() }}
 
                                 <label for="destination_{{ destination.id }}_name">{{ t('backup.destination.field.name') }}</label>
-                                <input type="text" id="destination_{{ destination.id }}_name" name="name" value="{{ edit ? edit.values.name|default('') : destination.name }}" required maxlength="100">
-                                {% if edit and edit.errors.name is defined %}<p class="field-error">{{ error_message(edit.errors.name) }}</p>{% endif %}
+                                <input type="text" id="destination_{{ destination.id }}_name" name="name" value="{{ edit ? edit.values.name|default('') : destination.name }}" required maxlength="100"
+                                       {% if edit and edit.errors.name is defined %}aria-invalid="true" aria-describedby="destination_{{ destination.id }}_name_error"{% endif %}>
+                                {% if edit and edit.errors.name is defined %}<p class="field-error" id="destination_{{ destination.id }}_name_error">{{ error_message(edit.errors.name) }}</p>{% endif %}
 
                                 {% for field in destination.type.fields() %}
                                     {% set id = 'destination_' ~ destination.id ~ '_' ~ field.name %}
+                                    {# The input names its error and its hint by ids built from the row's. #}
+                                    {% set field_error = edit and edit.errors[field.name] is defined %}
+                                    {% set described = [field.hint and not field.secret and field.input != 'checkbox' ? id ~ '_hint' : null, field_error ? id ~ '_error' : null]|filter(i => i)|join(' ') %}
                                     {% if field.input == 'checkbox' %}
                                         <input type="hidden" name="{{ field.name }}" value="0">
                                         <label class="choice toggle-row" for="{{ id }}">
@@ -469,6 +473,7 @@
                                                 {% if field.hint %}<span class="choice-note">{{ t('backup.destination.field.' ~ field.name ~ '_hint') }}</span>{% endif %}
                                             </span>
                                             <input type="checkbox" class="toggle" role="switch" id="{{ id }}" name="{{ field.name }}" value="1"
+                                                   {% if field_error %}aria-invalid="true"{% endif %}{% if described %} aria-describedby="{{ described }}"{% endif %}
                                                    {{ (edit ? edit.values[field.name]|default('') == '1' : destination.configBool(field.name)) ? 'checked' : '' }}>
                                         </label>
                                     {% else %}
@@ -479,16 +484,18 @@
                                                 {{ t('backup.destination.credential_replace_hint') }}
                                             </p>
                                             <input type="password" id="{{ id }}" name="{{ field.name }}" autocomplete="off"
-                                                   placeholder="{{ t('backup.destination.credential_replace') }}">
+                                                   placeholder="{{ t('backup.destination.credential_replace') }}"
+                                                   {% if field_error %}aria-invalid="true"{% endif %}{% if described %} aria-describedby="{{ described }}"{% endif %}>
                                         {% else %}
                                             <input type="{{ field.input }}" id="{{ id }}" name="{{ field.name }}" autocomplete="off"
                                                    {{ field.required ? 'required' : '' }}
-                                                   value="{{ edit ? edit.values[field.name]|default('') : destination.configString(field.name) }}">
-                                            {% if field.hint %}<p class="hint">{{ t('backup.destination.field.' ~ field.name ~ '_hint') }}</p>{% endif %}
+                                                   value="{{ edit ? edit.values[field.name]|default('') : destination.configString(field.name) }}"
+                                                   {% if field_error %}aria-invalid="true"{% endif %}{% if described %} aria-describedby="{{ described }}"{% endif %}>
+                                            {% if field.hint %}<p class="hint" id="{{ id }}_hint">{{ t('backup.destination.field.' ~ field.name ~ '_hint') }}</p>{% endif %}
                                         {% endif %}
                                     {% endif %}
-                                    {% if edit and edit.errors[field.name] is defined %}
-                                        <p class="field-error">{{ error_message(edit.errors[field.name]) }}</p>
+                                    {% if field_error %}
+                                        <p class="field-error" id="{{ id }}_error">{{ error_message(edit.errors[field.name]) }}</p>
                                     {% endif %}
                                 {% endfor %}
 
@@ -536,7 +543,7 @@
         {% set failed = destination_form ?? null %}
         <details class="settings-disclosure" id="add-destination" {{ failed ? 'open' : '' }}>
             <summary class="button button-outline">{{ icon('add') }}{{ t('backup.destination.add') }}</summary>
-            {% if failed and failed.errors.type is defined %}<p class="field-error">{{ error_message(failed.errors.type) }}</p>{% endif %}
+            {% if failed and failed.errors.type is defined %}<p class="field-error" role="alert">{{ error_message(failed.errors.type) }}</p>{% endif %}
 
             {% for type in backups.destination_types %}
                 {% set is_this = failed and failed.type == type.value %}
@@ -550,11 +557,14 @@
                         <label for="new_{{ type.value }}_name">{{ t('backup.destination.field.name') }}</label>
                         <input type="text" id="new_{{ type.value }}_name" name="name" required maxlength="100"
                                placeholder="{{ t(type.labelKey()) }}"
-                               value="{{ is_this ? failed.values.name|default('') : '' }}">
-                        {% if is_this and failed.errors.name is defined %}<p class="field-error">{{ error_message(failed.errors.name) }}</p>{% endif %}
+                               value="{{ is_this ? failed.values.name|default('') : '' }}"
+                               {% if is_this and failed.errors.name is defined %}aria-invalid="true" aria-describedby="new_{{ type.value }}_name_error"{% endif %}>
+                        {% if is_this and failed.errors.name is defined %}<p class="field-error" id="new_{{ type.value }}_name_error">{{ error_message(failed.errors.name) }}</p>{% endif %}
 
                         {% for field in type.fields() %}
                             {% set id = 'new_' ~ type.value ~ '_' ~ field.name %}
+                            {% set field_error = is_this and failed.errors[field.name] is defined %}
+                            {% set described = [field.hint and field.input != 'checkbox' ? id ~ '_hint' : null, field_error ? id ~ '_error' : null]|filter(i => i)|join(' ') %}
                             {% if field.input == 'checkbox' %}
                                 <input type="hidden" name="{{ field.name }}" value="0">
                                 <label class="choice toggle-row" for="{{ id }}">
@@ -563,17 +573,19 @@
                                         {% if field.hint %}<span class="choice-note">{{ t('backup.destination.field.' ~ field.name ~ '_hint') }}</span>{% endif %}
                                     </span>
                                     <input type="checkbox" class="toggle" role="switch" id="{{ id }}" name="{{ field.name }}" value="1"
+                                           {% if field_error %}aria-invalid="true"{% endif %}{% if described %} aria-describedby="{{ described }}"{% endif %}
                                            {{ is_this and failed.values[field.name]|default('') == '1' ? 'checked' : '' }}>
                                 </label>
                             {% else %}
                                 <label for="{{ id }}">{{ t('backup.destination.field.' ~ field.name) }}</label>
                                 <input type="{{ field.input }}" id="{{ id }}" name="{{ field.name }}" autocomplete="off"
                                        {{ field.required ? 'required' : '' }}
-                                       {% if is_this and not field.secret %}value="{{ failed.values[field.name]|default('') }}"{% endif %}>
-                                {% if field.hint %}<p class="hint">{{ t('backup.destination.field.' ~ field.name ~ '_hint') }}</p>{% endif %}
+                                       {% if is_this and not field.secret %}value="{{ failed.values[field.name]|default('') }}"{% endif %}
+                                       {% if field_error %}aria-invalid="true"{% endif %}{% if described %} aria-describedby="{{ described }}"{% endif %}>
+                                {% if field.hint %}<p class="hint" id="{{ id }}_hint">{{ t('backup.destination.field.' ~ field.name ~ '_hint') }}</p>{% endif %}
                             {% endif %}
-                            {% if is_this and failed.errors[field.name] is defined %}
-                                <p class="field-error">{{ error_message(failed.errors[field.name]) }}</p>
+                            {% if field_error %}
+                                <p class="field-error" id="{{ id }}_error">{{ error_message(failed.errors[field.name]) }}</p>
                             {% endif %}
                         {% endfor %}
 

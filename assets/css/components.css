@@ -200,6 +200,8 @@ main.container {
     padding: 0.5rem 1rem;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
+    /* The bar may grow to a second row at a larger text size (see .topbar-actions). */
+    flex-wrap: wrap;
 }
 
 .topbar-lead {
@@ -310,11 +312,19 @@ main.container {
     }
 }
 
+/*
+ * The bar's own controls. They wrap rather than run off the right edge: at a
+ * larger text size the search field (15rem), rates chip and buttons are wider
+ * than the bar, and a bar that cannot wrap scrolls the whole page sideways.
+ * At the default size everything still fits on the one line.
+ */
 .topbar-actions {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-end;
     gap: 0.5rem;
-    flex-shrink: 0;
+    min-width: 0;
     margin-left: auto;
 }
 
@@ -421,6 +431,7 @@ main.container {
  */
 .topbar-search input[type='search'] {
     width: 15rem;
+    max-width: 100%;
     padding: 0.5rem 0.75rem 0.5rem 2.125rem;
     font-size: var(--size-caption);
     background: var(--surface-2);
@@ -1394,7 +1405,9 @@ p.field-hint {
     border-radius: var(--radius-pill);
     color: var(--muted);
     margin-left: 0.25rem;
-    white-space: nowrap;
+    /* One line while it fits; at a larger text size it wraps rather than push the page sideways. */
+    max-width: 100%;
+    overflow-wrap: anywhere;
 }
 
 .badge-ok {
@@ -1698,6 +1711,8 @@ select {
 
 .input-group {
     display: flex;
+    /* The select drops under the field at a larger text size instead of overflowing. */
+    flex-wrap: wrap;
     gap: 0.4rem;
 }
 
@@ -2220,14 +2235,33 @@ legend {
     display: none;
 }
 
-/* A heads-up rather than a problem: the warm hue, as a leading rule. */
+/*
+ * A heads-up rather than a problem: the warn tint, as the prototype draws its
+ * "Price change" tile — `--warn-bg` ground, `--warn` icon and heading. Not a
+ * coloured side rule: the prototype's only left border is the navigation's
+ * active marker. Every pair here is one ThemeContrastTest already holds
+ * (`warn` and `text` on `warn-bg:surface`), so it reads in every palette.
+ */
 .callout {
-    border-left: 4px solid var(--warn);
+    background: var(--warn-bg);
+}
+
+.callout > h2,
+.callout > h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--warn);
+}
+
+.callout > h2 .icon,
+.callout > h3 .icon {
+    flex: none;
 }
 
 /*
  * A newer release is out: the dashboard's banner for instance
- * administrators. A callout on the page's surface, the message and its link
+ * administrators. A callout on the page's surface (the info icon in the warn hue carries the tone), the message and its link
  * on one side and Dismiss on the other, wrapping onto two lines on a phone.
  */
 .update-banner {
@@ -2238,7 +2272,6 @@ legend {
     margin-bottom: 1rem;
     background: var(--surface);
     border-color: var(--border);
-    border-left-color: var(--warn);
     color: var(--text);
 }
 

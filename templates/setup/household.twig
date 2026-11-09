@@ -40,7 +40,9 @@
 
         <div class="auth-field">
             <label for="base_currency">{{ t('settings.base_currency') }}</label>
-            <select id="base_currency" name="base_currency" aria-describedby="base_currency_hint">
+            <select id="base_currency" name="base_currency"
+                    {% if errors.base_currency is defined %}aria-invalid="true"{% endif %}
+                    aria-describedby="base_currency_hint{% if errors.base_currency is defined %} base_currency_error{% endif %}">
                 <optgroup label="{{ t('setup_wizard.currencies_common') }}">
                     {% for code in featured_currencies %}
                         <option value="{{ code }}" {{ chosen_currency == code ? 'selected' : '' }}>{{ t('currency.option', { 'code': code, 'name': t('currency.name.' ~ code) }) }}</option>
@@ -53,7 +55,7 @@
                 </optgroup>
             </select>
             <p class="hint" id="base_currency_hint">{{ t('settings.base_currency_hint') }}</p>
-            {% if errors.base_currency is defined %}<p class="field-error">{{ error_message(errors.base_currency) }}</p>{% endif %}
+            {% if errors.base_currency is defined %}<p class="field-error" id="base_currency_error">{{ error_message(errors.base_currency) }}</p>{% endif %}
         </div>
 
         {% include 'auth/_input.twig' with {

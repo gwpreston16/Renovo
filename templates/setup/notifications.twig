@@ -64,19 +64,20 @@
                    {{ (posted ? submitted.budget_alerts|default('0') == '1' : budget_alerts) ? 'checked' : '' }}>
         </label>
 
-        <fieldset class="auth-fieldset">
+        <fieldset class="auth-fieldset"{% if errors.lead_days is defined %} aria-describedby="lead_days_error"{% endif %}>
             <legend>{{ t('setup_notifications.remind_me') }}</legend>
             <input type="hidden" name="lead_days[]" value="">
             <div class="chip-choices">
                 {% for days in offered_lead_days %}
                     <label class="filter-chip">
                         <input type="checkbox" name="lead_days[]" value="{{ days }}"
+                               {% if errors.lead_days is defined %}aria-invalid="true"{% endif %}
                                {{ days in chosen_lead or (days ~ '') in chosen_lead ? 'checked' : '' }}>
                         {{ t('notifications.days_before', {'count': days}) }}
                     </label>
                 {% endfor %}
             </div>
-            {% if errors.lead_days is defined %}<p class="field-error">{{ error_message(errors.lead_days) }}</p>{% endif %}
+            {% if errors.lead_days is defined %}<p class="field-error" id="lead_days_error">{{ error_message(errors.lead_days) }}</p>{% endif %}
         </fieldset>
     </form>
 

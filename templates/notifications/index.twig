@@ -146,10 +146,13 @@
                                        name="{{ field.name }}"
                                        {{ field.required ? 'required' : '' }}
                                        {% if is_this and not field.isSecret %}value="{{ submitted[field.name]|default('') }}"{% endif %}
+                                       {% set field_failed = is_this and errors[field.name] is defined %}
+                                       {% if field_failed %}aria-invalid="true"{% endif %}
+                                       {% if field.hint or field_failed %}aria-describedby="{{ [field.hint ? notifier.key ~ '_' ~ field.name ~ '_hint' : null, field_failed ? notifier.key ~ '_' ~ field.name ~ '_error' : null]|filter(i => i)|join(' ') }}"{% endif %}
                                        autocomplete="off">
-                                {% if field.hint %}<p class="hint">{{ t(field.hint) }}</p>{% endif %}
-                                {% if is_this and errors[field.name] is defined %}
-                                    <p class="field-error">{{ error_message(errors[field.name]) }}</p>
+                                {% if field.hint %}<p class="hint" id="{{ notifier.key }}_{{ field.name }}_hint">{{ t(field.hint) }}</p>{% endif %}
+                                {% if field_failed %}
+                                    <p class="field-error" id="{{ notifier.key }}_{{ field.name }}_error">{{ error_message(errors[field.name]) }}</p>
                                 {% endif %}
                             {% endfor %}
 
@@ -185,19 +188,20 @@
                         {{ t('notifications.lead_times_hint', {'types': lead_types_text}) }}
                     </p>
                     <input type="hidden" name="lead_days[]" value="">
-                    <div class="chip-choices" aria-describedby="lead_days_hint">
+                    <div class="chip-choices" aria-describedby="lead_days_hint{% if errors.lead_days is defined %} lead_days_error{% endif %}">
                         {% set chosen = submitted.lead_days is defined and submitted.lead_days is iterable
                             ? submitted.lead_days
                             : preferences.leadDays %}
                         {% for days in lead_choices %}
                             <label class="filter-chip">
                                 <input type="checkbox" name="lead_days[]" value="{{ days }}"
+                                       {% if errors.lead_days is defined %}aria-invalid="true"{% endif %}
                                        {{ days in chosen or (days ~ '') in chosen ? 'checked' : '' }}>
                                 {{ t('notifications.days_before', {'count': days}) }}
                             </label>
                         {% endfor %}
                     </div>
-                    {% if errors.lead_days is defined %}<p class="field-error">{{ error_message(errors.lead_days) }}</p>{% endif %}
+                    {% if errors.lead_days is defined %}<p class="field-error" id="lead_days_error">{{ error_message(errors.lead_days) }}</p>{% endif %}
                 </fieldset>
 
                 <fieldset class="preference">
@@ -215,9 +219,11 @@
 
                     <label for="digest_day">{{ t('notifications.summary_day') }}</label>
                     <input type="number" id="digest_day" name="digest_day" min="1" max="28"
-                           value="{{ preferences.digestDay }}" aria-describedby="digest_day_hint" class="input-short">
+                           value="{{ preferences.digestDay }}" class="input-short"
+                           {% if errors.digest_day is defined %}aria-invalid="true"{% endif %}
+                           aria-describedby="digest_day_hint{% if errors.digest_day is defined %} digest_day_error{% endif %}">
                     <p class="hint" id="digest_day_hint">{{ t('notifications.digest_day_hint') }}</p>
-                    {% if errors.digest_day is defined %}<p class="field-error">{{ error_message(errors.digest_day) }}</p>{% endif %}
+                    {% if errors.digest_day is defined %}<p class="field-error" id="digest_day_error">{{ error_message(errors.digest_day) }}</p>{% endif %}
                 </fieldset>
 
                 {# The hidden field carries "off"; a switched-on box overrides it with "on". #}
