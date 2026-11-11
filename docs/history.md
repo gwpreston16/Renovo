@@ -915,6 +915,27 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   forms of `reminder_days` the API has always accepted (`"30,7,1"`, `"never"`,
   `""`) are now documented, with what is refused, and pinned by tests. OpenAPI
   1.9.14; no new endpoint or field. No migrations. See [API](api.md).
+- **Phase 86 — Lighter pages for big households, from the known-issues log
+  — complete (1.44.0).** Four screens send far less markup when a household
+  has hundreds of subscriptions, with nothing they show or compute changed.
+  The subscription list and the Stats "Worth it?" table post their row
+  actions through one form instead of one per row; the calendar sends only
+  the grid, and on a phone fetches the month's list on demand (or offers a
+  "Show as list" link without script); the scenario planner draws the
+  change-price fields only for a row set to Change. A paused row stays
+  readable, and a few small labels are a size larger. No API change. No
+  migrations. See [The calendar](features/calendar.md#calendar) and
+  [Forecast](features/money.md#forecast).
+- **Phase 87 — Budgets that follow pay day — complete (1.44.0).** Each member
+  can record a recent pay day, and a monthly budget can run from pay day to
+  pay day instead of by calendar month; two new periods, every 2 weeks and
+  every 4 weeks, step from it. A member budget follows its member's pay day, a
+  household budget its owner's, and the Budgets screen and dashboard name the
+  period and the days left in it. Every budget alert now names the window it
+  projects over, and changing a budget's period re-arms its alert. Yearly
+  budgets and every budget not switched over keep their calendar period. No
+  API change. Two migrations. See [Budgets](features/money.md#budgets) and
+  [Upgrading](upgrading.md#after-upgrading-to-budgets-that-follow-pay-day-phase-87).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
