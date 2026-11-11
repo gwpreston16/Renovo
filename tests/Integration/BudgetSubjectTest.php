@@ -169,6 +169,41 @@ final class BudgetSubjectTest extends NotificationTestCase
         self::assertSame([$this->alice], $this->budgetAlertRecipients());
     }
 
+    public function testAFortnightlyBreachNamesItsWindow(): void
+    {
+        $this->addChannel($this->alice);
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2026-09-04']);
+        $this->budget($this->scope($this->alice), ['period' => BudgetPeriod::Fortnight->value, 'amount' => '5.00']);
+        $this->budget($this->scope($this->alice), ['name' => 'Year', 'period' => 'annual', 'amount' => '5.00']);
+
+        $this->runner->run();
+
+        $lines = [];
+        foreach ($this->notifier->sent as $sent) {
+            if ($sent['alert']->type === AlertType::BudgetExceeded) {
+                $lines[] = $sent['alert']->lines[0];
+            }
+        }
+        sort($lines);
+
+        self::assertSame([
+            'Projected £10.00 over the next two weeks, against a limit of £5.00.',
+            'Projected £120.00 over the next 12 months, against a limit of £5.00.',
+        ], $lines);
+    }
+
+    public function testAWeeklyBudgetWhoseMemberClearsTheirPayDayRaisesNothing(): void
+    {
+        $this->addChannel($this->alice);
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2026-09-04']);
+        $this->budget($this->scope($this->alice), ['period' => BudgetPeriod::FourWeeks->value, 'amount' => '5.00']);
+        $this->users->updatePreferences($this->alice, ['pay_day' => null]);
+
+        $this->runner->run();
+
+        self::assertSame([], $this->budgetAlertRecipients());
+    }
+
     /**
      * @param array<string, string> $overrides
      */

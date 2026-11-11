@@ -3,7 +3,7 @@
     last six months against its monthly limit.
 
     Every figure is BudgetScreenService's — a card is the budget read over its
-    calendar period, the history is the dashboard chart's own months — and the
+    own period (a pay-day one is named, with the days left in it), the history is the dashboard chart's own months — and the
     template only lays them out. A budget with no honest figure (a currency
     with no rate, or spending this viewer cannot see whole) says so instead
     of showing one, and is counted in no tile.
@@ -89,6 +89,13 @@
                             <h2 id="budget-{{ budget.id }}-name">{{ budget.name }}</h2>
                             <p class="budget-meta">
                                 {{ budget_period_label(budget.period.value) }}
+                                {% if card.window and card.window.followsPayDay %}
+                                    · <span class="num">{{ t('budgets.period_range', {
+                                        'first': card.window.first|local_date('d MMM'),
+                                        'last': card.window.last|local_date('d MMM'),
+                                    }) }}</span>
+                                    ({{ t('budgets.days_left', {'count': card.days_left}) }})
+                                {% endif %}
                                 · {{ budget.isOverall ? t('budgets.all_categories') : budget.categoryName }}
                                 · {{ budget.isHousehold ? t('budgets.household') : budget.subjectName }}
                             </p>
@@ -110,6 +117,11 @@
                     {% if card.note == 'unavailable' %}
                         <p class="stat-value num">{{ t('common.none_symbol') }}</p>
                         <p class="muted budget-note" data-budget-unavailable>{{ t('budgets.unavailable') }}</p>
+                    {% elseif card.note == 'no_pay_day' %}
+                        <p class="stat-value num">{{ t('common.none_symbol') }}</p>
+                        <p class="muted budget-note" data-budget-no-pay-day>
+                            {{ t('budgets.no_pay_day', {'name': budget.isHousehold ? budget.ownerName : budget.subjectName}) }}
+                        </p>
                     {% elseif card.note == 'unconvertible' %}
                         <p class="stat-value num">{{ t('common.none_symbol') }}</p>
                         <p class="budget-note" data-budget-unconvertible>

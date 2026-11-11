@@ -7,6 +7,10 @@
     another currency keeps it, and the label says which. Whose spending lists
     only what this viewer may choose (BudgetService::subjectOptions()) — the
     server refuses anything else, so a forged value gets an error, not a budget.
+
+    From pay day (Phase 87) is one switch, read only for a monthly budget: the
+    two weekly periods always step from pay day and a year never does, which
+    the hint says, so the form needs no script to hide it.
 #}
 {% extends is_htmx ? 'partials/bare.twig' : 'layout.twig' %}
 
@@ -58,6 +62,21 @@
                     {% if errors.period is defined %}<p class="field-error" id="budget-period-error">{{ error_message(errors.period) }}</p>{% endif %}
                 </div>
             </div>
+
+            <input type="hidden" name="follows_pay_day" value="0">
+            <label class="choice toggle-row">
+                <span>
+                    <span class="choice-title">{{ t('budgets_form.follows_pay_day') }}</span>
+                    <span class="choice-note">
+                        {{ t('budgets_form.follows_pay_day_hint') }}
+                        {% if current_user.payDay is null %}
+                            <a href="/profile#appearance">{{ t('budgets_form.set_pay_day') }}</a>
+                        {% endif %}
+                    </span>
+                </span>
+                <input type="checkbox" class="toggle" role="switch" name="follows_pay_day" value="1"
+                       {{ values.follows_pay_day|default('0') == '1' ? 'checked' : '' }}>
+            </label>
 
             <div class="field">
                 <label for="budget-category">{{ t('field.category') }}</label>

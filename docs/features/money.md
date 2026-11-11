@@ -223,6 +223,33 @@ spending includes a currency with no rate shows no figure and counts as nothing.
 The alert itself still projects a rolling window from today (the next month,
 the next 12 months), so a card can turn Over on a different day from the alert.
 
+**Pay day.** Each member can record a recent pay day under **Profile →
+Appearance & preferences**, and a budget can run from it rather than the
+calendar:
+
+- A **monthly** budget with **From pay day** switched on runs from pay day to
+  the day before the next one: paid on the 25th, from 25 October to
+  24 November. A day a month does not have is that month's last day, so a pay
+  day on the 31st starts on 28 February.
+- Budgets **every 2 weeks** and **every 4 weeks** always step from the pay
+  day, forward and back, in 14 or 28 days.
+- A **yearly** budget keeps the calendar year.
+
+The pay day is that of the member the budget measures; a household budget uses
+its owner's. Setting a pay day changes no budget until it is switched on, and
+the card names the period and the days left in it. A monthly budget whose
+member has no pay day reads the calendar month; a two- or four-weekly one
+shows no figure until they set one, and raises no alert. The alert's rolling
+window is as long as the period (the next two or four weeks), and changing a
+budget's period, or switching pay day on or off, re-arms its alert so the next
+breach under the new period is announced. The household's chart and the
+dashboard's monthly figures stay on calendar months, so a household budget
+that follows pay day is not drawn on them.
+
+A household archive carries the switch but not anybody's pay day, which is a
+personal preference; a two- or four-weekly budget whose member has no pay day
+in the household it is restored into is skipped and counted.
+
 New budgets are in the base currency; one set in another currency earlier keeps
 it.
 

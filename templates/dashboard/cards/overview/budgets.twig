@@ -1,7 +1,9 @@
 {#
     Budgets this month: up to four of the viewer's monthly budgets, each read
     against the calendar month — charged so far, and projected to the month's
-    end — so the two bars share one scale.
+    end — so the two bars share one scale. A budget that follows pay day is
+    read over its pay-day month instead, and its row names that period, since
+    the heading's month is not the one it measures.
 
     The note says the one thing worth saying: how much is left, how far over
     it will go, that it is past its warning, or that it will go over only if
@@ -29,6 +31,12 @@
                         <span>
                             <strong>{{ row.budget.name }}</strong>
                             <span class="hint">· {{ row.budget.isHousehold ? t('dashboard.budget_household') : t('dashboard.budget_yours') }}</span>
+                            {% if row.window.followsPayDay %}
+                                <span class="hint num">· {{ t('budgets.period_range', {
+                                    'first': row.window.first|local_date('d MMM'),
+                                    'last': row.window.last|local_date('d MMM'),
+                                }) }}</span>
+                            {% endif %}
                         </span>
                         {% if row.charged is not null and row.projected is not null %}
                             <span class="num muted">{{ row.charged.amountMinor|money(row.charged.currency) }} / {{ row.limit.amountMinor|money(row.limit.currency) }}</span>

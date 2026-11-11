@@ -311,8 +311,11 @@ final class AlertScanner
             $crossedOn->format('Y-m-d'),
             $this->translator->trans('alert.budget.title', ['budget' => $budget->name]),
             [
+                // The window is the alert's rolling one, as long as the budget's
+                // period (Phase 87), so it is named rather than left implied.
                 $this->translator->trans('alert.budget.projected', [
                     'projected' => $this->money->format($projected),
+                    'window' => $this->translator->trans('alert.budget.window.' . $budget->period->value),
                     'limit' => $this->money->format($limit),
                 ]),
                 $this->translator->trans('alert.budget.over', [

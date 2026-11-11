@@ -12,9 +12,11 @@ use App\Domain\Entity\Budget;
 use App\Domain\Entity\Subscription;
 use App\Domain\Money;
 use App\Domain\Rounding;
+use App\Repository\BudgetAlertStateRepository;
 use App\Repository\BudgetRepository;
 use App\Repository\CategoryRepository;
 use App\Repository\MembershipRepository;
+use App\Repository\UserRepository;
 use App\Security\Scope;
 use App\Support\Clock;
 use DateTimeImmutable;
@@ -82,6 +84,8 @@ final class BudgetService
         private readonly ExchangeRateService $rates,
         private readonly InstanceSettingsService $settings,
         private readonly Clock $clock,
+        private readonly UserRepository $users,
+        private readonly BudgetAlertStateRepository $alertState,
     ) {
     }
 
@@ -149,7 +153,7 @@ final class BudgetService
                 $progress[] = $this->measure($scope, $budget, $chargeCache);
             } elseif ($budget->subjectUserId === $scope->userId) {
                 $entry = $this->unavailable($budget);
-                $entry['unavailable'] = !$this->isMeasurableBy($scope, $budget);
+                $entry['unavailable'] = !$this->isMeasurableBy($scope, $budget) || $this->lacksPayDay($budget);
                 $progress[] = $entry;
             }
         }
@@ -166,15 +170,22 @@ final class BudgetService
      */
     private function measure(Scope $scope, Budget $budget, array &$chargeCache): array
     {
-        if (!$this->isMeasurableBy($scope, $budget)) {
+        if (!$this->isMeasurableBy($scope, $budget) || $this->lacksPayDay($budget)) {
             return $this->unavailable($budget);
         }
 
-        $key = ($budget->subjectUserId ?? 'household') . ':' . $budget->period->months();
-        $chargeCache[$key] ??= $this->withinWindow(
-            $this->forecast->charges($scope, $budget->period->months(), $budget->subjectUserId),
-            $budget->period->months(),
-        );
+        // A weekly period's window is counted in days, so its key is its own;
+        // a monthly budget shares its walk whether or not it follows pay day,
+        // because the alert's window rolls from today either way.
+        $days = $budget->period->days();
+        $key = ($budget->subjectUserId ?? 'household') . ':'
+            . ($days === null ? $budget->period->months() : $days . 'd');
+        if (!isset($chargeCache[$key])) {
+            $charges = $this->forecast->charges($scope, $budget->period->months(), $budget->subjectUserId);
+            $chargeCache[$key] = $days === null
+                ? $this->withinWindow($charges, $budget->period->months())
+                : $this->withinDays($charges, $days);
+        }
 
         return $this->progressFor($budget, $chargeCache[$key]);
     }
@@ -242,6 +253,40 @@ final class BudgetService
         }
 
         return $kept;
+    }
+
+    /**
+     * The charges inside a rolling window of `$days` from today: today up to,
+     * not including, the day `$days` on — so a fortnightly charge due today
+     * is counted once, not again on the last day of the window (Phase 87).
+     *
+     * @param list<WindowCharge> $charges
+     * @return list<WindowCharge>
+     */
+    private function withinDays(array $charges, int $days): array
+    {
+        $today = $this->clock->today()->setTime(0, 0);
+        $end = $today->modify(sprintf('+%d days', $days));
+
+        return array_values(array_filter(
+            $charges,
+            static function (array $charge) use ($today, $end): bool {
+                $date = $charge['date']->setTime(0, 0);
+
+                return $date >= $today && $date < $end;
+            },
+        ));
+    }
+
+    /**
+     * Whether the budget cannot be measured for want of a pay day: a two- or
+     * four-weekly period whose member has none. Such a budget is shown as
+     * unavailable and the alert leaves it alone, as it does a budget this
+     * scope cannot see whole.
+     */
+    public function lacksPayDay(Budget $budget): bool
+    {
+        return $budget->period->alwaysFollowsPayDay() && $budget->payDay === null;
     }
 
     /**
@@ -376,6 +421,7 @@ final class BudgetService
         // The form offers no currency, so an edit keeps the budget's own —
         // one set in another currency before budgets were base-currency only
         // is not quietly relabelled.
+        $existing = null;
         if (!array_key_exists('currency', $input)) {
             $existing = $this->find($scope, $id);
             if ($existing !== null) {
@@ -404,7 +450,19 @@ final class BudgetService
             unset($data['is_active']);
         }
 
+        $existing ??= $this->find($scope, $id);
         $this->budgets->update($scope, $id, $data);
+
+        // A breach measured over one period says nothing about another, so a
+        // change of period, or of following pay day, re-arms the alert and
+        // the next breach under the new period is announced (Phase 87). A
+        // limit change does not; that is unchanged.
+        if (
+            $existing !== null
+            && ($existing->period->value !== $data['period'] || $existing->followsPayDay !== $data['follows_pay_day'])
+        ) {
+            $this->alertState->clear($scope, $id);
+        }
     }
 
     public function delete(Scope $scope, int $id): void
@@ -470,6 +528,24 @@ final class BudgetService
         $ownerUserId = $this->resolveOwner($scope, $input, $errors);
         $subjectUserId = $this->resolveSubject($scope, $input, $ownerUserId, $errors);
 
+        // The weekly periods always follow pay day and a year never does; only
+        // a monthly budget has the switch. One that steps from a pay day needs
+        // its member to have one — the subject's, or for a household budget
+        // the owner's — so it is refused here rather than saved unmeasurable.
+        $followsPayDay = $period !== null && (
+            $period->alwaysFollowsPayDay()
+            || ($period->mayFollowPayDay() && $this->str($input, 'follows_pay_day') === '1')
+        );
+        if (
+            $period !== null
+            && $period->alwaysFollowsPayDay()
+            && !isset($errors['period'])
+            && !isset($errors['subject_user_id'])
+            && $this->users->findById($subjectUserId ?? $ownerUserId)?->payDay === null
+        ) {
+            $errors['period'] = 'error.budget.pay_day_missing';
+        }
+
         if ($errors !== [] || $amount === null || $period === null) {
             throw new ValidationException($errors);
         }
@@ -484,6 +560,7 @@ final class BudgetService
             'is_active' => ($input['is_active'] ?? '1') !== '0',
             'owner_user_id' => $ownerUserId,
             'subject_user_id' => $subjectUserId,
+            'follows_pay_day' => $followsPayDay,
         ];
     }
 

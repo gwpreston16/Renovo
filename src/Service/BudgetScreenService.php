@@ -31,15 +31,19 @@ use App\Support\CssPercent;
  * cancelling.
  *
  * **A budget with no honest figure is in no state.** One whose spend includes
- * a currency with no rate, or one this scope cannot measure whole, counts in
- * no tile and is never shown as on track, as the alert state machine refuses
- * to call it under.
+ * a currency with no rate, one this scope cannot measure whole, or a two- or
+ * four-weekly one whose member has no pay day to step from, counts in no tile
+ * and is never shown as on track, as the alert state machine refuses to call
+ * it under.
  *
  * @phpstan-import-type MonthBudget from BudgetMonthService
  * @phpstan-type BudgetCard array{
  *     budget: Budget,
  *     state: 'ok'|'warn'|'bad'|null,
- *     note: 'left'|'warning'|'over'|'over_if_trials'|'unconvertible'|'unavailable',
+ *     note: 'left'|'warning'|'over'|'over_if_trials'|'unconvertible'|'unavailable'
+ *         |'no_pay_day',
+ *     window: \App\Domain\BudgetWindow|null,
+ *     days_left: int|null,
  *     limit: Money,
  *     projected: Money|null,
  *     charged: Money|null,
@@ -91,6 +95,7 @@ final class BudgetScreenService
             $cards[] = $this->card(
                 $budget,
                 $row['read'],
+                $row['lacks_pay_day'],
                 $routing[$budget->ownerUserId],
                 $mayManage && $scope->mayWriteRow($budget->householdId, $budget->ownerUserId),
             );
@@ -116,13 +121,17 @@ final class BudgetScreenService
      * @param list<string>     $alertChannels
      * @return BudgetCard
      */
-    private function card(Budget $budget, ?array $read, array $alertChannels, bool $mayEdit): array
+    private function card(Budget $budget, ?array $read, bool $lacksPayDay, array $alertChannels, bool $mayEdit): array
     {
         $threshold = $budget->warnThresholdPercent;
         $card = [
             'budget' => $budget,
             'state' => null,
-            'note' => 'unavailable',
+            'note' => $lacksPayDay ? 'no_pay_day' : 'unavailable',
+            // The period read, and the days left in it, so the card can name a
+            // pay-day period ("25 Oct – 24 Nov") rather than leave it implied.
+            'window' => $read['window'] ?? null,
+            'days_left' => $read['days_left'] ?? null,
             'limit' => $budget->amount,
             'projected' => null,
             'charged' => null,

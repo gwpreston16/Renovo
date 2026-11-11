@@ -56,6 +56,19 @@ final class BudgetAlertStateRepository extends AbstractScopedRepository
     }
 
     /**
+     * Forget a budget's position, re-arming its alert: the next breach is
+     * announced as the first. Used when the budget's period changes, since a
+     * breach over one period says nothing about another (Phase 87).
+     */
+    public function clear(Scope $scope, int $budgetId): void
+    {
+        $row = $this->findOneScoped($scope, Criteria::new()->equals('budget_id', $budgetId));
+        if ($row !== null) {
+            $this->deleteScoped($scope, (int) $row['id']);
+        }
+    }
+
+    /**
      * Record the current position of a budget.
      *
      * @param int $ownerUserId The member the budget belongs to. Passed

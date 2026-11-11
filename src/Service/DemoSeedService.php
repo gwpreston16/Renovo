@@ -42,6 +42,15 @@ use App\Support\Clock;
  * that it reads the household and writes only its own part of it. Its rows are
  * written through *its own* scope rather than handed to it by the owner, so
  * what the demo shows is a household a Contributor really could have built.
+ *
+ * @phpstan-type DemoBudget array{
+ *     name: string,
+ *     amount: string,
+ *     period: BudgetPeriod,
+ *     category: string|null,
+ *     warn: int,
+ *     follows: bool
+ * }
  */
 final class DemoSeedService
 {
@@ -186,6 +195,15 @@ final class DemoSeedService
         // member's are created through their own scope, which is what settles
         // whose they are: `BudgetService` gives a confined writer their own id
         // and never asks.
+        // Paid on the 25th, so the owner's overall budget can run from pay day
+        // to pay day and the demo shows a period that is not the calendar's
+        // (Phase 87). Last month's 25th: any past pay day will do.
+        $lastMonth = $this->clock->today()->modify('first day of last month');
+        $this->users->updatePreferences($userId, [
+            'pay_day' => $lastMonth->setDate((int) $lastMonth->format('Y'), (int) $lastMonth->format('n'), 25)
+                ->format('Y-m-d'),
+        ]);
+
         $budgets = $this->seedBudgets($scope, $categories, $this->ownerBudgets())
             + $this->seedBudgets($contributorScope, $categories, $this->contributorBudgets());
 
@@ -518,12 +536,12 @@ final class DemoSeedService
      * identical subscriptions. Between these and Rowan's below, the budget card
      * shows all three: comfortable, warning, and over.
      *
-     * @return list<array{name: string, amount: string, period: BudgetPeriod, category: string|null, warn: int}>
+     * @return list<DemoBudget>
      */
     private function ownerBudgets(): array
     {
         return [
-            $this->budget('Everything, each month', '320.00', BudgetPeriod::Monthly, null, 80),
+            $this->budget('Everything, pay day to pay day', '320.00', BudgetPeriod::Monthly, null, 80, true),
             $this->budget('Software, each month', '130.00', BudgetPeriod::Monthly, 'Software', 80),
         ];
     }
@@ -537,7 +555,7 @@ final class DemoSeedService
      * on Rowan's dashboard, because a budget measures one member's share and
      * not the household's.
      *
-     * @return list<array{name: string, amount: string, period: BudgetPeriod, category: string|null, warn: int}>
+     * @return list<DemoBudget>
      */
     private function contributorBudgets(): array
     {
@@ -549,7 +567,7 @@ final class DemoSeedService
 
     /**
      * @param array<string, int> $categories
-     * @param list<array{name: string, amount: string, period: BudgetPeriod, category: string|null, warn: int}> $rows
+     * @param list<DemoBudget> $rows
      * @return int How many were created.
      */
     private function seedBudgets(Scope $scope, array $categories, array $rows): int
@@ -562,6 +580,7 @@ final class DemoSeedService
                 'period' => $row['period']->value,
                 'category_id' => $row['category'] === null ? '' : (string) $categories[$row['category']],
                 'warn_threshold_percent' => (string) $row['warn'],
+                'follows_pay_day' => $row['follows'] ? '1' : '0',
                 'is_active' => '1',
             ]);
         }
@@ -570,7 +589,7 @@ final class DemoSeedService
     }
 
     /**
-     * @return array{name: string, amount: string, period: BudgetPeriod, category: string|null, warn: int}
+     * @return DemoBudget
      */
     private function budget(
         string $name,
@@ -578,6 +597,7 @@ final class DemoSeedService
         BudgetPeriod $period,
         ?string $category,
         int $warn,
+        bool $follows = false,
     ): array {
         return [
             'name' => $name,
@@ -585,6 +605,7 @@ final class DemoSeedService
             'period' => $period,
             'category' => $category,
             'warn' => $warn,
+            'follows' => $follows,
         ];
     }
 

@@ -688,6 +688,10 @@ final class BackupService
                     'amount' => $this->decimal($row['amount_minor'] ?? null, (string) ($row['currency'] ?? 'GBP')),
                     'currency' => (string) ($row['currency'] ?? ''),
                     'period' => (string) ($row['period'] ?? ''),
+                    // An archive from before Phase 87 has no switch: calendar.
+                    // A two- or four-weekly budget whose member has no pay day
+                    // here is refused by validation and counted as skipped.
+                    'follows_pay_day' => ($row['follows_pay_day'] ?? false) === true ? '1' : '0',
                     'category_id' => $categoryIds[$categoryName] ?? '',
                     'warn_threshold_percent' => (string) ($row['warn_threshold_percent'] ?? ''),
                     'is_active' => ($row['is_active'] ?? true) ? '1' : '0',
@@ -1016,6 +1020,9 @@ final class BackupService
             'name' => $budget->name,
             'category_name' => $budget->categoryName,
             'period' => $budget->period->value,
+            // Phase 87. The pay day itself is the member's own preference, like
+            // their theme, and is not in a household archive.
+            'follows_pay_day' => $budget->followsPayDay,
             'amount_minor' => $budget->amount->amountMinor,
             'currency' => $budget->amount->currency,
             'warn_threshold_percent' => $budget->warnThresholdPercent,
