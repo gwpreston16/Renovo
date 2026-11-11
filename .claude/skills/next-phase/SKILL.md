@@ -109,14 +109,16 @@ code.
   code*): docblocks on classes and public/protected methods, inline comments
   on the non-obvious logic.
 - **Simplify before each commit.** Once a section's code and tests are written
-  and green, launch the `code-simplifier:code-simplifier` agent (Agent tool) on
-  that section's uncommitted files. Its prompt names the files and says: this
-  is PHP 8.4 / Slim 4 / Twig — follow `CLAUDE.md` (non-negotiables, PSR-12)
-  and ignore your JS/React defaults; **keep every docblock and explanatory
-  comment**, fixing any a refactor makes stale; never change behaviour, public
-  signatures, SQL, routes or scoping calls. Then re-run `vendor/bin/phpunit`,
-  `vendor/bin/phpcs` and `vendor/bin/phpstan analyse`; revert any part of its
-  change that fails them or isn't clearly simpler. Then commit.
+  and green, invoke the `code-simplification` skill (Skill tool) on that
+  section's uncommitted files, naming them in its args. Apply it as a
+  PHP 8.4 / Slim 4 / Twig change: follow `CLAUDE.md` (non-negotiables, PSR-12)
+  over the skill's TypeScript/Python/React examples; **keep every docblock and
+  explanatory comment**, fixing any a refactor makes stale; never change
+  behaviour, public signatures, SQL, routes or scoping calls. The
+  simplifications land in the section's own commit, not a separate one. Then
+  re-run `vendor/bin/phpunit`, `vendor/bin/phpcs` and
+  `vendor/bin/phpstan analyse`; revert any part of the change that fails them
+  or isn't clearly simpler. Then commit.
 - **Migrations:** Phinx, one concern each, a working `down()`, portable SQL;
   `migrate`, `rollback`, `migrate` clean on Postgres and MySQL.
 - **API:** every new endpoint in `openapi/openapi.yaml` *and* `docs/api.md`,
