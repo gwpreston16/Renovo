@@ -195,22 +195,51 @@ period it does not know: safe, but its figures change.
 
 ## Status
 
-- [ ] Migrations on both engines; `User` and `Budget` carry the new
+- [x] Migrations on both engines; `User` and `Budget` carry the new
       fields; the repository loads the followed pay day
-- [ ] Pay day under Profile → Preferences, with validation
-- [ ] `BudgetPeriod`: the two new periods, length in days, and the
+- [x] Pay day under Profile → Preferences, with validation
+- [x] `BudgetPeriod`: the two new periods, length in days, and the
       period-containing-a-date rule
-- [ ] `BudgetService`: the switch, validation, rolling window by period
+- [x] `BudgetService`: the switch, validation, rolling window by period
       length, re-arm on a period or switch change
-- [ ] `BudgetMonthService`: current period, unmeasurable budgets, widened
+- [x] `BudgetMonthService`: current period, unmeasurable budgets, widened
       `sources()` walk
-- [ ] Form switch and hints; Budgets screen and dashboard card labels
-- [ ] Alert wording by period; unmeasurable budgets skipped
-- [ ] Household archive, demo seed
-- [ ] `docs/features/money.md`, `docs/features/customising.md`, CHANGELOG,
+- [x] Form switch and hints; Budgets screen and dashboard card labels
+- [x] Alert wording by period; unmeasurable budgets skipped
+- [x] Household archive, demo seed
+- [x] `docs/features/money.md`, `docs/features/customising.md`, CHANGELOG,
       translations
-- [ ] `composer check`, `i18n:check`, offline guard and coverage green on
+- [x] `composer check`, `i18n:check`, offline guard and coverage green on
       both engines
+
+## Decisions as built
+
+- **One rule, `BudgetWindow`.** The period containing a day — calendar,
+  pay-day month or stepped fortnight — is worked out in one value object
+  that the Budgets screen, the dashboard card and the sources walk all read.
+  Weekly periods step back from a future pay day as well as forward from a
+  past one.
+- **The followed pay day is loaded with the budget**, in the same query: the
+  subject's, or for a household budget the owner's, never the owner's for a
+  member budget whose subject has none.
+- **The household archive carries the switch, not the pay day.** A pay day is
+  a member's own preference, like their theme, and a household restore must
+  not set another member's. A two- or four-weekly budget whose member has no
+  pay day in the household it is restored into is refused by validation and
+  counted as skipped. *(Changed from section F, which had the archive carry
+  each member's pay day.)*
+- **Calendar figures keep calendar budgets.** The household chart, the
+  month's marker and the pace measure calendar months, so a household budget
+  that follows pay day is not the limit they are measured against.
+- **The form's hint is static**, with a link to set your own pay day when you
+  have none. A two- or four-weekly budget for a member with no pay day is
+  refused under **Period**, and the Budgets screen names whose pay day is
+  missing.
+- **A pay-day month asks the forecast for one more month**, since it can end
+  in the next calendar month; the others keep their horizon.
+- **The alert names its window**: "over the next month / two weeks / four
+  weeks / 12 months".
+- **A pay day may be up to a year ahead**, and any day in the past.
 
 ## Definition of done
 

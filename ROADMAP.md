@@ -95,7 +95,7 @@ can be moved.
 | 84 | [Reminder runs do less work, from the known-issues log](docs/phases/PHASE-84.md) | — | None | ✅ done |
 | 85 | [API reminder strings and translated 400/401 titles, from the known-issues log](docs/phases/PHASE-85.md) | — | None | ✅ done |
 | 86 | [Lighter pages for big households, from the known-issues log](docs/phases/PHASE-86.md) | — | None | ✅ done |
-| 87 | [Budgets that follow pay day](docs/phases/PHASE-87.md) | — | 2 columns | 🚧 in progress |
+| 87 | [Budgets that follow pay day](docs/phases/PHASE-87.md) | — | 2 columns | ✅ done |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
