@@ -56,9 +56,14 @@ final class LegibleTextTest extends TestCase
         );
     }
 
+    /**
+     * Help text and a page's lead-in note share one 60ch rule; the rule is
+     * found by the last selector in its list, and help text must be in it.
+     */
     public function testAParagraphOfHelpKeepsAReadableMeasure(): void
     {
-        self::assertStringContainsString('max-width: 60ch', $this->rule('components.css', 'p.field-hint'));
+        self::assertStringContainsString('max-width: 60ch', $this->rule('components.css', 'p.note'));
+        self::assertMatchesRegularExpression('/p\.field-hint,\s*p\.note\s*\{/', $this->css('components.css'));
     }
 
     /** The body of the first rule whose selector list ends with `$selector`. */
