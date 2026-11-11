@@ -8,8 +8,31 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Added
+
+- **Budgets that follow pay day.** Each member can record a recent pay day
+  under Profile → Appearance & preferences, and a monthly budget can be
+  switched to run from pay day to pay day (25 October to 24 November, say).
+  Two new periods, **every 2 weeks** and **every 4 weeks**, step from it. A
+  member budget follows the pay day of the member it measures, a household
+  budget its owner's. The Budgets screen and the dashboard name the period and
+  the days left in it, and the alert's window is as long as the period.
+  Yearly budgets, and every budget not switched over, keep their calendar
+  period and their figures. A household archive carries the switch but not
+  anybody's pay day; a two- or four-weekly budget whose member has no pay day
+  where it is restored is skipped and counted. Run `vendor/bin/phinx migrate`
+  after backing up: two columns are added. Rolling back reads two- and
+  four-weekly budgets as monthly, so change them first, and deletes every
+  member's pay day, which only a database backup restores. Anyone who can see
+  a budget that follows a pay day sees its period's dates, and so the day.
+  No API change. *Phase 87.*
+
 ### Changed
 
+- **Every budget alert names the window it projects over** ("Projected
+  £120.00 over the next month, against a limit of £100.00"), and changing a
+  budget's period, or switching pay day on or off, re-arms its alert so the
+  next breach under the new period is announced. *Phase 87.*
 - **A heads-up no longer has a coloured side stripe.** The one-time token and
   temporary-password cards, the recovery codes and the import notice now use
   the warm tint and a warm heading (with a warning icon on the token and

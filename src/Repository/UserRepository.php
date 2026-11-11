@@ -103,11 +103,11 @@ final class UserRepository extends AbstractRepository
      * form sets five. The column names are checked against a fixed list here,
      * so the keys of an array that arrived from a form cannot reach the SQL.
      *
-     * @param array<string, string|int> $preferences
+     * @param array<string, string|int|null> $preferences
      */
     public function updatePreferences(int $userId, array $preferences): void
     {
-        $allowed = ['theme', 'palette', 'locale', 'week_start', 'density', 'landing_view', 'dashboard_view'];
+        $allowed = ['theme', 'palette', 'locale', 'week_start', 'density', 'landing_view', 'dashboard_view', 'pay_day'];
 
         $assignments = [];
         $values = [];
@@ -361,6 +361,9 @@ final class UserRepository extends AbstractRepository
                 : null,
             dismissedUpdateVersion: isset($row['dismissed_update_version']) && $row['dismissed_update_version'] !== ''
                 ? (string) $row['dismissed_update_version']
+                : null,
+            payDay: isset($row['pay_day']) && $row['pay_day'] !== ''
+                ? new DateTimeImmutable(substr((string) $row['pay_day'], 0, 10))
                 : null,
         );
     }

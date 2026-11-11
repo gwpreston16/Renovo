@@ -570,6 +570,381 @@ final class BudgetScreenTest extends DatabaseTestCase
         self::assertMatchesRegularExpression('#/budgets/\d+/edit#', $page);
     }
 
+    // ------------------------------------------------------------ pay day
+
+    public function testAPayDayBudgetReadsFromPayDayToPayDay(): void
+    {
+        // Paid on the 25th, today the 15th of June: 25 May to 24 June. The
+        // 26th and 28th charge inside the period in May and outside it in
+        // June, so the charged-so-far figure is what tells it from the
+        // calendar month, which would have charged only the 1st.
+        (new UserRepository($this->db))->updatePreferences($this->ownerId, ['pay_day' => '2026-05-25']);
+        $this->monthly('Early', 1200, '2026-07-01', '2025-01-01');
+        $this->monthly('Late', 800, '2026-06-20', '2025-01-20');
+        $this->monthly('Edge', 300, '2026-06-26', '2025-01-26');
+        $this->monthly('Mid', 500, '2026-06-28', '2025-01-28');
+        $id = $this->budget(['name' => 'Pay day', 'amount' => '100.00', 'follows_pay_day' => '1']);
+        $calendar = $this->budget(['name' => 'Calendar', 'amount' => '100.00']);
+
+        // The same member, two periods: each reads its own, not the other's.
+        $calendarCard = $this->card($calendar);
+        self::assertStringContainsString('£28.00', $this->text($calendarCard, 'budget-projected'));
+        self::assertStringContainsString(
+            '£12.00 charged so far',
+            $this->attr($calendarCard, 'budget-bar', 'aria-label'),
+        );
+
+        $card = $this->card($id);
+
+        self::assertStringContainsString('£28.00', $this->text($card, 'budget-projected'));
+        self::assertStringContainsString('£20.00 charged so far', $this->attr($card, 'budget-bar', 'aria-label'));
+        self::assertStringContainsString('25 May – 24 Jun', $this->text($card, 'budget-meta'));
+        self::assertStringContainsString('10 days left', $this->text($card, 'budget-meta'));
+
+        $dashboard = (string) $this->request('GET', '/')->getBody();
+        self::assertStringContainsString('25 May – 24 Jun', $dashboard, 'The dashboard row names the period.');
+    }
+
+    public function testAPayDayPeriodThatBeganLastYearReadsDecember(): void
+    {
+        // 10 January, paid on the 25th: 25 December to 24 January. The 28
+        // December charge is before the year began and still in the period.
+        $this->clock()->advanceTo(new DateTimeImmutable('2026-01-10 09:00:00'));
+        (new UserRepository($this->db))->updatePreferences($this->ownerId, ['pay_day' => '2025-11-25']);
+        $this->monthly('December', 300, '2026-01-28', '2025-01-28');
+        $this->monthly('January', 500, '2026-02-05', '2025-01-05');
+        $this->monthly('Before', 700, '2026-01-20', '2025-01-20');
+        $id = $this->budget(['name' => 'Pay day', 'amount' => '100.00', 'follows_pay_day' => '1']);
+
+        $card = $this->card($id);
+
+        // Charged: 28 Dec and 5 Jan. Still to come: the 20th (the 28th is the
+        // next period's). 20 December, the day before, is not in it.
+        self::assertStringContainsString('£8.00 charged so far', $this->attr($card, 'budget-bar', 'aria-label'));
+        self::assertStringContainsString('£15.00', $this->text($card, 'budget-projected'));
+        self::assertStringContainsString('25 Dec – 24 Jan', $this->text($card, 'budget-meta'));
+        self::assertStringContainsString(
+            '£8.00 / £100.00',
+            (string) $this->request('GET', '/')->getBody(),
+            'The dashboard row reads December too.',
+        );
+    }
+
+    public function testAPeriodStartingOnAClampedDayReadsToItsLastDay(): void
+    {
+        // Paid on the 31st, today 28 February: 28 February to 30 March, two
+        // days past 28 February plus a month. The 29 March renewal is in it.
+        $this->clock()->advanceTo(new DateTimeImmutable('2027-02-28 09:00:00'));
+        (new UserRepository($this->db))->updatePreferences($this->ownerId, ['pay_day' => '2027-01-31']);
+        $this->monthly('Late March', 900, '2027-03-29', '2026-01-29');
+        $id = $this->budget(['name' => 'Pay day', 'amount' => '100.00', 'follows_pay_day' => '1']);
+
+        $card = $this->card($id);
+
+        self::assertStringContainsString('28 Feb – 30 Mar', $this->text($card, 'budget-meta'));
+        self::assertStringContainsString('£9.00', $this->text($card, 'budget-projected'));
+    }
+
+    public function testAnIsolatedHouseholdBudgetIsUnavailableNotShortOfAPayDay(): void
+    {
+        $users = new UserRepository($this->db);
+        $users->updatePreferences($this->ownerId, ['pay_day' => '2026-06-05']);
+        $id = $this->budget([
+            'name' => 'House',
+            'period' => 'fortnight',
+            'amount' => '100.00',
+            'subject_user_id' => 'household',
+        ]);
+        $users->updatePreferences($this->ownerId, ['pay_day' => null]);
+        $this->isolate();
+
+        $page = $this->page();
+        $card = '//article[@data-budget="' . $id . '"]';
+        self::assertSame(1, $page->query($card . '//*[@data-budget-unavailable]')?->length);
+        self::assertSame(0, $page->query($card . '//*[@data-budget-no-pay-day]')?->length);
+    }
+
+    public function testAFortnightlyCardReadsItsOwnTwoWeeks(): void
+    {
+        // Paid on 5 June, today the 15th: 5 to 18 June. The 4th and 19th are
+        // the fortnights either side; the 5th is charged, the 18th to come.
+        (new UserRepository($this->db))->updatePreferences($this->ownerId, ['pay_day' => '2026-06-05']);
+        $this->monthly('Before', 100, '2026-07-04', '2025-01-04');
+        $this->monthly('First day', 200, '2026-07-05', '2025-01-05');
+        $this->monthly('Last day', 400, '2026-06-18', '2025-01-18');
+        $this->monthly('After', 800, '2026-06-19', '2025-01-19');
+        $id = $this->budget(['name' => 'Fortnight', 'period' => 'fortnight', 'amount' => '100.00']);
+
+        $card = $this->card($id);
+
+        self::assertStringContainsString('£2.00 charged so far', $this->attr($card, 'budget-bar', 'aria-label'));
+        self::assertStringContainsString('£6.00', $this->text($card, 'budget-projected'));
+        self::assertStringContainsString('5 Jun – 18 Jun', $this->text($card, 'budget-meta'));
+        self::assertStringContainsString('4 days left', $this->text($card, 'budget-meta'));
+
+        // Edited, its switch is off: only a monthly budget carries one.
+        $form = (string) $this->request('GET', '/budgets/' . $id . '/edit')->getBody();
+        self::assertDoesNotMatchRegularExpression('~name="follows_pay_day" value="1"\s+checked~', $form);
+    }
+
+    public function testAChargeOnThePeriodsFirstDayIsInIt(): void
+    {
+        (new UserRepository($this->db))->updatePreferences($this->ownerId, ['pay_day' => '2026-05-25']);
+        $this->monthly('On pay day', 400, '2026-06-25', '2025-01-25');
+        $this->monthly('Day before', 900, '2026-06-24', '2025-01-24');
+        $id = $this->budget(['name' => 'Pay day', 'amount' => '100.00', 'follows_pay_day' => '1']);
+
+        // 25 May is in (charged); 24 May is the period before; 24 June is in
+        // (still to come); 25 June is the next period's.
+        $card = $this->card($id);
+        self::assertStringContainsString('£4.00 charged so far', $this->attr($card, 'budget-bar', 'aria-label'));
+        self::assertStringContainsString('£13.00', $this->text($card, 'budget-projected'));
+    }
+
+    public function testAMonthlyBudgetFollowingAMissingPayDaySaysItReadsTheCalendar(): void
+    {
+        $id = $this->budget(['name' => 'Pay day', 'amount' => '100.00', 'follows_pay_day' => '1']);
+
+        $note = $this->page()
+            ->query('//article[@data-budget="' . $id . '"]//*[@data-budget-calendar-until-pay-day]')
+            ?->item(0);
+        self::assertNotNull($note);
+        self::assertStringContainsString('calendar month until Owner sets a pay day', (string) $note->textContent);
+        self::assertStringContainsString(
+            'calendar month: no pay day set',
+            (string) $this->request('GET', '/')->getBody(),
+            'The dashboard row says so too.',
+        );
+    }
+
+    public function testInIsolatedModeAPayDayBudgetReadsOnlyItsMembersRows(): void
+    {
+        $this->isolate();
+        (new UserRepository($this->db))->updatePreferences($this->editorId, ['pay_day' => '2026-05-25']);
+        $this->monthly('Owner thing', 5000, '2026-06-20', '2025-01-20');
+        $this->monthly('Editor thing', 600, '2026-06-26', '2025-01-26', $this->editorId);
+        $isolated = Scope::forMember(
+            $this->editorId,
+            false,
+            $this->householdId,
+            Role::Editor,
+            IsolationMode::Isolated,
+        );
+        $id = $this->container()->get(BudgetService::class)->create($isolated, [
+            'name' => 'Mine',
+            'period' => 'monthly',
+            'follows_pay_day' => '1',
+            'amount' => '100.00',
+        ]);
+
+        $this->signIn($this->editorId);
+        $card = $this->card($id);
+
+        // 26 May charged and 26 June next period's: £6.00, and none of the
+        // owner's £50.00.
+        self::assertStringContainsString('£6.00', $this->text($card, 'budget-projected'));
+        self::assertStringContainsString('£6.00 charged so far', $this->attr($card, 'budget-bar', 'aria-label'));
+        $dashboard = (string) $this->request('GET', '/')->getBody();
+        self::assertStringNotContainsString('£50.00', $dashboard);
+    }
+
+    public function testAHouseholdPayDayBudgetCountsEveryoneInSharedModeAndNobodyInIsolated(): void
+    {
+        // The owner's household budget, paid on the 25th: the editor's 26 May
+        // charge is in it while the household is shared, and in ISOLATED mode
+        // nobody can see the household whole, so it shows no figure at all.
+        (new UserRepository($this->db))->updatePreferences($this->ownerId, ['pay_day' => '2026-05-25']);
+        $this->monthly('Owner thing', 500, '2026-06-20', '2025-01-20');
+        $this->monthly('Editor thing', 600, '2026-06-26', '2025-01-26', $this->editorId);
+        $id = $this->budget([
+            'name' => 'Household',
+            'amount' => '100.00',
+            'follows_pay_day' => '1',
+            'subject_user_id' => 'household',
+        ]);
+
+        self::assertStringContainsString('£11.00', $this->text($this->card($id), 'budget-projected'));
+
+        $this->isolate();
+        $card = $this->card($id);
+        self::assertNull($this->find($card, 'budget-projected'));
+        $note = $this->page()->query('//article[@data-budget="' . $id . '"]//*[@data-budget-unavailable]');
+        self::assertSame(1, $note?->length);
+    }
+
+    public function testSettingAPayDayChangesNoBudgetThatDoesNotFollowIt(): void
+    {
+        $this->monthly('Early', 1200, '2026-07-01', '2025-01-01');
+        $this->monthly('Late', 800, '2026-06-20', '2025-01-20');
+        $this->monthly('Edge', 300, '2026-06-26', '2025-01-26');
+        $monthly = $this->budget(['name' => 'Month', 'amount' => '100.00']);
+        $yearly = $this->budget(['name' => 'Year', 'period' => 'annual', 'amount' => '400.00']);
+        $read = function () use ($monthly, $yearly): array {
+            $figures = [];
+            foreach ([$monthly, $yearly] as $id) {
+                $card = $this->card($id);
+                $figures[] = $this->text($card, 'budget-projected');
+                $figures[] = $this->attr($card, 'budget-bar', 'aria-label');
+            }
+            foreach ($this->container()->get(BudgetService::class)->progress($this->ownerScope()) as $row) {
+                $figures[] = $row['projected']?->amountMinor;
+            }
+            $figures[] = preg_replace('/\s+/', ' ', (string) $this->request('GET', '/')->getBody());
+
+            return $figures;
+        };
+
+        $before = $read();
+        (new UserRepository($this->db))->updatePreferences($this->ownerId, ['pay_day' => '2026-05-25']);
+
+        self::assertSame($before, $read());
+    }
+
+    public function testTheDashboardCardShowsNoWeeklyBudget(): void
+    {
+        (new UserRepository($this->db))->updatePreferences($this->ownerId, ['pay_day' => '2026-06-05']);
+        $this->budget(['name' => 'Fortnightly limit', 'period' => 'fortnight', 'amount' => '100.00']);
+        $this->budget(['name' => 'Monthly limit', 'amount' => '100.00']);
+
+        $dashboard = (string) $this->request('GET', '/')->getBody();
+
+        self::assertStringContainsString('Monthly limit', $dashboard);
+        self::assertStringNotContainsString('Fortnightly limit', $dashboard);
+    }
+
+    public function testTheCalendarChartsMeasureOnlyACalendarHouseholdBudget(): void
+    {
+        $months = $this->container()->get(BudgetMonthService::class);
+        $this->budget([
+            'name' => 'Pay day',
+            'amount' => '100.00',
+            'follows_pay_day' => '1',
+            'subject_user_id' => 'household',
+        ]);
+
+        $overall = fn (): ?int => $months->householdOverall($this->ownerScope(), BudgetPeriod::Monthly)?->id;
+        self::assertNull($overall());
+
+        $calendar = $this->budget(['name' => 'Calendar', 'amount' => '80.00', 'subject_user_id' => 'household']);
+        self::assertSame($calendar, $overall());
+    }
+
+    public function testACalendarBudgetNamesNoPeriod(): void
+    {
+        (new UserRepository($this->db))->updatePreferences($this->ownerId, ['pay_day' => '2026-05-25']);
+        $id = $this->budget(['name' => 'Calendar', 'amount' => '100.00']);
+
+        self::assertStringNotContainsString('days left', $this->text($this->card($id), 'budget-meta'));
+    }
+
+    public function testAFortnightlyBudgetWithNoPayDaySaysWhy(): void
+    {
+        $users = new UserRepository($this->db);
+        $users->updatePreferences($this->ownerId, ['pay_day' => '2026-06-05']);
+        $id = $this->budget(['name' => 'Fortnight', 'period' => 'fortnight', 'amount' => '100.00']);
+        $users->updatePreferences($this->ownerId, ['pay_day' => null]);
+
+        $page = $this->page();
+        $card = $this->card($id);
+
+        self::assertNotNull($this->find($card, 'budget-note'));
+        $note = $page->query('//article[@data-budget="' . $id . '"]//*[@data-budget-no-pay-day]');
+        self::assertSame(1, $note?->length);
+        self::assertStringNotContainsString('is-', $card->getAttribute('class'), 'It is in no state.');
+        self::assertStringContainsString('Every 2 weeks', $this->text($card, 'budget-meta'));
+    }
+
+    public function testTheFormSavesTheSwitchAndShowsItOnEdit(): void
+    {
+        $this->request('POST', '/budgets', [
+            'name' => 'Switched',
+            'period' => 'monthly',
+            'follows_pay_day' => '1',
+            'amount' => '50.00',
+            'subject_user_id' => (string) $this->ownerId,
+        ]);
+        $budget = $this->container()->get(BudgetService::class)->all($this->ownerScope())[0];
+        self::assertTrue($budget->followsPayDay);
+
+        $form = (string) $this->request('GET', '/budgets/' . $budget->id . '/edit')->getBody();
+        self::assertMatchesRegularExpression('~name="follows_pay_day" value="1"\s+checked~', $form);
+        self::assertStringContainsString(
+            'href="/profile#appearance"',
+            $form,
+            'No pay day yet: the form says where to set one.',
+        );
+
+        // The hidden 0 is what an unticked switch posts.
+        $this->request('POST', '/budgets/' . $budget->id, [
+            'name' => 'Switched',
+            'period' => 'monthly',
+            'follows_pay_day' => '0',
+            'amount' => '50.00',
+        ]);
+        $saved = $this->container()->get(BudgetService::class)->find($this->ownerScope(), $budget->id);
+        self::assertFalse($saved?->followsPayDay);
+
+        // The switch row is the one the stylesheet hides for other periods,
+        // and a budget that follows somebody else's pay day offers no link to
+        // the viewer's own.
+        self::assertStringContainsString('budget-pay-day-row', $form);
+        $editors = $this->budget([
+            'name' => 'Editor',
+            'amount' => '10.00',
+            'subject_user_id' => (string) $this->editorId,
+        ]);
+        $other = (string) $this->request('GET', '/budgets/' . $editors . '/edit')->getBody();
+        self::assertStringNotContainsString('href="/profile#appearance"', $other);
+
+        // Nor once the viewer has a pay day of their own.
+        (new UserRepository($this->db))->updatePreferences($this->ownerId, ['pay_day' => '2026-05-25']);
+        $own = (string) $this->request('GET', '/budgets/' . $budget->id . '/edit')->getBody();
+        self::assertStringNotContainsString('href="/profile#appearance"', $own);
+    }
+
+    public function testAWeeklyBudgetForAMemberWithNoPayDayIsRefusedOnTheForm(): void
+    {
+        $response = $this->request('POST', '/budgets', [
+            'name' => 'Fortnight',
+            'period' => 'fortnight',
+            'amount' => '50.00',
+            'subject_user_id' => (string) $this->editorId,
+        ]);
+
+        self::assertSame(422, $response->getStatusCode());
+        self::assertStringContainsString('id="budget-period-error"', (string) $response->getBody());
+        self::assertSame([], $this->container()->get(BudgetService::class)->all($this->ownerScope()));
+    }
+
+    public function testOnlyThoseWhoMayWriteABudgetCanSwitchIt(): void
+    {
+        $id = $this->budget(['name' => 'Household', 'amount' => '100.00', 'subject_user_id' => 'household']);
+        $body = ['name' => 'Household', 'period' => 'monthly', 'follows_pay_day' => '1', 'amount' => '100.00'];
+
+        $this->signIn($this->viewerId);
+        self::assertSame(403, $this->request('POST', '/budgets/' . $id, $body)->getStatusCode());
+
+        $this->signIn($this->contributorId);
+        // A budget they may read but not write is not there to them, as on the
+        // edit form.
+        self::assertSame(404, $this->request('POST', '/budgets/' . $id, $body)->getStatusCode());
+
+        $saved = $this->container()->get(BudgetService::class)->find($this->ownerScope(), $id);
+        self::assertFalse($saved?->followsPayDay);
+
+        // Their own budget, they may switch.
+        $contributor = $this->scopeFor($this->contributorId);
+        $own = $this->container()->get(BudgetService::class)->create($contributor, [
+            'name' => 'Mine',
+            'period' => 'monthly',
+            'amount' => '10.00',
+            'subject_user_id' => (string) $this->contributorId,
+        ]);
+        $response = $this->request('POST', '/budgets/' . $own, ['name' => 'Mine'] + $body);
+        self::assertSame(302, $response->getStatusCode());
+        self::assertTrue($this->container()->get(BudgetService::class)->find($contributor, $own)?->followsPayDay);
+    }
+
     // ------------------------------------------------------------ helpers
 
     /**
@@ -713,6 +1088,14 @@ final class BudgetScreenTest extends DatabaseTestCase
         };
 
         return Scope::forMember($userId, false, $this->householdId, $role, IsolationMode::Shared);
+    }
+
+    private function clock(): FrozenClock
+    {
+        $clock = $this->container()->get(Clock::class);
+        self::assertInstanceOf(FrozenClock::class, $clock);
+
+        return $clock;
     }
 
     private function container(): ContainerInterface

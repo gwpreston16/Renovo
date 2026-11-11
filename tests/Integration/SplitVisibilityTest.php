@@ -7,6 +7,7 @@ namespace App\Tests\Integration;
 use App\Tests\Support\TestSubscriptionService;
 use App\Service\ChargeService;
 use App\Service\ChargeSchedule;
+use App\Repository\BudgetAlertStateRepository;
 use App\Repository\ChargeRepository;
 use App\Domain\IsolationMode;
 use App\Domain\Money;
@@ -500,6 +501,8 @@ final class SplitVisibilityTest extends DatabaseTestCase
             $this->rates(),
             new InstanceSettingsService(new InstanceSettingsRepository($this->db), TestKeys::ring()),
             $this->clock,
+            new UserRepository($this->db),
+            new BudgetAlertStateRepository($this->db),
         );
 
         $budgetId = $budgets->create($bob, [

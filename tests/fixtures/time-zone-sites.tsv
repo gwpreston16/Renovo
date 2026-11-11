@@ -22,6 +22,7 @@ Repository/BackupRunRepository.php	user-facing	? new DateTimeImmutable($value)
 Repository/BackupRunRepository.php	user-facing	return is_string($value) && $value !== '' ? new DateTimeImmutable($value) : null;
 Repository/BackupRunRepository.php	user-facing	startedAt: new DateTimeImmutable((string) $row['started_at']),
 Repository/BudgetAlertStateRepository.php	timestamp	: new DateTimeImmutable((string) $row['last_alert_at']),
+Repository/BudgetRepository.php	date-only	: new DateTimeImmutable(substr((string) $row['followed_pay_day'], 0, 10)),
 Repository/ChargeRepository.php	date-only	$date = (new DateTimeImmutable((string) $row['due_date']))->format('Y-m-d');
 Repository/ChargeRepository.php	date-only	'any' => new DateTimeImmutable((string) $row['first_any']),
 Repository/ChargeRepository.php	date-only	'written' => is_string($written) && $written !== '' ? new DateTimeImmutable($written) : null,
@@ -50,6 +51,7 @@ Repository/SubscriptionRepository.php	timestamp	createdAt: new DateTimeImmutable
 Repository/SubscriptionRepository.php	timestamp	updatedAt: new DateTimeImmutable((string) $row['updated_at']),
 Repository/TotpRepository.php	timestamp	'confirmed_at' => is_string($confirmed) && $confirmed !== '' ? new DateTimeImmutable($confirmed) : null,
 Repository/TrustedHostRepository.php	timestamp	'created_at' => new DateTimeImmutable((string) $row['created_at']),
+Repository/UserRepository.php	date-only	? new DateTimeImmutable(substr((string) $row['pay_day'], 0, 10))
 Repository/UserRepository.php	timestamp	? new DateTimeImmutable($verifiedAt)
 Repository/UserRepository.php	timestamp	createdAt: new DateTimeImmutable((string) $row['created_at']),
 Repository/UserRepository.php	timestamp	return is_string($value) && $value !== '' ? new DateTimeImmutable($value) : null;
@@ -84,5 +86,6 @@ Service/SubscriptionService.php	date-only	$date = $submitted === null ? false : 
 Service/SubscriptionService.php	date-only	$parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $data['start_date']);
 Service/SubscriptionService.php	date-only	$start = DateTimeImmutable::createFromFormat('!Y-m-d', $data['start_date']);
 Service/Update/UpdateCheckService.php	one-zone	return (new DateTimeImmutable($value))->setTimezone(new DateTimeZone('UTC'));
+Service/UserPreferencesService.php	date-only	$date = DateTimeImmutable::createFromFormat('!Y-m-d', $raw);
 Support/FrozenClock.php	one-zone	return new self(new DateTimeImmutable($dateTime));
 Support/IsoDate.php	date-only	$date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);

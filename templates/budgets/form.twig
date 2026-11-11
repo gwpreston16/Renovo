@@ -7,6 +7,12 @@
     another currency keeps it, and the label says which. Whose spending lists
     only what this viewer may choose (BudgetService::subjectOptions()) — the
     server refuses anything else, so a forged value gets an error, not a budget.
+
+    From pay day (Phase 87) is one switch, read only for a monthly budget: the
+    two weekly periods always step from pay day and a year never does. The
+    stylesheet hides it while another period is chosen; without that, the
+    hint says so. The link to set a pay day is drawn only when the pay day the
+    budget follows is the viewer's own and they have none.
 #}
 {% extends is_htmx ? 'partials/bare.twig' : 'layout.twig' %}
 
@@ -40,24 +46,48 @@
                     {% if errors.amount is defined %}<p class="field-error" id="budget-amount-error">{{ error_message(errors.amount) }}</p>{% endif %}
                     {% if errors.currency is defined %}<p class="field-error" id="budget-amount-error">{{ error_message(errors.currency) }}</p>{% endif %}
                 </div>
-
-                {% set period = values.period|default('monthly') %}
-                <div class="field" role="radiogroup" aria-labelledby="budget-period-label"
-                     {% if errors.period is defined %}aria-describedby="budget-period-error"{% endif %}>
-                    <span class="group-label" id="budget-period-label">{{ t('field.period') }}</span>
-                    <div class="segmented">
-                        {% for option in periods %}
-                            <label class="segmented-option">
-                                <input type="radio" name="period" value="{{ option.value }}"
-                                       {% if loop.first %}id="budget-period"{% endif %}
-                                       {{ period == option.value ? 'checked' : '' }}>
-                                <span>{{ budget_period_label(option.value) }}</span>
-                            </label>
-                        {% endfor %}
-                    </div>
-                    {% if errors.period is defined %}<p class="field-error" id="budget-period-error">{{ error_message(errors.period) }}</p>{% endif %}
-                </div>
             </div>
+
+            {% set period = values.period|default('monthly') %}
+            {% set shows_pay_day_hint = current_user.payDay is null and pay_day_member in [null, current_user.id] %}
+            {% set period_described = (shows_pay_day_hint ? 'budget-pay-day-hint ' : '') ~ (errors.period is defined ? 'budget-period-error' : '') %}
+            <div class="field budget-period-field" role="radiogroup" aria-labelledby="budget-period-label"
+                 {% if period_described|trim != '' %}aria-describedby="{{ period_described|trim }}"{% endif %}>
+                <span class="group-label" id="budget-period-label">{{ t('field.period') }}</span>
+                <div class="segmented">
+                    {% for option in periods %}
+                        <label class="segmented-option">
+                            <input type="radio" name="period" value="{{ option.value }}"
+                                   {% if loop.first %}id="budget-period"{% endif %}
+                                   {{ period == option.value ? 'checked' : '' }}>
+                            <span>{{ budget_period_label(option.value) }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+                {% if errors.period is defined %}<p class="field-error" id="budget-period-error">{{ error_message(errors.period) }}</p>{% endif %}
+            </div>
+
+            {#
+                Outside the switch, so the switch's name stays its own and the
+                link shows for the weekly periods too; the stylesheet hides it
+                only for a year, which never follows pay day.
+            #}
+            {% if shows_pay_day_hint %}
+                <p class="hint budget-pay-day-hint" id="budget-pay-day-hint">
+                    {{ t('budgets_form.no_pay_day_hint') }}
+                    <a href="/profile#appearance">{{ t('budgets_form.set_pay_day') }}</a>
+                </p>
+            {% endif %}
+
+            <input type="hidden" name="follows_pay_day" value="0">
+            <label class="choice toggle-row budget-pay-day-row">
+                <span>
+                    <span class="choice-title">{{ t('budgets_form.follows_pay_day') }}</span>
+                    <span class="choice-note">{{ t('budgets_form.follows_pay_day_hint') }}</span>
+                </span>
+                <input type="checkbox" class="toggle" role="switch" name="follows_pay_day" value="1"
+                       {{ values.follows_pay_day|default('0') == '1' ? 'checked' : '' }}>
+            </label>
 
             <div class="field">
                 <label for="budget-category">{{ t('field.category') }}</label>

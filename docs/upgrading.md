@@ -454,6 +454,22 @@ Rolling it back sets any expiry later than 2038-01-19 03:14:07 to that instant
 before putting the `timestamp` back, so the rollback cannot fail; those tokens
 then expire at that instant.
 
+## After upgrading to budgets that follow pay day (Phase 87)
+
+**Back up your database first.** Two migrations add a column each:
+`users.pay_day` (a member's pay day, empty until they set one) and
+`budgets.follows_pay_day` (off for every existing budget). There is no data
+step, and every existing budget keeps its calendar period and its figures, so
+nothing is needed beyond `vendor/bin/phinx migrate`.
+
+Rolling back has two costs:
+
+- **Every member's pay day is deleted.** Only a database backup brings them
+  back; a household archive does not carry them.
+- **Budgets every 2 or 4 weeks read as monthly** once the older code is back,
+  because it does not know those periods. Change them to monthly, or delete
+  them, before rolling back if their figures matter.
+
 ## After upgrading to MySQL 9.7 and the PHP 8.5 image
 
 Two images changed after 1.31.1. Neither needs a Renovo migration.

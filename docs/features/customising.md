@@ -17,6 +17,12 @@ else does.
   reader sees no difference.
 - **Open on** — the page you land on when you open Renovo. The dashboard,
   the subscriptions list, the calendar, budgets, the forecast or the statistics.
+- **A recent pay day** — any day you were paid, for budgets that run from pay
+  day to pay day ([Budgets](money.md#budgets)). Pick one that fell on your
+  usual day: if you are paid on the 31st, a month that has one, since a
+  monthly budget reads only the day of the month. Nothing else reads it.
+  Anyone who can see one of those budgets can see its period's dates, and so
+  the day you are paid.
 - **Dashboard cards** — press **Customise** on the dashboard, then drag a card
   by its handle (or use its arrows) to move it, and hide the ones you do not
   want. Each of the Overview and Household dashboards has its own arrangement;

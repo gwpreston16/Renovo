@@ -164,6 +164,25 @@ final class DemoSeedTest extends DatabaseTestCase
         self::assertGreaterThan(0, $over, 'One of the contributor\'s budgets is deliberately blown.');
     }
 
+    /**
+     * Phase 87: the owner is paid on the 25th and their overall budget runs
+     * from it, so the demo shows a period that is not the calendar's.
+     */
+    public function testTheOwnerIsPaidOnThe25thAndOneBudgetFollowsIt(): void
+    {
+        $owner = $this->member(DemoSeedService::EMAIL);
+        self::assertSame('25', (new UserRepository($this->db))->findById($owner)?->payDay?->format('d'));
+
+        $following = array_values(array_filter(
+            $this->container->get(BudgetService::class)->all($this->scopeFor(DemoSeedService::EMAIL)),
+            static fn (\App\Domain\Entity\Budget $budget): bool => $budget->followsPayDay,
+        ));
+        self::assertCount(1, $following);
+        self::assertSame($owner, $following[0]->ownerUserId);
+        self::assertSame($owner, $following[0]->payDayUserId());
+        self::assertSame('25', $following[0]->payDay?->format('d'));
+    }
+
     public function testTheHouseholdHasTheDefaultPaymentMethodsAndUsesThem(): void
     {
         $owner = $this->scopeFor(DemoSeedService::EMAIL);

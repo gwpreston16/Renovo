@@ -49,6 +49,7 @@ final class BudgetController extends Controller
     {
         return $this->render($request, $response, 'budgets/form.twig', $this->formData($request, [
             'period' => BudgetPeriod::Monthly->value,
+            'follows_pay_day' => '0',
             'warn_threshold_percent' => BudgetService::DEFAULT_WARN_THRESHOLD,
         ]));
     }
@@ -92,6 +93,7 @@ final class BudgetController extends Controller
             'name' => $budget->name,
             'category_id' => $budget->categoryId,
             'period' => $budget->period->value,
+            'follows_pay_day' => $budget->followsPayDay && $budget->period === BudgetPeriod::Monthly ? '1' : '0',
             'amount' => $budget->amount->toDecimalString(),
             'currency' => $budget->amount->currency,
             'warn_threshold_percent' => $budget->warnThresholdPercent ?? BudgetService::DEFAULT_WARN_THRESHOLD,
@@ -155,13 +157,23 @@ final class BudgetController extends Controller
             'errors' => $errors,
             'budget_id' => $id,
             'categories' => $this->categories->all($scope),
-            'periods' => BudgetPeriod::cases(),
+            // Shortest-but-commonest first: a month, then the pay-day rhythms,
+            // then the year.
+            'periods' => [
+                BudgetPeriod::Monthly,
+                BudgetPeriod::Fortnight,
+                BudgetPeriod::FourWeeks,
+                BudgetPeriod::Annual,
+            ],
             // The limit's currency: the budget's own on an edit, else the base.
             'currency' => is_string($values['currency'] ?? null) && $values['currency'] !== ''
                 ? $values['currency']
                 : $this->settings->baseCurrency(),
             'subjects' => $this->budgets->subjectOptions($scope),
             'locked_subject' => $lockedSubject,
+            // Whose pay day an existing budget follows; null for a new one,
+            // which measures the viewer unless they choose otherwise.
+            'pay_day_member' => $budget?->payDayUserId(),
         ];
     }
 }

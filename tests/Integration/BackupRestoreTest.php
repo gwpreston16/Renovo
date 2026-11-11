@@ -938,6 +938,60 @@ final class BackupRestoreTest extends DatabaseTestCase
         self::assertSame($this->targetUser->id, $restored['Mine']->subjectUserId);
     }
 
+    public function testFollowingPayDaySurvivesTheRoundTripAndAWeeklyBudgetNeedsAPayDayThere(): void
+    {
+        // The partner is a member of both households. Their pay day is their
+        // own preference and goes nowhere; the switch and the period travel.
+        $users = new UserRepository($this->db);
+        $users->updatePreferences($this->partnerId, ['pay_day' => '2026-01-09']);
+        $base = ['amount' => '50.00', 'currency' => 'GBP', 'subject_user_id' => (string) $this->partnerId];
+        $this->budgets->create($this->source, [
+            'name' => 'Switched',
+            'period' => 'monthly',
+            'follows_pay_day' => '1',
+        ] + $base);
+        $this->budgets->create($this->source, ['name' => 'Calendar', 'period' => 'monthly'] + $base);
+        $this->budgets->create($this->source, ['name' => 'Fortnight', 'period' => 'fortnight'] + $base);
+        $archive = $this->export();
+
+        $users->updatePreferences($this->partnerId, ['pay_day' => null]);
+        $summary = $this->backups->restore($this->target, $this->targetUser, $archive);
+
+        $restored = [];
+        foreach ($this->budgets->all($this->target, activeOnly: false) as $budget) {
+            $restored[$budget->name] = $budget->followsPayDay;
+        }
+        ksort($restored);
+
+        self::assertSame(['Calendar' => false, 'Switched' => true], $restored, 'No fortnight came back.');
+        self::assertSame(2, $summary['budgets']);
+        self::assertSame(1, $summary['skipped'], 'The fortnight had no pay day to step from.');
+    }
+
+    public function testAnArchiveFromBeforePayDaysRestoresCalendarBudgets(): void
+    {
+        $this->budgets->create($this->source, [
+            'name' => 'Old',
+            'period' => 'monthly',
+            'follows_pay_day' => '1',
+            'amount' => '50.00',
+            'currency' => 'GBP',
+        ]);
+        $archive = $this->export();
+        $data = $this->readArchiveJson($archive, 'data.json');
+        foreach ($data['budgets'] as $index => $row) {
+            unset($data['budgets'][$index]['follows_pay_day']);
+        }
+        $zip = new ZipArchive();
+        self::assertTrue($zip->open($archive) === true);
+        $zip->addFromString('data.json', json_encode($data, JSON_THROW_ON_ERROR));
+        $zip->close();
+
+        $this->backups->restore($this->target, $this->targetUser, $archive);
+
+        self::assertFalse($this->budgets->all($this->target, activeOnly: false)[0]->followsPayDay);
+    }
+
     public function testTheIntervalAndTheLastDayAnchorSurviveTheRoundTrip(): void
     {
         $this->subscriptions->create($this->source, [

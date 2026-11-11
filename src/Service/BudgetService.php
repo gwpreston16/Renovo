@@ -12,9 +12,11 @@ use App\Domain\Entity\Budget;
 use App\Domain\Entity\Subscription;
 use App\Domain\Money;
 use App\Domain\Rounding;
+use App\Repository\BudgetAlertStateRepository;
 use App\Repository\BudgetRepository;
 use App\Repository\CategoryRepository;
 use App\Repository\MembershipRepository;
+use App\Repository\UserRepository;
 use App\Security\Scope;
 use App\Support\Clock;
 use DateTimeImmutable;
@@ -82,6 +84,8 @@ final class BudgetService
         private readonly ExchangeRateService $rates,
         private readonly InstanceSettingsService $settings,
         private readonly Clock $clock,
+        private readonly UserRepository $users,
+        private readonly BudgetAlertStateRepository $alertState,
     ) {
     }
 
@@ -149,7 +153,7 @@ final class BudgetService
                 $progress[] = $this->measure($scope, $budget, $chargeCache);
             } elseif ($budget->subjectUserId === $scope->userId) {
                 $entry = $this->unavailable($budget);
-                $entry['unavailable'] = !$this->isMeasurableBy($scope, $budget);
+                $entry['unavailable'] = !$this->isMeasurableBy($scope, $budget) || $this->lacksPayDay($budget);
                 $progress[] = $entry;
             }
         }
@@ -161,20 +165,30 @@ final class BudgetService
      * One budget's entry for `progress()` and `progressForRun()`: its position,
      * or the "unavailable" placeholder when this scope cannot measure it whole.
      *
-     * @param array<string, list<WindowCharge>> $chargeCache The forecast walks already made, by subject and horizon.
+     * @param array<string, list<WindowCharge>> $chargeCache The walks made, by subject and horizon, and their filters.
      * @return BudgetProgress
      */
     private function measure(Scope $scope, Budget $budget, array &$chargeCache): array
     {
-        if (!$this->isMeasurableBy($scope, $budget)) {
+        if (!$this->isMeasurableBy($scope, $budget) || $this->lacksPayDay($budget)) {
             return $this->unavailable($budget);
         }
 
-        $key = ($budget->subjectUserId ?? 'household') . ':' . $budget->period->months();
-        $chargeCache[$key] ??= $this->withinWindow(
-            $this->forecast->charges($scope, $budget->period->months(), $budget->subjectUserId),
-            $budget->period->months(),
-        );
+        // One forecast walk per subject and horizon, then one filter per
+        // window: a weekly period shares its subject's one-month walk with a
+        // monthly budget and keeps its own day-counted filter. A monthly
+        // budget shares both whether or not it follows pay day, because the
+        // alert's window rolls from today either way.
+        $subject = (string) ($budget->subjectUserId ?? 'household');
+        $months = $budget->period->months();
+        $days = $budget->period->days();
+        $walk = $subject . ':walk:' . $months;
+        $key = $subject . ':' . ($days === null ? $months : $days . 'd');
+
+        $chargeCache[$walk] ??= $this->forecast->charges($scope, $months, $budget->subjectUserId);
+        $chargeCache[$key] ??= $days === null
+            ? $this->withinWindow($chargeCache[$walk], $months)
+            : $this->withinDays($chargeCache[$walk], $days);
 
         return $this->progressFor($budget, $chargeCache[$key]);
     }
@@ -242,6 +256,40 @@ final class BudgetService
         }
 
         return $kept;
+    }
+
+    /**
+     * The charges inside a rolling window of `$days` from today: today up to,
+     * not including, the day `$days` on — so a fortnightly charge due today
+     * is counted once, not again on the last day of the window (Phase 87).
+     *
+     * @param list<WindowCharge> $charges
+     * @return list<WindowCharge>
+     */
+    private function withinDays(array $charges, int $days): array
+    {
+        $today = $this->clock->today()->setTime(0, 0);
+        $end = $today->modify(sprintf('+%d days', $days));
+
+        return array_values(array_filter(
+            $charges,
+            static function (array $charge) use ($today, $end): bool {
+                $date = $charge['date']->setTime(0, 0);
+
+                return $date >= $today && $date < $end;
+            },
+        ));
+    }
+
+    /**
+     * Whether the budget cannot be measured for want of a pay day: a two- or
+     * four-weekly period whose member has none. Such a budget is shown as
+     * unavailable and the alert leaves it alone, as it does a budget this
+     * scope cannot see whole.
+     */
+    public function lacksPayDay(Budget $budget): bool
+    {
+        return $budget->period->alwaysFollowsPayDay() && $budget->payDay === null;
     }
 
     /**
@@ -376,14 +424,12 @@ final class BudgetService
         // The form offers no currency, so an edit keeps the budget's own —
         // one set in another currency before budgets were base-currency only
         // is not quietly relabelled.
-        if (!array_key_exists('currency', $input)) {
-            $existing = $this->find($scope, $id);
-            if ($existing !== null) {
-                $input['currency'] = $existing->amount->currency;
-            }
+        $existing = $this->find($scope, $id);
+        if (!array_key_exists('currency', $input) && $existing !== null) {
+            $input['currency'] = $existing->amount->currency;
         }
 
-        $data = $this->validate($scope, $input);
+        $data = $this->validate($scope, $input, $existing);
 
         // Editing a budget does not take it over. The owner is whoever set it,
         // and only an explicit `owner_user_id` — which the form no longer
@@ -405,6 +451,17 @@ final class BudgetService
         }
 
         $this->budgets->update($scope, $id, $data);
+
+        // A breach measured over one period says nothing about another, so a
+        // change of period, or of following pay day, re-arms the alert and
+        // the next breach under the new period is announced (Phase 87). A
+        // limit change does not; that is unchanged.
+        if (
+            $existing !== null
+            && ($existing->period->value !== $data['period'] || $existing->followsPayDay !== $data['follows_pay_day'])
+        ) {
+            $this->alertState->clear($scope, $id);
+        }
     }
 
     public function delete(Scope $scope, int $id): void
@@ -417,7 +474,7 @@ final class BudgetService
      * @return array<string, mixed>
      * @throws ValidationException
      */
-    private function validate(Scope $scope, array $input): array
+    private function validate(Scope $scope, array $input, ?Budget $existing = null): array
     {
         $errors = [];
 
@@ -470,6 +527,28 @@ final class BudgetService
         $ownerUserId = $this->resolveOwner($scope, $input, $errors);
         $subjectUserId = $this->resolveSubject($scope, $input, $ownerUserId, $errors);
 
+        // The weekly periods always follow pay day and a year never does; only
+        // a monthly budget has the switch. One that steps from a pay day needs
+        // its member to have one — the subject's, or for a household budget
+        // the owner's — so it is refused here rather than saved unmeasurable.
+        // On an edit that member is the budget's own unless the input moves
+        // it: `update()` keeps the stored owner and subject when the form
+        // does not send them, so the editor's pay day must not stand in.
+        $followsPayDay = $period !== null && (
+            $period->alwaysFollowsPayDay()
+            || ($period->mayFollowPayDay() && $this->str($input, 'follows_pay_day') === '1')
+        );
+        if (
+            $period !== null
+            && $period->alwaysFollowsPayDay()
+            && !isset($errors['period'])
+            && !isset($errors['subject_user_id'])
+            && $this->users->findById($this->followedMember($input, $existing, $ownerUserId, $subjectUserId))
+                ?->payDay === null
+        ) {
+            $errors['period'] = 'error.budget.pay_day_missing';
+        }
+
         if ($errors !== [] || $amount === null || $period === null) {
             throw new ValidationException($errors);
         }
@@ -484,7 +563,26 @@ final class BudgetService
             'is_active' => ($input['is_active'] ?? '1') !== '0',
             'owner_user_id' => $ownerUserId,
             'subject_user_id' => $subjectUserId,
+            'follows_pay_day' => $followsPayDay,
         ];
+    }
+
+    /**
+     * The member whose pay day a budget being saved will follow: its subject,
+     * or for a household budget its owner — each as stored on the budget being
+     * edited unless the input names a new one, since `update()` keeps those
+     * the form does not send.
+     *
+     * @param array<string, mixed> $input
+     */
+    private function followedMember(array $input, ?Budget $existing, int $ownerUserId, ?int $subjectUserId): int
+    {
+        if ($existing !== null) {
+            $ownerUserId = array_key_exists('owner_user_id', $input) ? $ownerUserId : $existing->ownerUserId;
+            $subjectUserId = array_key_exists('subject_user_id', $input) ? $subjectUserId : $existing->subjectUserId;
+        }
+
+        return $subjectUserId ?? $ownerUserId;
     }
 
     /**

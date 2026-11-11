@@ -56,6 +56,7 @@ final class BudgetRepository extends AbstractScopedRepository
             'currency',
             'is_active',
             'subject_user_id',
+            'follows_pay_day',
         ];
     }
 
@@ -126,7 +127,13 @@ final class BudgetRepository extends AbstractScopedRepository
         return 'SELECT ' . $budgets . '.*,'
             . ' c.' . $this->quote('name') . ' AS category_name,'
             . ' owner_user.' . $this->quote('display_name') . ' AS owner_name,'
-            . ' subject_user.' . $this->quote('display_name') . ' AS subject_name'
+            . ' subject_user.' . $this->quote('display_name') . ' AS subject_name,'
+            // The pay day a budget follows is its subject's, or for a household
+            // budget (no subject) its owner's; never the owner's for a member
+            // budget, even when the subject has none.
+            . ' CASE WHEN ' . $this->qualify('subject_user_id') . ' IS NULL'
+            . ' THEN owner_user.' . $this->quote('pay_day')
+            . ' ELSE subject_user.' . $this->quote('pay_day') . ' END AS followed_pay_day'
             . ' FROM ' . $budgets
             . ' LEFT JOIN ' . $this->quote('categories') . ' c'
             . ' ON c.' . $this->quote('id') . ' = ' . $this->qualify('category_id')
@@ -157,6 +164,10 @@ final class BudgetRepository extends AbstractScopedRepository
             ownerName: ($row['owner_name'] ?? null) === null ? null : (string) $row['owner_name'],
             subjectUserId: ($row['subject_user_id'] ?? null) === null ? null : (int) $row['subject_user_id'],
             subjectName: ($row['subject_name'] ?? null) === null ? null : (string) $row['subject_name'],
+            followsPayDay: $this->db->platform()->toBoolean($row['follows_pay_day'] ?? false),
+            payDay: ($row['followed_pay_day'] ?? null) === null
+                ? null
+                : new DateTimeImmutable(substr((string) $row['followed_pay_day'], 0, 10)),
         );
     }
 }

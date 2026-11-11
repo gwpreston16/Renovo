@@ -95,7 +95,7 @@ can be moved.
 | 84 | [Reminder runs do less work, from the known-issues log](docs/phases/PHASE-84.md) | — | None | ✅ done |
 | 85 | [API reminder strings and translated 400/401 titles, from the known-issues log](docs/phases/PHASE-85.md) | — | None | ✅ done |
 | 86 | [Lighter pages for big households, from the known-issues log](docs/phases/PHASE-86.md) | — | None | ✅ done |
-| 87 | [Budgets that follow pay day](docs/phases/PHASE-87.md) | — | 1 column | 📋 planned |
+| 87 | [Budgets that follow pay day](docs/phases/PHASE-87.md) | — | 2 columns | ✅ done |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -247,7 +247,7 @@ can be moved.
 - **84 — Reminder runs do less work.** A performance batch from the known-issues log (K180, K221): a member's daily `reminders:run` measures only the budgets it owns or is the subject of, reads a user's channels once per alert type, and drops alerts already delivered before they reach the rate limiter and the claim. What is sent, and to whom, does not change.
 - **85 — API reminder strings and translated 400/401 titles.** A batch from the known-issues log (K217, K195): the string forms of `reminder_days` the API already accepts (`"30,7,1"`, `"never"`, `""`) are documented in OpenAPI and `docs/api.md` and pinned by a test, and the API's 400 and 401 errors take their titles from the catalogue like every other status.
 - **86 — Lighter pages for big households.** A page-weight batch from the known-issues log (K181, K183, K184, K185): the subscription list and the Stats "Worth it?" table post their row actions through one form each, the calendar sends the grid and loads the phone list on demand, and the scenario planner draws change-price controls only for rows set to Change.
-- **87 — Budgets that follow pay day.** A budget's period can start on any day: a monthly budget from the 25th, a yearly one from 6 April, and two new periods, every two weeks and every four weeks, counted from a pay date. The Budgets screen and the dashboard card read the period that contains today; the alert's rolling window takes the period's length. A budget with no start day keeps its calendar period and its figures.
+- **87 — Budgets that follow pay day.** Each member records their pay day under Profile → Appearance & preferences, and a monthly budget can be switched to run from pay day to pay day; two new periods, every two weeks and every four weeks, step from it. A member budget follows its subject's pay day, a household budget its owner's. The Budgets screen and the dashboard card read the period that contains today; the alert's rolling window takes the period's length. Yearly budgets, and every budget not switched over, keep their calendar period and their figures.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40

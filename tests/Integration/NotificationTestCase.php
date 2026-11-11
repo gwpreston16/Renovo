@@ -194,6 +194,8 @@ abstract class NotificationTestCase extends DatabaseTestCase
             $rates,
             $this->instanceSettings,
             $this->clock,
+            new UserRepository($this->db),
+            new BudgetAlertStateRepository($this->db),
         );
 
         $this->notifier = new RecordingNotifier();

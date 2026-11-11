@@ -6,9 +6,11 @@ namespace App\Tests\Integration;
 
 use App\Service\ChargeService;
 use App\Service\ChargeSchedule;
+use App\Repository\BudgetAlertStateRepository;
 use App\Repository\ChargeRepository;
 use App\Tests\Support\TestLogoFetcher;
 use App\Domain\BudgetPeriod;
+use App\Domain\BudgetWindow;
 use App\Domain\IsolationMode;
 use App\Domain\Money;
 use App\Domain\Role;
@@ -56,6 +58,8 @@ final class BudgetProjectionTest extends DatabaseTestCase
     private BudgetService $budgets;
     private InstanceSettingsService $settings;
     private FrozenClock $clock;
+    private UserRepository $users;
+    private BudgetAlertStateRepository $alertState;
 
     private int $alice;
     private int $bob;
@@ -67,6 +71,8 @@ final class BudgetProjectionTest extends DatabaseTestCase
         parent::setUp();
 
         $users = new UserRepository($this->db);
+        $this->users = $users;
+        $this->alertState = new BudgetAlertStateRepository($this->db);
         $households = new HouseholdRepository($this->db);
         $memberships = new MembershipRepository($this->db);
 
@@ -156,6 +162,8 @@ final class BudgetProjectionTest extends DatabaseTestCase
             $rates,
             $this->settings,
             $this->clock,
+            $this->users,
+            $this->alertState,
         );
 
         $this->streamingCategory = $this->categories->create($this->scope($this->alice), 'Streaming', null);
@@ -717,6 +725,284 @@ final class BudgetProjectionTest extends DatabaseTestCase
         } catch (ValidationException $exception) {
             self::assertArrayHasKey('warn_threshold_percent', $exception->errors());
         }
+    }
+
+    public function testAFortnightlyBudgetCountsTheNextFourteenDays(): void
+    {
+        // Today is 15 January. Fourteen days from today ends before 29 January.
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2026-01-02']);
+        $this->createSubscription('Today', 100, '2026-01-15');
+        $this->createSubscription('Inside', 200, '2026-01-28');
+        $this->createSubscription('Outside', 400, '2026-01-29');
+        $this->weeklyBudget(BudgetPeriod::Fortnight);
+
+        $progress = $this->budgets->progress($this->scope($this->alice))[0];
+
+        self::assertFalse($progress['unavailable']);
+        self::assertSame(300, $progress['projected']?->amountMinor);
+    }
+
+    public function testAFourWeeklyBudgetCountsTheNextTwentyEightDays(): void
+    {
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2026-01-02']);
+        $this->createSubscription('Today', 100, '2026-01-15');
+        $this->createSubscription('Inside', 200, '2026-02-11');
+        $this->createSubscription('Outside', 400, '2026-02-12');
+        $this->weeklyBudget(BudgetPeriod::FourWeeks);
+
+        self::assertSame(300, $this->budgets->progress($this->scope($this->alice))[0]['projected']?->amountMinor);
+    }
+
+    public function testAMonthlyBudgetKeepsItsRollingMonthWhenItFollowsPayDay(): void
+    {
+        // The alert window rolls from today whichever period the screens read,
+        // so following pay day changes nothing here (Phase 87).
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2025-12-25']);
+        $this->createSubscription('Streaming', 1000, '2026-01-20');
+        $this->createSubscription('Music', 500, '2026-02-05');
+        $this->budgets->create($this->scope($this->alice), [
+            'name' => 'Pay day',
+            'period' => BudgetPeriod::Monthly->value,
+            'follows_pay_day' => '1',
+            'amount' => '20.00',
+            'currency' => 'GBP',
+        ]);
+
+        $progress = $this->budgets->progress($this->scope($this->alice))[0];
+
+        self::assertTrue($progress['budget']->followsPayDay);
+        self::assertSame('2025-12-25', $progress['budget']->payDay?->format('Y-m-d'));
+        self::assertSame(1500, $progress['projected']?->amountMinor);
+    }
+
+    public function testAWeeklyBudgetIsRefusedWhenItsMemberHasNoPayDay(): void
+    {
+        try {
+            $this->weeklyBudget(BudgetPeriod::Fortnight);
+            self::fail('A fortnightly budget with no pay day to step from was saved.');
+        } catch (ValidationException $exception) {
+            self::assertSame('error.budget.pay_day_missing', $exception->errors()['period']->key);
+        }
+    }
+
+    public function testAWeeklyBudgetWhosePayDayIsClearedIsUnavailable(): void
+    {
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2026-01-02']);
+        $this->createSubscription('Streaming', 1000, '2026-01-20');
+        $this->weeklyBudget(BudgetPeriod::Fortnight);
+        $this->users->updatePreferences($this->alice, ['pay_day' => null]);
+
+        $budget = $this->budgets->all($this->scope($this->alice))[0];
+        self::assertTrue($this->budgets->lacksPayDay($budget));
+
+        $progress = $this->budgets->progress($this->scope($this->alice))[0];
+        self::assertTrue($progress['unavailable']);
+        self::assertNull($progress['projected']);
+
+        $run = $this->budgets->progressForRun($this->scope($this->alice))[0];
+        self::assertTrue($run['unavailable']);
+    }
+
+    public function testAMemberBudgetFollowsItsSubjectsPayDayAndNotItsOwners(): void
+    {
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2026-01-02']);
+
+        try {
+            $this->weeklyBudget(BudgetPeriod::Fortnight, (string) $this->bob);
+            self::fail('Alice\'s pay day stood in for Bob\'s.');
+        } catch (ValidationException $exception) {
+            self::assertArrayHasKey('period', $exception->errors());
+        }
+
+        $this->users->updatePreferences($this->bob, ['pay_day' => '2026-01-09']);
+        $this->weeklyBudget(BudgetPeriod::Fortnight, (string) $this->bob);
+
+        $budget = $this->budgets->all($this->scope($this->alice))[0];
+        self::assertSame($this->bob, $budget->payDayUserId());
+        self::assertSame('2026-01-09', $budget->payDay?->format('Y-m-d'));
+    }
+
+    public function testAHouseholdBudgetFollowsItsOwnersPayDay(): void
+    {
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2026-01-02']);
+        $this->users->updatePreferences($this->bob, ['pay_day' => '2026-01-09']);
+        $this->weeklyBudget(BudgetPeriod::FourWeeks, BudgetService::SUBJECT_HOUSEHOLD);
+
+        $budget = $this->budgets->all($this->scope($this->bob))[0];
+        self::assertTrue($budget->isHousehold());
+        self::assertSame($this->alice, $budget->payDayUserId());
+        self::assertSame('2026-01-02', $budget->payDay?->format('Y-m-d'));
+    }
+
+    public function testOnlyAMonthlyBudgetKeepsTheSwitch(): void
+    {
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2026-01-02']);
+        foreach ([BudgetPeriod::Monthly, BudgetPeriod::Annual] as $period) {
+            $this->budgets->create($this->scope($this->alice), [
+                'name' => $period->value,
+                'period' => $period->value,
+                'follows_pay_day' => '1',
+                'amount' => '20.00',
+                'currency' => 'GBP',
+            ]);
+        }
+        $this->weeklyBudget(BudgetPeriod::Fortnight);
+
+        $follows = [];
+        foreach ($this->budgets->all($this->scope($this->alice)) as $budget) {
+            $follows[$budget->period->value] = $budget->followsPayDay;
+        }
+        ksort($follows);
+
+        self::assertSame(['annual' => false, 'fortnight' => true, 'monthly' => true], $follows);
+    }
+
+    public function testAnEditChecksThePayDayOfTheBudgetsMemberNotTheEditors(): void
+    {
+        // Alice's household fortnight; Bob, with no pay day, renames it. The
+        // form posts the household choice and no owner, so the budget still
+        // follows Alice's pay day and the save stands.
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2026-01-02']);
+        $this->weeklyBudget(BudgetPeriod::Fortnight, BudgetService::SUBJECT_HOUSEHOLD);
+        $id = $this->budgets->all($this->scope($this->alice))[0]->id;
+
+        $this->budgets->update($this->scope($this->bob), $id, [
+            'name' => 'Renamed',
+            'period' => 'fortnight',
+            'amount' => '20.00',
+            'subject_user_id' => BudgetService::SUBJECT_HOUSEHOLD,
+        ]);
+        self::assertSame('Renamed', $this->budgets->find($this->scope($this->alice), $id)?->name);
+
+        // And the other way round: Alice clears hers, Bob has one, and Bob
+        // cannot move her budget onto a period nobody can measure.
+        $this->users->updatePreferences($this->alice, ['pay_day' => null]);
+        $this->users->updatePreferences($this->bob, ['pay_day' => '2026-01-09']);
+
+        try {
+            $this->budgets->update($this->scope($this->bob), $id, [
+                'name' => 'Renamed',
+                'period' => 'four_weeks',
+                'amount' => '20.00',
+                'subject_user_id' => BudgetService::SUBJECT_HOUSEHOLD,
+            ]);
+            self::fail('Bob\'s pay day stood in for Alice\'s.');
+        } catch (ValidationException $exception) {
+            self::assertSame('error.budget.pay_day_missing', $exception->errors()['period']->key);
+        }
+    }
+
+    public function testAMemberBudgetNeverBorrowsItsOwnersPayDay(): void
+    {
+        // Alice sets a switched monthly budget for Bob. Bob has no pay day, so
+        // the query must not fall back to Alice's: it reads the calendar.
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2026-01-02']);
+        $this->budgets->create($this->scope($this->alice), [
+            'name' => 'Bob, pay day',
+            'period' => 'monthly',
+            'follows_pay_day' => '1',
+            'amount' => '20.00',
+            'currency' => 'GBP',
+            'subject_user_id' => (string) $this->bob,
+        ]);
+
+        $budget = $this->budgets->all($this->scope($this->alice))[0];
+        self::assertTrue($budget->followsPayDay);
+        self::assertNull($budget->payDay);
+
+        $window = BudgetWindow::forBudget($budget, $this->clock->today());
+        self::assertNotNull($window);
+        self::assertFalse($window->followsPayDay);
+        self::assertSame('2026-01-01', $window->first->format('Y-m-d'));
+    }
+
+    public function testMovingAPayDayMovesEveryBudgetThatFollowsIt(): void
+    {
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2025-12-25']);
+        $this->budgets->create($this->scope($this->alice), [
+            'name' => 'Monthly',
+            'period' => 'monthly',
+            'follows_pay_day' => '1',
+            'amount' => '20.00',
+            'currency' => 'GBP',
+        ]);
+        $this->weeklyBudget(BudgetPeriod::FourWeeks);
+
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2026-01-10']);
+
+        $firsts = [];
+        foreach ($this->budgets->all($this->scope($this->alice)) as $budget) {
+            $firsts[$budget->period->value] = BudgetWindow::forBudget($budget, $this->clock->today())
+                ?->first->format('Y-m-d');
+        }
+        ksort($firsts);
+
+        self::assertSame(['four_weeks' => '2026-01-10', 'monthly' => '2026-01-10'], $firsts);
+    }
+
+    public function testOneMembersMonthlyAndFortnightlyBudgetsEachReadTheirOwnWindow(): void
+    {
+        // One walk for Alice, two filters: the 20th is in both, 3 February
+        // (19 days out) only in the month.
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2026-01-02']);
+        $this->createSubscription('Soon', 300, '2026-01-20');
+        $this->createSubscription('Later', 700, '2026-02-03');
+        $this->monthlyBudget('20.00');
+        $this->weeklyBudget(BudgetPeriod::Fortnight);
+
+        $byPeriod = [];
+        foreach ($this->budgets->progress($this->scope($this->alice)) as $row) {
+            $byPeriod[$row['budget']->period->value] = $row['projected']?->amountMinor;
+        }
+        ksort($byPeriod);
+
+        self::assertSame(['fortnight' => 300, 'monthly' => 1000], $byPeriod);
+    }
+
+    public function testAnotherMemberChangingThePeriodReArmsTheAlertToo(): void
+    {
+        $this->monthlyBudget('20.00');
+        $id = $this->budgets->all($this->scope($this->alice))[0]->id;
+        $this->alertState->save($this->scope($this->alice), $id, $this->alice, true, 3000, $this->clock->now());
+
+        $this->budgets->update($this->scope($this->bob), $id, [
+            'name' => 'Monthly',
+            'period' => 'annual',
+            'amount' => '20.00',
+            'currency' => 'GBP',
+        ]);
+
+        self::assertNull($this->alertState->findForBudget($this->scope($this->alice), $id));
+    }
+
+    public function testChangingThePeriodReArmsTheAlertAndChangingTheLimitDoesNot(): void
+    {
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2026-01-02']);
+        $this->monthlyBudget('20.00');
+        $scope = $this->scope($this->alice);
+        $id = $this->budgets->all($scope)[0]->id;
+        $input = ['name' => 'Monthly', 'period' => 'monthly', 'amount' => '20.00', 'currency' => 'GBP'];
+
+        $this->alertState->save($scope, $id, $this->alice, true, 3000, $this->clock->now());
+        $this->budgets->update($scope, $id, ['amount' => '25.00'] + $input);
+        self::assertTrue($this->alertState->findForBudget($scope, $id)['is_breached'] ?? false);
+
+        $this->budgets->update($scope, $id, ['follows_pay_day' => '1'] + $input);
+        self::assertNull($this->alertState->findForBudget($scope, $id));
+
+        $this->alertState->save($scope, $id, $this->alice, true, 3000, $this->clock->now());
+        $this->budgets->update($scope, $id, ['period' => 'fortnight'] + $input);
+        self::assertNull($this->alertState->findForBudget($scope, $id));
+    }
+
+    private function weeklyBudget(BudgetPeriod $period, ?string $subject = null): void
+    {
+        $this->budgets->create($this->scope($this->alice), [
+            'name' => $period->value,
+            'period' => $period->value,
+            'amount' => '20.00',
+            'currency' => 'GBP',
+        ] + ($subject === null ? [] : ['subject_user_id' => $subject]));
     }
 
     /**

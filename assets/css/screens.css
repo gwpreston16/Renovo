@@ -599,8 +599,8 @@
 }
 
 /*
- * The budget form: the limit and its period share a row where there is room
- * for both, and the slider runs the full width under a label that carries its
+ * The budget form: the limit on a row of its own, then the period — four
+ * choices since Phase 87, too many to share a row with it — and the slider runs the full width under a label that carries its
  * percentage at the far end.
  */
 .budget-form-row {
@@ -643,6 +643,34 @@
 .budget-form .group-label,
 .range-label label {
     font-weight: var(--weight-semibold);
+}
+
+/*
+ * From pay day is a monthly budget's switch only (Phase 87): a weekly period
+ * always follows pay day and a year never does, so the row is hidden while
+ * another period is chosen. Without `:has()` it is simply always shown, and
+ * the server ignores it for any period but Monthly.
+ */
+.budget-form:has(input[name='period']:checked:not([value='monthly'])) .budget-pay-day-row,
+.budget-form:has(input[name='period'][value='annual']:checked) .budget-pay-day-hint {
+    display: none;
+}
+
+/* The pay day and its Save sit on one line where there is room. */
+.pay-day-form {
+    margin-top: 1rem;
+}
+
+.pay-day-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.pay-day-row input {
+    flex: 1 1 12rem;
+    width: auto;
 }
 
 /* Delete to the left, away from Save. */
