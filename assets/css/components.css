@@ -1102,6 +1102,17 @@ a.sidebar-version:hover {
     flex-wrap: wrap;
 }
 
+/*
+ * The shortcut help is for a keyboard. On a touch-only device there is none
+ * to use it with, and the link was an 18px-tall target, so it is not drawn.
+ * Keyed on the input, not the width: a narrow desktop window keeps it.
+ */
+@media (hover: none) and (pointer: coarse) {
+    .footer [data-opens-dialog='shortcut-help'] {
+        display: none;
+    }
+}
+
 /* ------------------------------------------------- the pages with no shell */
 
 /*

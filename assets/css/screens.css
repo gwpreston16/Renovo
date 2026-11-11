@@ -462,6 +462,27 @@
     flex-shrink: 0;
 }
 
+/*
+ * The edit pencil. Bare, it was a 21×16 target beside the state badge, short
+ * of the 24px WCAG 2.5.8 asks for and fiddly on a phone; this gives it the
+ * dialog close button's 34px square. The negative block margin keeps the
+ * header the height the title and badge set. Hover fills the square rather
+ * than turning the icon red: editing is not a destructive action.
+ */
+.budget-card-actions .button-icon {
+    justify-content: center;
+    width: 2.125rem;
+    height: 2.125rem;
+    margin-block: -0.375rem;
+    padding: 0;
+    border-radius: var(--radius-control);
+}
+
+.budget-card-actions .button-icon:hover {
+    color: var(--text);
+    background: var(--surface-2);
+}
+
 .budget-figure {
     display: flex;
     flex-wrap: wrap;
@@ -2432,6 +2453,7 @@ a.segmented-option {
 }
 
 .subscription-card {
+    position: relative;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto auto;
     align-items: center;
@@ -2439,6 +2461,27 @@ a.segmented-option {
     min-height: 2.75rem;
     padding: 0.75rem 0;
     border-bottom: 1px solid var(--border);
+}
+
+/*
+ * The whole card opens the subscription, not just its 21px-tall name. The
+ * name link stays the one link a screen reader or keyboard meets; its
+ * ::after is stretched over the card so a tap anywhere lands on it. The row
+ * menu is lifted above that layer so its button and panel still take taps.
+ */
+.subscription-card-name::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+}
+
+.subscription-card > .row-menu {
+    z-index: 1;
+}
+
+/* Each lifted menu is its own layer, so an open one must sit over the rest. */
+.subscription-card > .row-menu[open] {
+    z-index: 2;
 }
 
 .subscription-card:last-child {
