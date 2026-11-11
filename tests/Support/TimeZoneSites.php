@@ -84,7 +84,7 @@ final class TimeZoneSites
      * one.
      */
     private const DATE_ONLY_PATTERN = '/effective_from|due_date|period_date|start_date|end_date'
-        . '|next_payment_date|promo_ends_on|trial_end|ends_on|!Y-m-d|\$last\b|\$key\b|\$date\)/';
+        . '|next_payment_date|promo_ends_on|trial_end|ends_on|pay_day|!Y-m-d|\$last\b|\$key\b|\$date\)/';
 
     /**
      * The shapes that make a site: a date from a string, or the default zone.
