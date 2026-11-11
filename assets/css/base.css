@@ -198,20 +198,13 @@ main:focus {
 /* ----------------------------------------------------------- reduced motion */
 
 /*
- * Nothing here animates much, but htmx applies transitions during a swap and a
- * dialog opens with one. A reader who has asked their system for less motion
- * should get none.
+ * No blanket switch-off. The app's transitions are short colour and opacity
+ * fades (a switch's track, the htmx loading indicator, a hover) that carry a
+ * change of state without moving anything, and those stay. Anything that
+ * moves answers `prefers-reduced-motion` where it is defined, as the toggle
+ * knob does in components.css; a new movement must do the same. Scrolling is
+ * never smoothed, so it needs no rule here either.
  */
-@media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
-    }
-}
 
 /* ----------------------------------------------------------- forced colours */
 

@@ -10,7 +10,7 @@
     </p>
 
     <form method="get" action="/audit" class="filters"
-          hx-get="/audit" hx-target="#audit-entries" hx-push-url="true">
+          hx-get="/audit" hx-target="#audit-entries" hx-sync="#audit-entries:replace" hx-push-url="true">
         <label for="action">{{ t('field.event') }}</label>
         <select id="action" name="action" data-autosubmit>
             <option value="">{{ t('audit.all_events') }}</option>
@@ -23,7 +23,11 @@
         <noscript><button type="submit" class="button">{{ t('audit.filter') }}</button></noscript>
     </form>
 
-    <div id="audit-entries">
+    {#
+        The swap region. When the pager link that was used is gone after the
+        swap (Older on the last page), focus lands here instead of the page.
+    #}
+    <div id="audit-entries" tabindex="-1" data-focus-fallback>
         {% include 'audit/_entries.twig' %}
     </div>
 {% endblock %}

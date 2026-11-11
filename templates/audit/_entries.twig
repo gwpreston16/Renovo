@@ -1,6 +1,9 @@
 {#
     The entries table, rendered on its own for htmx filter and page swaps.
+    The status line is what a screen reader hears after a swap: app.js
+    clears and refills it so the polite live region announces the new page.
 #}
+<p class="visually-hidden" role="status" data-swap-status>{{ t('audit_entries.pager', {'page': page, 'pages': max(pages, 1), 'total': total}) }}</p>
 <div class="table-scroll">
     <table class="table">
         <thead>
@@ -45,19 +48,19 @@
 {% if pages > 1 %}
     <nav class="pagination" aria-label="{{ t('subscriptions_list.pagination') }}">
         {% if page > 1 %}
-            <a class="button button-quiet"
+            <a id="audit-newer" class="button button-quiet"
                href="/audit?page={{ page - 1 }}{{ selected_action ? '&action=' ~ selected_action : '' }}"
                hx-get="/audit?page={{ page - 1 }}{{ selected_action ? '&action=' ~ selected_action : '' }}"
-               hx-target="#audit-entries" hx-push-url="true">{{ t('action.newer') }}</a>
+               hx-target="#audit-entries" hx-sync="#audit-entries:replace" hx-push-url="true">{{ t('action.newer') }}</a>
         {% endif %}
 
         <span class="muted">{{ t('audit_entries.pager', {'page': page, 'pages': pages, 'total': total}) }}</span>
 
         {% if page < pages %}
-            <a class="button button-quiet"
+            <a id="audit-older" class="button button-quiet"
                href="/audit?page={{ page + 1 }}{{ selected_action ? '&action=' ~ selected_action : '' }}"
                hx-get="/audit?page={{ page + 1 }}{{ selected_action ? '&action=' ~ selected_action : '' }}"
-               hx-target="#audit-entries" hx-push-url="true">{{ t('action.older') }}</a>
+               hx-target="#audit-entries" hx-sync="#audit-entries:replace" hx-push-url="true">{{ t('action.older') }}</a>
         {% endif %}
     </nav>
 {% endif %}
