@@ -56,6 +56,11 @@ final class User
         public readonly ?string $dashboardView = null,
         /** The release whose update banner this administrator dismissed; see UpdateCheckService. */
         public readonly ?string $dismissedUpdateVersion = null,
+        /**
+         * Any one day this member was paid, or null for none (Phase 87). Only
+         * budgets switched to follow pay day read it; see `BudgetWindow`.
+         */
+        public readonly ?DateTimeImmutable $payDay = null,
     ) {
     }
 

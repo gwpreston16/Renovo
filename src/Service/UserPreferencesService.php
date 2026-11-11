@@ -12,10 +12,13 @@ use App\Domain\Theme;
 use App\Domain\WeekStart;
 use App\I18n\Locales;
 use App\Repository\UserRepository;
+use App\Support\Clock;
+use DateTimeImmutable;
 
 /**
  * A user's own display preferences: theme, palette, language, week start, list
- * density and where they land.
+ * density and where they land — and their pay day (Phase 87), which budgets
+ * switched to follow it read their periods from.
  *
  * Every value is validated here rather than in the controller, which is the
  * difference between a preference and an arbitrary string in a column: each
@@ -31,6 +34,7 @@ final class UserPreferencesService
     public function __construct(
         private readonly UserRepository $users,
         private readonly Locales $locales,
+        private readonly Clock $clock,
     ) {
     }
 
@@ -119,6 +123,19 @@ final class UserPreferencesService
             $changes['landing_view'] = LandingView::fromString($this->string($input, 'landing_view'))->value;
         }
 
+        // Refused with the palette's rule, after the rest are written: a pay
+        // day that is not a real date, or more than a year ahead, is a mistake
+        // to point out, not a value to guess at. Empty clears it.
+        $payDayRefused = false;
+        if (array_key_exists('pay_day', $input)) {
+            $payDay = $this->payDay($this->string($input, 'pay_day') ?? '');
+            if ($payDay === false) {
+                $payDayRefused = true;
+            } else {
+                $changes['pay_day'] = $payDay?->format('Y-m-d');
+            }
+        }
+
         $palette = null;
         $paletteRefused = false;
         if (array_key_exists('palette', $input)) {
@@ -137,12 +154,36 @@ final class UserPreferencesService
         if ($paletteRefused) {
             throw ValidationException::field('palette', 'error.palette.unknown');
         }
+        if ($payDayRefused) {
+            throw ValidationException::field('pay_day', 'error.pay_day.invalid');
+        }
 
         return [
             'theme' => $changes['theme'] ?? null,
             'palette' => $palette?->value,
             'density' => $changes['density'] ?? null,
         ];
+    }
+
+    /**
+     * A pay day as entered: null for none (empty), false for one that is not
+     * a real date or is more than a year ahead, else the date. Any day in the
+     * past is fine — only its day of the month, or its place in a fortnightly
+     * rhythm, is ever read.
+     */
+    private function payDay(string $raw): DateTimeImmutable|false|null
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return null;
+        }
+
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $raw);
+        if ($date === false || $date->format('Y-m-d') !== $raw) {
+            return false;
+        }
+
+        return $date > $this->clock->today()->setTime(0, 0)->modify('+1 year') ? false : $date;
     }
 
     /**

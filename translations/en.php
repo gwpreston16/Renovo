@@ -320,6 +320,7 @@ return [
     'error.offer.ends_past' => 'The offer has to end after today, and after the price starts.',
     'error.offer.then_required' => 'Enter what it costs once the offer ends.',
     'error.palette.unknown' => 'Choose one of the palettes shown.',
+    'error.pay_day.invalid' => 'Enter a real date for your pay day, no more than a year ahead.',
     'flash.avatar_missing' => 'There was no picture to remove.',
     'flash.avatar_removed' => 'Your picture has been removed.',
     'flash.avatar_saved' => 'Your picture has been saved.',
@@ -535,6 +536,8 @@ return [
 
     'budget_period.monthly' => 'Monthly',
     'budget_period.annual' => 'Yearly',
+    'budget_period.fortnight' => 'Every 2 weeks',
+    'budget_period.four_weeks' => 'Every 4 weeks',
 
     'notice.none' => 'None',
     'notice.days' => '{count, plural, one {# day} other {# days}}',
@@ -573,6 +576,9 @@ return [
     'settings.density' => 'List density',
     'settings.landing_view' => 'Open on',
     'settings.landing_view_hint' => 'The page you see when you open Renovo.',
+    'settings.pay_day' => 'A recent pay day',
+    'settings.pay_day_hint' =>
+        'Any day you were paid. Only budgets set to run from pay day use it, and anyone who can see one of them can work out the day.',
 
     'settings.palette' => 'Colour palette',
     'settings.palette_hint' => 'The colours of the sidebar and of the buttons and highlights. Only you see your choice.',
@@ -795,7 +801,10 @@ return [
         'That file has more than {max} entries. Split it and import the parts separately.',
 
     'error.budget.name_required' => 'Give the budget a name.',
-    'error.budget.period' => 'Choose monthly or annual.',
+    'error.budget.period' => 'Choose how often the budget runs.',
+    'error.budget.pay_day_missing' =>
+        'A budget that runs every 2 or 4 weeks steps from the pay day of the member it measures, and they haven\'t set one. '
+        . 'Each member sets their own under Profile → Preferences.',
     'error.budget.threshold_range' => 'Enter a warning threshold between 1 and 100 percent.',
 
     'error.bulk.no_subscriptions' => 'Choose at least one subscription.',
@@ -1186,6 +1195,10 @@ return [
     'budgets.tile_household_limit' => 'Household limit',
     'budgets.tile_over' => 'Projected over',
     'budgets.tiles' => 'Budgets by state',
+    'budgets.period_range' => '{first} – {last}',
+    'budgets.days_left' => '{count, plural, one {# day left} other {# days left}}',
+    'budgets.no_pay_day' =>
+        'This budget runs from {name}\'s pay day, and none is set. It is measured once one is, under Profile → Preferences.',
     'budgets.unavailable' =>
         'Not available to you: it measures spending you cannot see while members\' subscriptions are '
         . 'kept separate.',
@@ -1193,6 +1206,11 @@ return [
     'budgets.warn_tick' => 'Warning at {percent}%',
 
     // budgets_form
+    'budgets_form.follows_pay_day' => 'From pay day',
+    'budgets_form.follows_pay_day_hint' =>
+        'Run a monthly budget from pay day to pay day: the pay day of the member it measures, or yours for the household. '
+        . 'Budgets every 2 or 4 weeks always do; yearly ones keep the calendar year.',
+    'budgets_form.set_pay_day' => 'Set your pay day',
     'budgets_form.edit_title' => 'Edit budget',
     'budgets_form.limit_in' => 'Limit ({currency})',
     'budgets_form.name_placeholder' => 'e.g. Streaming',
@@ -2422,7 +2440,11 @@ return [
 
     // alert
     'alert.budget.over' => 'That is {amount} over.',
-    'alert.budget.projected' => 'Projected {projected} against a limit of {limit}.',
+    'alert.budget.projected' => 'Projected {projected} over {window}, against a limit of {limit}.',
+    'alert.budget.window.annual' => 'the next 12 months',
+    'alert.budget.window.fortnight' => 'the next two weeks',
+    'alert.budget.window.four_weeks' => 'the next four weeks',
+    'alert.budget.window.monthly' => 'the next month',
     'alert.budget.title' => 'Budget "{budget}" is projected to be exceeded',
     'alert.cancel.line' => 'That is {when} — the last day to give notice and avoid the next charge.',
     'alert.cancel.renews' => 'It renews at {amount}.',
