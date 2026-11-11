@@ -579,7 +579,8 @@ return [
     'settings.pay_day' => 'A recent pay day',
     'settings.save_pay_day' => 'Save pay day',
     'settings.pay_day_hint' =>
-        'Any day you were paid. Only budgets set to run from pay day use it, and anyone who can see one of them can work out the day.',
+        'Any day you were paid on your usual day: if that is the 31st, pick a month that has one. Only budgets set to run '
+        . 'from pay day use it, and anyone who can see one of them can work out the day.',
 
     'settings.palette' => 'Colour palette',
     'settings.palette_hint' => 'The colours of the sidebar and of the buttons and highlights. Only you see your choice.',

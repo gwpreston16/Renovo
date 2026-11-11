@@ -623,6 +623,11 @@ final class BudgetScreenTest extends DatabaseTestCase
         self::assertStringContainsString('£8.00 charged so far', $this->attr($card, 'budget-bar', 'aria-label'));
         self::assertStringContainsString('£15.00', $this->text($card, 'budget-projected'));
         self::assertStringContainsString('25 Dec – 24 Jan', $this->text($card, 'budget-meta'));
+        self::assertStringContainsString(
+            '£8.00 / £100.00',
+            (string) $this->request('GET', '/')->getBody(),
+            'The dashboard row reads December too.',
+        );
     }
 
     public function testAPeriodStartingOnAClampedDayReadsToItsLastDay(): void
@@ -657,6 +662,29 @@ final class BudgetScreenTest extends DatabaseTestCase
         $card = '//article[@data-budget="' . $id . '"]';
         self::assertSame(1, $page->query($card . '//*[@data-budget-unavailable]')?->length);
         self::assertSame(0, $page->query($card . '//*[@data-budget-no-pay-day]')?->length);
+    }
+
+    public function testAFortnightlyCardReadsItsOwnTwoWeeks(): void
+    {
+        // Paid on 5 June, today the 15th: 5 to 18 June. The 4th and 19th are
+        // the fortnights either side; the 5th is charged, the 18th to come.
+        (new UserRepository($this->db))->updatePreferences($this->ownerId, ['pay_day' => '2026-06-05']);
+        $this->monthly('Before', 100, '2026-07-04', '2025-01-04');
+        $this->monthly('First day', 200, '2026-07-05', '2025-01-05');
+        $this->monthly('Last day', 400, '2026-06-18', '2025-01-18');
+        $this->monthly('After', 800, '2026-06-19', '2025-01-19');
+        $id = $this->budget(['name' => 'Fortnight', 'period' => 'fortnight', 'amount' => '100.00']);
+
+        $card = $this->card($id);
+
+        self::assertStringContainsString('£2.00 charged so far', $this->attr($card, 'budget-bar', 'aria-label'));
+        self::assertStringContainsString('£6.00', $this->text($card, 'budget-projected'));
+        self::assertStringContainsString('5 Jun – 18 Jun', $this->text($card, 'budget-meta'));
+        self::assertStringContainsString('4 days left', $this->text($card, 'budget-meta'));
+
+        // Edited, its switch is off: only a monthly budget carries one.
+        $form = (string) $this->request('GET', '/budgets/' . $id . '/edit')->getBody();
+        self::assertDoesNotMatchRegularExpression('~name="follows_pay_day" value="1"\s+checked~', $form);
     }
 
     public function testAChargeOnThePeriodsFirstDayIsInIt(): void

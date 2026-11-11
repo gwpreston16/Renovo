@@ -248,7 +248,8 @@ that follows pay day is not drawn on them.
 
 A household archive carries the switch but not anybody's pay day, which is a
 personal preference; a two- or four-weekly budget whose member has no pay day
-in the household it is restored into is skipped and counted.
+in the household it is restored into is skipped and counted. Before restoring,
+have each member set their pay day in the target instance.
 
 New budgets are in the base currency; one set in another currency earlier keeps
 it.
