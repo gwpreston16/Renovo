@@ -804,7 +804,7 @@ return [
     'error.budget.period' => 'Choose how often the budget runs.',
     'error.budget.pay_day_missing' =>
         'A budget that runs every 2 or 4 weeks steps from the pay day of the member it measures, and they haven\'t set one. '
-        . 'Each member sets their own under Profile → Preferences.',
+        . 'Each member sets their own under Profile → Appearance & preferences.',
     'error.budget.threshold_range' => 'Enter a warning threshold between 1 and 100 percent.',
 
     'error.bulk.no_subscriptions' => 'Choose at least one subscription.',
@@ -1196,9 +1196,10 @@ return [
     'budgets.tile_over' => 'Projected over',
     'budgets.tiles' => 'Budgets by state',
     'budgets.period_range' => '{first} – {last}',
+    'budgets.calendar_until_pay_day' => 'calendar month until {name} sets a pay day',
     'budgets.days_left' => '{count, plural, one {# day left} other {# days left}}',
     'budgets.no_pay_day' =>
-        'This budget runs from {name}\'s pay day, and none is set. It is measured once one is, under Profile → Preferences.',
+        'This budget runs from {name}\'s pay day, and none is set. It is measured once one is, under Profile → Appearance & preferences.',
     'budgets.unavailable' =>
         'Not available to you: it measures spending you cannot see while members\' subscriptions are '
         . 'kept separate.',
@@ -1327,6 +1328,7 @@ return [
     'dashboard.already_charged' => 'Already charged',
     'dashboard.approx' => '≈ {amount}',
     'dashboard.at_todays_prices' => 'at today’s prices',
+    'dashboard.budget_calendar_until_pay_day' => 'calendar month: no pay day set',
     'dashboard.budget_household' => 'Household',
     'dashboard.budget_left' => '{amount} left this month',
     'dashboard.budget_meter' => '{charged}% charged so far, {projected}% projected by the end of the month',

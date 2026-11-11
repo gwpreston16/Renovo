@@ -645,6 +645,16 @@
     font-weight: var(--weight-semibold);
 }
 
+/*
+ * From pay day is a monthly budget's switch only (Phase 87): a weekly period
+ * always follows pay day and a year never does, so the row is hidden while
+ * another period is chosen. Without `:has()` it is simply always shown, and
+ * the server ignores it for any period but Monthly.
+ */
+.budget-form:has(input[name='period']:checked:not([value='monthly'])) .budget-pay-day-row {
+    display: none;
+}
+
 /* Delete to the left, away from Save. */
 .budget-form-actions .button-danger {
     margin-right: auto;

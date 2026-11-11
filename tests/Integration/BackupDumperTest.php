@@ -81,6 +81,27 @@ final class BackupDumperTest extends DatabaseTestCase
         self::assertSame([false, true, false], array_column($rows, 'is_instance_admin'));
     }
 
+    /**
+     * Phase 87's columns are read from the schema like every other, so an
+     * instance backup carries a member's pay day and a budget's switch.
+     */
+    public function testAPayDayAndTheSwitchAreBackedUp(): void
+    {
+        self::assertContains('pay_day', $this->dumper->columns('users'));
+        self::assertContains('follows_pay_day', $this->dumper->columns('budgets'));
+
+        $this->db->execute(
+            'INSERT INTO users (id, email, display_name, password_hash, is_instance_admin, pay_day,'
+            . ' created_at, updated_at)'
+            . " VALUES (7, 'paid@example.test', 'Paid', 'x', :a, '2026-05-25', '2026-01-01 00:00:00',"
+            . " '2026-01-01 00:00:00')",
+            ['a' => false],
+        );
+
+        $rows = iterator_to_array($this->dumper->rows('users'), false);
+        self::assertSame('2026-05-25', substr((string) $rows[0]['pay_day'], 0, 10));
+    }
+
     public function testRowsPageThroughACompositeKey(): void
     {
         $this->db->execute(

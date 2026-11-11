@@ -96,6 +96,11 @@
                                     }) }}</span>
                                     ({{ t('budgets.days_left', {'count': card.days_left}) }})
                                 {% endif %}
+                                {% if budget.followsPayDay and card.window and not card.window.followsPayDay %}
+                                    · <span data-budget-calendar-until-pay-day>{{ t('budgets.calendar_until_pay_day', {
+                                        'name': budget.isHousehold ? budget.ownerName : budget.subjectName,
+                                    }) }}</span>
+                                {% endif %}
                                 · {{ budget.isOverall ? t('budgets.all_categories') : budget.categoryName }}
                                 · {{ budget.isHousehold ? t('budgets.household') : budget.subjectName }}
                             </p>
@@ -121,6 +126,9 @@
                         <p class="stat-value num">{{ t('common.none_symbol') }}</p>
                         <p class="muted budget-note" data-budget-no-pay-day>
                             {{ t('budgets.no_pay_day', {'name': budget.isHousehold ? budget.ownerName : budget.subjectName}) }}
+                            {% if budget.payDayUserId == current_user.id %}
+                                <a href="/profile#appearance">{{ t('budgets_form.set_pay_day') }}</a>
+                            {% endif %}
                         </p>
                     {% elseif card.note == 'unconvertible' %}
                         <p class="stat-value num">{{ t('common.none_symbol') }}</p>

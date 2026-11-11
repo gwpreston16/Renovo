@@ -10,6 +10,7 @@ use App\Repository\BudgetAlertStateRepository;
 use App\Repository\ChargeRepository;
 use App\Tests\Support\TestLogoFetcher;
 use App\Domain\BudgetPeriod;
+use App\Domain\BudgetWindow;
 use App\Domain\IsolationMode;
 use App\Domain\Money;
 use App\Domain\Role;
@@ -854,6 +855,89 @@ final class BudgetProjectionTest extends DatabaseTestCase
         ksort($follows);
 
         self::assertSame(['annual' => false, 'fortnight' => true, 'monthly' => true], $follows);
+    }
+
+    public function testAnEditChecksThePayDayOfTheBudgetsMemberNotTheEditors(): void
+    {
+        // Alice's household fortnight; Bob, with no pay day, renames it. The
+        // form posts the household choice and no owner, so the budget still
+        // follows Alice's pay day and the save stands.
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2026-01-02']);
+        $this->weeklyBudget(BudgetPeriod::Fortnight, BudgetService::SUBJECT_HOUSEHOLD);
+        $id = $this->budgets->all($this->scope($this->alice))[0]->id;
+
+        $this->budgets->update($this->scope($this->bob), $id, [
+            'name' => 'Renamed',
+            'period' => 'fortnight',
+            'amount' => '20.00',
+            'subject_user_id' => BudgetService::SUBJECT_HOUSEHOLD,
+        ]);
+        self::assertSame('Renamed', $this->budgets->find($this->scope($this->alice), $id)?->name);
+
+        // And the other way round: Alice clears hers, Bob has one, and Bob
+        // cannot move her budget onto a period nobody can measure.
+        $this->users->updatePreferences($this->alice, ['pay_day' => null]);
+        $this->users->updatePreferences($this->bob, ['pay_day' => '2026-01-09']);
+
+        try {
+            $this->budgets->update($this->scope($this->bob), $id, [
+                'name' => 'Renamed',
+                'period' => 'four_weeks',
+                'amount' => '20.00',
+                'subject_user_id' => BudgetService::SUBJECT_HOUSEHOLD,
+            ]);
+            self::fail('Bob\'s pay day stood in for Alice\'s.');
+        } catch (ValidationException $exception) {
+            self::assertSame('error.budget.pay_day_missing', $exception->errors()['period']->key);
+        }
+    }
+
+    public function testAMemberBudgetNeverBorrowsItsOwnersPayDay(): void
+    {
+        // Alice sets a switched monthly budget for Bob. Bob has no pay day, so
+        // the query must not fall back to Alice's: it reads the calendar.
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2026-01-02']);
+        $this->budgets->create($this->scope($this->alice), [
+            'name' => 'Bob, pay day',
+            'period' => 'monthly',
+            'follows_pay_day' => '1',
+            'amount' => '20.00',
+            'currency' => 'GBP',
+            'subject_user_id' => (string) $this->bob,
+        ]);
+
+        $budget = $this->budgets->all($this->scope($this->alice))[0];
+        self::assertTrue($budget->followsPayDay);
+        self::assertNull($budget->payDay);
+
+        $window = BudgetWindow::forBudget($budget, $this->clock->today());
+        self::assertNotNull($window);
+        self::assertFalse($window->followsPayDay);
+        self::assertSame('2026-01-01', $window->first->format('Y-m-d'));
+    }
+
+    public function testMovingAPayDayMovesEveryBudgetThatFollowsIt(): void
+    {
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2025-12-25']);
+        $this->budgets->create($this->scope($this->alice), [
+            'name' => 'Monthly',
+            'period' => 'monthly',
+            'follows_pay_day' => '1',
+            'amount' => '20.00',
+            'currency' => 'GBP',
+        ]);
+        $this->weeklyBudget(BudgetPeriod::FourWeeks);
+
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2026-01-10']);
+
+        $firsts = [];
+        foreach ($this->budgets->all($this->scope($this->alice)) as $budget) {
+            $firsts[$budget->period->value] = BudgetWindow::forBudget($budget, $this->clock->today())
+                ?->first->format('Y-m-d');
+        }
+        ksort($firsts);
+
+        self::assertSame(['four_weeks' => '2026-01-10', 'monthly' => '2026-01-10'], $firsts);
     }
 
     public function testChangingThePeriodReArmsTheAlertAndChangingTheLimitDoesNot(): void

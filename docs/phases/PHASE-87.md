@@ -123,9 +123,9 @@ exists today keeps its calendar period.
 
 ### F. Backup, restore and demo data
 
-- The household archive (`BackupService`) carries `follows_pay_day` and
-  each member's `pay_day`; an archive without them restores with the
-  switch off and no pay day. Instance backups copy every column already
+- The household archive (`BackupService`) carries `follows_pay_day` (not
+  the pay day: see *Decisions as built*); an archive without it restores
+  with the switch off. Instance backups copy every column already
   and need only a test.
 - The demo's first member gets a pay day on the 25th and one demo budget
   follows it, so the demo shows the feature.
@@ -231,8 +231,12 @@ period it does not know: safe, but its figures change.
 - **Calendar figures keep calendar budgets.** The household chart, the
   month's marker and the pace measure calendar months, so a household budget
   that follows pay day is not the limit they are measured against.
-- **The form's hint is static**, with a link to set your own pay day when you
-  have none. A two- or four-weekly budget for a member with no pay day is
+- **The form's hint is static**, with a link to set your own pay day when the
+  budget follows yours and you have none. The switch is hidden by the
+  stylesheet (`:has()`) unless Monthly is chosen; without it, the hint says
+  which periods it applies to.
+- **"Says so"** for a monthly budget that follows a missing pay day: its card
+  and its dashboard row say it reads the calendar month until one is set. A two- or four-weekly budget for a member with no pay day is
   refused under **Period**, and the Budgets screen names whose pay day is
   missing.
 - **A pay-day month asks the forecast for one more month**, since it can end
@@ -278,5 +282,5 @@ before. The gates pass on both engines, and the phase is marked ✅ in
   is a 403; a Contributor can switch only a budget they own; a member cannot
   set another member's pay day; in ISOLATED mode a member's period read
   includes only what they can see.
-- **Backup** round-trips the switch and the pay day; an archive without them
-  restores with the switch off.
+- **Backup** round-trips the switch; an instance backup carries the pay day;
+  an archive without the switch restores with it off.

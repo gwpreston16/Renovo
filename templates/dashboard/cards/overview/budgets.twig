@@ -36,6 +36,8 @@
                                     'first': row.window.first|local_date('d MMM'),
                                     'last': row.window.last|local_date('d MMM'),
                                 }) }}</span>
+                            {% elseif row.budget.followsPayDay %}
+                                <span class="hint">· {{ t('dashboard.budget_calendar_until_pay_day') }}</span>
                             {% endif %}
                         </span>
                         {% if row.charged is not null and row.projected is not null %}

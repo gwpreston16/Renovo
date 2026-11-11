@@ -9,9 +9,11 @@ use App\Domain\BudgetPeriod;
 use App\Domain\IsolationMode;
 use App\Domain\Role;
 use App\Domain\Visibility;
+use App\Repository\BudgetAlertStateRepository;
 use App\Security\Scope;
 use App\Service\BudgetService;
 use App\Service\ValidationException;
+use DateTimeImmutable;
 
 /**
  * Whose spending a budget measures, now that it is not always its owner's.
@@ -173,8 +175,13 @@ final class BudgetSubjectTest extends NotificationTestCase
     {
         $this->addChannel($this->alice);
         $this->users->updatePreferences($this->alice, ['pay_day' => '2026-09-04']);
-        $this->budget($this->scope($this->alice), ['period' => BudgetPeriod::Fortnight->value, 'amount' => '5.00']);
-        $this->budget($this->scope($this->alice), ['name' => 'Year', 'period' => 'annual', 'amount' => '5.00']);
+        foreach (BudgetPeriod::cases() as $period) {
+            $this->budget($this->scope($this->alice), [
+                'name' => $period->value,
+                'period' => $period->value,
+                'amount' => '5.00',
+            ]);
+        }
 
         $this->runner->run();
 
@@ -187,6 +194,8 @@ final class BudgetSubjectTest extends NotificationTestCase
         sort($lines);
 
         self::assertSame([
+            'Projected £10.00 over the next four weeks, against a limit of £5.00.',
+            'Projected £10.00 over the next month, against a limit of £5.00.',
             'Projected £10.00 over the next two weeks, against a limit of £5.00.',
             'Projected £120.00 over the next 12 months, against a limit of £5.00.',
         ], $lines);
@@ -196,12 +205,24 @@ final class BudgetSubjectTest extends NotificationTestCase
     {
         $this->addChannel($this->alice);
         $this->users->updatePreferences($this->alice, ['pay_day' => '2026-09-04']);
-        $this->budget($this->scope($this->alice), ['period' => BudgetPeriod::FourWeeks->value, 'amount' => '5.00']);
+        $id = $this->budget($this->scope($this->alice), [
+            'period' => BudgetPeriod::FourWeeks->value,
+            'amount' => '5.00',
+        ]);
+        $state = new BudgetAlertStateRepository($this->db);
+        $crossed = new DateTimeImmutable('2026-09-01 08:00:00');
+        $state->save($this->scope($this->alice), $id, $this->alice, true, 900, $crossed);
         $this->users->updatePreferences($this->alice, ['pay_day' => null]);
 
         $this->runner->run();
 
         self::assertSame([], $this->budgetAlertRecipients());
+        // Skipped, not judged: the recorded crossing is exactly as it was, so
+        // it neither re-arms nor counts as a new breach when a pay day returns.
+        self::assertEquals(
+            ['is_breached' => true, 'projected_minor' => 900, 'last_alert_at' => $crossed],
+            $state->findForBudget($this->scope($this->alice), $id),
+        );
     }
 
     /**

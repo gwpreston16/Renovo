@@ -171,6 +171,9 @@ final class BudgetController extends Controller
                 : $this->settings->baseCurrency(),
             'subjects' => $this->budgets->subjectOptions($scope),
             'locked_subject' => $lockedSubject,
+            // Whose pay day an existing budget follows; null for a new one,
+            // which measures the viewer unless they choose otherwise.
+            'pay_day_member' => $budget?->payDayUserId(),
         ];
     }
 }

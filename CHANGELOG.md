@@ -18,8 +18,13 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   budget its owner's. The Budgets screen and the dashboard name the period and
   the days left in it, and the alert's window is as long as the period.
   Yearly budgets, and every budget not switched over, keep their calendar
-  period and their figures. Run `vendor/bin/phinx migrate` after backing up:
-  two columns are added. *Phase 87.*
+  period and their figures. Every budget alert now names the window it
+  projects over ("over the next month"), and changing a budget's period or
+  switch re-arms its alert. A household archive carries the switch but not
+  anybody's pay day; a two- or four-weekly budget whose member has no pay day
+  where it is restored is skipped and counted. Run `vendor/bin/phinx migrate`
+  after backing up: two columns are added. Rolling back reads two- and
+  four-weekly budgets as monthly, so change them first. *Phase 87.*
 
 ### Changed
 

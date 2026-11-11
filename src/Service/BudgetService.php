@@ -165,7 +165,7 @@ final class BudgetService
      * One budget's entry for `progress()` and `progressForRun()`: its position,
      * or the "unavailable" placeholder when this scope cannot measure it whole.
      *
-     * @param array<string, list<WindowCharge>> $chargeCache The forecast walks already made, by subject and horizon.
+     * @param array<string, list<WindowCharge>> $chargeCache The walks made, by subject and horizon, and their filters.
      * @return BudgetProgress
      */
     private function measure(Scope $scope, Budget $budget, array &$chargeCache): array
@@ -174,18 +174,21 @@ final class BudgetService
             return $this->unavailable($budget);
         }
 
-        // A weekly period's window is counted in days, so its key is its own;
-        // a monthly budget shares its walk whether or not it follows pay day,
-        // because the alert's window rolls from today either way.
+        // One forecast walk per subject and horizon, then one filter per
+        // window: a weekly period shares its subject's one-month walk with a
+        // monthly budget and keeps its own day-counted filter. A monthly
+        // budget shares both whether or not it follows pay day, because the
+        // alert's window rolls from today either way.
+        $subject = (string) ($budget->subjectUserId ?? 'household');
+        $months = $budget->period->months();
         $days = $budget->period->days();
-        $key = ($budget->subjectUserId ?? 'household') . ':'
-            . ($days === null ? $budget->period->months() : $days . 'd');
-        if (!isset($chargeCache[$key])) {
-            $charges = $this->forecast->charges($scope, $budget->period->months(), $budget->subjectUserId);
-            $chargeCache[$key] = $days === null
-                ? $this->withinWindow($charges, $budget->period->months())
-                : $this->withinDays($charges, $days);
-        }
+        $walk = $subject . ':walk:' . $months;
+        $key = $subject . ':' . ($days === null ? $months : $days . 'd');
+
+        $chargeCache[$walk] ??= $this->forecast->charges($scope, $months, $budget->subjectUserId);
+        $chargeCache[$key] ??= $days === null
+            ? $this->withinWindow($chargeCache[$walk], $months)
+            : $this->withinDays($chargeCache[$walk], $days);
 
         return $this->progressFor($budget, $chargeCache[$key]);
     }
@@ -421,15 +424,12 @@ final class BudgetService
         // The form offers no currency, so an edit keeps the budget's own —
         // one set in another currency before budgets were base-currency only
         // is not quietly relabelled.
-        $existing = null;
-        if (!array_key_exists('currency', $input)) {
-            $existing = $this->find($scope, $id);
-            if ($existing !== null) {
-                $input['currency'] = $existing->amount->currency;
-            }
+        $existing = $this->find($scope, $id);
+        if (!array_key_exists('currency', $input) && $existing !== null) {
+            $input['currency'] = $existing->amount->currency;
         }
 
-        $data = $this->validate($scope, $input);
+        $data = $this->validate($scope, $input, $existing);
 
         // Editing a budget does not take it over. The owner is whoever set it,
         // and only an explicit `owner_user_id` — which the form no longer
@@ -450,7 +450,6 @@ final class BudgetService
             unset($data['is_active']);
         }
 
-        $existing ??= $this->find($scope, $id);
         $this->budgets->update($scope, $id, $data);
 
         // A breach measured over one period says nothing about another, so a
@@ -475,7 +474,7 @@ final class BudgetService
      * @return array<string, mixed>
      * @throws ValidationException
      */
-    private function validate(Scope $scope, array $input): array
+    private function validate(Scope $scope, array $input, ?Budget $existing = null): array
     {
         $errors = [];
 
@@ -532,6 +531,9 @@ final class BudgetService
         // a monthly budget has the switch. One that steps from a pay day needs
         // its member to have one — the subject's, or for a household budget
         // the owner's — so it is refused here rather than saved unmeasurable.
+        // On an edit that member is the budget's own unless the input moves
+        // it: `update()` keeps the stored owner and subject when the form
+        // does not send them, so the editor's pay day must not stand in.
         $followsPayDay = $period !== null && (
             $period->alwaysFollowsPayDay()
             || ($period->mayFollowPayDay() && $this->str($input, 'follows_pay_day') === '1')
@@ -541,7 +543,8 @@ final class BudgetService
             && $period->alwaysFollowsPayDay()
             && !isset($errors['period'])
             && !isset($errors['subject_user_id'])
-            && $this->users->findById($subjectUserId ?? $ownerUserId)?->payDay === null
+            && $this->users->findById($this->followedMember($input, $existing, $ownerUserId, $subjectUserId))
+                ?->payDay === null
         ) {
             $errors['period'] = 'error.budget.pay_day_missing';
         }
@@ -562,6 +565,24 @@ final class BudgetService
             'subject_user_id' => $subjectUserId,
             'follows_pay_day' => $followsPayDay,
         ];
+    }
+
+    /**
+     * The member whose pay day a budget being saved will follow: its subject,
+     * or for a household budget its owner — each as stored on the budget being
+     * edited unless the input names a new one, since `update()` keeps those
+     * the form does not send.
+     *
+     * @param array<string, mixed> $input
+     */
+    private function followedMember(array $input, ?Budget $existing, int $ownerUserId, ?int $subjectUserId): int
+    {
+        if ($existing !== null) {
+            $ownerUserId = array_key_exists('owner_user_id', $input) ? $ownerUserId : $existing->ownerUserId;
+            $subjectUserId = array_key_exists('subject_user_id', $input) ? $subjectUserId : $existing->subjectUserId;
+        }
+
+        return $subjectUserId ?? $ownerUserId;
     }
 
     /**

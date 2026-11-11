@@ -9,8 +9,10 @@
     server refuses anything else, so a forged value gets an error, not a budget.
 
     From pay day (Phase 87) is one switch, read only for a monthly budget: the
-    two weekly periods always step from pay day and a year never does, which
-    the hint says, so the form needs no script to hide it.
+    two weekly periods always step from pay day and a year never does. The
+    stylesheet hides it while another period is chosen; without that, the
+    hint says so. The link to set a pay day is drawn only when the pay day the
+    budget follows is the viewer's own and they have none.
 #}
 {% extends is_htmx ? 'partials/bare.twig' : 'layout.twig' %}
 
@@ -64,12 +66,12 @@
             </div>
 
             <input type="hidden" name="follows_pay_day" value="0">
-            <label class="choice toggle-row">
+            <label class="choice toggle-row budget-pay-day-row">
                 <span>
                     <span class="choice-title">{{ t('budgets_form.follows_pay_day') }}</span>
                     <span class="choice-note">
                         {{ t('budgets_form.follows_pay_day_hint') }}
-                        {% if current_user.payDay is null %}
+                        {% if current_user.payDay is null and pay_day_member in [null, current_user.id] %}
                             <a href="/profile#appearance">{{ t('budgets_form.set_pay_day') }}</a>
                         {% endif %}
                     </span>

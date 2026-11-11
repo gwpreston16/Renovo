@@ -167,7 +167,7 @@ final class UserPreferencesService
 
     /**
      * A pay day as entered: null for none (empty), false for one that is not
-     * a real date or is more than a year ahead, else the date. Any day in the
+     * a real date, is before 1900 or is more than a year ahead, else the date. Any day in the
      * past is fine — only its day of the month, or its place in a fortnightly
      * rhythm, is ever read.
      */
@@ -180,6 +180,13 @@ final class UserPreferencesService
 
         $date = DateTimeImmutable::createFromFormat('!Y-m-d', $raw);
         if ($date === false || $date->format('Y-m-d') !== $raw) {
+            return false;
+        }
+
+        // Year 1900 is a floor the engines can store: PostgreSQL has no year
+        // 0 and MySQL's DATE starts at 1000, so either would be a server
+        // error rather than this refusal.
+        if ((int) $date->format('Y') < 1900) {
             return false;
         }
 

@@ -113,6 +113,8 @@ final class PayDayPreferenceTest extends DatabaseTestCase
         yield 'a day the month does not have' => ['2026-02-30'];
         yield 'another format' => ['25/05/2026'];
         yield 'more than a year ahead' => ['2027-06-16'];
+        yield 'year zero, which neither engine stores' => ['0000-01-01'];
+        yield 'before 1900' => ['1899-12-31'];
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('refused')]
@@ -126,6 +128,11 @@ final class PayDayPreferenceTest extends DatabaseTestCase
         self::assertSame(302, $response->getStatusCode());
         self::assertSame('2026-05-25', $this->stored($this->ownerId));
         self::assertSame('dark', $this->users->findById($this->ownerId)?->theme);
+        self::assertStringContainsString(
+            'Enter a real date for your pay day',
+            (string) $this->request('GET', '/profile')->getBody(),
+            'The refusal reaches the member.',
+        );
     }
 
     public function testExactlyAYearAheadIsAllowed(): void
