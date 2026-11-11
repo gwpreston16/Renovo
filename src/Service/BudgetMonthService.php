@@ -233,8 +233,10 @@ final class BudgetMonthService
      * One subject's charges in the budget's period that contains today, split
      * into before today (reconstructed) and today to the period's end
      * (forecast). The forecast's horizon of the period's length in months
-     * reaches the last day of a calendar period or a weekly one; a pay-day
-     * month can end in the next calendar month, so it asks for one more.
+     * always reaches the period's last day: a period contains today, so it
+     * ends before the next one starts, which is no later than the same day a
+     * month on (a pay day on the 31st starts on the 28th of February, and
+     * PHP's 31 January plus a month is 3 March).
      *
      * @return array{past: list<Charge>, ahead: list<Charge>}
      */
@@ -247,7 +249,6 @@ final class BudgetMonthService
     ): array {
         $today = $this->clock->today();
         $last = $window->last;
-        $horizon = $period->months() + ($window->followsPayDay && $period === BudgetPeriod::Monthly ? 1 : 0);
 
         $past = $this->history->charges(
             $scope,
@@ -258,7 +259,7 @@ final class BudgetMonthService
         )['charges'];
 
         $ahead = array_values(array_filter(
-            $this->forecast->charges($scope, $horizon, $subjectUserId, null, $sources),
+            $this->forecast->charges($scope, $period->months(), $subjectUserId, null, $sources),
             static fn (array $charge): bool => $charge['date'] <= $last,
         ));
 

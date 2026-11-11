@@ -15,9 +15,9 @@
     colours to its card, so the five can be compared while
     the page wears one of them.
 
-    Pay day (Phase 87) is a plain date: only budgets switched to follow it
-    read it, a monthly one by its day of the month, a two- or four-weekly one
-    by stepping from it. Empty clears it.
+    Pay day (Phase 87) is a plain date in a form of its own, below: only
+    budgets that follow it read it, a monthly one by its day of the month, a
+    two- or four-weekly one by stepping from it. Empty clears it.
 
     Language is drawn only once a second catalogue exists; a field that is not
     drawn is not posted, and a preference that is not posted is left alone.
@@ -121,14 +121,6 @@
                 </select>
                 <p class="hint" id="landing-view-hint">{{ t('settings.landing_view_hint') }}</p>
             </div>
-
-            <div class="field">
-                <label for="pay_day">{{ t('settings.pay_day') }}</label>
-                <input type="date" id="pay_day" name="pay_day" class="num"
-                       value="{{ current_user.payDay ? current_user.payDay|date('Y-m-d') : '' }}"
-                       aria-describedby="pay-day-hint">
-                <p class="hint" id="pay-day-hint">{{ t('settings.pay_day_hint') }}</p>
-            </div>
         </div>
 
         <p class="hint" role="status" data-preferences-status></p>
@@ -138,5 +130,25 @@
                 <button type="submit" class="button">{{ t('action.save') }}</button>
             </div>
         </noscript>
+    </form>
+
+    {#
+        Pay day has a form and a Save of its own rather than saving on change:
+        a browser fires `change` on a date input as each typed part makes a
+        valid date, so a half-typed year would be posted, refused and the page
+        reloaded under the reader's cursor.
+    #}
+    <form method="post" action="/profile/preferences" class="stack pay-day-form">
+        {{ csrf_field() }}
+        <div class="field">
+            <label for="pay_day">{{ t('settings.pay_day') }}</label>
+            <div class="pay-day-row">
+                <input type="date" id="pay_day" name="pay_day" class="num"
+                       value="{{ current_user.payDay ? current_user.payDay|date('Y-m-d') : '' }}"
+                       aria-describedby="pay-day-hint">
+                <button type="submit" class="button">{{ t('settings.save_pay_day') }}</button>
+            </div>
+            <p class="hint" id="pay-day-hint">{{ t('settings.pay_day_hint') }}</p>
+        </div>
     </form>
 </section>

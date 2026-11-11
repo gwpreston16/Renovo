@@ -49,7 +49,7 @@
                         <p class="field-error">{{ t('budgets.unconvertible', {'currencies': row.unconvertible|join(', ')}) }}</p>
                     {% else %}
                         <div class="budget-track" role="img"
-                             aria-label="{{ t('dashboard.budget_meter', {
+                             aria-label="{{ t(row.window.followsPayDay ? 'dashboard.budget_meter_period' : 'dashboard.budget_meter', {
                                  'charged': row.charged_percent,
                                  'projected': row.projected_percent,
                              }) }}">
@@ -64,7 +64,7 @@
                             {% elseif row.is_warning %}
                                 {{ t('dashboard.budget_past_warning', {'threshold': row.budget.warnThresholdPercent}) }}
                             {% else %}
-                                {{ t('dashboard.budget_left', {'amount': row.remaining.amountMinor|money(row.remaining.currency)}) }}
+                                {{ t(row.window.followsPayDay ? 'dashboard.budget_left_period' : 'dashboard.budget_left', {'amount': row.remaining.amountMinor|money(row.remaining.currency)}) }}
                             {% endif %}
                         </p>
                     {% endif %}

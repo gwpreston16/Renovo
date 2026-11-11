@@ -83,6 +83,26 @@ final class PayDayPreferenceTest extends DatabaseTestCase
         );
     }
 
+    /**
+     * Its own form with its own Save: a date input fires `change` as each
+     * typed part makes a valid date, so it must not ride the save-on-change
+     * form beside it.
+     */
+    public function testThePayDayIsNotOnTheSaveOnChangeForm(): void
+    {
+        $this->signIn($this->ownerId);
+        $page = (string) $this->request('GET', '/profile')->getBody();
+
+        self::assertMatchesRegularExpression(
+            '~<form method="post" action="/profile/preferences" class="stack pay-day-form">.*?name="pay_day"~s',
+            $page,
+        );
+        self::assertDoesNotMatchRegularExpression(
+            '~hx-trigger="change"(?:(?!</form>).)*name="pay_day"~s',
+            $page,
+        );
+    }
+
     public function testAViewerSetsTheirOwnPayDay(): void
     {
         $this->signIn($this->viewerId);

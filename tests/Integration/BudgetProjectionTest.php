@@ -940,6 +940,41 @@ final class BudgetProjectionTest extends DatabaseTestCase
         self::assertSame(['four_weeks' => '2026-01-10', 'monthly' => '2026-01-10'], $firsts);
     }
 
+    public function testOneMembersMonthlyAndFortnightlyBudgetsEachReadTheirOwnWindow(): void
+    {
+        // One walk for Alice, two filters: the 20th is in both, 3 February
+        // (19 days out) only in the month.
+        $this->users->updatePreferences($this->alice, ['pay_day' => '2026-01-02']);
+        $this->createSubscription('Soon', 300, '2026-01-20');
+        $this->createSubscription('Later', 700, '2026-02-03');
+        $this->monthlyBudget('20.00');
+        $this->weeklyBudget(BudgetPeriod::Fortnight);
+
+        $byPeriod = [];
+        foreach ($this->budgets->progress($this->scope($this->alice)) as $row) {
+            $byPeriod[$row['budget']->period->value] = $row['projected']?->amountMinor;
+        }
+        ksort($byPeriod);
+
+        self::assertSame(['fortnight' => 300, 'monthly' => 1000], $byPeriod);
+    }
+
+    public function testAnotherMemberChangingThePeriodReArmsTheAlertToo(): void
+    {
+        $this->monthlyBudget('20.00');
+        $id = $this->budgets->all($this->scope($this->alice))[0]->id;
+        $this->alertState->save($this->scope($this->alice), $id, $this->alice, true, 3000, $this->clock->now());
+
+        $this->budgets->update($this->scope($this->bob), $id, [
+            'name' => 'Monthly',
+            'period' => 'annual',
+            'amount' => '20.00',
+            'currency' => 'GBP',
+        ]);
+
+        self::assertNull($this->alertState->findForBudget($this->scope($this->alice), $id));
+    }
+
     public function testChangingThePeriodReArmsTheAlertAndChangingTheLimitDoesNot(): void
     {
         $this->users->updatePreferences($this->alice, ['pay_day' => '2026-01-02']);

@@ -577,6 +577,7 @@ return [
     'settings.landing_view' => 'Open on',
     'settings.landing_view_hint' => 'The page you see when you open Renovo.',
     'settings.pay_day' => 'A recent pay day',
+    'settings.save_pay_day' => 'Save pay day',
     'settings.pay_day_hint' =>
         'Any day you were paid. Only budgets set to run from pay day use it, and anyone who can see one of them can work out the day.',
 
@@ -1212,6 +1213,8 @@ return [
         'Run a monthly budget from pay day to pay day: the pay day of the member it measures, or yours for the household. '
         . 'Budgets every 2 or 4 weeks always do; yearly ones keep the calendar year.',
     'budgets_form.set_pay_day' => 'Set your pay day',
+    'budgets_form.no_pay_day_hint' =>
+        'You have no pay day set, and budgets every 2 or 4 weeks, or monthly from pay day, step from it.',
     'budgets_form.edit_title' => 'Edit budget',
     'budgets_form.limit_in' => 'Limit ({currency})',
     'budgets_form.name_placeholder' => 'e.g. Streaming',
@@ -1331,7 +1334,9 @@ return [
     'dashboard.budget_calendar_until_pay_day' => 'calendar month: no pay day set',
     'dashboard.budget_household' => 'Household',
     'dashboard.budget_left' => '{amount} left this month',
+    'dashboard.budget_left_period' => '{amount} left this period',
     'dashboard.budget_meter' => '{charged}% charged so far, {projected}% projected by the end of the month',
+    'dashboard.budget_meter_period' => '{charged}% charged so far, {projected}% projected by the end of the period',
     'dashboard.budget_over_if_trials' => 'Projected over if the running trials convert',
     'dashboard.budget_pace' => 'Spent this year vs budget pace',
     'dashboard.budget_pace_note' => 'Cumulative, January to now, {year}',

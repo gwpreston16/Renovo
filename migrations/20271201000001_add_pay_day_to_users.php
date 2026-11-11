@@ -12,6 +12,10 @@ use Phinx\Migration\AbstractMigration;
  * the whole date. Null, what every existing member has, means no pay day and
  * changes nothing: a budget follows pay day only when it is switched on.
  *
+ * Rolling back drops every member's recorded pay day. Only a database backup
+ * brings them back (a household archive does not carry them), and until each
+ * is entered again a two- or four-weekly budget cannot be measured.
+ *
  * One column added; on MySQL, where DDL is not transactional, a failure leaves
  * either the column or nothing, and the manual rollback is to drop it.
  */

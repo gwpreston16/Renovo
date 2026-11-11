@@ -94,7 +94,7 @@
                                         'first': card.window.first|local_date('d MMM'),
                                         'last': card.window.last|local_date('d MMM'),
                                     }) }}</span>
-                                    ({{ t('budgets.days_left', {'count': card.days_left}) }})
+                                    (<span class="num">{{ t('budgets.days_left', {'count': card.days_left}) }}</span>)
                                 {% endif %}
                                 {% if budget.followsPayDay and card.window and not card.window.followsPayDay %}
                                     · <span data-budget-calendar-until-pay-day>{{ t('budgets.calendar_until_pay_day', {

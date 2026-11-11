@@ -92,6 +92,22 @@ final class BudgetWindowTest extends TestCase
             '2026-01-16',
             '2026-01-29',
         ];
+        yield 'a fortnight whose pay day is today' => [
+            BudgetPeriod::Fortnight,
+            '2026-01-16',
+            '2026-01-16',
+            '2026-01-16',
+            '2026-01-29',
+        ];
+        // An exact multiple before the anchor: the one case that tells the
+        // remainder test from a plain "before the anchor" test.
+        yield 'two weeks exactly before a future pay day' => [
+            BudgetPeriod::Fortnight,
+            '2026-03-01',
+            '2026-02-15',
+            '2026-02-15',
+            '2026-02-28',
+        ];
         yield 'the last day of a fortnight' => [
             BudgetPeriod::Fortnight,
             '2026-01-02',

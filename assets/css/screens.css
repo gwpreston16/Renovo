@@ -651,8 +651,26 @@
  * another period is chosen. Without `:has()` it is simply always shown, and
  * the server ignores it for any period but Monthly.
  */
-.budget-form:has(input[name='period']:checked:not([value='monthly'])) .budget-pay-day-row {
+.budget-form:has(input[name='period']:checked:not([value='monthly'])) .budget-pay-day-row,
+.budget-form:has(input[name='period'][value='annual']:checked) .budget-pay-day-hint {
     display: none;
+}
+
+/* Four periods: the choice takes the row's full width so it stays one line. */
+.budget-form-row .budget-period-field {
+    grid-column: 1 / -1;
+}
+
+/* The pay day and its Save sit on one line where there is room. */
+.pay-day-form {
+    margin-top: 1rem;
+}
+
+.pay-day-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
 }
 
 /* Delete to the left, away from Save. */

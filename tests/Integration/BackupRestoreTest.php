@@ -963,9 +963,9 @@ final class BackupRestoreTest extends DatabaseTestCase
         }
         ksort($restored);
 
-        self::assertSame(['Calendar' => false, 'Switched' => true], $restored);
+        self::assertSame(['Calendar' => false, 'Switched' => true], $restored, 'No fortnight came back.');
         self::assertSame(2, $summary['budgets']);
-        self::assertGreaterThanOrEqual(1, $summary['skipped'], 'The fortnight had no pay day to step from.');
+        self::assertSame(1, $summary['skipped'], 'The fortnight had no pay day to step from.');
     }
 
     public function testAnArchiveFromBeforePayDaysRestoresCalendarBudgets(): void

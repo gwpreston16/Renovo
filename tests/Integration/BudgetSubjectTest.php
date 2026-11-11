@@ -225,6 +225,33 @@ final class BudgetSubjectTest extends NotificationTestCase
         );
     }
 
+    public function testASubjectWhoClearsTheirPayDayIsNotToldOfAnOldCrossing(): void
+    {
+        // Alice owns a fortnight that measures Bob, and her run recorded a
+        // crossing. Bob clears his pay day: the budget can no longer be
+        // measured, and his run must not pass on her stale crossing.
+        $this->addChannel($this->bob);
+        $this->users->updatePreferences($this->bob, ['pay_day' => '2026-09-04']);
+        $id = $this->budget($this->scope($this->alice), [
+            'period' => BudgetPeriod::Fortnight->value,
+            'amount' => '5.00',
+            'subject_user_id' => (string) $this->bob,
+        ]);
+        (new BudgetAlertStateRepository($this->db))->save(
+            $this->scope($this->alice),
+            $id,
+            $this->alice,
+            true,
+            3000,
+            new DateTimeImmutable('2026-09-14 08:00:00'),
+        );
+        $this->users->updatePreferences($this->bob, ['pay_day' => null]);
+
+        $this->runner->run();
+
+        self::assertSame([], $this->budgetAlertRecipients());
+    }
+
     /**
      * @param array<string, string> $overrides
      */

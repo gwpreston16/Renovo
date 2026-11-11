@@ -48,7 +48,7 @@
                 </div>
 
                 {% set period = values.period|default('monthly') %}
-                <div class="field" role="radiogroup" aria-labelledby="budget-period-label"
+                <div class="field budget-period-field" role="radiogroup" aria-labelledby="budget-period-label"
                      {% if errors.period is defined %}aria-describedby="budget-period-error"{% endif %}>
                     <span class="group-label" id="budget-period-label">{{ t('field.period') }}</span>
                     <div class="segmented">
@@ -65,16 +65,23 @@
                 </div>
             </div>
 
+            {#
+                Outside the switch, so the switch's name stays its own and the
+                link shows for the weekly periods too; the stylesheet hides it
+                only for a year, which never follows pay day.
+            #}
+            {% if current_user.payDay is null and pay_day_member in [null, current_user.id] %}
+                <p class="hint budget-pay-day-hint">
+                    {{ t('budgets_form.no_pay_day_hint') }}
+                    <a href="/profile#appearance">{{ t('budgets_form.set_pay_day') }}</a>
+                </p>
+            {% endif %}
+
             <input type="hidden" name="follows_pay_day" value="0">
             <label class="choice toggle-row budget-pay-day-row">
                 <span>
                     <span class="choice-title">{{ t('budgets_form.follows_pay_day') }}</span>
-                    <span class="choice-note">
-                        {{ t('budgets_form.follows_pay_day_hint') }}
-                        {% if current_user.payDay is null and pay_day_member in [null, current_user.id] %}
-                            <a href="/profile#appearance">{{ t('budgets_form.set_pay_day') }}</a>
-                        {% endif %}
-                    </span>
+                    <span class="choice-note">{{ t('budgets_form.follows_pay_day_hint') }}</span>
                 </span>
                 <input type="checkbox" class="toggle" role="switch" name="follows_pay_day" value="1"
                        {{ values.follows_pay_day|default('0') == '1' ? 'checked' : '' }}>
