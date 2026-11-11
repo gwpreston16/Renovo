@@ -625,6 +625,40 @@ final class BudgetScreenTest extends DatabaseTestCase
         self::assertStringContainsString('25 Dec – 24 Jan', $this->text($card, 'budget-meta'));
     }
 
+    public function testAPeriodStartingOnAClampedDayReadsToItsLastDay(): void
+    {
+        // Paid on the 31st, today 28 February: 28 February to 30 March, two
+        // days past 28 February plus a month. The 29 March renewal is in it.
+        $this->clock()->advanceTo(new DateTimeImmutable('2027-02-28 09:00:00'));
+        (new UserRepository($this->db))->updatePreferences($this->ownerId, ['pay_day' => '2027-01-31']);
+        $this->monthly('Late March', 900, '2027-03-29', '2026-01-29');
+        $id = $this->budget(['name' => 'Pay day', 'amount' => '100.00', 'follows_pay_day' => '1']);
+
+        $card = $this->card($id);
+
+        self::assertStringContainsString('28 Feb – 30 Mar', $this->text($card, 'budget-meta'));
+        self::assertStringContainsString('£9.00', $this->text($card, 'budget-projected'));
+    }
+
+    public function testAnIsolatedHouseholdBudgetIsUnavailableNotShortOfAPayDay(): void
+    {
+        $users = new UserRepository($this->db);
+        $users->updatePreferences($this->ownerId, ['pay_day' => '2026-06-05']);
+        $id = $this->budget([
+            'name' => 'House',
+            'period' => 'fortnight',
+            'amount' => '100.00',
+            'subject_user_id' => 'household',
+        ]);
+        $users->updatePreferences($this->ownerId, ['pay_day' => null]);
+        $this->isolate();
+
+        $page = $this->page();
+        $card = '//article[@data-budget="' . $id . '"]';
+        self::assertSame(1, $page->query($card . '//*[@data-budget-unavailable]')?->length);
+        self::assertSame(0, $page->query($card . '//*[@data-budget-no-pay-day]')?->length);
+    }
+
     public function testAChargeOnThePeriodsFirstDayIsInIt(): void
     {
         (new UserRepository($this->db))->updatePreferences($this->ownerId, ['pay_day' => '2026-05-25']);
@@ -736,6 +770,18 @@ final class BudgetScreenTest extends DatabaseTestCase
         (new UserRepository($this->db))->updatePreferences($this->ownerId, ['pay_day' => '2026-05-25']);
 
         self::assertSame($before, $read());
+    }
+
+    public function testTheDashboardCardShowsNoWeeklyBudget(): void
+    {
+        (new UserRepository($this->db))->updatePreferences($this->ownerId, ['pay_day' => '2026-06-05']);
+        $this->budget(['name' => 'Fortnightly limit', 'period' => 'fortnight', 'amount' => '100.00']);
+        $this->budget(['name' => 'Monthly limit', 'amount' => '100.00']);
+
+        $dashboard = (string) $this->request('GET', '/')->getBody();
+
+        self::assertStringContainsString('Monthly limit', $dashboard);
+        self::assertStringNotContainsString('Fortnightly limit', $dashboard);
     }
 
     public function testTheCalendarChartsMeasureOnlyACalendarHouseholdBudget(): void

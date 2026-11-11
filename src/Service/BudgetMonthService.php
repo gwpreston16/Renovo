@@ -138,8 +138,11 @@ final class BudgetMonthService
             // A two- or four-weekly budget whose member has no pay day has no
             // period to read; it is listed with the reason, like one this
             // scope cannot see whole.
-            $lacksPayDay = $this->budgets->lacksPayDay($budget);
-            $measurable = $this->budgets->isMeasurableBy($scope, $budget) && !$lacksPayDay;
+            // One this scope cannot see whole is unavailable whatever its pay
+            // day; setting one would not help, so it is not asked for.
+            $visible = $this->budgets->isMeasurableBy($scope, $budget);
+            $lacksPayDay = $visible && $this->budgets->lacksPayDay($budget);
+            $measurable = $visible && !$lacksPayDay;
             $sources ??= $measurable ? $this->sources($scope, $budgets) : null;
             $rows[] = [
                 'budget' => $budget,
@@ -233,10 +236,10 @@ final class BudgetMonthService
      * One subject's charges in the budget's period that contains today, split
      * into before today (reconstructed) and today to the period's end
      * (forecast). The forecast's horizon of the period's length in months
-     * always reaches the period's last day: a period contains today, so it
-     * ends before the next one starts, which is no later than the same day a
-     * month on (a pay day on the 31st starts on the 28th of February, and
-     * PHP's 31 January plus a month is 3 March).
+     * reaches the last day of a calendar period or a weekly one, but not
+     * always a pay-day month's: a pay day on the 31st starts one on 28
+     * February that runs to 30 March, two days past 28 February plus a month.
+     * So a pay-day month asks for one month more.
      *
      * @return array{past: list<Charge>, ahead: list<Charge>}
      */
@@ -259,7 +262,13 @@ final class BudgetMonthService
         )['charges'];
 
         $ahead = array_values(array_filter(
-            $this->forecast->charges($scope, $period->months(), $subjectUserId, null, $sources),
+            $this->forecast->charges(
+                $scope,
+                $period->months() + ($window->followsPayDay && $period === BudgetPeriod::Monthly ? 1 : 0),
+                $subjectUserId,
+                null,
+                $sources,
+            ),
             static fn (array $charge): bool => $charge['date'] <= $last,
         ));
 

@@ -90,11 +90,11 @@
                             <p class="budget-meta">
                                 {{ budget_period_label(budget.period.value) }}
                                 {% if card.window and card.window.followsPayDay %}
-                                    · <span class="num">{{ t('budgets.period_range', {
+                                    · <span>{{ t('budgets.period_range', {
                                         'first': card.window.first|local_date('d MMM'),
                                         'last': card.window.last|local_date('d MMM'),
                                     }) }}</span>
-                                    (<span class="num">{{ t('budgets.days_left', {'count': card.days_left}) }}</span>)
+                                    ({{ t('cancellations.days_left', {'days': card.days_left}) }})
                                 {% endif %}
                                 {% if budget.followsPayDay and card.window and not card.window.followsPayDay %}
                                     · <span data-budget-calendar-until-pay-day>{{ t('budgets.calendar_until_pay_day', {

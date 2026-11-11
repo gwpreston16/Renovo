@@ -46,23 +46,25 @@
                     {% if errors.amount is defined %}<p class="field-error" id="budget-amount-error">{{ error_message(errors.amount) }}</p>{% endif %}
                     {% if errors.currency is defined %}<p class="field-error" id="budget-amount-error">{{ error_message(errors.currency) }}</p>{% endif %}
                 </div>
+            </div>
 
-                {% set period = values.period|default('monthly') %}
-                <div class="field budget-period-field" role="radiogroup" aria-labelledby="budget-period-label"
-                     {% if errors.period is defined %}aria-describedby="budget-period-error"{% endif %}>
-                    <span class="group-label" id="budget-period-label">{{ t('field.period') }}</span>
-                    <div class="segmented">
-                        {% for option in periods %}
-                            <label class="segmented-option">
-                                <input type="radio" name="period" value="{{ option.value }}"
-                                       {% if loop.first %}id="budget-period"{% endif %}
-                                       {{ period == option.value ? 'checked' : '' }}>
-                                <span>{{ budget_period_label(option.value) }}</span>
-                            </label>
-                        {% endfor %}
-                    </div>
-                    {% if errors.period is defined %}<p class="field-error" id="budget-period-error">{{ error_message(errors.period) }}</p>{% endif %}
+            {% set period = values.period|default('monthly') %}
+            {% set shows_pay_day_hint = current_user.payDay is null and pay_day_member in [null, current_user.id] %}
+            {% set period_described = (shows_pay_day_hint ? 'budget-pay-day-hint ' : '') ~ (errors.period is defined ? 'budget-period-error' : '') %}
+            <div class="field budget-period-field" role="radiogroup" aria-labelledby="budget-period-label"
+                 {% if period_described|trim != '' %}aria-describedby="{{ period_described|trim }}"{% endif %}>
+                <span class="group-label" id="budget-period-label">{{ t('field.period') }}</span>
+                <div class="segmented">
+                    {% for option in periods %}
+                        <label class="segmented-option">
+                            <input type="radio" name="period" value="{{ option.value }}"
+                                   {% if loop.first %}id="budget-period"{% endif %}
+                                   {{ period == option.value ? 'checked' : '' }}>
+                            <span>{{ budget_period_label(option.value) }}</span>
+                        </label>
+                    {% endfor %}
                 </div>
+                {% if errors.period is defined %}<p class="field-error" id="budget-period-error">{{ error_message(errors.period) }}</p>{% endif %}
             </div>
 
             {#
@@ -70,8 +72,8 @@
                 link shows for the weekly periods too; the stylesheet hides it
                 only for a year, which never follows pay day.
             #}
-            {% if current_user.payDay is null and pay_day_member in [null, current_user.id] %}
-                <p class="hint budget-pay-day-hint">
+            {% if shows_pay_day_hint %}
+                <p class="hint budget-pay-day-hint" id="budget-pay-day-hint">
                     {{ t('budgets_form.no_pay_day_hint') }}
                     <a href="/profile#appearance">{{ t('budgets_form.set_pay_day') }}</a>
                 </p>

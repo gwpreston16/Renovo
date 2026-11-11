@@ -1198,7 +1198,6 @@ return [
     'budgets.tiles' => 'Budgets by state',
     'budgets.period_range' => '{first} – {last}',
     'budgets.calendar_until_pay_day' => 'calendar month until {name} sets a pay day',
-    'budgets.days_left' => '{count, plural, one {# day left} other {# days left}}',
     'budgets.no_pay_day' =>
         'This budget runs from {name}\'s pay day, and none is set. It is measured once one is, under Profile → Appearance & preferences.',
     'budgets.unavailable' =>
@@ -1214,7 +1213,7 @@ return [
         . 'Budgets every 2 or 4 weeks always do; yearly ones keep the calendar year.',
     'budgets_form.set_pay_day' => 'Set your pay day',
     'budgets_form.no_pay_day_hint' =>
-        'You have no pay day set, and budgets every 2 or 4 weeks, or monthly from pay day, step from it.',
+        'Budgets for you or the household step from your pay day, which isn\'t set: every 2 or 4 weeks, or monthly from pay day.',
     'budgets_form.edit_title' => 'Edit budget',
     'budgets_form.limit_in' => 'Limit ({currency})',
     'budgets_form.name_placeholder' => 'e.g. Streaming',

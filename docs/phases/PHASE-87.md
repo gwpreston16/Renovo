@@ -239,6 +239,9 @@ period it does not know: safe, but its figures change.
   and its dashboard row say it reads the calendar month until one is set. A two- or four-weekly budget for a member with no pay day is
   refused under **Period**, and the Budgets screen names whose pay day is
   missing.
+- **A pay-day month asks the forecast for one more month**: a pay day on
+  the 31st starts a period on 28 February that runs to 30 March, past
+  28 February plus a month. The others keep their horizon.
 - **The alert names its window**: "over the next month / two weeks / four
   weeks / 12 months".
 - **A pay day may be up to a year ahead**, and any day in the past.

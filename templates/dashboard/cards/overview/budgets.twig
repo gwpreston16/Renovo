@@ -32,7 +32,7 @@
                             <strong>{{ row.budget.name }}</strong>
                             <span class="hint">· {{ row.budget.isHousehold ? t('dashboard.budget_household') : t('dashboard.budget_yours') }}</span>
                             {% if row.window.followsPayDay %}
-                                <span class="hint num">· {{ t('budgets.period_range', {
+                                <span class="hint">· {{ t('budgets.period_range', {
                                     'first': row.window.first|local_date('d MMM'),
                                     'last': row.window.last|local_date('d MMM'),
                                 }) }}</span>

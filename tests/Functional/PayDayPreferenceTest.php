@@ -112,6 +112,20 @@ final class PayDayPreferenceTest extends DatabaseTestCase
         self::assertSame('2026-06-01', $this->stored($this->viewerId));
     }
 
+    public function testNamingAnotherMemberInTheFormChangesOnlyYourOwn(): void
+    {
+        $this->signIn($this->viewerId);
+
+        $this->request('POST', '/profile/preferences', [
+            'pay_day' => '2026-06-01',
+            'user_id' => (string) $this->ownerId,
+            'id' => (string) $this->ownerId,
+        ]);
+
+        self::assertNull($this->stored($this->ownerId));
+        self::assertSame('2026-06-01', $this->stored($this->viewerId));
+    }
+
     public function testAnEmptyValueClearsItAndAnAbsentOneLeavesIt(): void
     {
         $this->signIn($this->ownerId);

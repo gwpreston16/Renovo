@@ -24,7 +24,10 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   anybody's pay day; a two- or four-weekly budget whose member has no pay day
   where it is restored is skipped and counted. Run `vendor/bin/phinx migrate`
   after backing up: two columns are added. Rolling back reads two- and
-  four-weekly budgets as monthly, so change them first. *Phase 87.*
+  four-weekly budgets as monthly, so change them first, and deletes every
+  member's pay day, which only a database backup restores. Anyone who can see
+  a budget that follows a pay day sees its period's dates, and so the day.
+  *Phase 87.*
 
 ### Changed
 
