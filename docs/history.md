@@ -936,6 +936,16 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   budgets and every budget not switched over keep their calendar period. No
   API change. Two migrations. See [Budgets](features/money.md#budgets) and
   [Upgrading](upgrading.md#after-upgrading-to-budgets-that-follow-pay-day-phase-87).
+- **Phase 88 — The calendar's phone list and the scenario planner, from the
+  known-issues log — complete (1.45.0).** A scenario row moved to Keep or
+  Cancel keeps that choice when its Change fields fail to load or arrive late.
+  On a phone, the calendar's list reloads after Back, an ended session goes
+  to sign-in and returns to that month's list, and a screen reader announces
+  the loading line. The planner's and phone list's failure, retry and resize
+  paths are tested, and the calendar page describes the phone list as it now
+  behaves. No API change. No migrations. See
+  [The calendar](features/calendar.md#calendar) and
+  [Forecast](features/money.md#forecast).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
