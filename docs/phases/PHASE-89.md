@@ -93,7 +93,7 @@ None.
 - [ ] GitHub release Renovo 1.44.0 body updated to match
 - [x] Rows marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 89 row marked ✅ done
+- [x] ROADMAP: Phase 89 row marked ✅ done
 - [ ] composer check, coverage and the API doc tests green
 
 ## Definition of done
