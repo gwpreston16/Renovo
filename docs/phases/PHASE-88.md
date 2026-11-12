@@ -216,7 +216,7 @@ None.
 - [x] K233: the loading status is outside the busy container and set when shown
 - [x] K234: the four branches are tested
 - [x] K235: the legible-text test reads every rule
-- [ ] K236: the calendar page describes the phone list
+- [x] K236: the calendar page describes the phone list
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed
 - [ ] ROADMAP: Phase 88 row marked ✅ done
