@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, test, vi } from 'vitest';
 import { htmx, loadApp, unloadApp } from './load-app.js';
 
 /*
@@ -111,4 +111,24 @@ test('an answer for a row still on Change is drawn', () => {
     const detail = beforeSwap(change, document.getElementById('scenario-change-5'));
 
     expect(detail.shouldSwap).toBe(true);
+});
+
+// K234: each kind of failure htmx reports is handled, not only a 4xx/5xx.
+it.each(['responseError', 'sendError', 'timeout'])('every kind of failure puts the row back on Keep (%s)', (kind) => {
+    const slot = document.getElementById('scenario-change-5');
+    const change = document.querySelector('input[name="choice[5]"][value="change"]');
+    htmx(kind, change, { target: slot });
+
+    expect(document.querySelector('input[name="choice[5]"][value="keep"]').checked).toBe(true);
+    expect(slot.children).toHaveLength(0);
+    expect(document.querySelector('[data-save-error]').textContent).toBe('The price fields did not load.');
+});
+
+test('a fresh request keeps another message', () => {
+    const status = document.querySelector('[data-save-error]');
+    status.textContent = 'Could not save your changes.';
+    const change = document.querySelector('input[name="choice[5]"][value="change"]');
+    htmx('beforeRequest', change, { target: document.getElementById('scenario-change-5') });
+
+    expect(status.textContent).toBe('Could not save your changes.');
 });

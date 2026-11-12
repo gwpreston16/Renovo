@@ -8,7 +8,11 @@ use PHPUnit\Framework\TestCase;
 
 use function dirname;
 use function file_get_contents;
+use function min;
 use function preg_match;
+use function preg_match_all;
+use function preg_quote;
+use function trim;
 
 /**
  * Phase 86's design audit: text a member has to read stays legible.
@@ -18,6 +22,9 @@ use function preg_match;
  * subscription row recedes by muting its text, not by fading the whole row,
  * which took its payment name and status badge below the 4.5:1 contrast
  * WCAG AA asks for.
+ *
+ * Every rule for a selector is read, media queries included (K235): a later
+ * rule that shrinks the text again on some screens would otherwise pass.
  */
 final class LegibleTextTest extends TestCase
 {
@@ -34,14 +41,30 @@ final class LegibleTextTest extends TestCase
     /** @dataProvider labels */
     public function testFunctionalLabelsAreAtLeastElevenPixels(string $file, string $selector): void
     {
-        $rule = $this->rule($file, $selector);
+        self::assertGreaterThanOrEqual(
+            0.6875,
+            $this->smallestSize($this->css($file), $selector),
+            $selector . ' is below 11px in at least one rule',
+        );
+    }
 
-        // A size token is read from tokens.css, so a token shrunk later fails here too.
-        if (preg_match('/font-size:\s*var\((--[a-z-]+)\)/', $rule, $token) === 1) {
-            $rule = 'font-size: ' . $this->token($token[1]);
-        }
-        self::assertSame(1, preg_match('/font-size:\s*([0-9.]+)rem/', $rule, $size), $selector . ' sets a rem size');
-        self::assertGreaterThanOrEqual(0.6875, (float) $size[1], $selector . ' is below 11px');
+    /**
+     * K235: the check itself reads past the first rule. A second, smaller
+     * `.topbar-subtitle` inside a media query is caught, so the test is pinned
+     * to what it checks and not only to today's stylesheet.
+     */
+    public function testASmallerRuleInAMediaQueryFailsTheCheck(): void
+    {
+        $css = $this->css('components.css') . <<<'CSS'
+
+            @media (min-width: 900px) {
+                .topbar-subtitle {
+                    font-size: 0.5rem;
+                }
+            }
+            CSS;
+
+        self::assertSame(0.5, $this->smallestSize($css, '.topbar-subtitle'));
     }
 
     public function testAPausedRowMutesItsTextRatherThanFadingIt(): void
@@ -69,10 +92,48 @@ final class LegibleTextTest extends TestCase
     /** The body of the first rule whose selector list ends with `$selector`. */
     private function rule(string $file, string $selector): string
     {
-        $pattern = '/' . preg_quote($selector, '/') . '\s*\{([^}]*)\}/';
-        self::assertSame(1, preg_match($pattern, $this->css($file), $match), $selector . ' not found in ' . $file);
+        $rules = $this->rules($this->css($file), $selector);
+        self::assertNotSame([], $rules, $selector . ' not found in ' . $file);
 
-        return $match[1];
+        return $rules[0];
+    }
+
+    /**
+     * The body of every rule in `$css` whose selector list ends with
+     * `$selector`, in order, those inside a media query included.
+     *
+     * @return list<string>
+     */
+    private function rules(string $css, string $selector): array
+    {
+        preg_match_all('/' . preg_quote($selector, '/') . '\s*\{([^}]*)\}/', $css, $matches);
+
+        return $matches[1];
+    }
+
+    /**
+     * The smallest font size, in rem, that any rule for `$selector` sets.
+     * Rules that set no size (a media query changing only spacing) are
+     * skipped, but at least one must set it, in rem or through a size token.
+     */
+    private function smallestSize(string $css, string $selector): float
+    {
+        $sizes = [];
+        foreach ($this->rules($css, $selector) as $rule) {
+            if (preg_match('/font-size:\s*([^;]+);/', $rule, $value) !== 1) {
+                continue;
+            }
+            $value = trim($value[1]);
+            // A size token is read from tokens.css, so a token shrunk later fails here too.
+            if (preg_match('/^var\((--[a-z-]+)\)$/', $value, $token) === 1) {
+                $value = trim($this->token($token[1]));
+            }
+            self::assertSame(1, preg_match('/^([0-9.]+)rem$/', $value, $size), $selector . ' sets a rem size');
+            $sizes[] = (float) $size[1];
+        }
+        self::assertNotSame([], $sizes, $selector . ' sets no font size');
+
+        return min($sizes);
     }
 
     private function token(string $name): string

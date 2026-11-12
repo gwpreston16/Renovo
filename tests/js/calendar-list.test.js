@@ -196,3 +196,42 @@ test('an ended session sends the page to sign-in', async () => {
     expect(container.querySelector('.calendar-list-link')).not.toBeNull();
     expect(container.dataset.listState).not.toBe('loaded');
 });
+
+// K234: a failed list goes back to its link and may be asked for again.
+test('a failed list is asked for again', async () => {
+    viewport(true);
+    globalThis.fetch = vi.fn()
+        .mockResolvedValueOnce(response(500))
+        .mockResolvedValueOnce(response(200, '<ol class="calendar-list"><li>20 Sep</li></ol>'));
+    await loadApp();
+    await settle();
+
+    htmx('afterSwap', document.getElementById('calendar-month'));
+    await settle();
+    await settle();
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(document.querySelector('[data-calendar-list] .calendar-list')).not.toBeNull();
+});
+
+test('a window narrowed to a phone fetches its list', async () => {
+    let narrow = false;
+    const listeners = [];
+    window.matchMedia = vi.fn(() => ({
+        get matches() { return narrow; },
+        addEventListener: (type, listener) => listeners.push(listener),
+        removeEventListener: vi.fn(),
+    }));
+    answerWith('<ol class="calendar-list"><li>20 Sep</li></ol>');
+    await loadApp();
+    await settle();
+    expect(fetch).not.toHaveBeenCalled();
+
+    narrow = true;
+    listeners.forEach((listener) => listener({ matches: true }));
+    await settle();
+    await settle();
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('[data-calendar-list] .calendar-list')).not.toBeNull();
+});

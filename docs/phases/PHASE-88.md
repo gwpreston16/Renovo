@@ -214,8 +214,8 @@ None.
 - [x] K231: Back to a month whose list was loading loads the list
 - [x] K232: an ended session sends the page to sign-in
 - [x] K233: the loading status is outside the busy container and set when shown
-- [ ] K234: the four branches are tested
-- [ ] K235: the legible-text test reads every rule
+- [x] K234: the four branches are tested
+- [x] K235: the legible-text test reads every rule
 - [ ] K236: the calendar page describes the phone list
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed
