@@ -10,6 +10,12 @@
  *
  * Without script, or if the request fails, the link stays: it opens the same
  * month with the list in place of the grid, so no one loses the list.
+ *
+ * The request says it is htmx's (`HX-Request`), so an ended session or a
+ * pending password change is answered with `HX-Redirect`, and the whole page
+ * goes there rather than the sign-in page being drawn inside the card (K232).
+ * A history snapshot never keeps a list "loading" (K231): Back restores the
+ * link, and a phone asks for the list again.
  */
 
 /** The phone layout's media query: the same breakpoint the stylesheet switches on. */
@@ -35,15 +41,25 @@ async function load(container) {
     try {
         const response = await fetch(container.getAttribute('data-calendar-list'), {
             credentials: 'same-origin',
+            headers: {'HX-Request': 'true'},
         });
+        // Checked before `ok`: the middlewares' answer is a 204, which is ok
+        // and empty, and would otherwise be written in as the list.
+        const redirect = response.headers.get('HX-Redirect');
+        if (redirect) {
+            window.location.assign(redirect);
+            return;
+        }
         if (!response.ok) {
             throw new Error(`The list answered ${response.status}.`);
         }
         const html = await response.text();
-        // A swap may have replaced the month while the request was out.
-        if (container.isConnected) {
+        // A swap may have replaced the month while the request was out, or a
+        // history snapshot put the container back to its link (and a fresh
+        // request may follow): either way this answer is no longer wanted.
+        if (container.isConnected && container.dataset.listState === 'loading') {
             container.innerHTML = html;
-            container.removeAttribute('aria-busy');
+            showLoading(container, false);
             container.dataset.listState = 'loaded';
         }
     } catch {
@@ -56,21 +72,40 @@ async function load(container) {
  * While the list loads, a "Loading the list…" line stands where the link was
  * and the container is marked busy. A reader is never offered a button that
  * is about to vanish under their finger. A failure puts the link back.
+ *
+ * The line is a status just before the container, outside the busy region
+ * whose contents the list replaces, and it holds text only while it is shown:
+ * a live region is read out when its text changes, not when it is unhidden
+ * (K233). The text comes from the status's `data-loading-text`.
  */
 function showLoading(container, loading) {
     const link = container.querySelector('.calendar-list-link');
-    const status = container.querySelector('.calendar-list-loading');
+    const status = container.previousElementSibling;
     if (link) {
         link.hidden = loading;
     }
-    if (status) {
+    if (status instanceof HTMLElement && status.matches('.calendar-list-loading')) {
         status.hidden = !loading;
+        status.textContent = loading ? (status.dataset.loadingText || '') : '';
     }
     if (loading) {
         container.setAttribute('aria-busy', 'true');
     } else {
         container.removeAttribute('aria-busy');
     }
+}
+
+/**
+ * Put every list still loading back to its link before htmx saves a history
+ * snapshot (K231), as a reload would draw it. A snapshot taken mid-request
+ * would otherwise come back on Back as "Loading the list…" with no request
+ * behind it. The request still out is dropped when it answers (see `load()`).
+ */
+export function resetLoadingListsForHistory() {
+    document.querySelectorAll('[data-calendar-list][data-list-state="loading"]').forEach((container) => {
+        delete container.dataset.listState;
+        showLoading(container, false);
+    });
 }
 
 /**

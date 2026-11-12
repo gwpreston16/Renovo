@@ -454,7 +454,7 @@ final class CalendarPageTest extends DatabaseTestCase
             ] as $html
         ) {
             $page = $this->parse($html);
-            $narrow = $this->find($page, '//*[contains(@class, "calendar-narrow")]');
+            $narrow = $this->find($page, '//*[contains(@class, "calendar-narrow")]//*[@data-calendar-list]');
             self::assertNotNull($narrow);
             self::assertSame(0, substr_count($html, 'calendar-list-day'));
             self::assertSame('/calendar/list?month=2026-09', $narrow->getAttribute('data-calendar-list'));
@@ -510,10 +510,18 @@ final class CalendarPageTest extends DatabaseTestCase
         $grid = $this->page('/calendar?month=2026-09');
         self::assertNotNull($this->find($grid, '//*[@id="calendar-day"]'));
         self::assertNull($this->find($grid, '//*[contains(@class, "calendar-to-grid")]'));
-        $loading = $this->find($grid, '//*[@data-calendar-list]//*[contains(@class, "calendar-list-loading")]');
+        // K233: the status the script fills stands just before the container
+        // the list replaces, not inside it, and holds no text until shown.
+        self::assertNull($this->find($grid, '//*[@data-calendar-list]//*[contains(@class, "calendar-list-loading")]'));
+        $loading = $this->find(
+            $grid,
+            '//*[@data-calendar-list]/preceding-sibling::*[contains(@class, "calendar-list-loading")]',
+        );
         self::assertNotNull($loading, 'the script has a loading line to show');
         self::assertTrue($loading->hasAttribute('hidden'));
         self::assertSame('status', $loading->getAttribute('role'));
+        self::assertSame('', $loading->textContent);
+        self::assertSame('Loading the list…', $loading->getAttribute('data-loading-text'));
         $today = $this->find($grid, '//*[@id="calendar-today"]');
         self::assertNotNull($today);
         self::assertSame('/calendar', $today->getAttribute('href'));
@@ -526,7 +534,7 @@ final class CalendarPageTest extends DatabaseTestCase
         $this->monthly('Streaming', 1000, '2026-09-20');
 
         $page = $this->page('/calendar?month=2026-09&mine=1');
-        $narrow = $this->find($page, '//*[contains(@class, "calendar-narrow")]');
+        $narrow = $this->find($page, '//*[@data-calendar-list]');
         self::assertNotNull($narrow);
         self::assertSame('/calendar/list?month=2026-09&mine=1', $narrow->getAttribute('data-calendar-list'));
 
@@ -545,6 +553,36 @@ final class CalendarPageTest extends DatabaseTestCase
 
         self::assertSame(302, $response->getStatusCode());
         self::assertStringStartsWith('/login', $response->getHeaderLine('Location'));
+        self::assertStringNotContainsString('Streaming', (string) $response->getBody());
+    }
+
+    /**
+     * K232: the phone list's script says its request is htmx's, so an ended
+     * session is answered as htmx expects (a 204 that sends the whole page to
+     * sign-in), not with the sign-in page to draw inside the calendar card.
+     */
+    public function testTheListRouteSendsAnHtmxRequestWithNoSessionToSignIn(): void
+    {
+        $this->monthly('Streaming', 1000, '2026-09-20');
+        $this->session->clear();
+
+        $response = $this->request('GET', '/calendar/list?month=2026-09', [], ['HX-Request' => 'true']);
+
+        self::assertSame(204, $response->getStatusCode());
+        self::assertStringStartsWith('/login', $response->getHeaderLine('HX-Redirect'));
+        self::assertSame('', (string) $response->getBody());
+    }
+
+    /** K232: a member who must change their password is sent to that page the same way. */
+    public function testTheListRouteSendsAnHtmxRequestWithAPasswordChangePendingToTheProfile(): void
+    {
+        $this->monthly('Streaming', 1000, '2026-09-20');
+        (new UserRepository($this->db))->setMustChangePassword($this->ownerId, true);
+
+        $response = $this->request('GET', '/calendar/list?month=2026-09', [], ['HX-Request' => 'true']);
+
+        self::assertSame(204, $response->getStatusCode());
+        self::assertSame('/profile', $response->getHeaderLine('HX-Redirect'));
         self::assertStringNotContainsString('Streaming', (string) $response->getBody());
     }
 
