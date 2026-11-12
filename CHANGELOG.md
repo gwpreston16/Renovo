@@ -21,7 +21,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   then Back left "Loading the list…" showing for good; the month now asks for
   its list again. With the session ended, the list's request drew the whole
   sign-in page inside the calendar card; the page now goes to sign-in (or to
-  the password page, for a member who must change it). The "Loading the
+  the password page, for a member who must change it), and comes back to that
+  month's list. The "Loading the
   list…" line now sits outside the region the list replaces and gets its text
   when shown, so a screen reader announces it. No migrations. *Phase 88.*
 - **Tests that catch what they claim to.** The planner's and phone list's

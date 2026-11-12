@@ -65,6 +65,15 @@ final class LegibleTextTest extends TestCase
             CSS;
 
         self::assertSame(0.5, $this->smallestSize($css, '.topbar-subtitle'));
+
+        // A last declaration may drop its semicolon; it is still read.
+        $css = $this->css('components.css') . <<<'CSS'
+
+            @media (min-width: 900px) {
+                .topbar-subtitle { color: inherit; font-size: 0.5rem }
+            }
+            CSS;
+        self::assertSame(0.5, $this->smallestSize($css, '.topbar-subtitle'));
     }
 
     public function testAPausedRowMutesItsTextRatherThanFadingIt(): void
@@ -120,16 +129,17 @@ final class LegibleTextTest extends TestCase
     {
         $sizes = [];
         foreach ($this->rules($css, $selector) as $rule) {
-            if (preg_match('/font-size:\s*([^;]+);/', $rule, $value) !== 1) {
-                continue;
+            // Every declaration, the last one in a rule included (its `;` is optional).
+            preg_match_all('/font-size:\s*([^;]+)/', $rule, $values);
+            foreach ($values[1] as $value) {
+                $value = trim($value);
+                // A size token is read from tokens.css, so a token shrunk later fails here too.
+                if (preg_match('/^var\((--[a-z-]+)\)$/', $value, $token) === 1) {
+                    $value = trim($this->token($token[1]));
+                }
+                self::assertSame(1, preg_match('/^([0-9.]+)rem$/', $value, $size), $selector . ' sets a rem size');
+                $sizes[] = (float) $size[1];
             }
-            $value = trim($value[1]);
-            // A size token is read from tokens.css, so a token shrunk later fails here too.
-            if (preg_match('/^var\((--[a-z-]+)\)$/', $value, $token) === 1) {
-                $value = trim($this->token($token[1]));
-            }
-            self::assertSame(1, preg_match('/^([0-9.]+)rem$/', $value, $size), $selector . ' sets a rem size');
-            $sizes[] = (float) $size[1];
         }
         self::assertNotSame([], $sizes, $selector . ' sets no font size');
 

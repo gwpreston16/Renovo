@@ -51,10 +51,9 @@ actually be taken rather than today's price.
 Each day draws up to three chips — **Charge**, **Trial ends** and **Cancel
 by**, each with its own icon and word as well as its colour — then "+N more",
 and the day's total. Choose a day and the panel beside the grid (on the grid
-page only) lists
-everything on it: what it is, whose it is, and the amount in its own currency
-with roughly what that is in the base currency. It is a link, so it works
-without script (`?day=`). Beside it are the month's total, its number of
+page only) lists everything on it: what it is, whose it is, and the amount in
+its own currency with roughly what that is in the base currency. It is a link,
+so it works without script (`?day=`). Beside it are the month's total, its number of
 charges and its heaviest day. Totals follow the per-currency rule: a combined
 figure only when every currency has a rate, and the heaviest day is left out
 when one of them does not, rather than naming the wrong day. A deadline is on
@@ -84,7 +83,8 @@ list its screen hides. While it loads, "Loading the list…" stands where the
 **Show as list** link was (and is read out by a screen reader); if the request
 fails, the link comes back. A phone whose session has ended, or whose member
 must change their password first, goes to sign-in (or to the password page)
-rather than drawing that page inside the calendar. Back to a month whose list
+rather than drawing that page inside the calendar, and after signing in comes
+back to that month as a list (`?view=list`). Back to a month whose list
 was still loading asks for it again.
 
 Without script a phone reader gets the **Show as list** link to the same month

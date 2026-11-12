@@ -74,9 +74,10 @@ async function load(container) {
  * is about to vanish under their finger. A failure puts the link back.
  *
  * The line is a status just before the container, outside the busy region
- * whose contents the list replaces, and it holds text only while it is shown:
- * a live region is read out when its text changes, not when it is unhidden
- * (K233). The text comes from the status's `data-loading-text`.
+ * whose contents the list replaces. It stays in the page (and so in the
+ * accessibility tree) and only its text changes: a live region is read out
+ * when its text changes, not reliably when it appears (K233). The text comes
+ * from the status's `data-loading-text`; empty, the stylesheet folds it away.
  */
 function showLoading(container, loading) {
     const link = container.querySelector('.calendar-list-link');
@@ -85,7 +86,6 @@ function showLoading(container, loading) {
         link.hidden = loading;
     }
     if (status instanceof HTMLElement && status.matches('.calendar-list-loading')) {
-        status.hidden = !loading;
         status.textContent = loading ? (status.dataset.loadingText || '') : '';
     }
     if (loading) {

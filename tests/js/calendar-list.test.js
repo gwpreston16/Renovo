@@ -4,7 +4,7 @@ import { htmx, loadApp, unloadApp } from './load-app.js';
 // The month partial's phone form: the loading status stands just before the
 // container the list replaces (K233), as `templates/calendar/_month.twig` draws it.
 const MONTH = '<div id="calendar-month"><div class="calendar-narrow">'
-    + '<p class="calendar-list-loading" role="status" data-loading-text="Loading the list…" hidden></p>'
+    + '<p class="calendar-list-loading" role="status" data-loading-text="Loading the list…"></p>'
     + '<div data-calendar-list="/calendar/list?month=2026-09">'
     + '<p class="calendar-list-link"><a href="/calendar?view=list">Show as list</a></p></div></div></div>';
 
@@ -92,14 +92,13 @@ test('while the list loads the link gives way to a busy loading line', async () 
     const status = document.querySelector('.calendar-list-loading');
     expect(container.getAttribute('aria-busy')).toBe('true');
     expect(container.querySelector('.calendar-list-link').hidden).toBe(true);
-    expect(status.hidden).toBe(false);
+    expect(status.textContent).toBe('Loading the list…');
 
     answer(response(200, '<ol class="calendar-list"></ol>'));
     await settle();
     await settle();
 
     expect(container.hasAttribute('aria-busy')).toBe(false);
-    expect(status.hidden).toBe(true);
     expect(status.textContent).toBe('');
 });
 
@@ -113,7 +112,6 @@ test('a failed request shows the link again and drops the loading line', async (
     const status = document.querySelector('.calendar-list-loading');
     expect(container.hasAttribute('aria-busy')).toBe(false);
     expect(container.querySelector('.calendar-list-link').hidden).toBe(false);
-    expect(status.hidden).toBe(true);
     expect(status.textContent).toBe('');
 });
 
@@ -152,7 +150,7 @@ test('Back to a month whose list was loading loads it again', async () => {
     expect(container.dataset.listState).toBeUndefined();
     expect(container.hasAttribute('aria-busy')).toBe(false);
     expect(container.querySelector('.calendar-list-link').hidden).toBe(false);
-    expect(document.querySelector('.calendar-list-loading').hidden).toBe(true);
+    expect(document.querySelector('.calendar-list-loading').textContent).toBe('');
 
     // The request that was out answers late: it is not drawn into the snapshot.
     answers[0](response(200, '<ol class="calendar-list"><li>stale</li></ol>'));

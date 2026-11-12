@@ -113,6 +113,15 @@ test('an answer for a row still on Change is drawn', () => {
     expect(detail.shouldSwap).toBe(true);
 });
 
+test('a swap anywhere else on the page is left to htmx', () => {
+    choose('keep');
+    const other = document.createElement('div');
+    other.id = 'scenario-results';
+    document.body.append(other);
+
+    expect(beforeSwap(other, other).shouldSwap).toBe(true);
+});
+
 // K234: each kind of failure htmx reports is handled, not only a 4xx/5xx.
 it.each(['responseError', 'sendError', 'timeout'])('every kind of failure puts the row back on Keep (%s)', (kind) => {
     const slot = document.getElementById('scenario-change-5');

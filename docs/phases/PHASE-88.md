@@ -199,6 +199,14 @@ None.
   first rule.
 - **K236 — Confirmed 2026-11-12 (docs only):** written after A–D, so the page describes the behaviour they leave,
   including C's sign-in redirect.
+- **K232's return page — Added 2026-11-12 (found by the merge review):**
+  with the request marked as htmx's, sign-in's `next` is the list's own
+  address, so a reader signing in again would land on the bare fragment.
+  `CalendarController::list()` answers a request without `HX-Request` with a
+  redirect to `/calendar?month=…&view=list` (keeping `mine=1`); a month out of
+  range is still a 404. Not chosen: taking `next` from `HX-Current-URL` in the
+  middleware (app-wide, wider than this phase), or recording it as a known
+  issue. Test: `testTheListRouteSendsABrowserToTheMonthsListPage`.
 - **Rows — Decided 2026-11-12:** K230-K235, with K236 as the one docs row on
   top. Not chosen: adding K237 (see out of scope), or taking the code rows
   without the docs row.

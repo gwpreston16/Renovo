@@ -1936,8 +1936,13 @@ tr.is-passed > td {
     align-items: center;
 }
 
-.calendar-list-loading[hidden] {
-    display: none;
+/*
+ * Idle, the status is empty but stays in the page, so a screen reader hears
+ * it when its text arrives (K233); empty, it takes no room. Not display: none,
+ * which would take it out of the accessibility tree again.
+ */
+.calendar-list-loading:empty {
+    min-height: 0;
 }
 
 /* ------------------------------------------------------- my subscriptions */
