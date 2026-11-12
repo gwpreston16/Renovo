@@ -178,11 +178,11 @@ None.
 
 ## Decisions & assumptions (confirm or correct before build)
 
-- **K230:** the planner's own rule is that a failed fetch leaves the row on
+- **K230 — Confirmed 2026-11-12:** the planner's own rule is that a failed fetch leaves the row on
   Keep "not on Change with no fields" (`scenario-form.js`); a row the reader
   already moved off Change was never in that state, so it is left as chosen.
   This makes the script do what its docblock says.
-- **K231:** a history snapshot should hold the page as a reload would draw it;
+- **K231 — Confirmed 2026-11-12:** a history snapshot should hold the page as a reload would draw it;
   "loading" is a state of a request that won't survive the snapshot. Resetting
   it before the save, as `stripGeometryForHistory` does for sizes, keeps the
   fix where Phase 86's history handling already lives.
@@ -191,13 +191,13 @@ None.
   redirected response as a failure so the link comes back, which would leave
   the reader not knowing why the list didn't load. It reuses the middlewares'
   existing htmx answer rather than adding a second one.
-- **K233:** the row says "likely" not announced. The fix follows the pattern
+- **K233 — Confirmed 2026-11-12:** the row says "likely" not announced. The fix follows the pattern
   `app.js` already uses for `[data-swap-status]`, and the test pins the
   structure rather than a screen reader's behaviour.
-- **K234, K235:** test-only. K235's fix makes the test assert what its
+- **K234, K235 — Confirmed 2026-11-12 (test-only, no behaviour to decide):** K235's fix makes the test assert what its
   docblock and Phase 86's E say (functional text at 11px or more), not only the
   first rule.
-- **K236:** written after A–D, so the page describes the behaviour they leave,
+- **K236 — Confirmed 2026-11-12 (docs only):** written after A–D, so the page describes the behaviour they leave,
   including C's sign-in redirect.
 - **Rows — Decided 2026-11-12:** K230-K235, with K236 as the one docs row on
   top. Not chosen: adding K237 (see out of scope), or taking the code rows
