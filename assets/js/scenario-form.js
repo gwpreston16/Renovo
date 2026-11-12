@@ -13,7 +13,9 @@
  * Change (K181): choosing Change fetches them (an htmx request from the radio
  * itself), and choosing Keep or Cancel here drops them again, so a row left on
  * Keep sends nothing and the page carries three fields only for the rows being
- * changed. The form's own round trip redraws every Change row's fields.
+ * changed. The form's own round trip redraws every Change row's fields. A
+ * reader may leave Change before its fields arrive (K230): the late answer is
+ * not drawn, and a late failure leaves the row on the choice they made.
  *
  * Without script the form posts whole (it is a POST, so no address length
  * applies) and the server answers with the short address
@@ -131,23 +133,52 @@ function onChoiceChange(event) {
 
 const SLOT = /^scenario-change-(\d+)$/;
 
+/** A row's choice radio of the given value, or null. */
+function choiceRadio(form, id, value) {
+    const radio = form.querySelector(`input[name="choice[${id}]"][value="${value}"]`);
+
+    return radio instanceof HTMLInputElement ? radio : null;
+}
+
+/** Whether the row is still set to Change. */
+function isOnChange(form, id) {
+    return choiceRadio(form, id, 'change')?.checked === true;
+}
+
+/**
+ * The planner row an htmx event's target slot belongs to: the slot, the row's
+ * id and the form, or null for an event anywhere else on the page.
+ */
+function slotRow(event) {
+    const slot = event.detail && event.detail.target;
+    const row = slot instanceof Element ? SLOT.exec(slot.id) : null;
+    const form = document.getElementById(FORM);
+
+    return row && form ? {slot, id: row[1], form} : null;
+}
+
 /**
  * A row's controls that fail to load leave it on Keep, not on Change with no
  * fields to type in, and the page's status line (`data-save-error`, the one
  * every failed save uses) says what happened. Back on Keep, choosing Change
  * again fires a fresh change event, which is the retry.
+ *
+ * A row the reader has already moved to Keep or Cancel was never left on
+ * Change with no fields (K230): its choice stands, since the results and the
+ * address already count it, and there is nothing to tell them.
  */
 function onControlsFailed(event) {
-    const slot = event.detail && event.detail.target;
-    const row = slot instanceof Element ? SLOT.exec(slot.id) : null;
-    const form = document.getElementById(FORM);
-    if (!row || !form) {
+    const row = slotRow(event);
+    if (!row) {
         return;
     }
 
-    slot.replaceChildren();
-    const keep = form.querySelector(`input[name="choice[${row[1]}]"][value="keep"]`);
-    if (keep instanceof HTMLInputElement) {
+    row.slot.replaceChildren();
+    if (!isOnChange(row.form, row.id)) {
+        return;
+    }
+    const keep = choiceRadio(row.form, row.id, 'keep');
+    if (keep) {
         keep.checked = true;
     }
 
@@ -155,8 +186,20 @@ function onControlsFailed(event) {
     if (status) {
         // Cleared and refilled so a repeat of the same failure is read out again.
         status.textContent = '';
-        status.textContent = form.dataset.changeFailed || '';
+        status.textContent = row.form.dataset.changeFailed || '';
         status.scrollIntoView({block: 'nearest'});
+    }
+}
+
+/**
+ * A row's controls that arrive after the reader left Change are not drawn
+ * (K230): the slot stays empty, as choosing Keep or Cancel left it. htmx
+ * reads `shouldSwap` back from the event's detail once its listeners return.
+ */
+function onControlsSwap(event) {
+    const row = slotRow(event);
+    if (row && !isOnChange(row.form, row.id)) {
+        event.detail.shouldSwap = false;
     }
 }
 
@@ -188,4 +231,5 @@ export function enhanceScenarioForm() {
     document.addEventListener('htmx:sendError', onControlsFailed);
     document.addEventListener('htmx:timeout', onControlsFailed);
     document.addEventListener('htmx:beforeRequest', onControlsRequest);
+    document.addEventListener('htmx:beforeSwap', onControlsSwap);
 }

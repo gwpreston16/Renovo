@@ -210,7 +210,7 @@ None.
 
 ## Status
 
-- [ ] K230: a row off Change keeps its choice when its fields fail or arrive late
+- [x] K230: a row off Change keeps its choice when its fields fail or arrive late
 - [ ] K231: Back to a month whose list was loading loads the list
 - [ ] K232: an ended session sends the page to sign-in
 - [ ] K233: the loading status is outside the busy container and set when shown
