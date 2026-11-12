@@ -234,7 +234,8 @@ None.
 - [x] Rows marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed
 - [x] ROADMAP: Phase 88 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] composer check, coverage and the API doc tests green: CI run 43176369576 on e56cd48 (lint and static analysis, Tests on Postgres, MySQL and MySQL flag-off); changed lines 100% covered (6 lines), the suite 93.92%
+- [x] Browser check on e56cd48 (demo household, list and Change-field requests slowed by 4 s). 375 px light and dark: the list loads, and its status line is empty and takes no space once loaded. Next before the list loaded, then Back, asks for the list again and loads it. A session ended during the list request sends the page to `/login?next=/calendar/list?month=…`, and that address lands on `?view=list` for the month; a pending password change sends it to `/profile`. The planner: Change then Cancel with the fields failing keeps Cancel with no error; Change then Keep with a late answer draws nothing; Change alone loads the fields. 1280 px dark: the grid shows and no list is fetched, and `?view=list` shows "Show as grid" with no day panel. Keyboard: the arrow keys move a row through Keep, Cancel and Change, the fields load and clear, and the focus ring shows. Not checked with a screen reader.
 
 ## Definition of done
 
