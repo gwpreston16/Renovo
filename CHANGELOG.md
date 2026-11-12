@@ -8,6 +8,32 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **A scenario row keeps the choice you made.** In the scenario planner, a row
+  moved to Cancel or Keep while its Change fields were still loading jumped
+  back to Keep with "The price fields did not load" if that load failed, while
+  the results still counted the cancellation; and fields that arrived late
+  were drawn into a row no longer on Change. Now only a row still on Change
+  goes back to Keep, and a late answer is dropped. *Phase 88.*
+- **The calendar's phone list after Back, an ended session, and a screen
+  reader.** On a phone, going to another month before the list had loaded and
+  then Back left "Loading the list…" showing for good; the month now asks for
+  its list again. With the session ended, the list's request drew the whole
+  sign-in page inside the calendar card; the page now goes to sign-in (or to
+  the password page, for a member who must change it). The "Loading the
+  list…" line now sits outside the region the list replaces and gets its text
+  when shown, so a screen reader announces it. No migrations. *Phase 88.*
+- **Tests that catch what they claim to.** The planner's and phone list's
+  failure, retry and resize paths each have a test, and the test that keeps
+  functional text at 11px or more reads every rule for a selector, media
+  queries included, not only the first. Tests only. *Phase 88.*
+- **The calendar page describes the phone list.** `docs/features/calendar.md`
+  covers the loading line, the link coming back on a failure, the sign-in
+  redirect, and the `?view=list` page (no open-day panel, **Show as grid**
+  from 768px up, and `view=list` kept through Today, Previous/Next and **Just
+  mine**). *Phase 88.*
+
 ## [1.44.0] - 2026-11-11
 
 ### Added

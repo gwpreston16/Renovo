@@ -217,9 +217,9 @@ None.
 - [x] K234: the four branches are tested
 - [x] K235: the legible-text test reads every rule
 - [x] K236: the calendar page describes the phone list
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 88 row marked ✅ done
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 88 row marked ✅ done
 - [ ] composer check, coverage and the API doc tests green
 
 ## Definition of done
