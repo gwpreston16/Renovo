@@ -89,10 +89,10 @@ None.
 
 ## Status
 
-- [ ] K237: the 1.44.0 notes file the Phase 86 fixes under Fixed and describe the list view correctly
+- [x] K237: the 1.44.0 notes file the Phase 86 fixes under Fixed and describe the list view correctly
 - [ ] GitHub release Renovo 1.44.0 body updated to match
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
 - [ ] ROADMAP: Phase 89 row marked ✅ done
 - [ ] composer check, coverage and the API doc tests green
 
