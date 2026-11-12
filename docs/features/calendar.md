@@ -50,14 +50,14 @@ actually be taken rather than today's price.
 
 Each day draws up to three chips — **Charge**, **Trial ends** and **Cancel
 by**, each with its own icon and word as well as its colour — then "+N more",
-and the day's total. Choose a day and the panel beside the grid lists
-everything on it: what it is, whose it is, and the amount in its own currency
-with roughly what that is in the base currency. It is a link, so it works
-without script (`?day=`). Beside it are the month's total, its number of
-charges and its heaviest day. Totals follow the per-currency rule: a combined
-figure only when every currency has a rate, and the heaviest day is left out
-when one of them does not, rather than naming the wrong day. A deadline is on
-the grid but in no total — it is a date, not a charge.
+and the day's total. Choose a day and the panel beside the grid (on the grid
+page only) lists everything on it: what it is, whose it is, and the amount in
+its own currency with roughly what that is in the base currency. It is a link,
+so it works without script (`?day=`). Beside it are the month's total, its
+number of charges and its heaviest day. Totals follow the per-currency rule: a
+combined figure only when every currency has a rate, and the heaviest day is
+left out when one of them does not, rather than naming the wrong day. A
+deadline is on the grid but in no total — it is a date, not a charge.
 
 Paused and cancelled subscriptions are not on it, and a private one only for
 the member it is private to — the same rows as the forecast, on the calendar
@@ -79,6 +79,17 @@ On a phone (below 768px) the grid gives way to a list of the days that have
 something on them. The page sends the grid only; a small script asks for the
 list (`/calendar/list?month=`, scoped exactly like the grid) and puts it in
 place, again after each month or day change, so a desktop never downloads a
-list its screen hides. Without script a phone reader gets a **Show as list**
-link to the same month with the list in place of the grid
-(`?month=…&view=list`).
+list its screen hides. While it loads, "Loading the list…" stands where the
+**Show as list** link was (and is read out by a screen reader); if the request
+fails, the link comes back. A phone whose session has ended, or whose member
+must change their password first, goes to sign-in (or to the password page)
+rather than drawing that page inside the calendar, and after signing in comes
+back to that month as a list (`?view=list`). Back to a month whose list
+was still loading asks for it again.
+
+Without script a phone reader gets the **Show as list** link to the same month
+with the list in place of the grid (`?month=…&view=list`). That page has no
+open-day panel, since the list already shows every item of every day; from
+768px up it offers **Show as grid** to go back. Today, Previous and Next, and
+**Just mine** all keep `view=list`, so a reader without script stays on the
+list.

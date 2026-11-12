@@ -168,12 +168,22 @@
                 {% include 'calendar/_list.twig' %}
             </div>
         {% else %}
-            <div class="calendar-narrow" data-calendar-list="/calendar/list?month={{ month_key }}{{ mine_only ? '&mine=1' : '' }}">
-                <p class="calendar-list-link">
-                    <a class="button button-outline"
-                       href="/calendar?month={{ month_key }}&amp;view=list{{ mine_query }}">{{ t('calendar.show_as_list') }}</a>
-                </p>
-                <p class="muted calendar-list-loading" role="status" hidden>{{ t('calendar.list_loading') }}</p>
+            {#
+                The loading status sits outside the container the list
+                replaces and is marked busy. It is always in the page and
+                empty until the script fills it: a live region is announced
+                when its text changes, not when it is unhidden (K233). Its
+                text waits in `data-loading-text`; empty, it takes no room.
+            #}
+            <div class="calendar-narrow">
+                <p class="muted calendar-list-loading" role="status"
+                   data-loading-text="{{ t('calendar.list_loading') }}"></p>
+                <div data-calendar-list="/calendar/list?month={{ month_key }}{{ mine_only ? '&mine=1' : '' }}">
+                    <p class="calendar-list-link">
+                        <a class="button button-outline"
+                           href="/calendar?month={{ month_key }}&amp;view=list{{ mine_query }}">{{ t('calendar.show_as_list') }}</a>
+                    </p>
+                </div>
             </div>
         {% endif %}
     </section>

@@ -24,7 +24,7 @@
  */
 
 import { enhanceAuthForms } from './auth-forms.js';
-import { enhanceCalendarLists } from './calendar-list.js';
+import { enhanceCalendarLists, resetLoadingListsForHistory } from './calendar-list.js';
 import { enhanceCardLayouts } from './card-layout.js';
 import { onThemeChange, renderChart } from './charts.js';
 import { drawCategoryDonuts } from './category-donut.js';
@@ -239,9 +239,17 @@ document.addEventListener('htmx:afterSettle', (event) => {
     }
 });
 // Back and Forward through an hx-push-url history: htmx restores the markup
-// itself and fires no afterSwap, so the sizes have to be applied again.
-document.addEventListener('htmx:historyRestore', () => applyGeometry(document));
-document.addEventListener('htmx:beforeHistorySave', stripGeometryForHistory);
+// itself and fires no afterSwap, so the sizes have to be applied again, and a
+// restored month on a phone asks for its list again (its snapshot was saved
+// with the link, never mid-load).
+document.addEventListener('htmx:historyRestore', () => {
+    applyGeometry(document);
+    enhanceCalendarLists(document);
+});
+document.addEventListener('htmx:beforeHistorySave', () => {
+    stripGeometryForHistory();
+    resetLoadingListsForHistory();
+});
 document.addEventListener('renovo:content-loaded', enhanceArrived);
 
 /*

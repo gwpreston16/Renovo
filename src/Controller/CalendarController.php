@@ -108,6 +108,12 @@ final class CalendarController extends Controller
      * grid, for the same scope, so it holds exactly the days and items the
      * grid counts and nothing the reader may not see; the route names the same
      * permission as the page.
+     *
+     * Only the script asks for it, and it says so with `HX-Request`. Anything
+     * else is a browser landing on the address, most often after signing in
+     * again: an ended session sends the page to sign-in with this address as
+     * where to come back to (K232). It is sent to the month's list page
+     * instead, which is the same list with the page around it.
      */
     public function list(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
@@ -115,9 +121,16 @@ final class CalendarController extends Controller
         $user = $this->user($request);
 
         $query = $request->getQueryParams();
+        $mineOnly = ($query['mine'] ?? '') === '1';
         $month = $this->calendar->resolveMonth(is_string($query['month'] ?? null) ? $query['month'] : null, $scope);
         if ($month === null) {
             throw $this->notFound($request);
+        }
+
+        if (!$this->isHtmx($request)) {
+            return $this->redirect($response, '/calendar?' . http_build_query(
+                ['month' => $month->format('Y-m'), 'view' => 'list'] + ($mineOnly ? ['mine' => '1'] : []),
+            ));
         }
 
         $this->catchUp->run($scope);
@@ -127,7 +140,7 @@ final class CalendarController extends Controller
                 $scope,
                 $month,
                 $user->weekStartPreference(),
-                ($query['mine'] ?? '') === '1' ? $scope->userId : null,
+                $mineOnly ? $scope->userId : null,
                 null,
             ),
         ]);

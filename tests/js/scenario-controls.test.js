@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, test, vi } from 'vitest';
 import { htmx, loadApp, unloadApp } from './load-app.js';
 
 /*
@@ -74,4 +74,69 @@ test('choosing Change again clears the failure from the status line', () => {
     htmx('beforeRequest', radio, { target: slot });
 
     expect(document.querySelector('[data-save-error]').textContent).toBe('');
+});
+
+/** Fire htmx's beforeSwap for a 200 into `slot`, and hand back the detail htmx would read. */
+function beforeSwap(elt, slot) {
+    const detail = { elt, target: slot, shouldSwap: true, isError: false };
+    elt.dispatchEvent(new CustomEvent('htmx:beforeSwap', { bubbles: true, detail }));
+
+    return detail;
+}
+
+// K230: a row the reader has moved off Change keeps the choice they made.
+test('a row moved to Cancel stays there when its Change fields fail', () => {
+    const slot = document.getElementById('scenario-change-5');
+    const change = document.querySelector('input[name="choice[5]"][value="change"]');
+    choose('cancel');
+    htmx('responseError', change, { target: slot });
+
+    expect(document.querySelector('input[name="choice[5]"][value="cancel"]').checked).toBe(true);
+    expect(slot.children).toHaveLength(0);
+    expect(document.querySelector('[data-save-error]').textContent).toBe('');
+});
+
+test('a late Change answer is not drawn into a row on Keep', () => {
+    const slot = document.getElementById('scenario-change-5');
+    const change = document.querySelector('input[name="choice[5]"][value="change"]');
+    choose('keep');
+    // htmx 2 reads `shouldSwap` back from this same detail once its
+    // listeners return, so false here is what keeps the fields out.
+    expect(beforeSwap(change, slot).shouldSwap).toBe(false);
+});
+
+test('an answer for a row still on Change is drawn', () => {
+    const change = document.querySelector('input[name="choice[5]"][value="change"]');
+    const detail = beforeSwap(change, document.getElementById('scenario-change-5'));
+
+    expect(detail.shouldSwap).toBe(true);
+});
+
+test('a swap anywhere else on the page is left to htmx', () => {
+    choose('keep');
+    const other = document.createElement('div');
+    other.id = 'scenario-results';
+    document.body.append(other);
+
+    expect(beforeSwap(other, other).shouldSwap).toBe(true);
+});
+
+// K234: each kind of failure htmx reports is handled, not only a 4xx/5xx.
+it.each(['responseError', 'sendError', 'timeout'])('every kind of failure puts the row back on Keep (%s)', (kind) => {
+    const slot = document.getElementById('scenario-change-5');
+    const change = document.querySelector('input[name="choice[5]"][value="change"]');
+    htmx(kind, change, { target: slot });
+
+    expect(document.querySelector('input[name="choice[5]"][value="keep"]').checked).toBe(true);
+    expect(slot.children).toHaveLength(0);
+    expect(document.querySelector('[data-save-error]').textContent).toBe('The price fields did not load.');
+});
+
+test('a fresh request keeps another message', () => {
+    const status = document.querySelector('[data-save-error]');
+    status.textContent = 'Could not save your changes.';
+    const change = document.querySelector('input[name="choice[5]"][value="change"]');
+    htmx('beforeRequest', change, { target: document.getElementById('scenario-change-5') });
+
+    expect(status.textContent).toBe('Could not save your changes.');
 });

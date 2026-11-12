@@ -416,7 +416,8 @@ final class CalendarPageTest extends DatabaseTestCase
         $this->monthly('Music', 500, '2026-09-22');
 
         // The list is its own request now (K184), not part of the month page.
-        $narrow = $this->find($this->page('/calendar/list'), '//*[contains(@class, "calendar-list")]');
+        $list = $this->parse($this->listBody('/calendar/list'));
+        $narrow = $this->find($list, '//*[contains(@class, "calendar-list")]');
         self::assertNotNull($narrow);
 
         $days = $this->all($narrow, 'calendar-list-day');
@@ -435,7 +436,7 @@ final class CalendarPageTest extends DatabaseTestCase
         // Charged once, in September, so October has nothing in it.
         $this->oneOff('Once', 500, '2026-09-18');
 
-        $list = $this->body('/calendar/list?month=2026-10');
+        $list = $this->listBody('/calendar/list?month=2026-10');
         self::assertSame('Nothing due this month.', $this->squash(strip_tags($list)));
     }
 
@@ -454,7 +455,7 @@ final class CalendarPageTest extends DatabaseTestCase
             ] as $html
         ) {
             $page = $this->parse($html);
-            $narrow = $this->find($page, '//*[contains(@class, "calendar-narrow")]');
+            $narrow = $this->find($page, '//*[contains(@class, "calendar-narrow")]//*[@data-calendar-list]');
             self::assertNotNull($narrow);
             self::assertSame(0, substr_count($html, 'calendar-list-day'));
             self::assertSame('/calendar/list?month=2026-09', $narrow->getAttribute('data-calendar-list'));
@@ -510,10 +511,19 @@ final class CalendarPageTest extends DatabaseTestCase
         $grid = $this->page('/calendar?month=2026-09');
         self::assertNotNull($this->find($grid, '//*[@id="calendar-day"]'));
         self::assertNull($this->find($grid, '//*[contains(@class, "calendar-to-grid")]'));
-        $loading = $this->find($grid, '//*[@data-calendar-list]//*[contains(@class, "calendar-list-loading")]');
+        // K233: the status the script fills stands just before the container
+        // the list replaces, not inside it, and holds no text until shown.
+        self::assertNull($this->find($grid, '//*[@data-calendar-list]//*[contains(@class, "calendar-list-loading")]'));
+        $loading = $this->find(
+            $grid,
+            '//*[@data-calendar-list]/preceding-sibling::*[contains(@class, "calendar-list-loading")]',
+        );
         self::assertNotNull($loading, 'the script has a loading line to show');
-        self::assertTrue($loading->hasAttribute('hidden'));
+        // In the page (not `hidden`) so a screen reader hears its text arrive.
+        self::assertFalse($loading->hasAttribute('hidden'));
         self::assertSame('status', $loading->getAttribute('role'));
+        self::assertSame('', $loading->textContent);
+        self::assertSame('Loading the list…', $loading->getAttribute('data-loading-text'));
         $today = $this->find($grid, '//*[@id="calendar-today"]');
         self::assertNotNull($today);
         self::assertSame('/calendar', $today->getAttribute('href'));
@@ -526,7 +536,7 @@ final class CalendarPageTest extends DatabaseTestCase
         $this->monthly('Streaming', 1000, '2026-09-20');
 
         $page = $this->page('/calendar?month=2026-09&mine=1');
-        $narrow = $this->find($page, '//*[contains(@class, "calendar-narrow")]');
+        $narrow = $this->find($page, '//*[@data-calendar-list]');
         self::assertNotNull($narrow);
         self::assertSame('/calendar/list?month=2026-09&mine=1', $narrow->getAttribute('data-calendar-list'));
 
@@ -548,13 +558,70 @@ final class CalendarPageTest extends DatabaseTestCase
         self::assertStringNotContainsString('Streaming', (string) $response->getBody());
     }
 
+    /**
+     * K232: the phone list's script says its request is htmx's, so an ended
+     * session is answered as htmx expects (a 204 that sends the whole page to
+     * sign-in), not with the sign-in page to draw inside the calendar card.
+     */
+    public function testTheListRouteSendsAnHtmxRequestWithNoSessionToSignIn(): void
+    {
+        $this->monthly('Streaming', 1000, '2026-09-20');
+        $this->session->clear();
+
+        $response = $this->request('GET', '/calendar/list?month=2026-09', [], ['HX-Request' => 'true']);
+
+        self::assertSame(204, $response->getStatusCode());
+        self::assertStringStartsWith('/login', $response->getHeaderLine('HX-Redirect'));
+        self::assertSame('', (string) $response->getBody());
+    }
+
+    /** K232: a member who must change their password is sent to that page the same way. */
+    public function testTheListRouteSendsAnHtmxRequestWithAPasswordChangePendingToTheProfile(): void
+    {
+        $this->monthly('Streaming', 1000, '2026-09-20');
+        (new UserRepository($this->db))->setMustChangePassword($this->ownerId, true);
+
+        $response = $this->request('GET', '/calendar/list?month=2026-09', [], ['HX-Request' => 'true']);
+
+        self::assertSame(204, $response->getStatusCode());
+        self::assertSame('/profile', $response->getHeaderLine('HX-Redirect'));
+        self::assertStringNotContainsString('Streaming', (string) $response->getBody());
+    }
+
+    /**
+     * K232: sign-in sends a reader back to the address that needed it, and for
+     * the phone list that is the fragment's own. A browser landing there (not
+     * the script) is sent to the month's list page, with "Just mine" kept.
+     */
+    public function testTheListRouteSendsABrowserToTheMonthsListPage(): void
+    {
+        $response = $this->request('GET', '/calendar/list?month=2026-09');
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame('/calendar?month=2026-09&view=list', $response->getHeaderLine('Location'));
+
+        $response = $this->request('GET', '/calendar/list?month=2026-09&mine=1');
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame('/calendar?month=2026-09&view=list&mine=1', $response->getHeaderLine('Location'));
+
+        // No month is this month; only `mine=1` asks for "Just mine".
+        $response = $this->request('GET', '/calendar/list?mine=0');
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame(
+            '/calendar?month=' . substr(self::TODAY, 0, 7) . '&view=list',
+            $response->getHeaderLine('Location'),
+        );
+
+        // A month outside the calendar's range is still not found, not redirected.
+        self::assertSame(404, $this->request('GET', '/calendar/list?month=1999-01')->getStatusCode());
+    }
+
     /** K184: the list route answers the month asked for, in the reader's locale, with the grid's events. */
     public function testTheListRouteReturnsTheMonthsDaysForTheCurrentAndAnotherMonth(): void
     {
         $this->monthly('Streaming', 1000, '2026-09-20');
         $this->monthly('Gym', 3500, '2026-09-22', notice: 30);
 
-        $september = $this->body('/calendar/list?month=2026-09');
+        $september = $this->listBody('/calendar/list?month=2026-09');
         self::assertStringNotContainsString('<body', $september, 'a fragment, not a page');
         self::assertStringContainsString('Streaming', $september);
         self::assertMatchesRegularExpression('/Sun,? 20 Sept/', $september);
@@ -569,7 +636,7 @@ final class CalendarPageTest extends DatabaseTestCase
             self::assertStringContainsString($name, $september);
         }
 
-        $october = $this->body('/calendar/list?month=2026-10');
+        $october = $this->listBody('/calendar/list?month=2026-10');
         self::assertStringContainsString('Streaming', $october);
         self::assertMatchesRegularExpression('/Tue,? 20 Oct/', $october);
         self::assertSame(404, $this->request('GET', '/calendar/list?month=2020-01')->getStatusCode());
@@ -606,7 +673,7 @@ final class CalendarPageTest extends DatabaseTestCase
             [],
         );
 
-        $owner = $this->body('/calendar/list?month=2026-09');
+        $owner = $this->listBody('/calendar/list?month=2026-09');
         self::assertStringContainsString('Mine', $owner);
         self::assertStringContainsString('Editors plan', $owner);
         self::assertStringNotContainsString('Therapy', $owner, 'a private row stays with its payer');
@@ -614,25 +681,25 @@ final class CalendarPageTest extends DatabaseTestCase
 
         // A Viewer may read the calendar, so may read its list.
         $this->signIn($this->viewerId);
-        $viewer = $this->body('/calendar/list?month=2026-09');
+        $viewer = $this->listBody('/calendar/list?month=2026-09');
         self::assertStringContainsString('Mine', $viewer);
         self::assertStringNotContainsString('Therapy', $viewer);
         self::assertStringNotContainsString('Other household thing', $viewer);
 
         // "Just mine" narrows the list as it narrows the grid.
         $this->signIn($this->ownerId);
-        $mine = $this->body('/calendar/list?month=2026-09&mine=1');
+        $mine = $this->listBody('/calendar/list?month=2026-09&mine=1');
         self::assertStringContainsString('Mine', $mine);
         self::assertStringNotContainsString('Editors plan', $mine);
 
         // The payer sees their private row in the list, as in the grid.
         $this->signIn($this->editorId);
-        self::assertStringContainsString('Therapy', $this->body('/calendar/list?month=2026-09'));
+        self::assertStringContainsString('Therapy', $this->listBody('/calendar/list?month=2026-09'));
 
         // ISOLATED: the owner no longer sees the editor's own rows.
         $this->container()->get(InstanceSettingsService::class)->setIsolationMode(IsolationMode::Isolated);
         $this->signIn($this->ownerId);
-        $isolated = $this->body('/calendar/list?month=2026-09');
+        $isolated = $this->listBody('/calendar/list?month=2026-09');
         self::assertStringContainsString('Mine', $isolated);
         self::assertStringNotContainsString('Editors plan', $isolated);
     }
@@ -990,6 +1057,15 @@ final class CalendarPageTest extends DatabaseTestCase
         libxml_clear_errors();
 
         return new DOMXPath($document);
+    }
+
+    /** The phone list's fragment, asked for as its script asks: as htmx. */
+    private function listBody(string $path): string
+    {
+        $response = $this->request('GET', $path, [], ['HX-Request' => 'true']);
+        self::assertSame(200, $response->getStatusCode(), $path . ' did not render.');
+
+        return (string) $response->getBody();
     }
 
     private function body(string $path): string

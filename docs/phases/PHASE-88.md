@@ -178,11 +178,11 @@ None.
 
 ## Decisions & assumptions (confirm or correct before build)
 
-- **K230:** the planner's own rule is that a failed fetch leaves the row on
+- **K230 — Confirmed 2026-11-12:** the planner's own rule is that a failed fetch leaves the row on
   Keep "not on Change with no fields" (`scenario-form.js`); a row the reader
   already moved off Change was never in that state, so it is left as chosen.
   This makes the script do what its docblock says.
-- **K231:** a history snapshot should hold the page as a reload would draw it;
+- **K231 — Confirmed 2026-11-12:** a history snapshot should hold the page as a reload would draw it;
   "loading" is a state of a request that won't survive the snapshot. Resetting
   it before the save, as `stripGeometryForHistory` does for sizes, keeps the
   fix where Phase 86's history handling already lives.
@@ -191,14 +191,28 @@ None.
   redirected response as a failure so the link comes back, which would leave
   the reader not knowing why the list didn't load. It reuses the middlewares'
   existing htmx answer rather than adding a second one.
-- **K233:** the row says "likely" not announced. The fix follows the pattern
+- **K233 — Confirmed 2026-11-12:** the row says "likely" not announced. The fix follows the pattern
   `app.js` already uses for `[data-swap-status]`, and the test pins the
   structure rather than a screen reader's behaviour.
-- **K234, K235:** test-only. K235's fix makes the test assert what its
+- **K234, K235 — Confirmed 2026-11-12 (test-only, no behaviour to decide):** K235's fix makes the test assert what its
   docblock and Phase 86's E say (functional text at 11px or more), not only the
   first rule.
-- **K236:** written after A–D, so the page describes the behaviour they leave,
+- **K236 — Confirmed 2026-11-12 (docs only):** written after A–D, so the page describes the behaviour they leave,
   including C's sign-in redirect.
+- **K233's status — Changed 2026-11-12 (found by the merge review):** the
+  status is never `hidden`: it stays in the page, empty when idle and folded
+  away by `.calendar-list-loading:empty`, and only its text changes. A region
+  unhidden and filled in the same tick is not reliably announced, and every
+  `[data-swap-status]` line stays in the tree the same way. Where B and D say
+  "hidden", read "empty". Tests assert the text, not `hidden`.
+- **K232's return page — Added 2026-11-12 (found by the merge review):**
+  with the request marked as htmx's, sign-in's `next` is the list's own
+  address, so a reader signing in again would land on the bare fragment.
+  `CalendarController::list()` answers a request without `HX-Request` with a
+  redirect to `/calendar?month=…&view=list` (keeping `mine=1`); a month out of
+  range is still a 404. Not chosen: taking `next` from `HX-Current-URL` in the
+  middleware (app-wide, wider than this phase), or recording it as a known
+  issue. Test: `testTheListRouteSendsABrowserToTheMonthsListPage`.
 - **Rows — Decided 2026-11-12:** K230-K235, with K236 as the one docs row on
   top. Not chosen: adding K237 (see out of scope), or taking the code rows
   without the docs row.
@@ -210,17 +224,18 @@ None.
 
 ## Status
 
-- [ ] K230: a row off Change keeps its choice when its fields fail or arrive late
-- [ ] K231: Back to a month whose list was loading loads the list
-- [ ] K232: an ended session sends the page to sign-in
-- [ ] K233: the loading status is outside the busy container and set when shown
-- [ ] K234: the four branches are tested
-- [ ] K235: the legible-text test reads every rule
-- [ ] K236: the calendar page describes the phone list
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 88 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K230: a row off Change keeps its choice when its fields fail or arrive late
+- [x] K231: Back to a month whose list was loading loads the list
+- [x] K232: an ended session sends the page to sign-in
+- [x] K233: the loading status is outside the busy container and set when shown
+- [x] K234: the four branches are tested
+- [x] K235: the legible-text test reads every rule
+- [x] K236: the calendar page describes the phone list
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 88 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green: CI run 43176369576 on e56cd48 (lint and static analysis, Tests on Postgres, MySQL and MySQL flag-off); changed lines 100% covered (6 lines), the suite 93.92%
+- [x] Browser check on e56cd48 (demo household, list and Change-field requests slowed by 4 s). 375 px light and dark: the list loads, and its status line is empty and takes no space once loaded. Next before the list loaded, then Back, asks for the list again and loads it. A session ended during the list request sends the page to `/login?next=/calendar/list?month=…`, and that address lands on `?view=list` for the month; a pending password change sends it to `/profile`. The planner: Change then Cancel with the fields failing keeps Cancel with no error; Change then Keep with a late answer draws nothing; Change alone loads the fields. 1280 px dark: the grid shows and no list is fetched, and `?view=list` shows "Show as grid" with no day panel. Keyboard: the arrow keys move a row through Keep, Cancel and Change, the fields load and clear, and the focus ring shows. Not checked with a screen reader.
 
 ## Definition of done
 

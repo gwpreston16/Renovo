@@ -96,7 +96,7 @@ can be moved.
 | 85 | [API reminder strings and translated 400/401 titles, from the known-issues log](docs/phases/PHASE-85.md) | — | None | ✅ done |
 | 86 | [Lighter pages for big households, from the known-issues log](docs/phases/PHASE-86.md) | — | None | ✅ done |
 | 87 | [Budgets that follow pay day](docs/phases/PHASE-87.md) | — | 2 columns | ✅ done |
-| 88 | [The calendar's phone list and the scenario planner, from the known-issues log](docs/phases/PHASE-88.md) | — | None | 📋 planned |
+| 88 | [The calendar's phone list and the scenario planner, from the known-issues log](docs/phases/PHASE-88.md) | — | None | ✅ done |
 | 89 | [The 1.44.0 release notes, from the known-issues log](docs/phases/PHASE-89.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
