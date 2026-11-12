@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–88
+## Planned — Phases 30–89
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -97,6 +97,7 @@ can be moved.
 | 86 | [Lighter pages for big households, from the known-issues log](docs/phases/PHASE-86.md) | — | None | ✅ done |
 | 87 | [Budgets that follow pay day](docs/phases/PHASE-87.md) | — | 2 columns | ✅ done |
 | 88 | [The calendar's phone list and the scenario planner, from the known-issues log](docs/phases/PHASE-88.md) | — | None | 📋 planned |
+| 89 | [The 1.44.0 release notes, from the known-issues log](docs/phases/PHASE-89.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -250,6 +251,7 @@ can be moved.
 - **86 — Lighter pages for big households.** A page-weight batch from the known-issues log (K181, K183, K184, K185): the subscription list and the Stats "Worth it?" table post their row actions through one form each, the calendar sends the grid and loads the phone list on demand, and the scenario planner draws change-price controls only for rows set to Change.
 - **87 — Budgets that follow pay day.** Each member records their pay day under Profile → Appearance & preferences, and a monthly budget can be switched to run from pay day to pay day; two new periods, every two weeks and every four weeks, step from it. A member budget follows its subject's pay day, a household budget its owner's. The Budgets screen and the dashboard card read the period that contains today; the alert's rolling window takes the period's length. Yearly budgets, and every budget not switched over, keep their calendar period and their figures.
 - **88 — The calendar's phone list and the scenario planner.** A batch from the known-issues log (K230-K236), fixing what Phase 86's review found in its two scripts: a planner row moved off Change keeps its choice when its fields fail, the phone calendar's list survives Back, an ended session goes to sign-in rather than into the card, and the loading line is announced. The scripts' untested branches and the 11px text test are covered, and the calendar page describes the phone list.
+- **89 — The 1.44.0 release notes.** A docs batch from the known-issues log (K237): the released 1.44.0 notes move the Phase 86 legibility fixes from Changed to Fixed and say that Today, paging and "Just mine" keep the calendar's list only on the list view. It ships with Phase 88 in 1.44.1.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
