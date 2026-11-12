@@ -53,11 +53,11 @@ by**, each with its own icon and word as well as its colour — then "+N more",
 and the day's total. Choose a day and the panel beside the grid (on the grid
 page only) lists everything on it: what it is, whose it is, and the amount in
 its own currency with roughly what that is in the base currency. It is a link,
-so it works without script (`?day=`). Beside it are the month's total, its number of
-charges and its heaviest day. Totals follow the per-currency rule: a combined
-figure only when every currency has a rate, and the heaviest day is left out
-when one of them does not, rather than naming the wrong day. A deadline is on
-the grid but in no total — it is a date, not a charge.
+so it works without script (`?day=`). Beside it are the month's total, its
+number of charges and its heaviest day. Totals follow the per-currency rule: a
+combined figure only when every currency has a rate, and the heaviest day is
+left out when one of them does not, rather than naming the wrong day. A
+deadline is on the grid but in no total — it is a date, not a charge.
 
 Paused and cancelled subscriptions are not on it, and a private one only for
 the member it is private to — the same rows as the forecast, on the calendar

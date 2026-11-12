@@ -100,10 +100,9 @@ test('a late Change answer is not drawn into a row on Keep', () => {
     const slot = document.getElementById('scenario-change-5');
     const change = document.querySelector('input[name="choice[5]"][value="change"]');
     choose('keep');
-    const detail = beforeSwap(change, slot);
-
-    expect(detail.shouldSwap).toBe(false);
-    expect(slot.children).toHaveLength(0);
+    // htmx 2 reads `shouldSwap` back from this same detail once its
+    // listeners return, so false here is what keeps the fields out.
+    expect(beforeSwap(change, slot).shouldSwap).toBe(false);
 });
 
 test('an answer for a row still on Change is drawn', () => {

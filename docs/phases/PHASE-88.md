@@ -199,6 +199,12 @@ None.
   first rule.
 - **K236 — Confirmed 2026-11-12 (docs only):** written after A–D, so the page describes the behaviour they leave,
   including C's sign-in redirect.
+- **K233's status — Changed 2026-11-12 (found by the merge review):** the
+  status is never `hidden`: it stays in the page, empty when idle and folded
+  away by `.calendar-list-loading:empty`, and only its text changes. A region
+  unhidden and filled in the same tick is not reliably announced, and every
+  `[data-swap-status]` line stays in the tree the same way. Where B and D say
+  "hidden", read "empty". Tests assert the text, not `hidden`.
 - **K232's return page — Added 2026-11-12 (found by the merge review):**
   with the request marked as htmx's, sign-in's `next` is the list's own
   address, so a reader signing in again would land on the bare fragment.

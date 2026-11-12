@@ -603,6 +603,14 @@ final class CalendarPageTest extends DatabaseTestCase
         self::assertSame(302, $response->getStatusCode());
         self::assertSame('/calendar?month=2026-09&view=list&mine=1', $response->getHeaderLine('Location'));
 
+        // No month is this month; only `mine=1` asks for "Just mine".
+        $response = $this->request('GET', '/calendar/list?mine=0');
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame(
+            '/calendar?month=' . substr(self::TODAY, 0, 7) . '&view=list',
+            $response->getHeaderLine('Location'),
+        );
+
         // A month outside the calendar's range is still not found, not redirected.
         self::assertSame(404, $this->request('GET', '/calendar/list?month=1999-01')->getStatusCode());
     }

@@ -22,9 +22,9 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   its list again. With the session ended, the list's request drew the whole
   sign-in page inside the calendar card; the page now goes to sign-in (or to
   the password page, for a member who must change it), and comes back to that
-  month's list. The "Loading the
-  list…" line now sits outside the region the list replaces and gets its text
-  when shown, so a screen reader announces it. No migrations. *Phase 88.*
+  month's list. The "Loading the list…" line now sits outside the region the
+  list replaces and stays in the page, so a screen reader announces it when
+  its text arrives. No migrations. *Phase 88.*
 - **Tests that catch what they claim to.** The planner's and phone list's
   failure, retry and resize paths each have a test, and the test that keeps
   functional text at 11px or more reads every rule for a selector, media
