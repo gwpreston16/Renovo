@@ -62,6 +62,21 @@ final class DashboardService
      */
     private const COMING_UP_ROWS = 8;
 
+    /**
+     * A trial this close to its end is drawn as a warning, and this close as
+     * urgent: a week is enough time to decide calmly, two days is not.
+     */
+    public const TRIAL_WARN_DAYS = 7;
+    public const TRIAL_URGENT_DAYS = 2;
+
+    /**
+     * The chart palette's series tokens, in the order `category-donut.js`
+     * hands them to segments with no colour of their own. A Coming up row's
+     * category dot takes the same token its segment is drawn in, so the dot
+     * and the donut agree without the browser having to match them up.
+     */
+    private const SERIES_TOKENS = ['--s1', '--s2', '--s3', '--s4', '--s5', '--s6'];
+
     /** The budgets card's rows: enough to be a summary, not the budgets page. */
     private const BUDGET_ROWS = 4;
 
@@ -111,6 +126,8 @@ final class DashboardService
         $trials = $this->subscriptions->trialsBeforeConversion($scope);
         $monthlyBudget = $this->budgets->householdOverall($scope, BudgetPeriod::Monthly);
         $breakdown = $this->breakdown->fromStats($stats);
+        $donut = $this->breakdown->donut($breakdown);
+        $categoryColours = $this->categoryColours($donut);
 
         return [
             'stats' => $stats,
@@ -132,11 +149,11 @@ final class DashboardService
                 'one_off' => $stats['one_off'],
             ],
             'chart' => $this->chart($scope, $monthlyBudget?->amount),
-            'where_it_goes' => $breakdown + ['donut' => $this->breakdown->donut($breakdown)],
+            'where_it_goes' => $breakdown + ['donut' => $donut],
             'coming_up' => [
                 'days' => self::COMING_UP_DAYS,
                 'rows' => array_map(
-                    fn (array $charge): array => $this->chargeRow($charge),
+                    fn (array $charge): array => $this->chargeRow($charge, $dueSoonEnd, $categoryColours),
                     array_slice($comingUp, 0, self::COMING_UP_ROWS),
                 ),
                 'more' => max(0, count($comingUp) - self::COMING_UP_ROWS),
@@ -280,15 +297,59 @@ final class DashboardService
      * One Coming up row: the charge in its own currency, and roughly what that
      * is in the base currency when it is a different one that converts.
      *
+     * `is_due_soon` is the Due next 7 days tile's own test, so the rows the
+     * card tints are exactly the ones that tile counts. `category_colour` is
+     * the colour the row's category is drawn in on Where it goes; null when
+     * the subscription has no category.
+     *
      * @param ForecastCharge $charge
+     * @param array<string, string> $categoryColours
      * @return array<string, mixed>
      */
-    private function chargeRow(array $charge): array
+    private function chargeRow(array $charge, DateTimeImmutable $dueSoonEnd, array $categoryColours): array
     {
+        $category = $charge['subscription']->categoryName;
+
         return $charge + [
             'approx_base' => $this->approxBase($charge['amount']),
             'is_trial_conversion' => $charge['reason'] === 'trial_conversion',
+            'is_due_soon' => $charge['date'] <= $dueSoonEnd,
+            // A category folded into the donut's "everything else" tail is
+            // drawn in the tail's muted hue there, so it takes that here too.
+            'category_colour' => $category === null || $category === ''
+                ? null
+                : ($categoryColours[$category] ?? 'var(--s-other)'),
         ];
+    }
+
+    /**
+     * The colour each category is drawn in on the Where it goes donut, by name.
+     *
+     * Mirrors `category-donut.js`: a category with a colour of its own keeps
+     * it, and the rest take the series token at their segment's position, so
+     * the same category is the same colour on the donut and in Coming up in
+     * every palette and theme. With no donut (currencies that do not convert)
+     * the card draws no colours at all, so the map is empty and every
+     * categorised row takes the muted hue: the dot still marks the category,
+     * and claims no match with a picture that is not there.
+     *
+     * @param array<string, mixed>|null $donut
+     * @return array<string, string>
+     */
+    private function categoryColours(?array $donut): array
+    {
+        $colours = [];
+        foreach ($donut['slices'] ?? [] as $index => $slice) {
+            if ($slice['is_other'] || $slice['name'] === null || $slice['name'] === '') {
+                continue;
+            }
+            $own = $slice['colour'];
+            $colours[(string) $slice['name']] = is_string($own) && $own !== ''
+                ? $own
+                : sprintf('var(%s)', self::SERIES_TOKENS[$index % count(self::SERIES_TOKENS)]);
+        }
+
+        return $colours;
     }
 
     /**
@@ -307,17 +368,35 @@ final class DashboardService
     {
         $price = $trial->priceAfterConversion();
         $cycle = $trial->billingCycleAfterConversion();
+        $daysLeft = $trial->daysUntilTrialEnds($this->clock->today());
 
         return [
             'subscription' => $trial,
             'ends' => $trial->trialEndDate,
-            'days_left' => $trial->daysUntilTrialEnds($this->clock->today()),
+            'days_left' => $daysLeft,
+            'urgency' => self::trialUrgency($daysLeft),
             'converts_to' => $price,
             'converts_to_cycle' => $cycle,
             'approx_base' => $this->approxBase($price),
             'may_cancel' => $this->permissions->allows($scope, Permission::UpdateSubscription)
                 && $scope->mayWriteRow($trial->householdId, $trial->ownerUserId),
         ];
+    }
+
+    /**
+     * How loudly a trial's countdown is drawn: 'bad' within
+     * TRIAL_URGENT_DAYS (today included), 'warn' within TRIAL_WARN_DAYS, and
+     * null beyond that or when the trial has no end date, where a coloured
+     * chip would be crying wolf.
+     */
+    public static function trialUrgency(?int $daysLeft): ?string
+    {
+        return match (true) {
+            $daysLeft === null => null,
+            $daysLeft <= self::TRIAL_URGENT_DAYS => 'bad',
+            $daysLeft <= self::TRIAL_WARN_DAYS => 'warn',
+            default => null,
+        };
     }
 
     /**

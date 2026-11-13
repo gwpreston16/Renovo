@@ -155,7 +155,7 @@ final class DashboardTest extends DatabaseTestCase
         self::assertStringContainsString('Yearly run-rate', $body);
         self::assertStringContainsString('at today’s prices', $body);
         self::assertStringContainsString('Due next 7 days', $body);
-        self::assertStringContainsString('1 trial · 0 paused', $body);
+        self::assertMatchesRegularExpression('#<span class="is-trials">1 trial</span>\s*· 0 paused#', $body);
 
         $kpis = $this->overview($this->ownerId)['kpis'];
         // Only Streaming falls in 15–22 June; the trial converts on the 25th.
@@ -324,6 +324,105 @@ final class DashboardTest extends DatabaseTestCase
         self::assertStringContainsString('European thing', $card);
         self::assertStringContainsString('≈ £5.00', $card);
         self::assertStringNotContainsString('Hosting', $card);
+    }
+
+    /**
+     * The date tile says how close a charge is: the accent tint inside the
+     * Due next 7 days window (the tile's own test, so the same rows), the
+     * warn tint for a trial converting, plain beyond both.
+     */
+    public function testComingUpTintsWhatIsDueSoonAndWhatATrialConvertsTo(): void
+    {
+        $rows = [];
+        foreach ($this->overview($this->ownerId)['coming_up']['rows'] as $row) {
+            $rows[$row['subscription']->name] = $row;
+        }
+
+        // Thursday the 18th is inside the week; the 24th is not.
+        self::assertTrue($rows['Streaming']['is_due_soon']);
+        self::assertFalse($rows['Editors own thing']['is_due_soon']);
+        self::assertTrue($rows['Trial plan']['is_trial_conversion']);
+
+        $card = $this->section($this->body($this->get('/', $this->ownerId)), 'coming-up-card');
+        self::assertSame(1, substr_count($card, 'class="date-tile is-soon"'));
+        self::assertSame(1, substr_count($card, 'class="date-tile is-trial"'));
+        self::assertSame(2, substr_count($card, 'class="date-tile"'));
+    }
+
+    /**
+     * A row's category dot is the colour of its segment on Where it goes: the
+     * category's own colour when it has one, otherwise the series token at its
+     * segment's position, exactly as category-donut.js draws it. No category,
+     * no dot.
+     */
+    public function testComingUpCategoryDotsMatchTheDonut(): void
+    {
+        $owner = $this->scopeFor($this->ownerId);
+        $categories = new \App\Repository\CategoryRepository($this->db);
+        $video = $categories->create($owner, 'Video', '#12AB34');
+        $work = $categories->create($owner, 'Work', null);
+        $assign = 'UPDATE subscriptions SET category_id = :c WHERE id = :id';
+        $this->db->execute($assign, ['c' => $video, 'id' => $this->idOf('Streaming')]);
+        $this->db->execute($assign, ['c' => $work, 'id' => $this->idOf('Editors own thing')]);
+
+        $overview = $this->overview($this->ownerId);
+        $slices = array_column($overview['where_it_goes']['donut']['slices'], null, 'name');
+        $workIndex = array_search('Work', array_keys($slices), true);
+        self::assertIsInt($workIndex);
+
+        $rows = [];
+        foreach ($overview['coming_up']['rows'] as $row) {
+            $rows[$row['subscription']->name] = $row;
+        }
+        self::assertSame('#12AB34', $rows['Streaming']['category_colour']);
+        // Work has no colour, so it takes the series token at its segment.
+        self::assertSame(sprintf('var(--s%d)', $workIndex + 1), $rows['Editors own thing']['category_colour']);
+        self::assertNull($rows['Trial plan']['category_colour']);
+
+        $card = $this->section($this->body($this->get('/', $this->ownerId)), 'coming-up-card');
+        self::assertStringContainsString(
+            'data-css-background="#12AB34" aria-hidden="true"></span><span class="charge-category-name">Video</span>',
+            $card,
+        );
+        self::assertSame(2, substr_count($card, 'class="category-dot"'));
+    }
+
+    /**
+     * The trial countdown is quiet beyond a week, a warning inside one and
+     * urgent inside two days, today included.
+     *
+     * @return iterable<string, array{?int, ?string}>
+     */
+    public static function trialCountdowns(): iterable
+    {
+        yield 'no end date' => [null, null];
+        yield 'ended today' => [0, 'bad'];
+        yield 'two days' => [2, 'bad'];
+        yield 'three days' => [3, 'warn'];
+        yield 'a week' => [7, 'warn'];
+        yield 'eight days' => [8, null];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('trialCountdowns')]
+    public function testTheTrialCountdownGetsLouderAsTheEndNears(?int $daysLeft, ?string $urgency): void
+    {
+        self::assertSame($urgency, DashboardService::trialUrgency($daysLeft));
+    }
+
+    public function testTheFreeTrialsCardDrawsTheCountdownAsABadge(): void
+    {
+        // Ten days left: a plain badge.
+        $card = $this->section($this->body($this->get('/', $this->ownerId)), 'trials-card');
+        self::assertStringContainsString('<span class="badge trial-countdown">10 days left</span>', $card);
+        self::assertStringContainsString('Ends 25 Jun', $card);
+
+        // Two days left: urgent.
+        $this->db->execute(
+            "UPDATE subscriptions SET trial_end_date = '2026-06-17' WHERE id = :id",
+            ['id' => $this->trialId],
+        );
+        $card = $this->section($this->body($this->get('/', $this->ownerId)), 'trials-card');
+        self::assertStringContainsString('<span class="badge trial-countdown badge-bad">2 days left</span>', $card);
     }
 
     /**
@@ -508,6 +607,9 @@ final class DashboardTest extends DatabaseTestCase
         self::assertSame(2400, $rise['annual_minor']);
 
         $banner = $this->section($this->body($this->get('/', $this->ownerId)), 'price-banner');
+        // A heads-up about money, drawn as the warn-tinted callout.
+        $page = $this->body($this->get('/', $this->ownerId));
+        self::assertStringContainsString('class="card price-banner callout"', $page);
         self::assertStringContainsString('Streaming rises from £9.99 to £11.99 on 1 July', $banner);
         self::assertStringContainsString('+£2.00 a month, +£24.00 a year', $banner);
     }

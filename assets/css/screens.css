@@ -3994,6 +3994,11 @@ a.segmented-option {
     color: var(--bad);
 }
 
+/* The Active tile's trial count, in the warn hue trials have across the page. */
+.kpi-note .is-trials {
+    color: var(--warn);
+}
+
 .card-icon {
     display: inline-flex;
     color: var(--faint);
@@ -4202,6 +4207,65 @@ a.segmented-option {
     line-height: 1.1;
 }
 
+/*
+ * How close a charge is, on its date tile. Inside the Due next 7 days window
+ * the tile takes the accent's soft fill; a trial converting takes the warn
+ * tint its Trial badge has. The month and day take the tint's own ink, since
+ * `--faint` is not held to AA on a tint. Pairs: `accent-text` and `warn` on
+ * their tints over the surface, both in ThemeContrastTest.
+ */
+.date-tile.is-soon,
+.date-tile.is-trial {
+    padding: 0.25rem 0;
+    border-radius: var(--radius-small);
+}
+
+.date-tile.is-soon {
+    background: var(--accent-soft);
+}
+
+.date-tile.is-soon > span {
+    color: var(--accent-text);
+}
+
+.date-tile.is-trial {
+    background: var(--warn-bg);
+}
+
+.date-tile.is-trial > span {
+    color: var(--warn);
+}
+
+/*
+ * The category, its dot the colour of its segment on Where it goes. Where the
+ * card is a narrow column (about 768px) a long name is cut short with an
+ * ellipsis, as the subscription's name above it is, rather than running into
+ * the owner's avatar.
+ */
+.charge-category {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    max-width: 100%;
+    min-width: 0;
+    vertical-align: bottom;
+}
+
+.charge-category-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.category-dot {
+    flex: none;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: var(--radius-pill);
+    background: var(--s-other);
+}
+
 .charge-name {
     display: flex;
     flex-direction: column;
@@ -4336,6 +4400,12 @@ a.segmented-option {
     margin-top: 0.5rem;
 }
 
+/* The countdown badge leads its line, so the badge's own start margin goes. */
+.trial-countdown {
+    margin-left: 0;
+    margin-inline-end: 0.25rem;
+}
+
 /*
  * The next-price-rise tile. It is a third of the dashboard grid, which at 768px
  * is about 155px wide, narrower than its icon, text column and button side by
@@ -4365,6 +4435,14 @@ a.segmented-option {
 .price-banner-label {
     margin: 0;
     color: var(--warn);
+}
+
+/*
+ * On the callout's warn tint the icon's own warn tile would vanish, so it
+ * sits on the card's surface instead (`warn` on `surface` is a held pair).
+ */
+.price-banner.callout .kpi-icon-warn {
+    background: var(--surface);
 }
 
 .price-banner-title {
