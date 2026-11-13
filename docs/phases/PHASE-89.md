@@ -41,7 +41,9 @@ In `CHANGELOG.md`'s `[1.44.0]` section, and nowhere else in it:
 - The heading, date and every other entry stay as they are.
 
 The GitHub release **Renovo 1.44.0** body is edited to match (the owner or the
-release step does this; it is not a file in the repository).
+release step does this; it is not a file in the repository). *Changed
+2026-11-12:* this phase does it with `gh release edit v1.44.0` once the PR is
+merged, on the owner's yes.
 
 Regression test: `VersionAgreementTest` and `DocsLinkTest` stay green (the
 heading is untouched and no link breaks); the two changes are read against
@@ -75,17 +77,23 @@ None.
 - **Release — Decided 2026-11-12:** ships with Phase 88's patch release,
   **1.44.1**. Not chosen: a patch of its own. A docs-only correction needs no
   release of its own, and Phase 88 edits `CHANGELOG.md` too.
-- **Assumed:** this phase's own CHANGELOG line is one sentence under
-  `[Unreleased]` → *Fixed* saying the 1.44.0 notes were corrected, so readers
-  of 1.44.1 know the earlier section changed.
+  **Changed 2026-11-12 (found while starting it):** Phase 88 shipped as
+  **1.45.0** without this phase, so the correction ships with the next
+  release, whatever `/release` numbers it. Not chosen: a 1.45.1 patch for this
+  fix alone.
+- **Assumed — Confirmed 2026-11-12:** this phase's own CHANGELOG line is one
+  sentence under `[Unreleased]` → *Fixed* saying the 1.44.0 notes were
+  corrected, so readers of the next release know the earlier section changed.
+- **GitHub release body — Confirmed 2026-11-12:** this phase edits it with
+  `gh release edit v1.44.0` after merge, once the owner says yes.
 
 ## Status
 
-- [ ] K237: the 1.44.0 notes file the Phase 86 fixes under Fixed and describe the list view correctly
+- [x] K237: the 1.44.0 notes file the Phase 86 fixes under Fixed and describe the list view correctly
 - [ ] GitHub release Renovo 1.44.0 body updated to match
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 89 row marked ✅ done
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 89 row marked ✅ done
 - [ ] composer check, coverage and the API doc tests green
 
 ## Definition of done

@@ -19,6 +19,14 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   tint, and the Active tile's trial count is in the colour trials have
   everywhere else. No new colours: every palette and theme keeps its own.
 
+### Fixed
+
+- **The 1.44.0 notes are corrected.** The readability and screen-reader
+  fixes on the four Phase 86 screens now sit under *Fixed* rather than
+  *Changed*, and the calendar sentence says that Today, Previous/Next and
+  "Just mine" keep the list only on the list view (`?view=list`). Nothing in
+  the app changes. *Phase 89.*
+
 ## [1.45.0] - 2026-11-12
 
 ### Fixed
@@ -104,26 +112,28 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   without script a phone reader gets a "Show as list" link to the same month
   with the list in place of the grid (495,819 to 66,286 bytes a page,
   473,614 to 44,081 for a month change). While the list loads the phone shows
-  "Loading the list…", and the link comes back if the request fails. Today
-  and "Just mine" keep the list form, which has no open-day panel and offers
-  "Show as grid" from tablet width up. The **scenario planner** draws the
-  new price, cycle and days fields only for a row set to Change, fetching a
-  row's fields from the new `GET /forecast/scenario/rows/{id}/controls` when
-  it is switched to Change and redrawing every Change row's fields on the
-  form's own round trip, with or without script (1,518,771 to 923,271 bytes).
+  "Loading the list…", and the link comes back if the request fails. On the
+  list view (`?view=list`), Today, Previous/Next and "Just mine" keep the
+  list, which has no open-day panel and offers "Show as grid" from tablet
+  width up. The **scenario planner** draws the new price, cycle and days
+  fields only for a row set to Change, fetching a row's fields from the new
+  `GET /forecast/scenario/rows/{id}/controls` when it is switched to Change
+  and redrawing every Change row's fields on the form's own round trip, with
+  or without script (1,518,771 to 923,271 bytes).
   If a row's fields fail to load it goes back to Keep and the page says so;
   choosing Change price again retries. The scenario figures are unchanged.
   No API change; no migrations. *Phase 86.*
-- **Easier to read and to hear on the same four screens.** A paused
-  subscription on the list keeps readable text: it now mutes its words and
-  fades only its logo and the payer's face, where before the whole row faded
-  below the contrast WCAG asks for. Each Stats "Used it" button tells a
-  screen reader which subscription it records. The rail's small labels, the
-  calendar's chips and the top bar's subtitle are a size larger, and help
-  text keeps a readable line length. *Phase 86.*
 
 ### Fixed
 
+- **Easier to read and to hear on the same four screens.** A paused
+  subscription faded its whole row, words included, below the contrast WCAG
+  asks for; it now mutes its words and fades only its logo and the payer's
+  face. Every Stats "Used it" button had the same name to a screen reader;
+  each now names the subscription it records. The rail's small labels and the
+  calendar's chips were 10px and the top bar's subtitle 11px; each is now a
+  size larger. Help text ran to about 96 characters a line and now keeps a
+  readable line length. *Phase 86.*
 - **Form errors are tied to their fields for screen readers.** A rejected
   category, tag, payment method, notification channel, notification schedule,
   backup destination, household or scenario change used to show its message
