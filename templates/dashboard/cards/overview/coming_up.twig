@@ -5,6 +5,12 @@
 
     Each amount is in its own currency, with roughly what it is in the base
     currency beside it when that is a different one with a rate.
+
+    The date tile says how close a charge is: tinted in the accent when it is
+    inside the Due next 7 days window, in the warn hue when a trial converts
+    (as its Trial badge is), and plain beyond. The category's dot is the
+    colour of its segment on Where it goes, with the name written beside it,
+    so the colour links the two cards without being the only way to read it.
 #}
 {% import 'partials/logo.twig' as logo %}
 {% import 'partials/avatar.twig' as avatar %}
@@ -27,7 +33,7 @@
             {% for row in coming_up.rows %}
                 {% set subscription = row.subscription %}
                 <li class="charge-row">
-                    <span class="date-tile" aria-hidden="true">
+                    <span class="date-tile{{ row.is_trial_conversion ? ' is-trial' : (row.is_due_soon ? ' is-soon' : '') }}" aria-hidden="true">
                         <span class="date-tile-month">{{ row.date|local_date('MMM') }}</span>
                         <span class="date-tile-day num">{{ row.date|local_date('d') }}</span>
                     </span>
@@ -36,6 +42,7 @@
                         <a href="/subscriptions/{{ subscription.id }}{{ can_edit_row(scope, subscription) ? '/edit' : '/money' }}">{{ subscription.name }}</a>
                         <span class="hint">
                             <span class="visually-hidden">{{ row.date|local_date('d MMMM') }} · </span>
+                            {% if row.category_colour %}<span class="charge-category"><span class="category-dot" data-css-background="{{ row.category_colour }}" aria-hidden="true"></span><span class="charge-category-name">{{ subscription.categoryName }}</span></span> · {% endif %}
                             {% if row.is_trial_conversion %}{{ t('dashboard.trial_converts') }}{% elseif subscription.billingCycle %}{{ cycle_label(subscription.billingCycle.value, subscription.cycleDays, subscription.cycleInterval) }}{% endif %}
                         </span>
                     </span>

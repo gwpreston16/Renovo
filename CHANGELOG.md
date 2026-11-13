@@ -8,6 +8,17 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Changed
+
+- **The dashboard shows what needs attention at a glance.** In Coming up, a
+  charge due in the next seven days has its date tinted in the accent, and a
+  trial converting has its date in the warn colour; each row also names its
+  category, with a dot in the colour that category has on Where it goes. Each
+  free trial's countdown is a badge that turns amber inside a week and red
+  inside two days. The price-change tile is drawn as a heads-up, on the warn
+  tint, and the Active tile's trial count is in the colour trials have
+  everywhere else. No new colours: every palette and theme keeps its own.
+
 ## [1.45.0] - 2026-11-12
 
 ### Fixed

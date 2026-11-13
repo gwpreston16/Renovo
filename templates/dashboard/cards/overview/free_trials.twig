@@ -25,15 +25,20 @@
                         {{ logo.mark(trial) }}
                         <strong>{{ trial.name }}</strong>
                     </p>
-                    <p class="hint">
-                        {% if row.days_left is not null and row.days_left <= 0 %}
-                            {{ t('dashboard.trial_ends_today') }}
-                        {% else %}
-                            {{ t('dashboard.trial_ends', {
-                                'date': row.ends|local_date('d MMM'),
-                                'days': row.days_left ?? 0,
-                            }) }}
-                        {% endif %}
+                    {#
+                        The countdown is a badge: warn inside a week, bad
+                        inside two days, plain beyond, so the trial nearest
+                        its end is the one the eye lands on.
+                    #}
+                    <p class="hint trial-row-when">
+                        <span class="badge trial-countdown{{ row.urgency ? ' badge-' ~ row.urgency : '' }}">
+                            {%- if row.days_left is not null and row.days_left <= 0 -%}
+                                {{ t('dashboard.trial_ends_today') }}
+                            {%- else -%}
+                                {{ t('dashboard.trial_days_left', {'days': row.days_left ?? 0}) }}
+                            {%- endif -%}
+                        </span>
+                        {% if row.days_left is null or row.days_left > 0 %}{{ t('dashboard.trial_ends_on', {'date': row.ends|local_date('d MMM')}) }}{% endif %}
                         {% if trial.ownerName %} · {{ t('dashboard.trial_started_by', {'name': trial.ownerName}) }}{% endif %}
                     </p>
                     <p class="hint">

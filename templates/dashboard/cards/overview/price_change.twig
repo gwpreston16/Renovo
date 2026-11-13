@@ -3,10 +3,12 @@
     reports — or an intro offer ending, called that — old price to new, and
     what it adds over a month and a year.
     Absent when there is none — never a placeholder, never a made-up one.
+    Drawn as a callout (the warn tint), as DESIGN.md and the prototype draw
+    this tile: a heads-up about money, not an error.
 #}
 {% if price_change %}
     {% set rise = price_change %}
-    <section class="card price-banner" aria-labelledby="price-banner-heading">
+    <section class="card price-banner callout" aria-labelledby="price-banner-heading">
         <span class="kpi-icon kpi-icon-warn">{{ icon('trend-up') }}</span>
         <div>
             <h2 id="price-banner-heading" class="stat-label price-banner-label">{{ t(rise.ends_offer ? 'dashboard.offer_ends' : 'dashboard.price_change') }}</h2>

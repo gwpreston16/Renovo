@@ -75,8 +75,10 @@ final class ThemeContrastTest extends TestCase
         // Each semantic ink on its own tint, and on the surfaces it is also
         // used on bare (a price that went up, a peak month, a field error).
         'ok' => ['ok-bg:surface', 'surface'],
-        'warn' => ['warn-bg:surface', 'bg', 'surface', 'surface-2'],
-        'bad' => ['bad-bg:surface', 'bg', 'surface', 'surface-2'],
+        // The dashboard's trial countdown is a warn or bad badge inside a
+        // trial row, whose ground is surface-2, so each tint is held there too.
+        'warn' => ['warn-bg:surface', 'warn-bg:surface-2', 'bg', 'surface', 'surface-2'],
+        'bad' => ['bad-bg:surface', 'bad-bg:surface-2', 'bg', 'surface', 'surface-2'],
         'info' => ['info-bg:surface', 'surface'],
 
         // The secondary button.
