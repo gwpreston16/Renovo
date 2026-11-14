@@ -476,20 +476,20 @@ Rolling back has three costs:
   their pay day under **Profile → Preferences** and switches the budget back to
   **From pay day** on its form. Only a database backup restores both at once.
 
-## After upgrading to 1.45.1: API token expiries on a server not in UTC (Phase 90)
+## After upgrading to UTC migrations on MySQL (Phase 90)
 
 This only matters on a **MySQL or MariaDB server whose own time zone is not
 UTC** (a bare-metal or packaged install) that ran the 1.41.0 migration
 `20271101000001_widen_api_token_expiry`. The Docker images run in UTC and are
 not affected, and neither is PostgreSQL.
 
-Before 1.45.1, Phinx's own connection to MySQL kept the server's time zone,
+Before this release, Phinx's own connection to MySQL kept the server's time zone,
 while the application's runs in UTC. That migration changes `api_tokens.expires_at`
 from a `timestamp` to a `datetime`, which writes each value out in the
 connection's zone, so **every stored token expiry moved by the server's offset**:
 on a `+10:00` server a token due to expire at 12:00 UTC now expires at 22:00
 UTC, and on a `-05:00` server five hours early. Rolling the migration back
-could also fail. From 1.45.1, Phinx's MySQL connection runs in UTC like the
+could also fail. From this release, Phinx's MySQL connection runs in UTC like the
 application's, so migrations, rollbacks and `phinx seed:run` read and write
 times as the application does.
 

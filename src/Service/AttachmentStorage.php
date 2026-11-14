@@ -7,6 +7,7 @@ namespace App\Service;
 use finfo;
 use Psr\Http\Message\UploadedFileInterface;
 use RuntimeException;
+use App\Support\UploadRefusal;
 
 /**
  * Where invoices and receipts live on disk.
@@ -77,6 +78,10 @@ final class AttachmentStorage
     {
         if ($file->getError() === UPLOAD_ERR_NO_FILE) {
             throw ValidationException::field('file', 'error.file.required');
+        }
+
+        if (UploadRefusal::isTooLarge($file)) {
+            throw $this->tooLarge();
         }
 
         if ($file->getError() !== UPLOAD_ERR_OK) {

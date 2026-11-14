@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Repository\LogoUsageRepository;
 use Psr\Http\Message\UploadedFileInterface;
 use RuntimeException;
+use App\Support\UploadRefusal;
 
 /**
  * Stores a logo that the user uploaded.
@@ -47,17 +48,17 @@ final class LogoStorage
             return null;
         }
 
+        if (UploadRefusal::isTooLarge($file)) {
+            throw $this->tooLarge();
+        }
+
         if ($file->getError() !== UPLOAD_ERR_OK) {
             throw ValidationException::field('logo', 'error.logo.upload_failed');
         }
 
         $size = $file->getSize();
         if ($size !== null && $size > $this->maxBytes) {
-            throw ValidationException::field(
-                'logo',
-                'error.logo.too_large',
-                ['kilobytes' => intdiv($this->maxBytes, 1024)],
-            );
+            throw $this->tooLarge();
         }
 
         $temporary = tempnam(sys_get_temp_dir(), 'logo');
@@ -174,5 +175,17 @@ final class LogoStorage
         }
 
         $this->delete($storedPath);
+    }
+
+    /**
+     * The refusal for a logo over the limit, in kilobytes as the form says it.
+     */
+    private function tooLarge(): ValidationException
+    {
+        return ValidationException::field(
+            'logo',
+            'error.logo.too_large',
+            ['kilobytes' => intdiv($this->maxBytes, 1024)],
+        );
     }
 }

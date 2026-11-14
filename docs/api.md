@@ -467,6 +467,11 @@ the field the client sent: a bad price is under `price_minor`, a bad
 | `422` | The body was understood but is not valid. |
 | `429` | Over a [rate limit](#rate-limits), or the address has failed token authentication ten times in five minutes. `Retry-After` says how many seconds to wait. |
 
+One more status can arrive without this JSON shape: a request body larger than
+the web server's own limit (16 MB in the Docker images) is refused by the web
+server before Renovo sees it, with `413` and an HTML page. See
+[Configuration](configuration.md) for raising it.
+
 Two of these are deliberately uninformative:
 
 - **`401` collapses four causes into one.** Distinguishing "expired" from

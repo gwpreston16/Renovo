@@ -150,11 +150,11 @@
                 <input type="date" id="pay_day" name="pay_day" class="num"
                        value="{{ pay_day_failed ? pay_day_failed.value : (current_user.payDay ? current_user.payDay|date('Y-m-d') : '') }}"
                        min="{{ pay_day_range.min }}" max="{{ pay_day_range.max }}"
-                       {% if pay_day_failed %}aria-invalid="true" aria-describedby="pay-day-error pay-day-hint"{% else %}aria-describedby="pay-day-hint"{% endif %}>
+                       {% if pay_day_failed %}aria-invalid="true" aria-describedby="pay-day-hint pay-day-error"{% else %}aria-describedby="pay-day-hint"{% endif %}>
                 <button type="submit" class="button">{{ t('settings.save_pay_day') }}</button>
             </div>
-            {% if pay_day_failed %}<p class="field-error" id="pay-day-error">{{ error_message(pay_day_failed.error) }}</p>{% endif %}
             <p class="hint" id="pay-day-hint">{{ t('settings.pay_day_hint') }}</p>
+            {% if pay_day_failed %}<p class="field-error" id="pay-day-error">{{ error_message(pay_day_failed.error) }}</p>{% endif %}
         </div>
     </form>
 </section>

@@ -187,7 +187,7 @@ final class PayDayPreferenceTest extends DatabaseTestCase
         $field = $this->payDayField($page);
         self::assertStringContainsString('value="2028-03-01"', $field, 'The field holds what was typed.');
         self::assertStringContainsString('aria-invalid="true"', $field);
-        self::assertStringContainsString('aria-describedby="pay-day-error pay-day-hint"', $field);
+        self::assertStringContainsString('aria-describedby="pay-day-hint pay-day-error"', $field);
         self::assertMatchesRegularExpression(
             '~<p class="field-error" id="pay-day-error">Enter a real date for your pay day[^<]*</p>~',
             $page,
@@ -198,6 +198,37 @@ final class PayDayPreferenceTest extends DatabaseTestCase
         $again = $this->payDayField((string) $this->request('GET', '/profile')->getBody());
         self::assertStringContainsString('value="2026-10-25"', $again);
         self::assertStringNotContainsString('aria-invalid', $again);
+    }
+
+    /**
+     * A pay day posted as a list is read as no value, as any field that is not
+     * text is: the field comes back empty, never holding "Array".
+     */
+    public function testAPayDayPostedAsAListComesBackEmpty(): void
+    {
+        $this->signIn($this->ownerId);
+
+        $request = (new ServerRequestFactory())
+            ->createServerRequest('POST', 'http://localhost/profile/preferences', ['REMOTE_ADDR' => '127.0.0.1'])
+            ->withParsedBody(['pay_day' => ['2026-05-25']])
+            ->withHeader(CsrfTokenManager::HEADER_NAME, $this->container()->get(CsrfTokenManager::class)->token());
+        $this->app->handle($request);
+
+        $field = $this->payDayField((string) $this->request('GET', '/profile')->getBody());
+        self::assertStringContainsString('value=""', $field);
+        self::assertStringNotContainsString('Array', $field);
+        self::assertNull($this->stored($this->ownerId));
+    }
+
+    public function testAMalformedRememberedPayDayIsIgnored(): void
+    {
+        $this->signIn($this->ownerId);
+        $this->session->set('profile.failed_pay_day', ['value' => ['not', 'a', 'string'], 'key' => 7]);
+
+        $page = (string) $this->request('GET', '/profile')->getBody();
+
+        self::assertStringNotContainsString('id="pay-day-error"', $page);
+        self::assertStringNotContainsString('aria-invalid', $this->payDayField($page));
     }
 
     public function testThePayDayFieldOffersOnlyDatesTheServerTakes(): void

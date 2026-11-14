@@ -49,7 +49,10 @@ if ($adapter === 'mysql') {
     //    creates on MariaDB 10.6-10.9 gets a timestamp column that rewrites
     //    itself. The server may refuse it, which is not worth stopping for.
     // The application's strict sql_mode is not run: the migrations keep the
-    // server's own. If the server cannot be reached, Phinx is left to say so.
+    // server's own. If the server cannot be reached, Phinx is left to say so;
+    // but once it is reached, a refused UTC setting stops the run, since a
+    // migration in the server's own zone is the K238 bug again.
+    $pdo = null;
     try {
         $platform = new App\Persistence\MySqlPlatform();
         $pdo = new PDO(
@@ -57,6 +60,9 @@ if ($adapter === 'mysql') {
             $connection['user'],
             $connection['pass'],
         );
+    } catch (PDOException) {
+    }
+    if ($pdo !== null) {
         $pdo->exec(App\Persistence\MySqlPlatform::UTC_SESSION);
         foreach ($platform->optionalInitialStatements() as $statement) {
             try {
@@ -66,7 +72,6 @@ if ($adapter === 'mysql') {
             }
         }
         $connection['connection'] = $pdo;
-    } catch (PDOException) {
     }
 } else {
     // The same for PostgreSQL: Phinx's own connection keeps the server's time

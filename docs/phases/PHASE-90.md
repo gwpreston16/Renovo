@@ -257,6 +257,27 @@ None.
   the existing message). Any new string goes in every catalogue in
   `translations/`.
 
+### Added at review (2026-11-14)
+
+The owner asked for merge-review's non-blocking follow-ups to be fixed in
+the phase:
+
+- The upgrade note and the migration's docblock name Phase 90 rather than
+  1.45.1: `[Unreleased]` also holds a *Changed* entry from master, so the
+  version is settled at `/release`.
+- The pay-day error follows its hint, in the markup and in
+  `aria-describedby`, as every other field has it.
+- `phinx.php`: a refused UTC setting stops the run rather than falling back
+  to Phinx's own unpinned connection.
+- A file PHP refuses for its size (`UPLOAD_ERR_INI_SIZE`, `_FORM_SIZE`) gets
+  each store's "too large" message (`App\Support\UploadRefusal`), and
+  `docs/api.md`'s status table names the web server's `413`.
+- `copy-field.js` read `window.renovoI18n` as a map, as K242's first cut did,
+  so the Copy button announced nothing; it now uses `t()`.
+- Tests: the budget-period listener is bound by `app.js`, `filters_on`
+  reaches the page, a stray change is ignored, and a list or malformed pay
+  day is handled.
+
 ## Status
 
 - [x] K238: Phinx's MySQL connection runs in UTC; upgrade note for shifted expiries

@@ -7,6 +7,7 @@ namespace App\Service;
 use GdImage;
 use Psr\Http\Message\UploadedFileInterface;
 use RuntimeException;
+use App\Support\UploadRefusal;
 
 /**
  * Where a member's picture lives, and what it has been turned into first.
@@ -78,6 +79,10 @@ final class AvatarStorage
     {
         if ($file->getError() === UPLOAD_ERR_NO_FILE) {
             throw ValidationException::field('avatar', 'error.file.required');
+        }
+
+        if (UploadRefusal::isTooLarge($file)) {
+            throw $this->tooLarge();
         }
 
         if ($file->getError() !== UPLOAD_ERR_OK) {

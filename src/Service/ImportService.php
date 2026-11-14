@@ -15,6 +15,7 @@ use App\Service\Import\SourceFile;
 use App\Support\Clock;
 use Psr\Http\Message\UploadedFileInterface;
 use RuntimeException;
+use App\Support\UploadRefusal;
 
 /**
  * Importing subscriptions from a CSV or JSON file.
@@ -72,17 +73,17 @@ final class ImportService
             throw ValidationException::field('file', 'error.import.file_required');
         }
 
+        if (UploadRefusal::isTooLarge($file)) {
+            throw $this->tooLarge();
+        }
+
         if ($file->getError() !== UPLOAD_ERR_OK) {
             throw ValidationException::field('file', 'error.upload.failed');
         }
 
         $size = $file->getSize();
         if ($size !== null && $size > self::MAX_BYTES) {
-            throw ValidationException::field(
-                'file',
-                'error.import.too_large',
-                ['megabytes' => intdiv(self::MAX_BYTES, 1024 * 1024)],
-            );
+            throw $this->tooLarge();
         }
 
         $this->ensureDirectory();
@@ -339,5 +340,17 @@ final class ImportService
         if (!is_dir($this->directory) && !mkdir($this->directory, 0o750, true) && !is_dir($this->directory)) {
             throw new RuntimeException(sprintf('Import directory "%s" is not writable.', $this->directory));
         }
+    }
+
+    /**
+     * The refusal for an import file over the limit, in megabytes.
+     */
+    private function tooLarge(): ValidationException
+    {
+        return ValidationException::field(
+            'file',
+            'error.import.too_large',
+            ['megabytes' => intdiv(self::MAX_BYTES, 1024 * 1024)],
+        );
     }
 }

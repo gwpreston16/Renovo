@@ -38,7 +38,10 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   4 MB couldn't be uploaded at all, though the limit is 10 MB. PHP and nginx
   in the image now let through anything up to the largest default, so a
   larger file gets the app's own error, and `docs/configuration.md` says what
-  to raise to go higher. *Phase 90.*
+  to raise to go higher. A file PHP itself refuses for its size now gets
+  the same "must be 10 MB or smaller" message (or the logo, picture or
+  import limit), not "could not be uploaded. Try again.", which no retry
+  could fix. *Phase 90.*
 - **A refused pay day is explained beside the field.** On Profile →
   Preferences a pay day more than a year ahead comes back in the field as
   typed, with the reason under it and the field marked invalid for a screen
@@ -48,7 +51,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   longer reads the "set your pay day" hint while Yearly is chosen. On a phone,
   the subscription list's Filters button is read as "Filters, 2 on" rather
   than "Filters 2". Dragging a dashboard card no longer slides the others for
-  someone whose system asks for less motion. *Phase 90.*
+  someone whose system asks for less motion. The calendar feed's Copy button
+  says "Copied." again, or that the copy failed. *Phase 90.*
 - **The 1.44.0 upgrade notes say a rollback loses "From pay day".** Rolling
   the pay-day migrations back turns it off on every monthly budget, and
   migrating again doesn't turn it back on. *Phase 90.*

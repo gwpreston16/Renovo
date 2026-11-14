@@ -16,7 +16,7 @@ use Phinx\Migration\AbstractMigration;
  * session's time zone, so this relies on the session Phinx is handed by
  * `phinx.php`, which is pinned to +00:00 (`MySqlPlatform::UTC_SESSION`, the
  * application's own setting) with PHP in UTC: the column keeps every value it
- * holds. Before 1.45.1 Phinx's MySQL session kept the server's zone, and on a
+ * holds. Before Phase 90 Phinx's MySQL session kept the server's zone, and on a
  * server not running in UTC every expiry moved by the server's offset (K238;
  * `docs/upgrading.md` says what to do about it).
  *

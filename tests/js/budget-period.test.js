@@ -77,9 +77,22 @@ test('a group with nothing chosen is described by the hint', () => {
     expect(described()).toBe('budget-pay-day-hint');
 });
 
-test('a change outside a Period group is ignored', () => {
-    document.body.innerHTML = form({ period: 'annual' }) + '<input type="checkbox" name="other">';
+test('a change to another control, even inside the group, is ignored', () => {
+    // Monthly with no description: if the handler ran, it would add the hint.
+    document.body.innerHTML = form();
+    group().removeAttribute('aria-describedby');
+    group().insertAdjacentHTML('beforeend', '<input type="checkbox" name="other">');
+
     document.querySelector('input[name="other"]').dispatchEvent(new Event('change', { bubbles: true }));
 
     expect(group().hasAttribute('aria-describedby')).toBe(false);
+});
+
+test('a period radio outside a Period group is ignored', () => {
+    document.body.innerHTML = form() + '<input type="radio" name="period" value="annual">';
+    const stray = document.querySelector('body > input[name="period"]');
+    stray.checked = true;
+    stray.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(described()).toBe('budget-pay-day-hint');
 });
