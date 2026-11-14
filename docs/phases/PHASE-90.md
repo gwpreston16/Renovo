@@ -229,7 +229,7 @@ None.
 - **K240 — Confirmed 2026-11-14:** makes the pay-day field behave as every
   form changed in 1f13960 does, and as the controller's docblock means ("the
   error is on screen").
-- **K241 — Assumed (confirm at review):** drop the hint's id from
+- **K241 — Confirmed 2026-11-14:** drop the hint's id from
   `aria-describedby` for Yearly, on the server and from a script. Not chosen:
   showing the hint for Yearly too, which would tell a member to set a pay day
   for a period that never follows it.
@@ -238,7 +238,7 @@ None.
 - **K243 — Confirmed 2026-11-14:** makes the drag do what `base.css` says a
   movement must.
 - **K247 — Confirmed 2026-11-14 (docs only).**
-- **Released CHANGELOG sections — Assumed (confirm at review):** the 1.41.0
+- **Released CHANGELOG sections — Confirmed 2026-11-14:** the 1.41.0
   entry that says the migration keeps every value (K238) and the 1.44.0 entry
   on rolling back pay day (K247) are left as released; `[Unreleased]` →
   *Fixed* says what each fix changes, and `docs/upgrading.md` carries the
@@ -251,7 +251,9 @@ None.
 - **Release — Decided 2026-11-14:** its own patch release, **1.45.1**, once
   merged. Not chosen: holding it for the next minor. No planned phase touches
   this code.
-- **Assumed:** the only new catalogue string is K242's (and C's error reuses
+- **K248 — Confirmed 2026-11-14:** offered as an addition (it tests the
+  Filters toggle K242 edits) and left *Open*, as the brief ranks it.
+- **Confirmed 2026-11-14:** the only new catalogue string is K242's (and C's error reuses
   the existing message). Any new string goes in every catalogue in
   `translations/`.
 
