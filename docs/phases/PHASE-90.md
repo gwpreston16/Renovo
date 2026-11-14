@@ -260,7 +260,7 @@ None.
 ## Status
 
 - [x] K238: Phinx's MySQL connection runs in UTC; upgrade note for shifted expiries
-- [ ] K239: the image's PHP and nginx limits cover every upload limit
+- [x] K239: the image's PHP and nginx limits cover every upload limit
 - [ ] K240: a refused pay day is explained beside the field, with `min` and `max`
 - [ ] K241: the hidden pay-day hint leaves `aria-describedby` for Yearly
 - [ ] K242: the Filters button says what its count is

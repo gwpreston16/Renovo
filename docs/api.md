@@ -755,7 +755,7 @@ Attach a document. `multipart/form-data`:
 
 | Part | Notes |
 | --- | --- |
-| `file` | **Required.** PDF, PNG, JPEG, WebP or GIF, up to 10 MB (10,485,760 bytes); a larger file is a `422` on `file`. Type determined from contents; filename and declared content type are ignored. An operator changes the limit with `UPLOAD_MAX_ATTACHMENT_BYTES` (see [Configuration](configuration.md)). |
+| `file` | **Required.** PDF, PNG, JPEG, WebP or GIF, up to 10 MB (10,485,760 bytes); a larger file is a `422` on `file`. Type determined from contents; filename and declared content type are ignored. An operator changes the limit with `UPLOAD_MAX_ATTACHMENT_BYTES` (see [Configuration](configuration.md)). A request body over the web server's own limit (16 MB in the Docker images) is refused by the web server, with its own `413` page rather than this JSON error; see [Configuration](configuration.md) to raise both. |
 | `period_date` | Optional `YYYY-MM-DD`. The billing period this document covers. A date that does not exist, or a value that is not a date, is a `422` on `period_date`, even when `charge_id` is sent. |
 | `charge_id` | Optional. The payment this is the invoice for — one of this subscription's charges. The attachment is dated to it, whatever `period_date` says. Anything that is not one of its charge ids is a `422`. |
 

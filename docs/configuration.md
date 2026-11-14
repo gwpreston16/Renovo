@@ -45,3 +45,20 @@ list. `.env` is never committed. The ones that matter most:
 | `UPLOAD_MAX_LOGO_BYTES`     | Ceiling on a logo upload, for a subscription or a payment method, from the web or the API. 1 MB (1048576 bytes) by default; a larger file is refused with a validation error. |
 | `UPLOAD_MAX_ATTACHMENT_BYTES` | Ceiling on an invoice or receipt attached to a subscription, from the web or the API. 10 MB (10485760 bytes) by default; a larger file is refused with a validation error. |
 | `UPLOAD_MAX_AVATAR_BYTES`   | Ceiling on an avatar upload before it is re-encoded. 2 MB by default. |
+
+The `UPLOAD_MAX_*` limits are checked by Renovo, but a file has to reach it
+first. PHP and the web server in front of it have their own limits, and the
+Docker images set them to take every upload the defaults allow: PHP's
+`upload_max_filesize` is 12M and `post_max_size` 16M (`docker/php/php.ini`),
+and nginx's `client_max_body_size` is 16m (`docker/nginx/default.conf`). To
+allow a larger file than that, raise all three as well as the `UPLOAD_MAX_*`
+setting: mount a php.ini override into the application container as a file
+that sorts after the image's own `99-app.ini` (for example
+`/usr/local/etc/php/conf.d/zz-uploads.ini`, setting both PHP values), and mount
+a copy of `docker/nginx/default.conf` over `/etc/nginx/conf.d/default.conf` in
+the web container with `client_max_body_size` at least the new `post_max_size`
+(the setting is made inside its `server` block, so a file of its own in
+`conf.d/` cannot raise it). On your own server, change the same settings in its
+PHP and web-server configuration. A request body larger than the web server's
+own limit is refused by the web server itself (nginx answers `413` with an
+HTML page), not with Renovo's validation error.
