@@ -142,18 +142,23 @@ export function enhanceFilterToggles(root = document) {
 /*
  * The count alone is read as "Filters 2", a bare number, so while filters are
  * on the button is named for what it counts ("Filters, 2 on", K242). With none
- * on the name goes, and the button is read by its visible label. Without the
- * catalogue string the name is left alone rather than set to nothing.
+ * on the name goes, and the button is read by its visible label. The string
+ * comes through `window.renovoI18n.t()` (public/assets/i18n.js), which hands
+ * back the key itself for a string it lacks: then, as without i18n.js at all,
+ * no name is set rather than the key being read out.
  */
+const FILTERS_ON = 'filters_on';
+
 function nameToggle(toggle, chosen) {
-    const template = (window.renovoI18n || {}).filters_on;
-    if (chosen === 0 || !template) {
+    const i18n = window.renovoI18n;
+    const name = chosen === 0 || !i18n ? FILTERS_ON : i18n.t(FILTERS_ON, { count: String(chosen) });
+    if (name === FILTERS_ON) {
         toggle.removeAttribute('aria-label');
 
         return;
     }
 
-    toggle.setAttribute('aria-label', template.replace('{count}', () => String(chosen)));
+    toggle.setAttribute('aria-label', name);
 }
 
 document.addEventListener('click', (event) => {

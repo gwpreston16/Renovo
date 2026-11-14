@@ -28,12 +28,23 @@ const count = () => document.querySelector('[data-filters-count]');
 
 beforeEach(() => {
     document.body.innerHTML = '';
-    window.renovoI18n = { filters_on: 'Filters, {count} on' };
+    window.renovoI18n = i18n({ filters_on: 'Filters, {count} on' });
 });
 
 afterEach(() => {
     delete window.renovoI18n;
 });
+
+/*
+ * What public/assets/i18n.js puts on the window: t() hands back the key for a
+ * string the catalogue lacks.
+ */
+function i18n(messages) {
+    return {
+        t: (key, params = {}) => Object.entries(params)
+            .reduce((message, [name, value]) => message.split(`{${name}}`).join(value), messages[key] || key),
+    };
+}
 
 /*
  * jsdom computes no accessible name, so this is the rule it follows: an
@@ -133,10 +144,13 @@ test('the Filters button says how many are on', () => {
     expect(accessibleName(toggle())).toBe('Filters');
 });
 
-test('without the catalogue string the button keeps its own name', () => {
-    delete window.renovoI18n;
+test('without the catalogue string, or without i18n.js, the button keeps its own name', () => {
+    window.renovoI18n = i18n({});
     document.body.innerHTML = toolbar(['filter-category-5']);
     enhanceFilterToggles(document);
+    expect(toggle().hasAttribute('aria-label')).toBe(false);
 
+    delete window.renovoI18n;
+    enhanceFilterToggles(document);
     expect(toggle().hasAttribute('aria-label')).toBe(false);
 });
