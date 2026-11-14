@@ -266,10 +266,10 @@ None.
 - [x] K242: the Filters button says what its count is
 - [x] K243: no drag animation under reduced motion
 - [x] K247: the 1.44.0 rollback note names "From pay day"
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 90 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 90 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

@@ -98,7 +98,7 @@ can be moved.
 | 87 | [Budgets that follow pay day](docs/phases/PHASE-87.md) | — | 2 columns | ✅ done |
 | 88 | [The calendar's phone list and the scenario planner, from the known-issues log](docs/phases/PHASE-88.md) | — | None | ✅ done |
 | 89 | [The 1.44.0 release notes, from the known-issues log](docs/phases/PHASE-89.md) | — | None | ✅ done |
-| 90 | [Upload limits, migration time zone and screen-reader edges, from the known-issues log](docs/phases/PHASE-90.md) | — | None | 🚧 in progress |
+| 90 | [Upload limits, migration time zone and screen-reader edges, from the known-issues log](docs/phases/PHASE-90.md) | — | None | ✅ done |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
