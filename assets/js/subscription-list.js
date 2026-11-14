@@ -134,7 +134,26 @@ export function enhanceFilterToggles(root = document) {
             count.hidden = chosen === 0;
             count.textContent = chosen === 0 ? '' : String(chosen);
         }
+
+        nameToggle(toggle, chosen);
     });
+}
+
+/*
+ * The count alone is read as "Filters 2", a bare number, so while filters are
+ * on the button is named for what it counts ("Filters, 2 on", K242). With none
+ * on the name goes, and the button is read by its visible label. Without the
+ * catalogue string the name is left alone rather than set to nothing.
+ */
+function nameToggle(toggle, chosen) {
+    const template = (window.renovoI18n || {}).filters_on;
+    if (chosen === 0 || !template) {
+        toggle.removeAttribute('aria-label');
+
+        return;
+    }
+
+    toggle.setAttribute('aria-label', template.replace('{count}', () => String(chosen)));
 }
 
 document.addEventListener('click', (event) => {

@@ -1662,6 +1662,9 @@ return [
     'js.copied' => 'Copied.',
     'js.copy_failed' => 'That could not be copied. Select the address and copy it yourself.',
     'js.dialog_loading' => 'Loading…',
+    // The phone Filters button's name while filters are on: its count alone
+    // would be read as a bare number.
+    'js.filters_on' => 'Filters, {count} on',
     'js.percent' => '{percent}%',
     'js.quick_add_failed' => 'That form could not be loaded. Open the full page instead.',
     'js.passkey_generic_error' => 'That did not work. Try again.',

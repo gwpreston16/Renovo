@@ -1,4 +1,4 @@
-import { beforeEach, expect, test } from 'vitest';
+import { afterEach, beforeEach, expect, test } from 'vitest';
 import { countChosenFilters, enhanceFilterToggles } from '../../assets/js/subscription-list.js';
 
 /*
@@ -28,7 +28,21 @@ const count = () => document.querySelector('[data-filters-count]');
 
 beforeEach(() => {
     document.body.innerHTML = '';
+    window.renovoI18n = { filters_on: 'Filters, {count} on' };
 });
+
+afterEach(() => {
+    delete window.renovoI18n;
+});
+
+/*
+ * jsdom computes no accessible name, so this is the rule it follows: an
+ * aria-label wins, else the button's text with the hidden count left out.
+ */
+function accessibleName(button) {
+    return button.getAttribute('aria-label')
+        ?? button.querySelector('span:not([hidden])').textContent;
+}
 
 test('each group\'s "everything" choice is not counted as a filter', () => {
     document.body.innerHTML = toolbar(['filter-category-all', 'filter-status-all', 'filter-scope-household']);
@@ -95,4 +109,34 @@ test('a page without the toolbar is left alone', () => {
     document.body.innerHTML = '<main><p>Elsewhere</p></main>';
 
     expect(() => enhanceFilterToggles(document)).not.toThrow();
+});
+
+test('the Filters button says how many are on', () => {
+    document.body.innerHTML = toolbar(['filter-category-5', 'filter-tag-2']);
+    enhanceFilterToggles(document);
+    expect(accessibleName(toggle())).toBe('Filters, 2 on');
+    // The count stays visible as it was.
+    expect(count().textContent).toBe('2');
+
+    // A swap to one filter on.
+    const fresh = document.createElement('div');
+    fresh.innerHTML = toolbar(['filter-tag-2']);
+    document.getElementById('list-filters').replaceWith(fresh.querySelector('#list-filters'));
+    enhanceFilterToggles(document);
+    expect(accessibleName(toggle())).toBe('Filters, 1 on');
+
+    // And to none: the name goes, and the button is read by its label.
+    fresh.innerHTML = toolbar([]);
+    document.getElementById('list-filters').replaceWith(fresh.querySelector('#list-filters'));
+    enhanceFilterToggles(document);
+    expect(toggle().hasAttribute('aria-label')).toBe(false);
+    expect(accessibleName(toggle())).toBe('Filters');
+});
+
+test('without the catalogue string the button keeps its own name', () => {
+    delete window.renovoI18n;
+    document.body.innerHTML = toolbar(['filter-category-5']);
+    enhanceFilterToggles(document);
+
+    expect(toggle().hasAttribute('aria-label')).toBe(false);
 });
