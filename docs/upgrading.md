@@ -462,13 +462,19 @@ then expire at that instant.
 step, and every existing budget keeps its calendar period and its figures, so
 nothing is needed beyond `vendor/bin/phinx migrate`.
 
-Rolling back has two costs:
+Rolling back has three costs:
 
 - **Every member's pay day is deleted.** Only a database backup brings them
   back; a household archive does not carry them.
 - **Budgets every 2 or 4 weeks read as monthly** once the older code is back,
   because it does not know those periods. Change them to monthly, or delete
   them, before rolling back if their figures matter.
+- **"From pay day" is turned off on every monthly budget, for good.** The
+  rollback drops `budgets.follows_pay_day`, and migrating again adds it back
+  off, so a monthly budget that ran from pay day to pay day (say the 25th to
+  the 25th) is read over the calendar month from then on. Its member re-enters
+  their pay day under **Profile → Preferences** and switches the budget back to
+  **From pay day** on its form. Only a database backup restores both at once.
 
 ## After upgrading to 1.45.1: API token expiries on a server not in UTC (Phase 90)
 

@@ -265,7 +265,7 @@ None.
 - [x] K241: the hidden pay-day hint leaves `aria-describedby` for Yearly
 - [x] K242: the Filters button says what its count is
 - [x] K243: no drag animation under reduced motion
-- [ ] K247: the 1.44.0 rollback note names "From pay day"
+- [x] K247: the 1.44.0 rollback note names "From pay day"
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed
 - [ ] ROADMAP: Phase 90 row marked ✅ done
