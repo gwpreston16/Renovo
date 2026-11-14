@@ -41,7 +41,11 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   to raise to go higher. A file PHP itself refuses for its size now gets
   a "too large" message naming the limit that applied (the app's, or PHP's
   own where that is lower), not "could not be uploaded. Try again.", which
-  no retry could fix. *Phase 90.*
+  no retry could fix. The API reference and OpenAPI (1.9.15) now say that a
+  body over the web server's limit gets its own `413` page, not the JSON
+  error. If you mount your own php.ini or nginx configuration, or run your
+  own proxy in front, raise its limits to match (see `docs/configuration.md`
+  and `docs/install.md`). *Phase 90.*
 - **A refused pay day is explained beside the field.** On Profile →
   Preferences a pay day more than a year ahead comes back in the field as
   typed, with the reason under it and the field marked invalid for a screen

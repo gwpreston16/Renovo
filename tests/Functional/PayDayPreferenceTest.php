@@ -166,6 +166,30 @@ final class PayDayPreferenceTest extends DatabaseTestCase
         );
     }
 
+    /** The floor the field's `min` promises the server takes. */
+    public function testTheFirstOfJanuary1900IsAllowed(): void
+    {
+        $this->signIn($this->ownerId);
+
+        $this->request('POST', '/profile/preferences', ['pay_day' => '1900-01-01']);
+
+        self::assertSame('1900-01-01', $this->stored($this->ownerId));
+    }
+
+    /** Without script the refusal is a redirect, and the field survives it too. */
+    public function testWithoutScriptARefusedPayDayIsExplainedAfterTheRedirect(): void
+    {
+        $this->signIn($this->ownerId);
+
+        $response = $this->request('POST', '/profile/preferences', ['pay_day' => '2027-06-16']);
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertSame('/profile#appearance', $response->getHeaderLine('Location'));
+        $field = $this->payDayField((string) $this->request('GET', '/profile')->getBody());
+        self::assertStringContainsString('value="2027-06-16"', $field);
+        self::assertStringContainsString('aria-invalid="true"', $field);
+    }
+
     public function testExactlyAYearAheadIsAllowed(): void
     {
         $this->signIn($this->ownerId);

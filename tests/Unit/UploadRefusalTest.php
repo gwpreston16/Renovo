@@ -42,7 +42,7 @@ final class UploadRefusalTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{callable(UploadedFile): mixed, string, string}>
+     * @return iterable<string, array{callable(UploadedFile): mixed, string, string, int, string}>
      */
     public static function stores(): iterable
     {
@@ -51,16 +51,22 @@ final class UploadRefusalTest extends TestCase
             static fn (UploadedFile $f): mixed => (new AttachmentStorage($dir, 10485760))->store($f, 1),
             'file',
             'error.attachment.too_large',
+            10485760,
+            'megabytes',
         ];
         yield 'logo' => [
             static fn (UploadedFile $f): mixed => (new LogoStorage($dir, 1048576))->store($f),
             'logo',
             'error.logo.too_large',
+            1048576,
+            'kilobytes',
         ];
         yield 'avatar' => [
             static fn (UploadedFile $f): mixed => (new AvatarStorage($dir, 2097152))->store($f, 1),
             'avatar',
             'error.avatar.too_large',
+            2097152,
+            'kilobytes',
         ];
         yield 'import' => [
             // stage() reads only the upload before refusing it, so the
@@ -69,6 +75,8 @@ final class UploadRefusalTest extends TestCase
                 ->newInstanceWithoutConstructor()->stage($f),
             'file',
             'error.import.too_large',
+            5242880,
+            'megabytes',
         ];
     }
 
@@ -76,13 +84,22 @@ final class UploadRefusalTest extends TestCase
      * @param callable(UploadedFile): mixed $store
      */
     #[DataProvider('stores')]
-    public function testEachStoreSaysAFileOverPhpsLimitIsTooLarge(callable $store, string $field, string $key): void
-    {
+    public function testEachStoreSaysAFileOverPhpsLimitIsTooLarge(
+        callable $store,
+        string $field,
+        string $key,
+        int $appLimit,
+        string $unit,
+    ): void {
         try {
             $store($this->upload(UPLOAD_ERR_INI_SIZE));
             self::fail('The upload was not refused.');
         } catch (ValidationException $exception) {
-            self::assertSame($key, $exception->errors()[$field]->key ?? null);
+            $error = $exception->errors()[$field] ?? null;
+            self::assertSame($key, $error?->key);
+            // The limit named is the one that applied on this PHP.
+            $divisor = $unit === 'kilobytes' ? 1024 : 1024 * 1024;
+            self::assertSame(max(1, intdiv(UploadRefusal::ceiling($appLimit), $divisor)), $error->parameters[$unit]);
         }
     }
 
@@ -115,6 +132,9 @@ final class UploadRefusalTest extends TestCase
     {
         // This PHP's own limit, whatever the machine running the test has.
         $limit = UploadRefusal::ceiling(52428800);
+        if ($limit === 52428800) {
+            self::markTestSkipped('This PHP allows 50 MB or more, so it cannot show a lower limit being named.');
+        }
 
         try {
             (new AttachmentStorage(sys_get_temp_dir(), 52428800))->store($this->upload(UPLOAD_ERR_INI_SIZE), 1);

@@ -470,7 +470,13 @@ the field the client sent: a bad price is under `price_minor`, a bad
 One more status can arrive without this JSON shape: a request body larger than
 the web server's own limit (16 MB in the Docker images) is refused by the web
 server before Renovo sees it, with `413` and an HTML page. See
-[Configuration](configuration.md) for raising it.
+[Configuration](configuration.md) for raising it. On a server whose PHP
+`post_max_size` is lower than its web server's limit, PHP drops a body between
+the two, and an upload then arrives as a missing part (`400`).
+
+A file over an upload's limit is a `422` whose message names the limit that
+applied: the documented one, or PHP's own `upload_max_filesize` where an
+operator left that lower.
 
 Two of these are deliberately uninformative:
 

@@ -77,6 +77,36 @@ final class ApiUploadLimitsTest extends ApiTestCase
         self::assertSame([], (array) glob($this->directory . '/logos/*'));
     }
 
+    /**
+     * A file PHP itself refused for its size reaches the API as a JSON 422 on
+     * the upload's own field, with the "too large" message: not "could not be
+     * uploaded. Try again." (Phase 90).
+     *
+     * @return iterable<string, array{string, string, string}>
+     */
+    public static function phpRefusals(): iterable
+    {
+        yield 'attachment' => ['attachments', 'file', 'The file must be'];
+        yield 'logo' => ['logo', 'logo', 'The logo must be'];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('phpRefusals')]
+    public function testAFilePhpRefusedForItsSizeIsTheTooLarge422(string $path, string $field, string $message): void
+    {
+        $id = $this->createSubscription();
+
+        $response = $this->upload(
+            '/api/v1/subscriptions/' . $id . '/' . $path,
+            $field,
+            new \Slim\Psr7\UploadedFile('', 'big.pdf', 'application/pdf', 0, UPLOAD_ERR_INI_SIZE),
+        );
+
+        self::assertSame(422, $response->getStatusCode(), (string) $response->getBody());
+        self::assertStringStartsWith('application/json', $response->getHeaderLine('Content-Type'));
+        $errors = $this->decode($response)['error']['errors'] ?? [];
+        self::assertStringStartsWith($message, (string) ($errors[$field] ?? ''));
+    }
+
     public function testAnAttachmentOverTenMegabytesIsA422OnFileAndStoresNothing(): void
     {
         $id = $this->createSubscription();

@@ -274,6 +274,11 @@ the phase:
   the smaller of the store's limit and PHP's `upload_max_filesize`; and
   `docs/api.md`'s status table and the OpenAPI description (1.9.15) name the
   web server's `413`.
+- `docs/install.md` tells an operator with their own proxy or web server in
+  front to raise its request-size limit to at least 16m; the CHANGELOG says
+  the same for a mounted php.ini or nginx configuration.
+- An API test sends a PHP size refusal to the attachment and logo uploads
+  and expects the JSON 422 with the "too large" message.
 - `phinx.php`'s refusal path is left untested: no server refuses an offset
   `time_zone`, so there is nothing to provoke it with.
 - `copy-field.js` read `window.renovoI18n` as a map, as K242's first cut did,
