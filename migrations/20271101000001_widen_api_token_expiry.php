@@ -10,9 +10,15 @@ use Phinx\Migration\AbstractMigration;
  *
  * `api_tokens.expires_at` was made a `timestamp`, which on MySQL/MariaDB stops
  * at 2038-01-19 03:14:07 UTC: a token issued with a later expiry was a server
- * error and no token was issued. A `datetime` has no such limit. The MySQL
- * session is pinned to +00:00 and PHP to UTC, so converting the column keeps
- * every value it holds.
+ * error and no token was issued. A `datetime` has no such limit.
+ *
+ * Converting a `timestamp` to a `datetime` writes each value out in the
+ * session's time zone, so this relies on the session Phinx is handed by
+ * `phinx.php`, which is pinned to +00:00 (`MySqlPlatform::UTC_SESSION`, the
+ * application's own setting) with PHP in UTC: the column keeps every value it
+ * holds. Before 1.45.1 Phinx's MySQL session kept the server's zone, and on a
+ * server not running in UTC every expiry moved by the server's offset (K238;
+ * `docs/upgrading.md` says what to do about it).
  *
  * MySQL/MariaDB only: PostgreSQL's `timestamp` has no 2038 limit, so it does
  * nothing there. Running `up()` again finds a `datetime` and changes nothing.
@@ -26,9 +32,11 @@ use Phinx\Migration\AbstractMigration;
  *
  * Each direction is one `ALTER` (plus, for `down()`, one `UPDATE` before it),
  * and a statement either happens or does not, so a failure leaves the column as
- * it was. By hand, the same undo is: set every `expires_at` later than
- * '2038-01-19 03:14:07' to that instant, then `ALTER TABLE api_tokens MODIFY
- * expires_at TIMESTAMP NULL DEFAULT NULL`.
+ * it was. By hand, the same undo is: `SET time_zone = '+00:00'` first (in
+ * the server's own zone, the `ALTER` would move every expiry by its offset),
+ * then set every `expires_at` later than '2038-01-19 03:14:07' to that
+ * instant, then `ALTER TABLE api_tokens MODIFY expires_at TIMESTAMP NULL
+ * DEFAULT NULL`.
  */
 final class WidenApiTokenExpiry extends AbstractMigration
 {

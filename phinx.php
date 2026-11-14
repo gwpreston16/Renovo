@@ -39,11 +39,17 @@ if ($adapter === 'mysql') {
     $connection['collation'] = 'utf8mb4_unicode_ci';
 
     // Phinx opens its own connection and runs nothing on it, so the session
-    // setting the application asks for (see MySqlPlatform) is made here, on a
-    // connection handed to Phinx. Without it, a table a migration creates on
-    // MariaDB 10.6-10.9 gets a timestamp column that rewrites itself. Only the
-    // setting that may be refused is run: the migrations keep the server's own
-    // sql_mode. If the server cannot be reached, Phinx is left to say so.
+    // settings the application asks for (see MySqlPlatform) are made here, on
+    // a connection handed to Phinx. Two of them, and no more:
+    //  - UTC, so a migration or seed reads and writes `timestamp` columns as
+    //    the application does. On a server whose own zone is not UTC, the
+    //    1.41.0 `timestamp` to `datetime` change otherwise moved every token's
+    //    expiry by the server's offset (K238).
+    //  - explicit timestamp defaults, without which a table a migration
+    //    creates on MariaDB 10.6-10.9 gets a timestamp column that rewrites
+    //    itself. The server may refuse it, which is not worth stopping for.
+    // The application's strict sql_mode is not run: the migrations keep the
+    // server's own. If the server cannot be reached, Phinx is left to say so.
     try {
         $platform = new App\Persistence\MySqlPlatform();
         $pdo = new PDO(
@@ -51,6 +57,7 @@ if ($adapter === 'mysql') {
             $connection['user'],
             $connection['pass'],
         );
+        $pdo->exec(App\Persistence\MySqlPlatform::UTC_SESSION);
         foreach ($platform->optionalInitialStatements() as $statement) {
             try {
                 $pdo->exec($statement);
