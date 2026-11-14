@@ -229,7 +229,7 @@ None.
 - **K240 — Confirmed 2026-11-14:** makes the pay-day field behave as every
   form changed in 1f13960 does, and as the controller's docblock means ("the
   error is on screen").
-- **K241 — Assumed (confirm at review):** drop the hint's id from
+- **K241 — Confirmed 2026-11-14:** drop the hint's id from
   `aria-describedby` for Yearly, on the server and from a script. Not chosen:
   showing the hint for Yearly too, which would tell a member to set a pay day
   for a period that never follows it.
@@ -238,7 +238,7 @@ None.
 - **K243 — Confirmed 2026-11-14:** makes the drag do what `base.css` says a
   movement must.
 - **K247 — Confirmed 2026-11-14 (docs only).**
-- **Released CHANGELOG sections — Assumed (confirm at review):** the 1.41.0
+- **Released CHANGELOG sections — Confirmed 2026-11-14:** the 1.41.0
   entry that says the migration keeps every value (K238) and the 1.44.0 entry
   on rolling back pay day (K247) are left as released; `[Unreleased]` →
   *Fixed* says what each fix changes, and `docs/upgrading.md` carries the
@@ -251,23 +251,55 @@ None.
 - **Release — Decided 2026-11-14:** its own patch release, **1.45.1**, once
   merged. Not chosen: holding it for the next minor. No planned phase touches
   this code.
-- **Assumed:** the only new catalogue string is K242's (and C's error reuses
+- **K248 — Confirmed 2026-11-14:** offered as an addition (it tests the
+  Filters toggle K242 edits) and left *Open*, as the brief ranks it.
+- **Settled 2026-11-14 (true as built):** the only new catalogue string is K242's (and C's error reuses
   the existing message). Any new string goes in every catalogue in
   `translations/`.
 
+### Added at review (2026-11-14)
+
+The owner asked for merge-review's non-blocking follow-ups to be fixed in
+the phase:
+
+- The upgrade note and the migration's docblock name Phase 90 rather than
+  1.45.1: `[Unreleased]` also holds a *Changed* entry from master, so the
+  version is settled at `/release`.
+- The pay-day error follows its hint, in the markup and in
+  `aria-describedby`, as every other field has it.
+- `phinx.php`: a refused UTC setting stops the run rather than falling back
+  to Phinx's own unpinned connection.
+- A file PHP refuses for its size (`UPLOAD_ERR_INI_SIZE`, `_FORM_SIZE`) gets
+  each store's "too large" message (`App\Support\UploadRefusal`), naming
+  the smaller of the store's limit and PHP's `upload_max_filesize`; and
+  `docs/api.md`'s status table and the OpenAPI description (1.9.15) name the
+  web server's `413`.
+- `docs/install.md` tells an operator with their own proxy or web server in
+  front to raise its request-size limit to at least 16m; the CHANGELOG says
+  the same for a mounted php.ini or nginx configuration.
+- An API test sends a PHP size refusal to the attachment and logo uploads
+  and expects the JSON 422 with the "too large" message.
+- `phinx.php`'s refusal path is left untested: no server refuses an offset
+  `time_zone`, so there is nothing to provoke it with.
+- `copy-field.js` read `window.renovoI18n` as a map, as K242's first cut did,
+  so the Copy button announced nothing; it now uses `t()`.
+- Tests: the budget-period listener is bound by `app.js`, `filters_on`
+  reaches the page, a stray change is ignored, and a list or malformed pay
+  day is handled.
+
 ## Status
 
-- [ ] K238: Phinx's MySQL connection runs in UTC; upgrade note for shifted expiries
-- [ ] K239: the image's PHP and nginx limits cover every upload limit
-- [ ] K240: a refused pay day is explained beside the field, with `min` and `max`
-- [ ] K241: the hidden pay-day hint leaves `aria-describedby` for Yearly
-- [ ] K242: the Filters button says what its count is
-- [ ] K243: no drag animation under reduced motion
-- [ ] K247: the 1.44.0 rollback note names "From pay day"
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 90 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K238: Phinx's MySQL connection runs in UTC; upgrade note for shifted expiries
+- [x] K239: the image's PHP and nginx limits cover every upload limit
+- [x] K240: a refused pay day is explained beside the field, with `min` and `max`
+- [x] K241: the hidden pay-day hint leaves `aria-describedby` for Yearly
+- [x] K242: the Filters button says what its count is
+- [x] K243: no drag animation under reduced motion
+- [x] K247: the 1.44.0 rollback note names "From pay day"
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 90 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 

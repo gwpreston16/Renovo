@@ -8,6 +8,17 @@ final class MySqlPlatform implements Platform
 {
     public const EXPLICIT_TIMESTAMP_DEFAULTS = 'SET SESSION explicit_defaults_for_timestamp = 1';
 
+    /**
+     * Puts the session in UTC, whatever the server's own zone.
+     *
+     * Named once because two connections need it: the application's (in
+     * initialStatements()) and the one `phinx.php` hands Phinx, so a migration
+     * or seed reads and writes `timestamp` columns in the same zone the
+     * application does (K238). An offset rather than a named zone, so no time
+     * zone tables are needed.
+     */
+    public const UTC_SESSION = "SET time_zone = '+00:00'";
+
     public function name(): string
     {
         return 'mysql';
@@ -112,8 +123,7 @@ final class MySqlPlatform implements Platform
             // The DSN already requests utf8mb4; this makes the session
             // explicit regardless of server defaults.
             'SET NAMES utf8mb4',
-            // Offsets rather than named zones, so no timezone tables needed.
-            "SET time_zone = '+00:00'",
+            self::UTC_SESSION,
             // ONLY_FULL_GROUP_BY and strict mode make MySQL reject the same
             // sloppy queries PostgreSQL already rejects, so bugs surface on
             // both engines rather than only in production.

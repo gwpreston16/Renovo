@@ -13,6 +13,7 @@ use App\Service\Import\ImportPreset;
 use App\Service\Import\RowTranslator;
 use App\Service\Import\SourceFile;
 use App\Support\Clock;
+use App\Support\UploadRefusal;
 use Psr\Http\Message\UploadedFileInterface;
 use RuntimeException;
 
@@ -72,17 +73,17 @@ final class ImportService
             throw ValidationException::field('file', 'error.import.file_required');
         }
 
+        if (UploadRefusal::isTooLarge($file)) {
+            throw $this->tooLarge(UploadRefusal::ceiling(self::MAX_BYTES));
+        }
+
         if ($file->getError() !== UPLOAD_ERR_OK) {
             throw ValidationException::field('file', 'error.upload.failed');
         }
 
         $size = $file->getSize();
         if ($size !== null && $size > self::MAX_BYTES) {
-            throw ValidationException::field(
-                'file',
-                'error.import.too_large',
-                ['megabytes' => intdiv(self::MAX_BYTES, 1024 * 1024)],
-            );
+            throw $this->tooLarge();
         }
 
         $this->ensureDirectory();
@@ -339,5 +340,19 @@ final class ImportService
         if (!is_dir($this->directory) && !mkdir($this->directory, 0o750, true) && !is_dir($this->directory)) {
             throw new RuntimeException(sprintf('Import directory "%s" is not writable.', $this->directory));
         }
+    }
+
+    /**
+     * The refusal for an import file over the limit, in megabytes.
+     * `$limit` names a lower one that applied instead (PHP's own, see
+     * UploadRefusal::ceiling()); the service's own limit otherwise.
+     */
+    private function tooLarge(?int $limit = null): ValidationException
+    {
+        return ValidationException::field(
+            'file',
+            'error.import.too_large',
+            ['megabytes' => max(1, intdiv($limit ?? self::MAX_BYTES, 1024 * 1024))],
+        );
     }
 }

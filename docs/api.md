@@ -467,6 +467,17 @@ the field the client sent: a bad price is under `price_minor`, a bad
 | `422` | The body was understood but is not valid. |
 | `429` | Over a [rate limit](#rate-limits), or the address has failed token authentication ten times in five minutes. `Retry-After` says how many seconds to wait. |
 
+One more status can arrive without this JSON shape: a request body larger than
+the web server's own limit (16 MB in the Docker images) is refused by the web
+server before Renovo sees it, with `413` and an HTML page. See
+[Configuration](configuration.md) for raising it. On a server whose PHP
+`post_max_size` is lower than its web server's limit, PHP drops a body between
+the two, and an upload then arrives as a missing part (`400`).
+
+A file over an upload's limit is a `422` whose message names the limit that
+applied: the documented one, or PHP's own `upload_max_filesize` where an
+operator left that lower.
+
 Two of these are deliberately uninformative:
 
 - **`401` collapses four causes into one.** Distinguishing "expired" from
@@ -755,7 +766,7 @@ Attach a document. `multipart/form-data`:
 
 | Part | Notes |
 | --- | --- |
-| `file` | **Required.** PDF, PNG, JPEG, WebP or GIF, up to 10 MB (10,485,760 bytes); a larger file is a `422` on `file`. Type determined from contents; filename and declared content type are ignored. An operator changes the limit with `UPLOAD_MAX_ATTACHMENT_BYTES` (see [Configuration](configuration.md)). |
+| `file` | **Required.** PDF, PNG, JPEG, WebP or GIF, up to 10 MB (10,485,760 bytes); a larger file is a `422` on `file`. Type determined from contents; filename and declared content type are ignored. An operator changes the limit with `UPLOAD_MAX_ATTACHMENT_BYTES` (see [Configuration](configuration.md)). A request body over the web server's own limit (16 MB in the Docker images) is refused by the web server, with its own `413` page rather than this JSON error; see [Configuration](configuration.md) to raise both. |
 | `period_date` | Optional `YYYY-MM-DD`. The billing period this document covers. A date that does not exist, or a value that is not a date, is a `422` on `period_date`, even when `charge_id` is sent. |
 | `charge_id` | Optional. The payment this is the invoice for — one of this subscription's charges. The attachment is dated to it, whatever `period_date` says. Anything that is not one of its charge ids is a `422`. |
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Support\UploadRefusal;
 use finfo;
 use Psr\Http\Message\UploadedFileInterface;
 use RuntimeException;
@@ -77,6 +78,10 @@ final class AttachmentStorage
     {
         if ($file->getError() === UPLOAD_ERR_NO_FILE) {
             throw ValidationException::field('file', 'error.file.required');
+        }
+
+        if (UploadRefusal::isTooLarge($file)) {
+            throw $this->tooLarge(UploadRefusal::ceiling($this->maxBytes));
         }
 
         if ($file->getError() !== UPLOAD_ERR_OK) {
@@ -220,10 +225,15 @@ final class AttachmentStorage
         return $detected;
     }
 
-    private function tooLarge(): ValidationException
+    /**
+     * The refusal for a file over the limit. `$limit` names a lower one that
+     * applied instead (PHP's own, see UploadRefusal::ceiling()); the store's
+     * own limit otherwise.
+     */
+    private function tooLarge(?int $limit = null): ValidationException
     {
         return ValidationException::field('file', 'error.attachment.too_large', [
-            'megabytes' => max(1, intdiv($this->maxBytes, 1024 * 1024)),
+            'megabytes' => max(1, intdiv($limit ?? $this->maxBytes, 1024 * 1024)),
         ]);
     }
 }

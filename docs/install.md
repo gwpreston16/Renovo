@@ -207,6 +207,12 @@ Security headers are a separate matter: see
 Without the bundled nginx (the PHP-FPM image behind your own web server), use
 that server's own real-IP setting; Renovo reads `REMOTE_ADDR` and nothing else.
 
+Your proxy has a request-size limit of its own (nginx's `client_max_body_size`
+is 1m unless set), and an upload larger than it never reaches Renovo. Set it to
+at least 16m, the bundled web container's limit, so a 10 MB attachment gets
+through; the same goes for your own web server in front of the PHP-FPM image.
+See [Configuration](configuration.md) for the limits and how to raise them.
+
 ### Building an edge image
 
 An image built from a commit rather than a release shows the commit's short id

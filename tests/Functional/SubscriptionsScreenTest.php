@@ -486,6 +486,26 @@ final class SubscriptionsScreenTest extends DatabaseTestCase
         }
     }
 
+    /**
+     * K242: the button's spoken name while filters are on ("Filters, 2 on")
+     * reaches the script through the page's message block. Without it the
+     * button goes back to being read as "Filters 2", and the script's own
+     * tests, which bring their own catalogue, would not notice.
+     */
+    public function testTheFiltersButtonsSpokenNameReachesThePage(): void
+    {
+        $body = $this->body($this->get('/subscriptions', $this->viewerId));
+
+        self::assertSame(1, preg_match(
+            '~<script id="renovo-messages" type="application/json">(.*?)</script>~s',
+            $body,
+            $match,
+        ));
+        $messages = json_decode($match[1], true, flags: JSON_THROW_ON_ERROR);
+        self::assertIsArray($messages);
+        self::assertSame('Filters, {count} on', $messages['filters_on'] ?? null);
+    }
+
     public function testTheAddButtonBesideTheSearchIsOnlyForThoseWhoMayCreate(): void
     {
         $editor = $this->body($this->get('/subscriptions', $this->editorId));

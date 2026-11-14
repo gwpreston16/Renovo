@@ -24,6 +24,7 @@
  */
 
 import { enhanceAuthForms } from './auth-forms.js';
+import { bindBudgetPeriods } from './budget-period.js';
 import { enhanceCalendarLists, resetLoadingListsForHistory } from './calendar-list.js';
 import { enhanceCardLayouts } from './card-layout.js';
 import { onThemeChange, renderChart } from './charts.js';
@@ -70,6 +71,7 @@ function drawCharts(root = document) {
 function hydrate() {
     applyGeometry(document);
     bindFormBehaviours();
+    bindBudgetPeriods();
     enhanceAuthForms(document);
     enhanceTagFields(document);
     enhancePaymentMethodFields(document);

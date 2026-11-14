@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Support\UploadRefusal;
 use GdImage;
 use Psr\Http\Message\UploadedFileInterface;
 use RuntimeException;
@@ -78,6 +79,10 @@ final class AvatarStorage
     {
         if ($file->getError() === UPLOAD_ERR_NO_FILE) {
             throw ValidationException::field('avatar', 'error.file.required');
+        }
+
+        if (UploadRefusal::isTooLarge($file)) {
+            throw $this->tooLarge(UploadRefusal::ceiling($this->maxBytes));
         }
 
         if ($file->getError() !== UPLOAD_ERR_OK) {
@@ -221,10 +226,15 @@ final class AvatarStorage
         return $userId . '/' . $name;
     }
 
-    private function tooLarge(): ValidationException
+    /**
+     * The refusal for a file over the limit. `$limit` names a lower one that
+     * applied instead (PHP's own, see UploadRefusal::ceiling()); the store's
+     * own limit otherwise.
+     */
+    private function tooLarge(?int $limit = null): ValidationException
     {
         return ValidationException::field('avatar', 'error.avatar.too_large', [
-            'kilobytes' => max(1, intdiv($this->maxBytes, 1024)),
+            'kilobytes' => max(1, intdiv($limit ?? $this->maxBytes, 1024)),
         ]);
     }
 }

@@ -26,6 +26,40 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   *Changed*, and the calendar sentence says that Today, Previous/Next and
   "Just mine" keep the list only on the list view (`?view=list`). Nothing in
   the app changes. *Phase 89.*
+- **Migrations and seeds on MySQL run in UTC.** On a MySQL or MariaDB server
+  whose own time zone isn't UTC, the 1.41.0 migration that let API tokens
+  expire after 2038 moved every stored expiry by the server's offset, and
+  rolling it back could fail. Phinx's connection now runs in UTC, as the
+  application's does, so migrations, rollbacks and `phinx seed:run` keep
+  every time as it is. Expiries that already moved can't be told apart from
+  chosen ones: `docs/upgrading.md` says how to check and reissue them. The
+  Docker images run in UTC and were never affected. *Phase 90.*
+- **The Docker image takes every upload the app allows.** An attachment over
+  4 MB couldn't be uploaded at all, though the limit is 10 MB. PHP and nginx
+  in the image now let through anything up to the largest default, so a
+  larger file gets the app's own error, and `docs/configuration.md` says what
+  to raise to go higher. A file PHP itself refuses for its size now gets
+  a "too large" message naming the limit that applied (the app's, or PHP's
+  own where that is lower), not "could not be uploaded. Try again.", which
+  no retry could fix. The API reference and OpenAPI (1.9.15) now say that a
+  body over the web server's limit gets its own `413` page, not the JSON
+  error. If you mount your own php.ini or nginx configuration, or run your
+  own proxy in front, raise its limits to match (see `docs/configuration.md`
+  and `docs/install.md`). *Phase 90.*
+- **A refused pay day is explained beside the field.** On Profile →
+  Preferences a pay day more than a year ahead comes back in the field as
+  typed, with the reason under it and the field marked invalid for a screen
+  reader, and the date picker no longer offers days the server refuses.
+  *Phase 90.*
+- **Screen-reader and motion fixes.** On the budget form, a screen reader no
+  longer reads the "set your pay day" hint while Yearly is chosen. On a phone,
+  the subscription list's Filters button is read as "Filters, 2 on" rather
+  than "Filters 2". Dragging a dashboard card no longer slides the others for
+  someone whose system asks for less motion. The calendar feed's Copy button
+  says "Copied." again, or that the copy failed. *Phase 90.*
+- **The 1.44.0 upgrade notes say a rollback loses "From pay day".** Rolling
+  the pay-day migrations back turns it off on every monthly budget, and
+  migrating again doesn't turn it back on. *Phase 90.*
 
 ## [1.45.0] - 2026-11-12
 

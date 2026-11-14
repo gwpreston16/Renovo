@@ -11,10 +11,15 @@
  * it is copy the whole address.
  */
 
+/*
+ * window.renovoI18n is i18n.js's translator, whose t() hands back the key for
+ * a string it lacks; then, as without i18n.js, nothing is announced rather
+ * than the key being read out.
+ */
 function message(key) {
-    const messages = window.renovoI18n || {};
+    const text = window.renovoI18n ? window.renovoI18n.t(key) : key;
 
-    return messages[key] || '';
+    return text === key ? '' : text;
 }
 
 function announce(button, text) {
