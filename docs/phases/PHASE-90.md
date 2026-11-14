@@ -253,7 +253,7 @@ None.
   this code.
 - **K248 — Confirmed 2026-11-14:** offered as an addition (it tests the
   Filters toggle K242 edits) and left *Open*, as the brief ranks it.
-- **Confirmed 2026-11-14:** the only new catalogue string is K242's (and C's error reuses
+- **Settled 2026-11-14 (true as built):** the only new catalogue string is K242's (and C's error reuses
   the existing message). Any new string goes in every catalogue in
   `translations/`.
 
