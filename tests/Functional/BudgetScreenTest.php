@@ -921,6 +921,20 @@ final class BudgetScreenTest extends DatabaseTestCase
     }
 
     /**
+     * Refused on Yearly (no name), the form comes back on Yearly from the
+     * server, and without script that render is what a screen reader gets.
+     */
+    public function testARefusedYearlyFormIsNotDescribedByThePayDayHint(): void
+    {
+        $response = $this->request('POST', '/budgets', ['name' => '', 'period' => 'annual', 'amount' => '1200.00']);
+
+        self::assertSame(422, $response->getStatusCode());
+        $page = (string) $response->getBody();
+        self::assertStringContainsString('value="annual"', $page);
+        self::assertStringNotContainsString('budget-pay-day-hint', $this->periodGroup($page));
+    }
+
+    /**
      * The Period group's opening tag from a rendered budget form.
      */
     private function periodGroup(string $page): string

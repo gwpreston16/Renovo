@@ -27,11 +27,12 @@ final class PhinxConnectionTimeZoneTest extends DatabaseTestCase
         }
 
         // A client zone of its own, so the pin is what puts the session in UTC.
+        $before = getenv('PGTZ');
         putenv('PGTZ=America/New_York');
         try {
             $pdo = $this->phinxConnection();
         } finally {
-            putenv('PGTZ');
+            putenv($before === false ? 'PGTZ' : 'PGTZ=' . $before);
         }
         self::assertSame('UTC', $pdo->query('SHOW TIME ZONE')->fetchColumn());
     }
@@ -50,8 +51,13 @@ final class PhinxConnectionTimeZoneTest extends DatabaseTestCase
         );
     }
 
+    /**
+     * The statement Phinx runs is the application's own, and it is an offset
+     * of zero: a changed constant would move both together, unnoticed.
+     */
     public function testTheApplicationSessionUsesTheSameUtcStatement(): void
     {
+        self::assertSame("SET time_zone = '+00:00'", MySqlPlatform::UTC_SESSION);
         self::assertContains(MySqlPlatform::UTC_SESSION, (new MySqlPlatform())->initialStatements());
     }
 

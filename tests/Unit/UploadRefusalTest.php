@@ -86,6 +86,59 @@ final class UploadRefusalTest extends TestCase
         }
     }
 
+    /**
+     * @return iterable<string, array{int, string, int}>
+     */
+    public static function ceilings(): iterable
+    {
+        yield "PHP's limit above the app's (the image)" => [10485760, '12M', 10485760];
+        yield "an UPLOAD_MAX raised past PHP's" => [52428800, '12M', 12582912];
+        yield "a server left at PHP's 2M default" => [10485760, '2M', 2097152];
+        yield 'kilobytes' => [1048576, '512K', 524288];
+        yield 'plain bytes' => [1048576, '1000', 1000];
+        yield 'gigabytes' => [1048576, '1G', 1048576];
+        yield 'no limit of its own' => [1048576, '0', 1048576];
+        yield 'not a size' => [1048576, 'lots', 1048576];
+    }
+
+    #[DataProvider('ceilings')]
+    public function testTheCeilingIsTheSmallerOfTheTwoLimits(int $app, string $php, int $expected): void
+    {
+        self::assertSame($expected, UploadRefusal::ceiling($app, $php));
+    }
+
+    /**
+     * An operator who raised the attachment limit to 50 MB and left PHP at
+     * 12M must not tell a member with a 13 MB file "50 MB or smaller".
+     */
+    public function testTheMessageNamesTheLimitThatApplied(): void
+    {
+        // This PHP's own limit, whatever the machine running the test has.
+        $limit = UploadRefusal::ceiling(52428800);
+
+        try {
+            (new AttachmentStorage(sys_get_temp_dir(), 52428800))->store($this->upload(UPLOAD_ERR_INI_SIZE), 1);
+            self::fail('The upload was not refused.');
+        } catch (ValidationException $exception) {
+            $error = $exception->errors()['file'];
+            self::assertSame(max(1, intdiv($limit, 1024 * 1024)), $error->parameters['megabytes']);
+        }
+    }
+
+    public function testAnImportOverFiveMegabytesThatPhpTookIsTooLarge(): void
+    {
+        $import = (new ReflectionClass(ImportService::class))->newInstanceWithoutConstructor();
+
+        try {
+            $import->stage(new UploadedFile('', 'big.csv', 'text/csv', 5 * 1024 * 1024 + 1, UPLOAD_ERR_OK));
+            self::fail('The import was not refused.');
+        } catch (ValidationException $exception) {
+            $error = $exception->errors()['file'];
+            self::assertSame('error.import.too_large', $error->key);
+            self::assertSame(['megabytes' => 5], $error->parameters);
+        }
+    }
+
     private function upload(int $error): UploadedFile
     {
         return new UploadedFile('', 'big.pdf', 'application/pdf', 0, $error);

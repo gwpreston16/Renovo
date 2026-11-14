@@ -13,9 +13,9 @@ use App\Service\Import\ImportPreset;
 use App\Service\Import\RowTranslator;
 use App\Service\Import\SourceFile;
 use App\Support\Clock;
+use App\Support\UploadRefusal;
 use Psr\Http\Message\UploadedFileInterface;
 use RuntimeException;
-use App\Support\UploadRefusal;
 
 /**
  * Importing subscriptions from a CSV or JSON file.
@@ -74,7 +74,7 @@ final class ImportService
         }
 
         if (UploadRefusal::isTooLarge($file)) {
-            throw $this->tooLarge();
+            throw $this->tooLarge(UploadRefusal::ceiling(self::MAX_BYTES));
         }
 
         if ($file->getError() !== UPLOAD_ERR_OK) {
@@ -344,13 +344,15 @@ final class ImportService
 
     /**
      * The refusal for an import file over the limit, in megabytes.
+     * `$limit` names a lower one that applied instead (PHP's own, see
+     * UploadRefusal::ceiling()); the service's own limit otherwise.
      */
-    private function tooLarge(): ValidationException
+    private function tooLarge(?int $limit = null): ValidationException
     {
         return ValidationException::field(
             'file',
             'error.import.too_large',
-            ['megabytes' => intdiv(self::MAX_BYTES, 1024 * 1024)],
+            ['megabytes' => max(1, intdiv($limit ?? self::MAX_BYTES, 1024 * 1024))],
         );
     }
 }

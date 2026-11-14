@@ -39,9 +39,9 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   in the image now let through anything up to the largest default, so a
   larger file gets the app's own error, and `docs/configuration.md` says what
   to raise to go higher. A file PHP itself refuses for its size now gets
-  the same "must be 10 MB or smaller" message (or the logo, picture or
-  import limit), not "could not be uploaded. Try again.", which no retry
-  could fix. *Phase 90.*
+  a "too large" message naming the limit that applied (the app's, or PHP's
+  own where that is lower), not "could not be uploaded. Try again.", which
+  no retry could fix. *Phase 90.*
 - **A refused pay day is explained beside the field.** On Profile →
   Preferences a pay day more than a year ahead comes back in the field as
   typed, with the reason under it and the field marked invalid for a screen

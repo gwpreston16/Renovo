@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.14"
+  version: "1.9.15"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -37,6 +37,11 @@ info:
     resets). Over the limit is `429` with `Retry-After`. Ten failed tokens from
     one address in five minutes block that address, a valid token included,
     until the five minutes are up.
+
+    **Request size.** A request body larger than the web server's own limit
+    (16 MB in the Docker images) is refused by the web server before Renovo
+    sees it: `413` with the web server's HTML page, not the `Error` shape.
+    Below that, a file over an upload's limit is the documented `422`.
 
     **Tokens expire.** A new token lasts 90 days unless its owner chose
     otherwise, and an instance may set a maximum. `GET /me` reports the token's

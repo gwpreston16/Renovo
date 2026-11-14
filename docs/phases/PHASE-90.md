@@ -270,8 +270,12 @@ the phase:
 - `phinx.php`: a refused UTC setting stops the run rather than falling back
   to Phinx's own unpinned connection.
 - A file PHP refuses for its size (`UPLOAD_ERR_INI_SIZE`, `_FORM_SIZE`) gets
-  each store's "too large" message (`App\Support\UploadRefusal`), and
-  `docs/api.md`'s status table names the web server's `413`.
+  each store's "too large" message (`App\Support\UploadRefusal`), naming
+  the smaller of the store's limit and PHP's `upload_max_filesize`; and
+  `docs/api.md`'s status table and the OpenAPI description (1.9.15) name the
+  web server's `413`.
+- `phinx.php`'s refusal path is left untested: no server refuses an offset
+  `time_zone`, so there is nothing to provoke it with.
 - `copy-field.js` read `window.renovoI18n` as a map, as K242's first cut did,
   so the Copy button announced nothing; it now uses `t()`.
 - Tests: the budget-period listener is bound by `app.js`, `filters_on`

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Repository\LogoUsageRepository;
+use App\Support\UploadRefusal;
 use Psr\Http\Message\UploadedFileInterface;
 use RuntimeException;
-use App\Support\UploadRefusal;
 
 /**
  * Stores a logo that the user uploaded.
@@ -49,7 +49,7 @@ final class LogoStorage
         }
 
         if (UploadRefusal::isTooLarge($file)) {
-            throw $this->tooLarge();
+            throw $this->tooLarge(UploadRefusal::ceiling($this->maxBytes));
         }
 
         if ($file->getError() !== UPLOAD_ERR_OK) {
@@ -179,13 +179,15 @@ final class LogoStorage
 
     /**
      * The refusal for a logo over the limit, in kilobytes as the form says it.
+     * `$limit` names a lower one that applied instead (PHP's own, see
+     * UploadRefusal::ceiling()); the service's own limit otherwise.
      */
-    private function tooLarge(): ValidationException
+    private function tooLarge(?int $limit = null): ValidationException
     {
         return ValidationException::field(
             'logo',
             'error.logo.too_large',
-            ['kilobytes' => intdiv($this->maxBytes, 1024)],
+            ['kilobytes' => max(1, intdiv($limit ?? $this->maxBytes, 1024))],
         );
     }
 }
