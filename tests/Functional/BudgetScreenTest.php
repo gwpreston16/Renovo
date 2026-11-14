@@ -902,6 +902,34 @@ final class BudgetScreenTest extends DatabaseTestCase
         self::assertStringNotContainsString('href="/profile#appearance"', $own);
     }
 
+    /**
+     * K241: the pay-day hint is hidden for a year, and a hidden element named
+     * by aria-describedby is still read, so a form opened on Yearly does not
+     * name it. The hint itself is still drawn, for script to bring back.
+     */
+    public function testYearlyDoesntDescribeTheGroupWithThePayDayHint(): void
+    {
+        $annual = $this->budget(['name' => 'Year', 'period' => 'annual', 'amount' => '1200.00']);
+        $monthly = $this->budget(['name' => 'Month', 'period' => 'monthly', 'amount' => '100.00']);
+
+        $yearly = (string) $this->request('GET', '/budgets/' . $annual . '/edit')->getBody();
+        self::assertStringContainsString('id="budget-pay-day-hint"', $yearly);
+        self::assertStringNotContainsString('budget-pay-day-hint', $this->periodGroup($yearly));
+
+        $month = (string) $this->request('GET', '/budgets/' . $monthly . '/edit')->getBody();
+        self::assertStringContainsString('aria-describedby="budget-pay-day-hint"', $this->periodGroup($month));
+    }
+
+    /**
+     * The Period group's opening tag from a rendered budget form.
+     */
+    private function periodGroup(string $page): string
+    {
+        self::assertSame(1, preg_match('~<div class="field budget-period-field"[^>]*>~', $page, $match));
+
+        return $match[0];
+    }
+
     public function testAWeeklyBudgetForAMemberWithNoPayDayIsRefusedOnTheForm(): void
     {
         $response = $this->request('POST', '/budgets', [

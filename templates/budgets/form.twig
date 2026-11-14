@@ -50,7 +50,13 @@
 
             {% set period = values.period|default('monthly') %}
             {% set shows_pay_day_hint = current_user.payDay is null and pay_day_member in [null, current_user.id] %}
-            {% set period_described = (shows_pay_day_hint ? 'budget-pay-day-hint ' : '') ~ (errors.period is defined ? 'budget-period-error' : '') %}
+            {#
+                The hint describes the group only while the period can follow
+                pay day: hidden for a year, it would still be read if named
+                here (K241). budget-period.js keeps this up as the period
+                changes.
+            #}
+            {% set period_described = (shows_pay_day_hint and period != 'annual' ? 'budget-pay-day-hint ' : '') ~ (errors.period is defined ? 'budget-period-error' : '') %}
             <div class="field budget-period-field" role="radiogroup" aria-labelledby="budget-period-label"
                  {% if period_described|trim != '' %}aria-describedby="{{ period_described|trim }}"{% endif %}>
                 <span class="group-label" id="budget-period-label">{{ t('field.period') }}</span>
@@ -70,7 +76,8 @@
             {#
                 Outside the switch, so the switch's name stays its own and the
                 link shows for the weekly periods too; the stylesheet hides it
-                only for a year, which never follows pay day.
+                only for a year, which never follows pay day. It is drawn for
+                a year as well, so choosing another period can show it.
             #}
             {% if shows_pay_day_hint %}
                 <p class="hint budget-pay-day-hint" id="budget-pay-day-hint">
