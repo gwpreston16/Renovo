@@ -122,6 +122,17 @@ function saver(grid) {
     };
 }
 
+/*
+ * How long the other cards take to slide aside while one is dragged: none
+ * for a member whose system asks for less motion. Sortable animates with an
+ * inline transition, which base.css's reduced-motion rule cannot reach, and
+ * base.css says every movement must answer `prefers-reduced-motion` (K243).
+ * Read when the grid is set up, as the drag starts long after.
+ */
+function dragAnimation() {
+    return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : 150;
+}
+
 function enhanceGrid(grid, Sortable) {
     if (grid.dataset.cardLayoutReady) {
         return;
@@ -137,7 +148,7 @@ function enhanceGrid(grid, Sortable) {
     Sortable.create(grid, {
         handle: '[data-card-drag]',
         draggable: '[data-card]',
-        animation: 150,
+        animation: dragAnimation(),
         ghostClass: 'is-drag-ghost',
         chosenClass: 'is-drag-chosen',
         // A finger on a phone is scrolling until it has held still a moment;
