@@ -31,6 +31,9 @@ use DateTimeImmutable;
  */
 final class UserPreferencesService
 {
+    /** The earliest pay day taken: see payDay() for why 1900. */
+    private const PAY_DAY_FLOOR = '1900-01-01';
+
     public function __construct(
         private readonly UserRepository $users,
         private readonly Locales $locales,
@@ -166,6 +169,18 @@ final class UserPreferencesService
     }
 
     /**
+     * The first and last pay day the check below takes, as `Y-m-d`, for the
+     * date input's `min` and `max`: from the same clock, so the date picker
+     * offers no day the server then refuses (K240).
+     *
+     * @return array{min: string, max: string}
+     */
+    public function payDayRange(): array
+    {
+        return ['min' => self::PAY_DAY_FLOOR, 'max' => $this->latestPayDay()->format('Y-m-d')];
+    }
+
+    /**
      * A pay day as entered: null for none (empty), false for one that is not
      * a real date, is before 1900 or is more than a year ahead, else the date. Any day in the
      * past is fine — only its day of the month, or its place in a fortnightly
@@ -186,11 +201,19 @@ final class UserPreferencesService
         // Year 1900 is a floor the engines can store: PostgreSQL has no year
         // 0 and MySQL's DATE starts at 1000, so either would be a server
         // error rather than this refusal.
-        if ((int) $date->format('Y') < 1900) {
+        if ($date->format('Y-m-d') < self::PAY_DAY_FLOOR) {
             return false;
         }
 
-        return $date > $this->clock->today()->setTime(0, 0)->modify('+1 year') ? false : $date;
+        return $date > $this->latestPayDay() ? false : $date;
+    }
+
+    /**
+     * A year after today, the last pay day a member may enter.
+     */
+    private function latestPayDay(): DateTimeImmutable
+    {
+        return $this->clock->today()->setTime(0, 0)->modify('+1 year');
     }
 
     /**

@@ -28,7 +28,9 @@ use Symfony\Component\Mailer\MailerInterface;
 /**
  * A member's pay day (Phase 87), saved from Profile → Preferences for the
  * member who is signed in and nobody else, refused when it is not a real date
- * or is more than a year ahead, and cleared by an empty value.
+ * or is more than a year ahead, and cleared by an empty value. A refusal is
+ * explained beside the field, and the field offers only the days the server
+ * takes (K240).
  */
 final class PayDayPreferenceTest extends DatabaseTestCase
 {
@@ -46,12 +48,7 @@ final class PayDayPreferenceTest extends DatabaseTestCase
         parent::setUp();
 
         $this->session = new ArraySession();
-        $bootstrap = require dirname(__DIR__, 2) . '/config/bootstrap.php';
-        $this->app = $bootstrap(true, [
-            SessionInterface::class => $this->session,
-            MailerInterface::class => new RecordingMailer(),
-            Clock::class => FrozenClock::at('2026-06-15 09:00:00'),
-        ]);
+        $this->boot('2026-06-15 09:00:00');
 
         $settings = $this->container()->get(InstanceSettingsService::class);
         $settings->setIsolationMode(IsolationMode::Shared);
@@ -178,6 +175,89 @@ final class PayDayPreferenceTest extends DatabaseTestCase
         self::assertSame('2027-06-15', $this->stored($this->ownerId));
     }
 
+    public function testAPayDayOverAYearAheadIsExplainedBesideTheField(): void
+    {
+        $this->boot('2026-11-13 09:00:00');
+        $this->signIn($this->ownerId);
+        $this->request('POST', '/profile/preferences', ['pay_day' => '2026-10-25']);
+
+        $this->request('POST', '/profile/preferences', ['pay_day' => '2028-03-01'], htmx: true);
+        $page = (string) $this->request('GET', '/profile')->getBody();
+
+        $field = $this->payDayField($page);
+        self::assertStringContainsString('value="2028-03-01"', $field, 'The field holds what was typed.');
+        self::assertStringContainsString('aria-invalid="true"', $field);
+        self::assertStringContainsString('aria-describedby="pay-day-error pay-day-hint"', $field);
+        self::assertMatchesRegularExpression(
+            '~<p class="field-error" id="pay-day-error">Enter a real date for your pay day[^<]*</p>~',
+            $page,
+        );
+        self::assertSame('2026-10-25', $this->stored($this->ownerId), 'The refused day was not saved.');
+
+        // Read once: the next load shows the saved pay day and no error.
+        $again = $this->payDayField((string) $this->request('GET', '/profile')->getBody());
+        self::assertStringContainsString('value="2026-10-25"', $again);
+        self::assertStringNotContainsString('aria-invalid', $again);
+    }
+
+    public function testThePayDayFieldOffersOnlyDatesTheServerTakes(): void
+    {
+        $this->boot('2026-11-13 09:00:00');
+        $this->signIn($this->ownerId);
+
+        $field = $this->payDayField((string) $this->request('GET', '/profile')->getBody());
+
+        self::assertStringContainsString('min="1900-01-01"', $field);
+        self::assertStringContainsString('max="2027-11-13"', $field);
+    }
+
+    public function testAValidPayDayRendersWithNoError(): void
+    {
+        $this->signIn($this->ownerId);
+
+        $this->request('POST', '/profile/preferences', ['pay_day' => '2026-05-25']);
+        $page = (string) $this->request('GET', '/profile')->getBody();
+
+        $field = $this->payDayField($page);
+        self::assertStringNotContainsString('aria-invalid', $field);
+        self::assertStringContainsString('aria-describedby="pay-day-hint"', $field);
+        self::assertStringNotContainsString('id="pay-day-error"', $page);
+    }
+
+    public function testARefusalOfAnotherPreferenceLeavesThePayDayFieldAlone(): void
+    {
+        $this->signIn($this->ownerId);
+
+        $this->request('POST', '/profile/preferences', ['palette' => 'no-such-palette']);
+        $page = (string) $this->request('GET', '/profile')->getBody();
+
+        self::assertStringContainsString('class="flash', $page, 'The palette was refused.');
+        self::assertStringNotContainsString('id="pay-day-error"', $page);
+    }
+
+    /**
+     * The pay-day `<input>` tag from a rendered Profile page.
+     */
+    private function payDayField(string $page): string
+    {
+        self::assertSame(1, preg_match('~<input type="date" id="pay_day"[^>]*>~', $page, $match));
+
+        return $match[0];
+    }
+
+    /**
+     * Boots the application with the clock at the given moment.
+     */
+    private function boot(string $at): void
+    {
+        $bootstrap = require dirname(__DIR__, 2) . '/config/bootstrap.php';
+        $this->app = $bootstrap(true, [
+            SessionInterface::class => $this->session,
+            MailerInterface::class => new RecordingMailer(),
+            Clock::class => FrozenClock::at($at),
+        ]);
+    }
+
     private function stored(int $userId): ?string
     {
         return $this->users->findById($userId)?->payDay?->format('Y-m-d');
@@ -201,7 +281,7 @@ final class PayDayPreferenceTest extends DatabaseTestCase
     /**
      * @param array<string, string> $body
      */
-    private function request(string $method, string $path, array $body = []): ResponseInterface
+    private function request(string $method, string $path, array $body = [], bool $htmx = false): ResponseInterface
     {
         $request = (new ServerRequestFactory())->createServerRequest(
             $method,
@@ -213,6 +293,10 @@ final class PayDayPreferenceTest extends DatabaseTestCase
             $request = $request
                 ->withParsedBody($body)
                 ->withHeader(CsrfTokenManager::HEADER_NAME, $this->container()->get(CsrfTokenManager::class)->token());
+        }
+
+        if ($htmx) {
+            $request = $request->withHeader('HX-Request', 'true');
         }
 
         return $this->app->handle($request);

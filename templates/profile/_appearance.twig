@@ -137,6 +137,10 @@
         a browser fires `change` on a date input as each typed part makes a
         valid date, so a half-typed year would be posted, refused and the page
         reloaded under the reader's cursor.
+
+        A refused pay day comes back as typed with its reason beside it, and
+        `min`/`max` come from the server's own check, so the picker offers no
+        day it refuses (K240).
     #}
     <form method="post" action="/profile/preferences" class="stack pay-day-form">
         {{ csrf_field() }}
@@ -144,10 +148,12 @@
             <label for="pay_day">{{ t('settings.pay_day') }}</label>
             <div class="pay-day-row">
                 <input type="date" id="pay_day" name="pay_day" class="num"
-                       value="{{ current_user.payDay ? current_user.payDay|date('Y-m-d') : '' }}"
-                       aria-describedby="pay-day-hint">
+                       value="{{ pay_day_failed ? pay_day_failed.value : (current_user.payDay ? current_user.payDay|date('Y-m-d') : '') }}"
+                       min="{{ pay_day_range.min }}" max="{{ pay_day_range.max }}"
+                       {% if pay_day_failed %}aria-invalid="true" aria-describedby="pay-day-error pay-day-hint"{% else %}aria-describedby="pay-day-hint"{% endif %}>
                 <button type="submit" class="button">{{ t('settings.save_pay_day') }}</button>
             </div>
+            {% if pay_day_failed %}<p class="field-error" id="pay-day-error">{{ error_message(pay_day_failed.error) }}</p>{% endif %}
             <p class="hint" id="pay-day-hint">{{ t('settings.pay_day_hint') }}</p>
         </div>
     </form>

@@ -20,6 +20,7 @@ use App\Service\Auth\TwoFactorService;
 use App\Service\Auth\WebAuthnService;
 use App\Service\AvatarStorage;
 use App\Service\UserPreferencesService;
+use App\Service\ValidationError;
 use App\Service\ValidationException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -46,6 +47,13 @@ use Slim\Views\Twig;
 final class ProfileController extends Controller
 {
     private const APPEARANCE = '/profile#appearance';
+
+    /**
+     * A refused pay day, kept in the session for the one page load after the
+     * redirect or `HX-Refresh`, so the field comes back holding what the
+     * member typed with the reason beside it (K240).
+     */
+    private const FAILED_PAY_DAY_KEY = 'profile.failed_pay_day';
 
     public function __construct(
         Twig $view,
@@ -109,7 +117,45 @@ final class ProfileController extends Controller
             'recovery_codes' => is_array($codes) ? $codes : [],
             'passkeys' => $this->webAuthn->credentialsFor($user->id),
             'sessions' => $this->sessions->listFor($user, $this->session->id()),
+            'pay_day_failed' => $this->takeFailedPayDay(),
+            'pay_day_range' => $this->preferences->payDayRange(),
         ]);
+    }
+
+    /**
+     * Keeps a refused pay day, as typed, with the reason it was refused.
+     *
+     * @param array<string, mixed> $body
+     */
+    private function rememberFailedPayDay(ValidationException $exception, array $body): void
+    {
+        $error = $exception->errors()['pay_day'] ?? null;
+        if ($error === null) {
+            return;
+        }
+
+        $this->session->set(self::FAILED_PAY_DAY_KEY, [
+            'value' => is_scalar($body['pay_day'] ?? null) ? (string) $body['pay_day'] : '',
+            'key' => $error->key,
+        ]);
+    }
+
+    /**
+     * The pay day refused on the last post, read once: a refresh after it
+     * shows the saved pay day again.
+     *
+     * @return array{value: string, error: ValidationError}|null
+     */
+    private function takeFailedPayDay(): ?array
+    {
+        $failed = $this->session->get(self::FAILED_PAY_DAY_KEY);
+        $this->session->remove(self::FAILED_PAY_DAY_KEY);
+
+        if (!is_array($failed) || !is_string($failed['value'] ?? null) || !is_string($failed['key'] ?? null)) {
+            return null;
+        }
+
+        return ['value' => $failed['value'], 'error' => new ValidationError($failed['key'])];
     }
 
     /**
@@ -152,14 +198,19 @@ final class ProfileController extends Controller
      * one button and a redirect back to the section.
      *
      * A refusal is never a silent 204: it becomes a flash and a full load of
-     * the section, with or without script, so the error is on screen.
+     * the section, with or without script, so the error is on screen. A
+     * refused pay day is also kept for that load, so it is explained beside
+     * its own field rather than only at the top of the page.
      */
     public function updatePreferences(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
+        $body = $this->body($request);
+
         try {
-            $saved = $this->preferences->update($this->user($request)->id, $this->body($request));
+            $saved = $this->preferences->update($this->user($request)->id, $body);
         } catch (ValidationException $exception) {
             $this->flashErrors($exception);
+            $this->rememberFailedPayDay($exception, $body);
 
             // Not HX-Redirect: htmx follows it by assigning the address, and
             // `/profile#appearance` from `/profile` differs only by its
