@@ -946,6 +946,26 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   behaves. No API change. No migrations. See
   [The calendar](features/calendar.md#calendar) and
   [Forecast](features/money.md#forecast).
+- **Phase 89 — The 1.44.0 release notes, from the known-issues log —
+  complete (1.46.0).** The 1.44.0 entry in the changelog files the Phase 86
+  readability and screen-reader fixes under *Fixed*, and says that the
+  calendar keeps the list across Today, Previous/Next and "Just mine" only on
+  the list view. Nothing in the app changes. No API change. No migrations.
+  See the [changelog](../CHANGELOG.md).
+- **Phase 90 — Upload limits, migration time zone and screen-reader edges,
+  from the known-issues log — complete (1.46.0).** The Docker image's PHP and
+  nginx now let through every upload the app's own limits allow, so a 10 MB
+  attachment uploads, and a file too large for PHP gets a "too large" message
+  naming the limit that applied. On MySQL or MariaDB, migrations, rollbacks
+  and seeds run in UTC, so a server in another time zone no longer shifts
+  stored API token expiries. A refused pay day is explained beside its field;
+  the budget form's pay-day hint, the phone Filters button, dashboard card
+  dragging under reduced motion and the calendar feed's Copy button are fixed
+  for screen readers and motion settings. The API reference and OpenAPI
+  (1.9.15) document the web server's own `413`. No migrations; Phinx's
+  MySQL connection now runs in UTC. See
+  [Configuration](configuration.md#configuration-1) and
+  [Upgrading](upgrading.md#after-upgrading-to-utc-migrations-on-mysql-phase-90).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
