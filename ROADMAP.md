@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–90
+## Planned — Phases 30–91
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -99,6 +99,7 @@ can be moved.
 | 88 | [The calendar's phone list and the scenario planner, from the known-issues log](docs/phases/PHASE-88.md) | — | None | ✅ done |
 | 89 | [The 1.44.0 release notes, from the known-issues log](docs/phases/PHASE-89.md) | — | None | ✅ done |
 | 90 | [Upload limits, migration time zone and screen-reader edges, from the known-issues log](docs/phases/PHASE-90.md) | — | None | ✅ done |
+| 91 | [The API logo upload's catch-up and tests that hold recent fixes, from the known-issues log](docs/phases/PHASE-91.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -254,6 +255,7 @@ can be moved.
 - **88 — The calendar's phone list and the scenario planner.** A batch from the known-issues log (K230-K236), fixing what Phase 86's review found in its two scripts: a planner row moved off Change keeps its choice when its fields fail, the phone calendar's list survives Back, an ended session goes to sign-in rather than into the card, and the loading line is announced. The scripts' untested branches and the 11px text test are covered, and the calendar page describes the phone list.
 - **89 — The 1.44.0 release notes.** A docs batch from the known-issues log (K237): the released 1.44.0 notes move the Phase 86 legibility fixes from Changed to Fixed and say that Today, paging and "Just mine" keep the calendar's list only on the list view. It ships with Phase 88 in 1.44.1.
 - **90 — Upload limits, migration time zone and screen-reader edges.** A batch from the known-issues log (K238-K243, K247): Phinx's MySQL connection runs in UTC so migrations and seeds keep stored times, the Docker image accepts uploads up to the app's own limits, a refused pay day is explained beside its field, and the budget form, the phone Filters button and dashboard card dragging answer screen readers and reduced motion. The 1.44.0 rollback note names "From pay day". Ships as 1.45.1.
+- **91 — The API logo upload's catch-up and tests that hold recent fixes.** A batch from the known-issues log (K244, K248-K251): a logo uploaded through the API comes back with the same caught-up dates as `GET` by id, and four recent fixes (the phone Filters toggle's wiring, the calendar's one-time list request, the used-up alert check, and the Budgets screen's reach back into December) each get a test that fails without them. Ships as 1.46.1.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
