@@ -735,7 +735,9 @@ curl -X POST \
      https://your-instance.example/api/v1/subscriptions/12/logo
 ```
 
-Returns the updated subscription. A `logo` part that carries no file, a file
+Returns the updated subscription. The request first runs the catch-up the list
+and `GET` by id run, so an overdue `next_payment_date` reads the same in the
+response as in the next read. A `logo` part that carries no file, a file
 that is not one of those image types, or a file over the size limit is a `422`
 on `logo` and leaves the existing logo in place; removing a logo is what
 `DELETE` is for. Responses: `200`, `400`, `401`, `403`, `404`, `422`.

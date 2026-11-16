@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.15"
+  version: "1.9.16"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -534,6 +534,10 @@ paths:
       x-token-scope: "subscriptions:write"
       tags: [Subscriptions]
       summary: Replace the subscription's logo.
+      description: >-
+        The request first runs the catch-up the list and `GET` by id run, so the
+        returned subscription's `next_payment_date` reads the same as the next
+        read's.
       requestBody:
         required: true
         content:

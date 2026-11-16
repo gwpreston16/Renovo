@@ -194,7 +194,7 @@ None.
 
 ## Status
 
-- [ ] K244: a logo uploaded through the API comes back caught up
+- [x] K244: a logo uploaded through the API comes back caught up
 - [ ] K248: the Filters toggle stays wired through `app.js`
 - [ ] K249: the calendar asks for its phone list once
 - [ ] K250: an alert whose attempts are used up is settled before the channel reads

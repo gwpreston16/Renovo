@@ -263,6 +263,10 @@ final class SubscriptionApiController extends ApiController
         $scope = $this->scope($request);
         $id = (int) $id;
 
+        // Catch up first, as the list and GET by id do (K244): the subscription
+        // this returns must read the same dates as the next GET.
+        $this->catchUp($request, $scope);
+
         $existing = $this->subscriptions->find($scope, $id);
         if ($existing === null) {
             throw new HttpNotFoundException($request, $this->translator->trans('error.api.subscription_not_found'));
@@ -320,15 +324,6 @@ final class SubscriptionApiController extends ApiController
     }
 
     /**
-     * Roll overdue recurring subscriptions forward, if this caller may.
-     *
-     * Two conditions, not one. The service already refuses to write for a role
-     * that cannot — a Viewer's GET never advances anything. The extra check
-     * here is on the *token*: a read-only token performing a write, even a
-     * housekeeping one nobody asked for, is not what "read-only" means to the
-     * person who chose it.
-     */
-    /**
      * @return array<string, mixed>
      */
     private function resource(Scope $scope, Subscription $subscription): array
@@ -341,6 +336,14 @@ final class SubscriptionApiController extends ApiController
     }
 
     /**
+     * Roll overdue recurring subscriptions forward, if this caller may.
+     *
+     * Two conditions, not one. The service already refuses to write for a role
+     * that cannot — a Viewer's GET never advances anything. The extra check
+     * here is on the *token*: a read-only token performing a write, even a
+     * housekeeping one nobody asked for, is not what "read-only" means to the
+     * person who chose it.
+     *
      * The whole catch-up, in its order — prices, then trials, then payments —
      * as every web page runs it. Payments alone would roll a trial's
      * conversion date past before converting it, and write its first charge
