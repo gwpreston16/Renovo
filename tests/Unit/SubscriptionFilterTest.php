@@ -151,4 +151,37 @@ final class SubscriptionFilterTest extends TestCase
         // Back to the first page: the set of rows has changed under the pager.
         self::assertStringNotContainsString('page=', $adding);
     }
+
+    /**
+     * K245: several tags in either form, or both mixed, and the parsed query
+     * left alone when the raw one names no tag.
+     */
+    public function testTagsAreReadFromEitherQueryForm(): void
+    {
+        $tags = static function (string $raw): array {
+            parse_str($raw, $parsed);
+
+            return SubscriptionFilter::fromQueryParams(SubscriptionFilter::withEveryTag($parsed, $raw))->tagIds;
+        };
+
+        // A repeated plain tag: PHP's parse alone keeps only the 7.
+        self::assertSame([3, 7], $tags('tag=3&tag=7'));
+        self::assertSame([3, 7], $tags('tag%5B%5D=3&tag%5B%5D=7'));
+        self::assertSame([3, 7], $tags('tag[]=3&tag[]=7'));
+        self::assertSame([3, 7, 9], $tags('tag=3&tag[]=7&tag[2]=9'));
+        // The mix in the other order, where PHP's parse alone keeps only the 3.
+        self::assertSame([7, 3], $tags('tag[]=7&tag=3'));
+        self::assertSame([3], $tags('tag=3'));
+        self::assertSame([3], $tags('tag=3&tag=3'));
+        // Junk is skipped, as it always was; other parameters are untouched.
+        self::assertSame([5], $tags('tag=abc&tag=0&tag=-2&tag=&tag=5&tags=8&q=tag%3D9'));
+
+        $parsed = ['q' => 'net', 'tag' => ['4']];
+        self::assertSame($parsed, SubscriptionFilter::withEveryTag($parsed, ''));
+        self::assertSame($parsed, SubscriptionFilter::withEveryTag($parsed, 'q=net'));
+        self::assertSame(
+            ['tag' => ['3', '7'], 'q' => 'net'],
+            SubscriptionFilter::withEveryTag(['q' => 'net', 'tag' => '7'], 'q=net&tag=3&tag=7'),
+        );
+    }
 }

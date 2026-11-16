@@ -615,7 +615,7 @@ without anybody editing the row. A token without that scope changes nothing.
 | `q` | string | Search names and notes. |
 | `category` | integer | Category id. |
 | `owner` | integer | Owner user id. |
-| `tag` | integer or integer[] | Tag id; repeat it (`tag[]=3&tag[]=7`) for several. A subscription matches when it has **any** of them. |
+| `tag` | integer or integer[] | Tag id; repeat it for several, in either form (`tag=3&tag=7` or `tag[]=3&tag[]=7`) or a mix of the two. A subscription matches when it has **any** of them. |
 | `currency` | string | ISO 4217 code. |
 | `type` | enum | `recurring`, `one_off`, `lifetime`. |
 | `inactive` | `"0"` or `"1"` | `1` includes inactive subscriptions — paused and cancelled. `true` and `false` are refused. |
@@ -735,7 +735,9 @@ curl -X POST \
      https://your-instance.example/api/v1/subscriptions/12/logo
 ```
 
-Returns the updated subscription. A `logo` part that carries no file, a file
+Returns the updated subscription. The request first runs the catch-up the list
+and `GET` by id run, so an overdue `next_payment_date` reads the same in the
+response as in the next read. A `logo` part that carries no file, a file
 that is not one of those image types, or a file over the size limit is a `422`
 on `logo` and leaves the existing logo in place; removing a logo is what
 `DELETE` is for. Responses: `200`, `400`, `401`, `403`, `404`, `422`.

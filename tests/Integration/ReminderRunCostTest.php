@@ -81,6 +81,36 @@ final class ReminderRunCostTest extends NotificationTestCase
         self::assertSame([], $this->notifier->sent);
     }
 
+    /**
+     * K250: an alert at exactly the attempt limit is settled by the up-front
+     * check, as a sent one is, so it costs no claim of its own. With `>` in
+     * place of `>=` in `settledFor()` it would reach the claim and be refused
+     * there: nothing sent still, but a statement or more per alert.
+     */
+    public function testAnAlertWhoseAttemptsAreUsedUpAddsNoStatements(): void
+    {
+        $channel = $this->addChannel($this->alice);
+        $sent = $this->settledAlerts($this->alice, $channel, 10);
+        $usedUp = [];
+        for ($subject = 100; $subject < 110; $subject++) {
+            $alert = $this->alert($subject);
+            $this->recordFailures($this->alice, $channel, $alert, self::MAX_ATTEMPTS);
+            $usedUp[] = $alert;
+        }
+
+        $before = $this->db->statementCount();
+        $this->dispatcher->dispatch($this->user($this->alice), $sent);
+        $costSent = $this->db->statementCount() - $before;
+
+        $before = $this->db->statementCount();
+        $sentUsedUp = $this->dispatcher->dispatch($this->user($this->alice), $usedUp);
+        $costUsedUp = $this->db->statementCount() - $before;
+
+        self::assertSame(0, $sentUsedUp);
+        self::assertSame([], $this->notifier->sent);
+        self::assertSame($costSent, $costUsedUp, 'ten used-up alerts cost what ten sent ones do');
+    }
+
     public function testAPendingClaimIsNotSettledAndIsTakenOverOncePastItsLease(): void
     {
         $channel = $this->addChannel($this->alice);

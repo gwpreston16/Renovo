@@ -8,6 +8,24 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **A logo uploaded through the API comes back with current dates.**
+  `POST /api/v1/subscriptions/{id}/logo` now runs the same catch-up as the
+  list and `GET` by id first, so a row whose payment date had passed reads
+  its next date there too, not a date in the past with a negative
+  `days_until_next_payment`. OpenAPI 1.9.16. *Phase 91.*
+- **The API list filters on every tag asked for.** `GET /api/v1/subscriptions`
+  reads several tags from a repeated `tag=3&tag=7`, as the OpenAPI contract
+  declares and generated clients send, as well as from `tag[]=3&tag[]=7` or a
+  mix of the two. It used to filter on the last plain `tag` only. OpenAPI
+  1.9.16. *Phase 91.*
+- **Tests that hold four recent fixes.** The phone Filters toggle's wiring,
+  the calendar asking for its phone list once, used-up reminder attempts
+  being settled before the channels are read, and a pay-day budget that
+  began last year sharing the Budgets screen's one load: each can no longer
+  be undone with every test still passing. Tests only. *Phase 91.*
+
 ## [1.46.0] - 2026-11-15
 
 ### Changed

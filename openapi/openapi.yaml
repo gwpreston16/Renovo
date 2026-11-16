@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.15"
+  version: "1.9.16"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -223,9 +223,9 @@ paths:
               - { type: integer }
               - { type: array, items: { type: integer } }
           description: >
-            Tag id. For several, send the array form `tag[]=3&tag[]=7`: a
-            plain repeated `tag=3&tag=7` keeps only the last. A subscription
-            matches when it has any of them.
+            Tag id. For several, repeat it in either form, `tag=3&tag=7` or
+            `tag[]=3&tag[]=7`, or mix the two. A subscription matches when it
+            has any of them.
         - { name: currency, in: query, schema: { type: string }, description: ISO 4217 code. }
         - name: type
           in: query
@@ -534,6 +534,10 @@ paths:
       x-token-scope: "subscriptions:write"
       tags: [Subscriptions]
       summary: Replace the subscription's logo.
+      description: >-
+        The request first runs the catch-up the list and `GET` by id run, so the
+        returned subscription's `next_payment_date` reads the same as the next
+        read's.
       requestBody:
         required: true
         content:

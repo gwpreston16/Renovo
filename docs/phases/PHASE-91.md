@@ -103,6 +103,12 @@ Add tests to `tests/js/filter-toggle.test.js` that load the app with
 
 App code doesn't change.
 
+*Changed 2026-11-16, found while building it:* the three tests went into a new
+file, `tests/js/filter-toggle-app.test.js`. `filter-toggle.test.js` imports
+`subscription-list.js` directly, and `loadApp()` loads a second copy of it, so
+both copies' click handlers answered one click and folded the filters straight
+back. The tests and what they assert are as above.
+
 ### C. K249 — the calendar asks for its phone list once
 
 Add tests to `tests/js/calendar-list.test.js`, through `app.js` as the file's
@@ -177,7 +183,8 @@ None.
   what Phase 81 (K189) set out for every endpoint that returns a subscription.
   The catch-up runs first, as it does in the list and `GET` by id, so the
   response and the next read agree.
-- **K244, K245 — Assumed:** OpenAPI `info.version` goes from 1.9.15 to
+- **K244, K245 — Confirmed 2026-11-16** (settled by the K107 rule; the
+  contract is at 1.9.15 on master): OpenAPI `info.version` goes from 1.9.15 to
   **1.9.16**, once for both rows. A client sees different dates and the tags it
   asked for, but the same shape, which the K107 rule makes a patch bump. The
   CHANGELOG entries name the new version.
@@ -190,19 +197,24 @@ None.
   adding K246.
 - **Release — Decided 2026-11-15:** ships as its own patch release, **1.46.1**,
   once merged. Not chosen: holding it for the next minor release.
+- **K252 — added 2026-11-16, found while finishing it:** the merge review's
+  issue sweep found `CalendarFeedTest::testATrialConversionAppears` failing
+  on every engine from 16 November 2026 (a fixed trial date on the real
+  clock), which turned this PR's CI red. Its clock is frozen, as the file's
+  other tests do. Tests only.
 
 ## Status
 
-- [ ] K244: a logo uploaded through the API comes back caught up
-- [ ] K248: the Filters toggle stays wired through `app.js`
-- [ ] K249: the calendar asks for its phone list once
-- [ ] K250: an alert whose attempts are used up is settled before the channel reads
-- [ ] K251: a pay-day period that began last year adds no loading
-- [ ] K245: the API list accepts several tags in either form
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 91 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K244: a logo uploaded through the API comes back caught up
+- [x] K248: the Filters toggle stays wired through `app.js`
+- [x] K249: the calendar asks for its phone list once
+- [x] K250: an alert whose attempts are used up is settled before the channel reads
+- [x] K251: a pay-day period that began last year adds no loading
+- [x] K245: the API list accepts several tags in either form
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 91 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
@@ -216,7 +228,7 @@ strings. `OpenApiCoverageTest` and `ApiDocCoverageTest` are green. Then mark it
 ## Tests
 
 - K244: `ApiSubscriptionShowCatchUpTest::testAnUploadedLogoReturnsTheRowCaughtUp`.
-- K248: in `tests/js/filter-toggle.test.js`, "app.js shows the Filters button
+- K248: in `tests/js/filter-toggle-app.test.js`, "app.js shows the Filters button
   on load", "app.js updates the count after a swap", "an opened toolbar stays
   open across a swap with the same count".
 - K249: in `tests/js/calendar-list.test.js`, "a loaded list is not asked for
