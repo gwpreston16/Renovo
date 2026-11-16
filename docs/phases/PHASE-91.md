@@ -103,6 +103,12 @@ Add tests to `tests/js/filter-toggle.test.js` that load the app with
 
 App code doesn't change.
 
+*Changed 2026-11-16, found while building it:* the three tests went into a new
+file, `tests/js/filter-toggle-app.test.js`. `filter-toggle.test.js` imports
+`subscription-list.js` directly, and `loadApp()` loads a second copy of it, so
+both copies' click handlers answered one click and folded the filters straight
+back. The tests and what they assert are as above.
+
 ### C. K249 — the calendar asks for its phone list once
 
 Add tests to `tests/js/calendar-list.test.js`, through `app.js` as the file's
@@ -195,7 +201,7 @@ None.
 ## Status
 
 - [x] K244: a logo uploaded through the API comes back caught up
-- [ ] K248: the Filters toggle stays wired through `app.js`
+- [x] K248: the Filters toggle stays wired through `app.js`
 - [ ] K249: the calendar asks for its phone list once
 - [ ] K250: an alert whose attempts are used up is settled before the channel reads
 - [ ] K251: a pay-day period that began last year adds no loading
@@ -217,7 +223,7 @@ strings. `OpenApiCoverageTest` and `ApiDocCoverageTest` are green. Then mark it
 ## Tests
 
 - K244: `ApiSubscriptionShowCatchUpTest::testAnUploadedLogoReturnsTheRowCaughtUp`.
-- K248: in `tests/js/filter-toggle.test.js`, "app.js shows the Filters button
+- K248: in `tests/js/filter-toggle-app.test.js`, "app.js shows the Filters button
   on load", "app.js updates the count after a swap", "an opened toolbar stays
   open across a swap with the same count".
 - K249: in `tests/js/calendar-list.test.js`, "a loaded list is not asked for
