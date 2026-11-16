@@ -630,6 +630,47 @@ final class BudgetScreenTest extends DatabaseTestCase
         );
     }
 
+    /**
+     * K251: in January a pay-day month that began in December still shares the
+     * screen's one load, which reaches back before 1 January for it (K182).
+     * Cut that reach and each such budget loads the household's subscriptions,
+     * price history and ledger again.
+     */
+    public function testAPayDayPeriodThatBeganLastYearLoadsNothingMore(): void
+    {
+        $this->clock()->advanceTo(new DateTimeImmutable('2026-01-10 09:00:00'));
+        $users = new UserRepository($this->db);
+        foreach ([$this->ownerId, $this->editorId, $this->contributorId] as $member) {
+            $users->updatePreferences($member, ['pay_day' => '2025-11-25']);
+        }
+        $this->monthly('December', 300, '2026-01-28', '2025-01-28');
+        $this->monthly('January', 500, '2026-02-05', '2025-01-05', $this->contributorId);
+        $this->budget(['name' => 'Pay day', 'amount' => '100.00', 'follows_pay_day' => '1']);
+        $months = $this->container()->get(BudgetMonthService::class);
+        $db = $this->container()->get(Database::class);
+        $scope = $this->ownerScope();
+
+        $before = $db->statementCount();
+        $months->all($scope);
+        $one = $db->statementCount() - $before;
+
+        foreach ([$this->editorId, $this->contributorId] as $member) {
+            $this->budget([
+                'name' => 'Member',
+                'amount' => '50.00',
+                'subject_user_id' => (string) $member,
+                'follows_pay_day' => '1',
+            ]);
+        }
+
+        $before = $db->statementCount();
+        $rows = $months->all($scope);
+        $three = $db->statementCount() - $before;
+
+        self::assertCount(3, $rows);
+        self::assertLessThanOrEqual($one + 2, $three, 'Nothing grows with the pay-day budgets.');
+    }
+
     public function testAPeriodStartingOnAClampedDayReadsToItsLastDay(): void
     {
         // Paid on the 31st, today 28 February: 28 February to 30 March, two

@@ -204,7 +204,7 @@ None.
 - [x] K248: the Filters toggle stays wired through `app.js`
 - [x] K249: the calendar asks for its phone list once
 - [x] K250: an alert whose attempts are used up is settled before the channel reads
-- [ ] K251: a pay-day period that began last year adds no loading
+- [x] K251: a pay-day period that began last year adds no loading
 - [ ] K245: the API list accepts several tags in either form
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed
