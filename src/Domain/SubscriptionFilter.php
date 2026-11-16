@@ -98,6 +98,41 @@ final class SubscriptionFilter
     }
 
     /**
+     * The parsed query with `tag` holding every tag the request names, in
+     * either form: the array form `tag[]=3&tag[]=7`, the repeated plain form
+     * `tag=3&tag=7` that an OpenAPI client sends (`style: form`,
+     * `explode: true`), or a mix of the two (K245).
+     *
+     * PHP's own parse keeps only the last of a repeated plain `tag`, and a mix
+     * keeps whichever form came last, so every tag is read from the raw query
+     * string instead. With no raw query, or no tag in it, the parsed query is
+     * returned as it was. The values are not checked here: `fromQueryParams()`
+     * skips a non-numeric or non-positive one, as it always has.
+     *
+     * @param array<string, mixed> $query    the request's parsed query
+     * @param string               $rawQuery the request's query string, undecoded
+     * @return array<string, mixed>
+     */
+    public static function withEveryTag(array $query, string $rawQuery): array
+    {
+        $tags = [];
+        foreach (explode('&', $rawQuery) as $pair) {
+            [$name, $value] = array_pad(explode('=', $pair, 2), 2, '');
+            $name = urldecode($name);
+            // `tag`, `tag[]` or an indexed `tag[0]`.
+            if ($name === 'tag' || str_starts_with($name, 'tag[')) {
+                $tags[] = urldecode($value);
+            }
+        }
+
+        if ($tags === []) {
+            return $query;
+        }
+
+        return ['tag' => array_values(array_unique($tags))] + $query;
+    }
+
+    /**
      * The same filter as the web list reads it: paused subscriptions included,
      * cancelled ones left to their own filter.
      *

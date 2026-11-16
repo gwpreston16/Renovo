@@ -73,7 +73,11 @@ final class SubscriptionApiController extends ApiController
 
         $this->assertKnownFilterValues($query);
 
-        $filter = SubscriptionFilter::fromQueryParams($query);
+        // Several tags arrive as `tag[]=` or as a repeated plain `tag=`, which
+        // PHP's parsed query cuts to the last one (K245).
+        $filter = SubscriptionFilter::fromQueryParams(
+            SubscriptionFilter::withEveryTag($query, $request->getUri()->getQuery()),
+        );
         $perPage = $this->perPage($query);
         $filter = new SubscriptionFilter(
             search: $filter->search,

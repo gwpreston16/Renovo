@@ -72,6 +72,26 @@ final class ApiRequestEdgesTest extends ApiTestCase
         self::assertSame(['Lifetime One'], array_column($this->decode($response)['data'], 'name'));
     }
 
+    /**
+     * K245: the repeated plain form an OpenAPI client sends reads every tag,
+     * not only the last, and the array form still works.
+     */
+    public function testARepeatedPlainTagFiltersOnEveryTag(): void
+    {
+        $this->createSubscription(['name' => 'Music', 'tags' => ['music']]);
+        $this->createSubscription(['name' => 'Shared', 'tags' => ['shared']]);
+        $this->createSubscription(['name' => 'Untagged']);
+        $ids = array_column($this->decode($this->api('GET', '/api/v1/tags', $this->ownerToken))['data'], 'id', 'name');
+
+        foreach (['tag=%d&tag=%d', 'tag[]=%d&tag[]=%d', 'tag=%d&tag[]=%d'] as $form) {
+            $query = sprintf($form, $ids['music'], $ids['shared']);
+            $response = $this->api('GET', '/api/v1/subscriptions?' . $query . '&sort=name', $this->readOnlyToken);
+
+            self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+            self::assertSame(['Music', 'Shared'], array_column($this->decode($response)['data'], 'name'), $query);
+        }
+    }
+
     public function testAnArrayValuedFilterIsRefusedToo(): void
     {
         $response = $this->api('GET', '/api/v1/subscriptions?status[]=active', $this->readOnlyToken);
