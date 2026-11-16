@@ -177,7 +177,8 @@ None.
   what Phase 81 (K189) set out for every endpoint that returns a subscription.
   The catch-up runs first, as it does in the list and `GET` by id, so the
   response and the next read agree.
-- **K244, K245 — Assumed:** OpenAPI `info.version` goes from 1.9.15 to
+- **K244, K245 — Confirmed 2026-11-16** (settled by the K107 rule; the
+  contract is at 1.9.15 on master): OpenAPI `info.version` goes from 1.9.15 to
   **1.9.16**, once for both rows. A client sees different dates and the tags it
   asked for, but the same shape, which the K107 rule makes a patch bump. The
   CHANGELOG entries name the new version.
