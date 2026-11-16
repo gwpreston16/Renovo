@@ -206,10 +206,10 @@ None.
 - [x] K250: an alert whose attempts are used up is settled before the channel reads
 - [x] K251: a pay-day period that began last year adds no loading
 - [x] K245: the API list accepts several tags in either form
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 91 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 91 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
