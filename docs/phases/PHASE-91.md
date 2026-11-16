@@ -202,7 +202,7 @@ None.
 
 - [x] K244: a logo uploaded through the API comes back caught up
 - [x] K248: the Filters toggle stays wired through `app.js`
-- [ ] K249: the calendar asks for its phone list once
+- [x] K249: the calendar asks for its phone list once
 - [ ] K250: an alert whose attempts are used up is settled before the channel reads
 - [ ] K251: a pay-day period that began last year adds no loading
 - [ ] K245: the API list accepts several tags in either form

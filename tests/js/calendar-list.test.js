@@ -233,3 +233,62 @@ test('a window narrowed to a phone fetches its list', async () => {
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(document.querySelector('[data-calendar-list] .calendar-list')).not.toBeNull();
 });
+
+/*
+ * K249: a container is asked for once. Without the `data-list-state` check in
+ * `load()`, turning the phone or any htmx swap on the page fetched the list
+ * again and covered it with "Loading the list…" meanwhile.
+ */
+
+/** A phone-sized window whose width changes the test can fire. */
+function turnableViewport() {
+    const state = { narrow: true, listeners: [] };
+    window.matchMedia = vi.fn(() => ({
+        get matches() { return state.narrow; },
+        addEventListener: (type, listener) => state.listeners.push(listener),
+        removeEventListener: vi.fn(),
+    }));
+
+    return (narrow) => {
+        state.narrow = narrow;
+        state.listeners.forEach((listener) => listener({ matches: narrow }));
+    };
+}
+
+test('a loaded list is not asked for again on resize or swap', async () => {
+    const turn = turnableViewport();
+    answerWith('<ol class="calendar-list"><li>20 Sep</li></ol>');
+    await loadApp();
+    await settle();
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    // To landscape and back.
+    turn(false);
+    turn(true);
+    await settle();
+
+    // A swap elsewhere on the page.
+    document.body.insertAdjacentHTML('beforeend', '<div id="elsewhere"></div>');
+    htmx('afterSwap', document.getElementById('elsewhere'));
+    await settle();
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('.calendar-list-loading').textContent).toBe('');
+    expect(document.querySelector('[data-calendar-list] .calendar-list')).not.toBeNull();
+});
+
+test('a list still loading is not asked for twice', async () => {
+    viewport(true);
+    const answers = pendingFetch();
+    await loadApp();
+
+    document.body.insertAdjacentHTML('beforeend', '<div id="elsewhere"></div>');
+    htmx('afterSwap', document.getElementById('elsewhere'));
+    await settle();
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    answers[0](response(200, '<ol class="calendar-list"></ol>'));
+    await settle();
+    await settle();
+    expect(document.querySelector('[data-calendar-list]').dataset.listState).toBe('loaded');
+});
