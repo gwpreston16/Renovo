@@ -197,6 +197,11 @@ None.
   adding K246.
 - **Release — Decided 2026-11-15:** ships as its own patch release, **1.46.1**,
   once merged. Not chosen: holding it for the next minor release.
+- **K252 — added 2026-11-16, found while finishing it:** the merge review's
+  issue sweep found `CalendarFeedTest::testATrialConversionAppears` failing
+  on every engine from 16 November 2026 (a fixed trial date on the real
+  clock), which turned this PR's CI red. Its clock is frozen, as the file's
+  other tests do. Tests only.
 
 ## Status
 

@@ -178,6 +178,12 @@ final class CalendarFeedTest extends ApiTestCase
 
     public function testATrialConversionAppears(): void
     {
+        // The clock is frozen before the trial ends (K252): the feed leaves out
+        // dates that have passed, so on the real clock this test failed from
+        // 16 November 2026 on.
+        $this->clock = FrozenClock::at('2026-10-15 12:00:00');
+        $this->boot();
+
         $this->createSubscription([
             'name' => 'Trial service',
             'is_trial' => true,
