@@ -139,10 +139,10 @@ None.
 
 - [x] K254: the seven named tests run on a frozen clock
 - [x] K254: audit to 2028, with every real failure frozen (none found beyond A's seven)
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 92 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 92 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
