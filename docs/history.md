@@ -966,6 +966,17 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   MySQL connection now runs in UTC. See
   [Configuration](configuration.md#configuration-1) and
   [Upgrading](upgrading.md#after-upgrading-to-utc-migrations-on-mysql-phase-90).
+- **Phase 91 — The API logo upload's catch-up, several tags, and tests that
+  hold recent fixes, from the known-issues log — complete (1.46.1).** A logo
+  uploaded through the API comes back with the same caught-up payment dates
+  as `GET` by id, and the API list filters on every tag asked for, whether
+  sent as `tag=3&tag=7`, as `tag[]=3&tag[]=7` or as a mix. Four recent fixes
+  (the phone Filters toggle's wiring, the calendar's one-time list request,
+  used-up alerts being settled before the channels read, and a pay-day budget
+  begun last year) each gain a test that fails without them. OpenAPI 1.9.16,
+  with no change of shape. No migrations. See
+  [Subscriptions](api.md#subscriptions) and [Logos](api.md#logos) in the API
+  reference.
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says

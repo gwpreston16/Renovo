@@ -8,6 +8,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.46.1] - 2026-11-17
+
 ### Fixed
 
 - **A logo uploaded through the API comes back with current dates.**
@@ -1781,7 +1783,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.46.0...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.46.1...HEAD
+[1.46.1]: https://github.com/gwpreston16/Renovo/compare/v1.46.0...v1.46.1
 [1.46.0]: https://github.com/gwpreston16/Renovo/compare/v1.45.0...v1.46.0
 [1.45.0]: https://github.com/gwpreston16/Renovo/compare/v1.44.0...v1.45.0
 [1.44.0]: https://github.com/gwpreston16/Renovo/compare/v1.43.0...v1.44.0

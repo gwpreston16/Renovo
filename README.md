@@ -185,8 +185,8 @@ uses it, and a deployment from the published image never installs it. See
 ## What's new
 
 Release notes are in [CHANGELOG.md](CHANGELOG.md), and what each phase built is
-in [docs/history.md](docs/history.md). The latest phase is **Phase 90, upload limits, migration time zone and screen-reader edges, from the known-issues log**
-([brief](docs/phases/PHASE-90.md)); the [roadmap](ROADMAP.md) shows what is in
+in [docs/history.md](docs/history.md). The latest phase is **Phase 91, the API logo upload's catch-up, several tags, and tests that hold recent fixes, from the known-issues log**
+([brief](docs/phases/PHASE-91.md)); the [roadmap](ROADMAP.md) shows what is in
 progress and what is planned.
 
 ## Contributing
