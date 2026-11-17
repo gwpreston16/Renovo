@@ -93,10 +93,12 @@ artefacts too. On Windows, 43 tests fail on the real clock for reasons outside
 the date: OpenSSL EC keys, unwritable paths, WebDAV. The whole suite therefore
 also ran on Linux in the `renovo-php85-test` image at each date, and at
 2026-12-15 23:00 and 2026-12-16 00:30 for the CSV import test's literal
-`2026-12-15`. It passes at every date. Nothing new appeared. The Integration
-suite at 2028-01-01 shows host failures and one artefact
-(`CancelledSubscriptionTest` compares PHP's `today` with the app clock). So B
-fixes no test.
+`2026-12-15`. That test passes at every date, and nothing new appeared beyond
+the artefacts. The Integration suite at 2028-01-01 shows host failures and one
+artefact (`CancelledSubscriptionTest` compares PHP's `today` with the app
+clock). Not every Integration test freezes its clock: `PaymentMethodTest`
+holds `2026-12-01` on the real clock, but asserts nothing that depends on the
+date. So B fixes no test.
 
 ## Data-model changes
 
