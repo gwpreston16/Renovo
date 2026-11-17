@@ -82,6 +82,22 @@ The Integration suite already freezes its clocks, and the sweep found nothing
 there; it is spot-checked, not moved. The list of tests fixed in B goes into
 the PR description, with the date each would have failed on.
 
+**Audit result, 2026-11-17: no test besides A's seven fails on a real date
+before 2028.** The Unit and Functional suites ran with the app clock at
+2026-12-02, 2027-01-02, 2027-07-01 and 2028-01-01, and a control at 2026-12-01
+23:00. Diffing the control against 2026-12-02 00:30 left only four
+CalendarFeed tests that build their dates from PHP's own `first day of next
+month`, so they are artefacts. The 18 tests that first fail at the later dates
+all take their dates from PHP's own clock, or run frozen already, so they are
+artefacts too. On Windows, 43 tests fail on the real clock for reasons outside
+the date: OpenSSL EC keys, unwritable paths, WebDAV. The whole suite therefore
+also ran on Linux in the `renovo-php85-test` image at each date, and at
+2026-12-15 23:00 and 2026-12-16 00:30 for the CSV import test's literal
+`2026-12-15`. It passes at every date. Nothing new appeared. The Integration
+suite at 2028-01-01 shows host failures and one artefact
+(`CancelledSubscriptionTest` compares PHP's `today` with the app clock). So B
+fixes no test.
+
 ## Data-model changes
 
 None.
@@ -122,7 +138,7 @@ None.
 ## Status
 
 - [x] K254: the seven named tests run on a frozen clock
-- [ ] K254: audit to 2028, with every real failure frozen
+- [x] K254: audit to 2028, with every real failure frozen (none found beyond A's seven)
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed
 - [ ] ROADMAP: Phase 92 row marked ✅ done
