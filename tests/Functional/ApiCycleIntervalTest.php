@@ -4,12 +4,23 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Support\Clock;
+use App\Support\FrozenClock;
+
 /**
  * `cycle_interval` and `converts_to_cycle_interval` on the subscription
  * resource: readable, writable, bounded, and 1 when a client leaves them out.
  */
 final class ApiCycleIntervalTest extends ApiTestCase
 {
+    /** Set by a test that needs today pinned, before it boots again. */
+    private ?FrozenClock $clock = null;
+
+    protected function containerOverrides(): array
+    {
+        return $this->clock === null ? [] : [Clock::class => $this->clock];
+    }
+
     public function testAnIntervalIsWrittenAndReadBack(): void
     {
         $id = $this->createSubscription(['billing_cycle' => 'monthly', 'cycle_interval' => 6, 'price_minor' => 18000]);
@@ -78,6 +89,12 @@ final class ApiCycleIntervalTest extends ApiTestCase
 
     public function testATrialsConvertsToIntervalRoundTrips(): void
     {
+        // Frozen before the trial's end of 1 December 2026 (K254): once that
+        // date passes the trial converts when it is read, and its interval
+        // reads back as null.
+        $this->clock = FrozenClock::at('2026-10-15 12:00:00');
+        $this->boot();
+
         $id = $this->createSubscription([
             'is_trial' => true,
             'trial_end_date' => '2026-12-01',

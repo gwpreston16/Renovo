@@ -121,7 +121,7 @@ None.
 
 ## Status
 
-- [ ] K254: the seven named tests run on a frozen clock
+- [x] K254: the seven named tests run on a frozen clock
 - [ ] K254: audit to 2028, with every real failure frozen
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed
