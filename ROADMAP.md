@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–91
+## Planned — Phases 30–92
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -100,6 +100,7 @@ can be moved.
 | 89 | [The 1.44.0 release notes, from the known-issues log](docs/phases/PHASE-89.md) | — | None | ✅ done |
 | 90 | [Upload limits, migration time zone and screen-reader edges, from the known-issues log](docs/phases/PHASE-90.md) | — | None | ✅ done |
 | 91 | [The API logo upload's catch-up, several tags, and tests that hold recent fixes, from the known-issues log](docs/phases/PHASE-91.md) | — | None | ✅ done |
+| 92 | [Tests that hold on any date, from the known-issues log](docs/phases/PHASE-92.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -256,6 +257,7 @@ can be moved.
 - **89 — The 1.44.0 release notes.** A docs batch from the known-issues log (K237): the released 1.44.0 notes move the Phase 86 legibility fixes from Changed to Fixed and say that Today, paging and "Just mine" keep the calendar's list only on the list view. It ships with Phase 88 in 1.44.1.
 - **90 — Upload limits, migration time zone and screen-reader edges.** A batch from the known-issues log (K238-K243, K247): Phinx's MySQL connection runs in UTC so migrations and seeds keep stored times, the Docker image accepts uploads up to the app's own limits, a refused pay day is explained beside its field, and the budget form, the phone Filters button and dashboard card dragging answer screen readers and reduced motion. The 1.44.0 rollback note names "From pay day". Ships as 1.45.1.
 - **91 — The API logo upload's catch-up, several tags, and tests that hold recent fixes.** A batch from the known-issues log (K244, K245, K248-K251): a logo uploaded through the API comes back with the same caught-up dates as `GET` by id, the API list accepts several tags as `tag=3&tag=7` as well as `tag[]=`, and four recent fixes (the phone Filters toggle's wiring, the calendar's one-time list request, the used-up alert check, and the Budgets screen's reach back into December) each get a test that fails without them. Ships as 1.46.1.
+- **92 — Tests that hold on any date.** A batch from the known-issues log (K254): seven API and calendar-feed tests that use a fixed 2026-12-01 date on the real clock, and fail on every engine from 2 December 2026, run on a frozen clock, and the rest of the suite is checked for fixed dates that pass before 2028. Tests only. Ships as 1.46.2.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
