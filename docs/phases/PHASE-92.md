@@ -144,7 +144,7 @@ None.
 - [x] Rows marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed
 - [x] ROADMAP: Phase 92 row marked ✅ done
-- [x] composer check, coverage and the API doc tests green
+- [x] composer check, coverage and the API doc tests green (on Linux: 93.07% total; 15 failures from the local container, which fail the same in files identical to master; CI decides)
 
 ## Definition of done
 
