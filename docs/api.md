@@ -666,6 +666,11 @@ curl -X POST \
      https://your-instance.example/api/v1/subscriptions
 ```
 
+After saving, the request runs the catch-up the list and `GET` by id run, so
+a `next_payment_date` already past comes back moved on to the next billing
+date, with the charges for the dates that passed written, as the next read
+would show it.
+
 Responses: `201`, `400`, `401`, `403`, `422`.
 
 #### `GET /api/v1/subscriptions/{id}`
@@ -678,7 +683,9 @@ in the list. Responses: `200`, `401`, `403`, `404`.
 
 Replace a subscription. A **full** replacement: any field the body omits takes
 its documented default, so read the resource, edit the representation and send
-it back rather than sending only what changed. The logo is untouched.
+it back rather than sending only what changed. The logo is untouched. After
+saving, the request runs the catch-up as [create](#post-apiv1subscriptions)
+does, so the response matches the next read.
 
 Responses: `200`, `400`, `401`, `403`, `404`, `422`.
 

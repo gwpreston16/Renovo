@@ -144,6 +144,11 @@ final class SubscriptionApiController extends ApiController
             SubscriptionPayload::toServiceInput($this->payload($request)),
         );
 
+        // Catch up after the save and before the read (K255): a row saved
+        // with a next payment already past must come back as the GET that
+        // follows would show it, not with a negative days-until.
+        $this->catchUp($request, $scope);
+
         $created = $this->subscriptions->find($scope, $id);
         if ($created === null) {
             // Only reachable if the row vanished between the two statements.
@@ -178,6 +183,9 @@ final class SubscriptionApiController extends ApiController
             $id,
             SubscriptionPayload::toServiceInput($this->payload($request), $existing),
         );
+
+        // As create() does, so the 200 matches a GET straight after (K255).
+        $this->catchUp($request, $scope);
 
         $updated = $this->subscriptions->find($scope, $id);
         if ($updated === null) {

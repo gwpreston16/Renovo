@@ -173,7 +173,7 @@ None.
 
 ## Status
 
-- [ ] K255: create and replace return a caught-up next payment
+- [x] K255: create and replace return a caught-up next payment
 - [ ] K256: non-integer id, page and per_page filters are a 422 on the API
 - [ ] K257: `converts_to_cycle_days` bounds in OpenAPI and `docs/api.md`
 - [ ] K263: the Phase 90 note lists the shifted expiries; CHANGELOG corrected
