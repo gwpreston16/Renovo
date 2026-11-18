@@ -80,6 +80,12 @@ final class BillingCycleIntervalTest extends TestCase
         // Truncating would give 333 and 27.
         self::assertSame(334, BillingCycle::Yearly->annualMinor(1001, null, 3));
         self::assertSame(28, BillingCycle::Yearly->monthlyMinor(1001, null, 3));
+
+        // Nearest, not up: £10.00 every 7 months is 1714.29 a year (a ceiling
+        // would give 1715). And a half goes away from zero: £10.01 every 2
+        // years is 500.5 a year (truncating or rounding half to even give 500).
+        self::assertSame(1714, BillingCycle::Monthly->annualMinor(1000, null, 7));
+        self::assertSame(501, BillingCycle::Yearly->annualMinor(1001, null, 2));
     }
 
     public function testSixMonthlyAdvancesByCalendarMonthsOnItsAnchor(): void

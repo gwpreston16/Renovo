@@ -36,16 +36,17 @@ test('data-autosubmit sends the form once when the control changes', () => {
 
 test('data-clears unticks the named checkbox in the form, and nothing else', () => {
     form(`<input id="auto" type="checkbox" name="auto_colour" checked>
-        <input id="note" type="text" name="note" value="kept">
+        <input id="mode" type="radio" name="mode" checked>
         <input id="colour" type="color" data-clears="auto_colour">
-        <input id="other" type="color" data-clears="note">`);
+        <input id="other" type="color" data-clears="mode">`);
 
     // A colour picker sends `input` as it moves, before any `change`.
     document.getElementById('colour').dispatchEvent(new Event('input', { bubbles: true }));
     expect(document.getElementById('auto').checked).toBe(false);
 
+    // A radio can be unticked too, so it shows the checkbox-only guard holds.
     document.getElementById('other').dispatchEvent(new Event('input', { bubbles: true }));
-    expect(document.getElementById('note').value).toBe('kept');
+    expect(document.getElementById('mode').checked).toBe(true);
 });
 
 test('data-typed-trigger fires renovo:typed on its form when a field is typed in', () => {

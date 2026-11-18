@@ -182,8 +182,10 @@ final class UrlGuardTest extends TestCase
     {
         $message = 'Outbound request allowed to a private address by the trusted-host list';
 
+        // A public address in the same answer is not one the list let through,
+        // so the line names only the private one.
         $logger = new RecordingLogger();
-        $this->guard(['gotify.ts.net' => ['100.101.102.103']], ['100.64.0.0/10'], null, $logger)
+        $this->guard(['gotify.ts.net' => ['100.101.102.103', '93.184.216.34']], ['100.64.0.0/10'], null, $logger)
             ->inspect($this->uri('https://gotify.ts.net/message'));
 
         $lines = array_keys(array_filter($logger->records, static fn (array $r): bool => $r[1] === $message));
