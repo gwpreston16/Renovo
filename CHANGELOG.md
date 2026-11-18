@@ -10,7 +10,7 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ### Fixed
 
-- **A local run on MySQL is clean.** With MySQL chosen in `.env`, as the
+- **A PostgreSQL-only test skips on a MySQL install.** With MySQL chosen in `.env`, as the
   MySQL install does, one PostgreSQL-only time-zone test failed on
   `SHOW TimeZone` instead of skipping, because it read the driver only from
   the process environment. It now reads it the way the rest of the run does.
