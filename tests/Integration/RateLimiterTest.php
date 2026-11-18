@@ -86,6 +86,29 @@ final class RateLimiterTest extends DatabaseTestCase
         self::assertFalse($limiter->isBlocked(self::KIND, self::ACCOUNT, self::IP));
     }
 
+    /**
+     * K268: the window is exclusive at its edge, so the first and third of
+     * three failures exactly 900 s apart are not "within one window".
+     */
+    public function testFailuresExactlyAWindowApartDoNotLock(): void
+    {
+        $limiter = $this->limiter(window: 900, lockout: 3600);
+        $this->failWithGaps($limiter, [450, 450]);
+
+        self::assertFalse($limiter->isBlocked(self::KIND, self::ACCOUNT, self::IP));
+    }
+
+    /**
+     * K268: the other side of the same edge, a second inside it, locks.
+     */
+    public function testFailuresJustInsideTheWindowLock(): void
+    {
+        $limiter = $this->limiter(window: 900, lockout: 3600);
+        $this->failWithGaps($limiter, [450, 449]);
+
+        self::assertTrue($limiter->isBlocked(self::KIND, self::ACCOUNT, self::IP));
+    }
+
     public function testAnotherFailureAfterTheBlockLiftsStartsANewOne(): void
     {
         $limiter = $this->limiter(window: 900, lockout: 300);
@@ -159,6 +182,21 @@ final class RateLimiterTest extends DatabaseTestCase
     private function failTimes(RateLimiter $limiter, int $times): void
     {
         for ($i = 0; $i < $times; $i++) {
+            $limiter->recordFailure(self::KIND, self::ACCOUNT, self::IP);
+        }
+    }
+
+    /**
+     * One failure, then one more after each gap in seconds; the clock is left
+     * at the last failure.
+     *
+     * @param list<int> $gaps
+     */
+    private function failWithGaps(RateLimiter $limiter, array $gaps): void
+    {
+        $limiter->recordFailure(self::KIND, self::ACCOUNT, self::IP);
+        foreach ($gaps as $gap) {
+            $this->advance($gap);
             $limiter->recordFailure(self::KIND, self::ACCOUNT, self::IP);
         }
     }

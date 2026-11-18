@@ -194,7 +194,7 @@ None.
 - [x] K265: rounding over an interval above 1
 - [x] K266: the trusted-host log line
 - [x] K267: the four untested form behaviours
-- [ ] K268: the window edge, both sides
+- [x] K268: the window edge, both sides
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed
 - [ ] ROADMAP: Phase 93 row marked ✅ done
