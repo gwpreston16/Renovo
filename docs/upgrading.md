@@ -493,10 +493,36 @@ could also fail. From this release, Phinx's MySQL connection runs in UTC like th
 application's, so migrations, rollbacks and `phinx seed:run` read and write
 times as the application does.
 
-Renovo cannot tell a shifted expiry from one a member chose, so it does not
-repair them. **Back up your database first**, then upgrade as usual. Afterwards,
-each token's owner checks its expiry in **Settings → Data & integrations → API
-tokens** and reissues any that matter, with the expiry they meant.
+**Back up your database first**, then upgrade as usual. Renovo does not repair
+the shifted expiries, but you can list them: they are exactly the tokens
+created before that migration ran that have an expiry. Tokens created after it
+were written in UTC, and a token with no expiry had nothing to move.
+
+The query below only reads. Run it in a UTC session, with your server's offset
+when the migration ran in place of `+10:00` (or its zone name, such as
+`'Australia/Sydney'`, if the server's time zone tables are loaded). It needs
+the offset because Phinx wrote the migration's `start_time` from a UTC clock
+over a connection in the server's zone, so it reads back off by that offset.
+
+```sql
+SET SESSION time_zone = '+00:00';
+SELECT t.name, u.email AS owner, t.expires_at AS stored_expiry
+  FROM api_tokens t
+  JOIN users u ON u.id = t.user_id
+ WHERE t.expires_at IS NOT NULL
+   AND t.created_at < (SELECT CONVERT_TZ(start_time, '+00:00', '+10:00')
+                         FROM phinxlog
+                        WHERE version = 20271101000001)
+ ORDER BY u.email, t.name;
+```
+
+Each listed token's stored expiry is out by the server's offset: on a
+`+10:00` server, 22:00 is a token chosen for 12:00. The list is exact unless
+that migration was rolled back and run again (`phinxlog` then holds only the
+later run, and a rollback moves expiries again) or the server's zone has
+changed since it ran: then treat the list as a starting point. Each listed token's owner checks its
+expiry in **Settings → Data & integrations → API tokens** and reissues any
+that matter, with the expiry they meant.
 
 ## After upgrading to MySQL 9.7 and the PHP 8.5 image
 

@@ -176,9 +176,9 @@ None.
 - [x] K255: create and replace return a caught-up next payment
 - [x] K256: non-integer id, page and per_page filters are a 422 on the API
 - [x] K257: `converts_to_cycle_days` bounds in OpenAPI and `docs/api.md`
-- [ ] K263: the Phase 90 note lists the shifted expiries; CHANGELOG corrected
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
+- [x] K263: the Phase 90 note lists the shifted expiries; CHANGELOG corrected
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
 - [ ] ROADMAP: Phase 94 row marked ✅ done
 - [ ] composer check, coverage and the API doc tests green
 
