@@ -25,7 +25,9 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   `GET /api/v1/subscriptions`, a `category`, `owner`, `tag`, `page` or
   `per_page` that isn't a whole number of 1 or more is a `422` naming the
   parameter. `?tag=music` used to answer `200` with every row, since the
-  filter takes a tag's id, not the name the resource returns. An empty value
+  filter takes a tag's id, not the name the resource returns; `page=0` and
+  `per_page=0`, once read as the first page and the default size, and a
+  negative id, once ignored, are refused too. An empty value
   is still no filter, `per_page` over 100 is still read as 100, and the web
   list is unchanged. OpenAPI 1.9.17, with no change of shape. *Phase 94.*
 - **`converts_to_cycle_days` is documented.** OpenAPI and `docs/api.md` now

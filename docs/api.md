@@ -669,8 +669,10 @@ curl -X POST \
 
 After saving, the request runs the [catch-up the list runs](#get-apiv1subscriptions),
 so the response is what the next read would show, which can differ from the
-body sent: a `next_payment_date` already past comes back moved on to the next
-billing date, with a charge written for each date that passed; a trial whose
+body sent: on an active recurring row, a `next_payment_date` already past
+comes back moved on to the next billing date, with a charge written for each
+date that passed (a paused or cancelled row keeps its date, and a past one-off
+or lifetime entry gets its one charge); a trial whose
 `trial_end_date` has passed comes back converted; a due price change is
 applied; and a fixed term whose last payment has passed comes back cancelled.
 A charge for one of those dates is then already there, so

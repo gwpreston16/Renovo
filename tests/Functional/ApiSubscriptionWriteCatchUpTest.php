@@ -55,6 +55,53 @@ final class ApiSubscriptionWriteCatchUpTest extends ApiTestCase
     }
 
     /**
+     * The catch-up is the whole one, not only payments: a trial sent with an
+     * end already past comes back converted, at its converts-to price.
+     */
+    public function testAPutTrialWhoseEndHasPassedComesBackConverted(): void
+    {
+        $id = $this->createSubscription(['name' => 'Trial']);
+
+        $response = $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
+            'name' => 'Trial',
+            'price_minor' => 0,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-10-21',
+            'is_trial' => true,
+            'trial_end_date' => '2026-10-21',
+            'converts_to_price_minor' => 1499,
+        ]);
+
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $returned = $this->decode($response)['data'];
+        self::assertFalse($returned['is_trial']);
+        self::assertSame(1499, $returned['price_minor']);
+        self::assertSame('2026-11-21', $returned['next_payment_date']);
+    }
+
+    /**
+     * A client recording history after a backdated create finds the passed
+     * dates already charged: a second charge on one is refused, and the
+     * existing one is what it PATCHes.
+     */
+    public function testAChargeOnACaughtUpDateIsRefusedAfterTheCreate(): void
+    {
+        $created = $this->api('POST', '/api/v1/subscriptions', $this->ownerToken, $this->overduePayload('Imported'));
+        self::assertSame(201, $created->getStatusCode(), (string) $created->getBody());
+        $id = (int) $this->decode($created)['data']['id'];
+
+        $posted = $this->api('POST', '/api/v1/subscriptions/' . $id . '/charges', $this->ownerToken, [
+            'date' => '2026-09-21',
+            'amount_minor' => 1500,
+        ]);
+
+        self::assertSame(422, $posted->getStatusCode(), (string) $posted->getBody());
+        self::assertArrayHasKey('date', $this->decode($posted)['error']['errors']);
+    }
+
+    /**
      * A read-only token can't write at all, so the catch-up's token check is
      * held by the read path's test; this one pins that a write token's
      * response matches the GET that follows it.
@@ -80,6 +127,15 @@ final class ApiSubscriptionWriteCatchUpTest extends ApiTestCase
         $shown = $this->decode($this->api('GET', '/api/v1/subscriptions/' . $id, $this->ownerToken))['data'];
         self::assertSame($shown['next_payment_date'], $returned['next_payment_date']);
         self::assertSame($shown['days_until_next_payment'], $returned['days_until_next_payment']);
+
+        // The GET's own catch-up finds nothing left to write.
+        self::assertSame(
+            2,
+            (int) $this->db->fetchValue(
+                'SELECT COUNT(*) FROM subscription_charges WHERE subscription_id = :id',
+                ['id' => $id],
+            ),
+        );
     }
 
     /**

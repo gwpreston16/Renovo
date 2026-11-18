@@ -301,9 +301,11 @@ paths:
       description: |
         After saving, it runs the catch-up the list describes (a
         `subscriptions:write` token is needed to call it at all), so the
-        response can differ from the body sent: a past `next_payment_date`
-        comes back moved on, with a charge written for each passed billing
-        date, a trial whose end has passed comes back converted, a due price
+        response can differ from the body sent: on an active recurring row a
+        past `next_payment_date` comes back moved on, with a charge written
+        for each passed billing date (a paused or cancelled row keeps its
+        date, and a past one-off or lifetime entry gets its one charge), a
+        trial whose end has passed comes back converted, a due price
         change is applied, and a fixed term whose last payment has passed
         comes back cancelled. To record what was paid on one of those dates,
         `PATCH` its charge; a `POST` of another charge on the same date is a
@@ -395,9 +397,11 @@ paths:
 
         After saving, it runs the catch-up the list describes (a
         `subscriptions:write` token is needed to call it at all), so the
-        response can differ from the body sent: a past `next_payment_date`
-        comes back moved on, with a charge written for each passed billing
-        date, a trial whose end has passed comes back converted, a due price
+        response can differ from the body sent: on an active recurring row a
+        past `next_payment_date` comes back moved on, with a charge written
+        for each passed billing date (a paused or cancelled row keeps its
+        date, and a past one-off or lifetime entry gets its one charge), a
+        trial whose end has passed comes back converted, a due price
         change is applied, and a fixed term whose last payment has passed
         comes back cancelled. To record what was paid on one of those dates,
         `PATCH` its charge; a `POST` of another charge on the same date is a

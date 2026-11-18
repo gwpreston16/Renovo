@@ -118,6 +118,7 @@ final class ApiRequestEdgesTest extends ApiTestCase
             'page=abc' => 'page',
             'page=0' => 'page',
             'per_page=x' => 'per_page',
+            'per_page=0' => 'per_page',
             'page[]=1' => 'page',
             // Shapes a cast or is_numeric() would let through as a number.
             'page=1.5' => 'page',
@@ -146,6 +147,28 @@ final class ApiRequestEdgesTest extends ApiTestCase
         $empty = $this->api('GET', '/api/v1/subscriptions?tag=&category=&owner=&page=&per_page=', $this->readOnlyToken);
         self::assertSame(200, $empty->getStatusCode(), (string) $empty->getBody());
         self::assertCount(1, $this->decode($empty)['data']);
+    }
+
+    /**
+     * A whole number too large for any id is still a whole number: it matches
+     * no row on either engine, rather than failing in the database.
+     */
+    public function testAnOversizedIdMatchesNothing(): void
+    {
+        $this->createSubscription(['name' => 'Zebra Cloud', 'tags' => ['music']]);
+
+        foreach (['tag', 'category', 'owner'] as $parameter) {
+            foreach (['3000000000', '99999999999999999999999'] as $value) {
+                $response = $this->api(
+                    'GET',
+                    '/api/v1/subscriptions?' . $parameter . '=' . $value,
+                    $this->readOnlyToken,
+                );
+
+                self::assertSame(200, $response->getStatusCode(), $parameter . '=' . $value);
+                self::assertSame([], $this->decode($response)['data'], $parameter . '=' . $value);
+            }
+        }
     }
 
     /**
