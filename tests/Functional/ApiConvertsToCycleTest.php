@@ -4,12 +4,34 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Support\Clock;
+use App\Support\FrozenClock;
+
 /**
  * The cycle a trial converts to is one of the billing cycles or nothing (K188):
  * a misspelt one is refused, not saved as "no cycle".
  */
 final class ApiConvertsToCycleTest extends ApiTestCase
 {
+    /** Pinned for every test in the file; see setUp(). */
+    private ?FrozenClock $clock = null;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Frozen before body()'s trial end of 1 December 2026 (K254): once that
+        // date passes the trial converts when it is read, and the cycle it
+        // converts to reads back as null.
+        $this->clock = FrozenClock::at('2026-10-15 12:00:00');
+        $this->boot();
+    }
+
+    protected function containerOverrides(): array
+    {
+        return $this->clock === null ? [] : [Clock::class => $this->clock];
+    }
+
     /**
      * @return array<string, array{string}>
      */

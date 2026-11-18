@@ -84,6 +84,11 @@ final class CalendarFeedTest extends ApiTestCase
 
     public function testRenewalsAppearAsWholeDayEvents(): void
     {
+        // Frozen before 1 December 2026 (K254): the feed leaves out a renewal
+        // whose date has passed, so on the real clock this failed from the 2nd.
+        $this->clock = FrozenClock::at('2026-10-15 12:00:00');
+        $this->boot();
+
         $this->createSubscription(['name' => 'Streaming', 'next_payment_date' => '2026-12-01']);
 
         $body = $this->feed();

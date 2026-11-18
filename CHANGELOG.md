@@ -8,6 +8,15 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **The test suite passes after 1 December 2026.** Seven tests created a
+  renewal or a trial end dated 2026-12-01 on the real clock, so from
+  2 December they failed on every engine, CI included, whatever a change
+  touched. They now run on a frozen clock, as the calendar feed's trial test
+  already did. An audit with the app clock moved as far as 1 January 2028
+  found no other test tied to a date that will pass. Tests only. *Phase 92.*
+
 ## [1.46.1] - 2026-11-17
 
 ### Fixed
