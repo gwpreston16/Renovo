@@ -119,6 +119,11 @@ final class ApiRequestEdgesTest extends ApiTestCase
             'page=0' => 'page',
             'per_page=x' => 'per_page',
             'page[]=1' => 'page',
+            // Shapes a cast or is_numeric() would let through as a number.
+            'page=1.5' => 'page',
+            'page=%2B1' => 'page',
+            'category=%201' => 'category',
+            'owner=1e3' => 'owner',
         ]);
     }
 

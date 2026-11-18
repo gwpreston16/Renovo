@@ -480,8 +480,10 @@ Rolling back has three costs:
 
 This only matters on a **MySQL or MariaDB server whose own time zone is not
 UTC** (a bare-metal or packaged install) that ran the 1.41.0 migration
-`20271101000001_widen_api_token_expiry`. The Docker images run in UTC and are
-not affected, and neither is PostgreSQL.
+`20271101000001_widen_api_token_expiry` on 1.41.0 to 1.45.x. An upgrade
+straight from 1.40.x or earlier to 1.46.0 or later ran it in UTC, so nothing
+moved. The Docker images run in UTC and are not affected, and neither is
+PostgreSQL.
 
 Before this release, Phinx's own connection to MySQL kept the server's time zone,
 while the application's runs in UTC. That migration changes `api_tokens.expires_at`
@@ -520,9 +522,9 @@ Each listed token's stored expiry is out by the server's offset: on a
 `+10:00` server, 22:00 is a token chosen for 12:00. The list is exact unless
 that migration was rolled back and run again (`phinxlog` then holds only the
 later run, and a rollback moves expiries again) or the server's zone has
-changed since it ran: then treat the list as a starting point. Each listed token's owner checks its
-expiry in **Settings → Data & integrations → API tokens** and reissues any
-that matter, with the expiry they meant.
+changed since it ran: then treat the list as a starting point. Each listed
+token's owner checks its expiry in **Settings → Data & integrations → API
+tokens** and reissues any that matter, with the expiry they meant.
 
 ## After upgrading to MySQL 9.7 and the PHP 8.5 image
 

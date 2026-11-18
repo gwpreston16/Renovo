@@ -16,7 +16,11 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   `GET` by id, so the `201` or `200` shows the next billing date and the
   charges for the dates that passed are written then. It used to return the
   stored date with a negative `days_until_next_payment` until the next read.
-  *Phase 94.*
+  The response can now differ from the body sent: a trial whose end date has
+  passed comes back converted, a due price change applied, a finished fixed
+  term cancelled. A client importing history finds the passed dates' charges
+  already there, so it `PATCH`es one to record what was paid; `POST`ing a
+  second charge on the same date is a `422`. *Phase 94.*
 - **The API list refuses a filter id it can't use.** On
   `GET /api/v1/subscriptions`, a `category`, `owner`, `tag`, `page` or
   `per_page` that isn't a whole number of 1 or more is a `422` naming the

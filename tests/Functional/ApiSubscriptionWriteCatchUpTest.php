@@ -66,12 +66,8 @@ final class ApiSubscriptionWriteCatchUpTest extends ApiTestCase
         self::assertSame('2026-11-21', $returned['next_payment_date']);
         self::assertSame(21, $returned['days_until_next_payment']);
 
-        $shown = $this->decode($this->api('GET', '/api/v1/subscriptions/' . $id, $this->ownerToken))['data'];
-        self::assertSame($shown['next_payment_date'], $returned['next_payment_date']);
-        self::assertSame($shown['days_until_next_payment'], $returned['days_until_next_payment']);
-
-        // The catch-up wrote the two dates that passed during the request
-        // itself, not on the next read.
+        // The catch-up wrote the two dates that passed during the write
+        // itself: read before any later request, which would catch up too.
         $dues = array_map(
             static fn (array $row): string => substr((string) $row['due_date'], 0, 10),
             $this->db->fetchAll(
@@ -80,6 +76,10 @@ final class ApiSubscriptionWriteCatchUpTest extends ApiTestCase
             ),
         );
         self::assertSame(['2026-09-21', '2026-10-21'], $dues);
+
+        $shown = $this->decode($this->api('GET', '/api/v1/subscriptions/' . $id, $this->ownerToken))['data'];
+        self::assertSame($shown['next_payment_date'], $returned['next_payment_date']);
+        self::assertSame($shown['days_until_next_payment'], $returned['days_until_next_payment']);
     }
 
     /**

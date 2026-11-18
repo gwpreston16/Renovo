@@ -298,6 +298,16 @@ paths:
       x-token-scope: "subscriptions:write"
       tags: [Subscriptions]
       summary: Create a subscription.
+      description: |
+        After saving, it runs the catch-up the list describes (a
+        `subscriptions:write` token is needed to call it at all), so the
+        response can differ from the body sent: a past `next_payment_date`
+        comes back moved on, with a charge written for each passed billing
+        date, a trial whose end has passed comes back converted, a due price
+        change is applied, and a fixed term whose last payment has passed
+        comes back cancelled. To record what was paid on one of those dates,
+        `PATCH` its charge; a `POST` of another charge on the same date is a
+        `422`.
       requestBody:
         required: true
         content:
@@ -382,6 +392,16 @@ paths:
         A full replacement. Any field the body omits takes its documented
         default, so read the resource and send it back edited rather than
         sending only what changed.
+
+        After saving, it runs the catch-up the list describes (a
+        `subscriptions:write` token is needed to call it at all), so the
+        response can differ from the body sent: a past `next_payment_date`
+        comes back moved on, with a charge written for each passed billing
+        date, a trial whose end has passed comes back converted, a due price
+        change is applied, and a fixed term whose last payment has passed
+        comes back cancelled. To record what was paid on one of those dates,
+        `PATCH` its charge; a `POST` of another charge on the same date is a
+        `422`.
 
         The logo is the one exception: it is a file with endpoints of its own,
         and a `PUT` leaves it as it is.
@@ -834,6 +854,11 @@ paths:
       x-token-scope: "subscriptions:write"
       tags: [Payments]
       summary: Add a charge that fell off the billing cycle.
+      description: |
+        One charge a day per subscription, so a date that already has one is
+        a `422`. A date the catch-up has reached, including one a create or
+        replace of a backdated row caught up, already has its charge:
+        `PATCH` that charge instead.
       requestBody:
         required: true
         content:

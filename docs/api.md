@@ -644,7 +644,8 @@ curl -H "Authorization: Bearer rnv_..." \
 }
 ```
 
-Responses: `200`, `401`, `403`, `422` (a filter value outside its set).
+Responses: `200`, `401`, `403`, `422` (a filter value outside its set, or an
+id or page that isn't a whole number of 1 or more).
 
 #### `POST /api/v1/subscriptions`
 
@@ -666,10 +667,15 @@ curl -X POST \
      https://your-instance.example/api/v1/subscriptions
 ```
 
-After saving, the request runs the catch-up the list and `GET` by id run, so
-a `next_payment_date` already past comes back moved on to the next billing
-date, with the charges for the dates that passed written, as the next read
-would show it.
+After saving, the request runs the [catch-up the list runs](#get-apiv1subscriptions),
+so the response is what the next read would show, which can differ from the
+body sent: a `next_payment_date` already past comes back moved on to the next
+billing date, with a charge written for each date that passed; a trial whose
+`trial_end_date` has passed comes back converted; a due price change is
+applied; and a fixed term whose last payment has passed comes back cancelled.
+A charge for one of those dates is then already there, so
+[`PATCH`](#patch-apiv1chargesid) it to record what was paid, rather than
+`POST`ing another (a second charge on the same date is a `422`).
 
 Responses: `201`, `400`, `401`, `403`, `422`.
 
@@ -832,7 +838,7 @@ Add a charge that fell off the cycle, such as a one-time fee. Needs
 
 | Field | Notes |
 | --- | --- |
-| `date` | **Required.** `YYYY-MM-DD`, today or earlier. One charge a day per subscription. |
+| `date` | **Required.** `YYYY-MM-DD`, today or earlier. One charge a day per subscription: a billing date the catch-up has reached, including through a [create](#post-apiv1subscriptions) or replace of a backdated row, already has its charge, so `PATCH` that one instead. |
 | `amount_minor` | **Required.** Integer minor units, in the subscription's currency, at most `1000000000000` (more is a `422` on the field, as for a price). The web form's decimal `amount` is not read. |
 | `note` | Optional, up to 255 characters. |
 
