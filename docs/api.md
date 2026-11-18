@@ -613,9 +613,9 @@ without anybody editing the row. A token without that scope changes nothing.
 | Parameter | Type | Notes |
 | --- | --- | --- |
 | `q` | string | Search names and notes. |
-| `category` | integer | Category id. |
-| `owner` | integer | Owner user id. |
-| `tag` | integer or integer[] | Tag id; repeat it for several, in either form (`tag=3&tag=7` or `tag[]=3&tag[]=7`) or a mix of the two. A subscription matches when it has **any** of them. |
+| `category` | integer | Category id, 1 or more. |
+| `owner` | integer | Owner user id, 1 or more. |
+| `tag` | integer or integer[] | Tag id; repeat it for several, in either form (`tag=3&tag=7` or `tag[]=3&tag[]=7`) or a mix of the two. A subscription matches when it has **any** of them. An id, not the name the resource returns: `tag=music` is a `422`. |
 | `currency` | string | ISO 4217 code. |
 | `type` | enum | `recurring`, `one_off`, `lifetime`. |
 | `inactive` | `"0"` or `"1"` | `1` includes inactive subscriptions — paused and cancelled. `true` and `false` are refused. |
@@ -623,9 +623,9 @@ without anybody editing the row. A token without that scope changes nothing.
 | `sort` | enum | `name`, `next_payment`, `price`, `created`. |
 | `dir` | enum | `asc`, `desc`. |
 | `page` | integer | Minimum 1. A page past the last is empty, however large the number. |
-| `per_page` | integer | 1–100, default 25. |
+| `per_page` | integer | 1–100, default 25. Over 100 is read as 100. |
 
-An empty parameter is no filter. A `type`, `status`, `sort`, `dir` or `inactive` value outside the set above, or a `currency` that is not three letters, is a `422` naming the parameter, rather than being ignored; the web list is more forgiving.
+An empty parameter is no filter. A `type`, `status`, `sort`, `dir` or `inactive` value outside the set above, a `currency` that is not three letters, or a `category`, `owner`, `tag`, `page` or `per_page` that is not a whole number of 1 or more, is a `422` naming the parameter, rather than being ignored; the web list is more forgiving.
 
 Two things hold whatever `sort` and `dir` say, so that a page of results means
 the same on either supported database engine: inactive subscriptions come after

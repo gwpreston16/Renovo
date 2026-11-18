@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.16"
+  version: "1.9.17"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -210,22 +210,28 @@ paths:
         running trial is left alone, whatever `next_payment_date` it carries:
         its first payment is its trial end, once it converts. A token without
         it changes nothing.
+
+        A filter value outside its set is a `422` naming the parameter, and
+        so is a `category`, `owner`, `tag`, `page` or `per_page` that isn't
+        a whole number of 1 or more. An empty value is no filter, a
+        `per_page` over 100 is clamped to 100, and a page past the last is
+        empty.
       parameters:
         - { name: q, in: query, schema: { type: string }, description: Search names and notes. }
-        - { name: category, in: query, schema: { type: integer }, description: Category id. }
-        - { name: owner, in: query, schema: { type: integer }, description: Owner user id. }
+        - { name: category, in: query, schema: { type: integer, minimum: 1 }, description: Category id. }
+        - { name: owner, in: query, schema: { type: integer, minimum: 1 }, description: Owner user id. }
         - name: tag
           in: query
           style: form
           explode: true
           schema:
             oneOf:
-              - { type: integer }
-              - { type: array, items: { type: integer } }
+              - { type: integer, minimum: 1 }
+              - { type: array, items: { type: integer, minimum: 1 } }
           description: >
             Tag id. For several, repeat it in either form, `tag=3&tag=7` or
             `tag[]=3&tag[]=7`, or mix the two. A subscription matches when it
-            has any of them.
+            has any of them. A tag's id, not its name: `tag=music` is a `422`.
         - { name: currency, in: query, schema: { type: string }, description: ISO 4217 code. }
         - name: type
           in: query

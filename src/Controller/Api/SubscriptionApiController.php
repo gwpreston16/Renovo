@@ -71,13 +71,14 @@ final class SubscriptionApiController extends ApiController
         // divergence between the two doors that this phase exists to avoid.
         $this->catchUp($request, $scope);
 
+        // Several tags arrive as `tag[]=` or as a repeated plain `tag=`, which
+        // PHP's parsed query cuts to the last one (K245). The check reads the
+        // same list, so `?tag=abc&tag=3` is refused on its first value too.
+        $query = SubscriptionFilter::withEveryTag($query, $request->getUri()->getQuery());
+
         $this->assertKnownFilterValues($query);
 
-        // Several tags arrive as `tag[]=` or as a repeated plain `tag=`, which
-        // PHP's parsed query cuts to the last one (K245).
-        $filter = SubscriptionFilter::fromQueryParams(
-            SubscriptionFilter::withEveryTag($query, $request->getUri()->getQuery()),
-        );
+        $filter = SubscriptionFilter::fromQueryParams($query);
         $perPage = $this->perPage($query);
         $filter = new SubscriptionFilter(
             search: $filter->search,
@@ -410,9 +411,40 @@ final class SubscriptionApiController extends ApiController
             );
         }
 
+        // An id or a page that isn't a whole number of 1 or more would
+        // otherwise be dropped by the forgiving parse, so `?tag=music` (a
+        // name, as the resource returns tags) answered 200 with every row
+        // (K256). The tags are every value sent, after withEveryTag(); only
+        // `tag` may be a list, so `page[]=1` is refused like any other array.
+        foreach (['category', 'owner', 'tag', 'page', 'per_page'] as $name) {
+            $values = $query[$name] ?? '';
+            if (!is_array($values) || $name !== 'tag') {
+                $values = [$values];
+            }
+            foreach ($values as $value) {
+                if ($value !== '' && !self::isPositiveWholeNumber($value)) {
+                    $errors[$name] = new ValidationError(
+                        'error.api.filter_invalid',
+                        ['allowed' => 'a whole number of 1 or more'],
+                    );
+                    break;
+                }
+            }
+        }
+
         if ($errors !== []) {
             throw new ValidationException($errors);
         }
+    }
+
+    /**
+     * Digits only, and not zero: no sign, no decimal point, no spaces. A value
+     * too large for an int is still a whole number; it matches no row, and a
+     * page past the end is an empty page.
+     */
+    private static function isPositiveWholeNumber(mixed $value): bool
+    {
+        return is_string($value) && ctype_digit($value) && ltrim($value, '0') !== '';
     }
 
     /**
