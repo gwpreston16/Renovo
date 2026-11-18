@@ -160,22 +160,32 @@ None.
 
 - **K253:** the fault is in the test's guard, not in the app or in
   `phinx.php`: the child process does what an operator's `.env` says, and the
-  guard should read the same source.
+  guard should read the same source. *Confirmed 2026-11-18:* test-only, no
+  behaviour change; `tests/bootstrap.php:15-16` loads `.env` with the
+  immutable loader, and CI writes no `.env` (its `DB_DRIVER` comes from the
+  workflow's environment), so the `getenv()` fallback keeps both legs as they
+  are.
 - **K264–K267:** master is correct (each row was reproduced by mutation, not
   by a failure), so these add tests only. Each test's proof is that it fails
-  under the mutation its row names.
+  under the mutation its row names. *Confirmed 2026-11-18:* the code each row
+  names is as the brief describes it (`PriceHistoryRepository.php:268-269`,
+  `BillingCycle.php:119-135`, `UrlGuard.php:157-164`, `RateLimiter.php:89`).
 - **K268 — Decided 2026-11-18:** keep the exclusive edge Phase 46 left, so
   failures exactly a window apart don't lock, and pin it on both sides. It
   matches "that many within one window" in `docs/configuration.md`. Not
   chosen: restoring the inclusive edge of Phases 1–45 (`<=`).
 - **K266:** widening `RecordingLogger` with a `$contexts` list rather than
   adding a third support logger, since it already keeps the level.
+  *Confirmed 2026-11-18:* test support only.
 - **Rows — Decided 2026-11-18:** K253, K264, K265, K266, K267, K268. Not
   chosen: adding K257 on top; swapping K268 for K255.
 - **Release — Decided 2026-11-18:** ships as its own patch release,
   **1.46.3**, once merged, as tests-only Phase 92 did. Not chosen: holding it
   for the next minor release.
-- No OpenAPI change, so `info.version` stays as it is.
+- No OpenAPI change, so `info.version` stays as it is. *Confirmed
+  2026-11-18.*
+- **Known issues — checked 2026-11-18:** the log has no *Open* rows, so
+  nothing was offered on top of the six scheduled ones.
 
 ## Status
 
