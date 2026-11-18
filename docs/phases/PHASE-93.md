@@ -200,7 +200,8 @@ None.
 - [x] ROADMAP: Phase 93 row marked ✅ done
 - [x] composer check, coverage and the API doc tests green (lint, PHPStan and
   the API doc tests locally; the suite on both engines, where the only
-  failures are 46 from the Windows host, the same on master; coverage in CI,
+  failures are 46 from the Windows host, all in files this branch does not
+  change; coverage in CI,
   this PHP having no PCOV)
 
 ## Definition of done
