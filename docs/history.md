@@ -984,6 +984,16 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   with the app clock moved as far as 1 January 2028 found no other test tied
   to a date that will pass. Nothing changes in the app or the API; OpenAPI
   stays at 1.9.16. No migrations. See [Tests](development.md#tests).
+- **Phase 93 — Tests that catch what they name, from the known-issues log —
+  complete (1.47.0).** Five behaviours that worked but that nothing would
+  have noticed breaking each gain a test shown to fail when they do: a due
+  price change to another currency at the same amount, a price spread over
+  an interval that doesn't divide it exactly, the log line for a request let
+  through to a private address by the trusted-host list, four of the five
+  form behaviours, and the edge of the sign-in rate-limit window. A
+  PostgreSQL-only time-zone test now skips, rather than fails, with MySQL
+  chosen in `.env`. Nothing changes in the app or the API; OpenAPI stays at
+  1.9.16. No migrations. See [Tests](development.md#tests).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
