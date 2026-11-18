@@ -179,8 +179,12 @@ None.
 - [x] K263: the Phase 90 note lists the shifted expiries; CHANGELOG corrected
 - [x] Rows marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 94 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] ROADMAP: Phase 94 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green (lint, PHPStan,
+  the API doc tests and the offline check locally; the suite on both engines,
+  where the only failures are the Windows host's, all in files this branch
+  does not change and failing on master too; coverage in CI, this PHP having
+  no PCOV; K263's query checked on MySQL 9.7 at `+10:00`)
 
 ## Definition of done
 
