@@ -56,7 +56,14 @@ names a version explicitly (e.g. a patch release for fixes).
 
 ## 3. Choose the version
 
-- Default: **next minor** of `$LAST` (each phase since v1 has been a minor:
+- **The brief decides first.** Read the *Release* line under *Decisions &
+  assumptions* in each outstanding phase's `docs/phases/PHASE-N.md`. If it
+  names a patch or a version, that wins over the defaults below; recompute
+  any number it gives from the real `$LAST` (a brief drafted before an
+  earlier release may assume a different one) and say so. If two phases'
+  decisions conflict, ask. (1.47.0 shipped as a minor though Phase 93's
+  brief said patch 1.46.3, because this step was skipped.)
+- Otherwise, default: **next minor** of `$LAST` (each phase since v1 has been a minor:
   Phase 30 → 1.1.0 … Phase 33 → 1.4.0).
 - Several phases outstanding: **one minor release covering all of them**,
   unless the user asks for one release per phase.
