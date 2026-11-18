@@ -189,7 +189,7 @@ None.
 
 ## Status
 
-- [ ] K253: the time-zone test skips with `DB_DRIVER=mysql` in `.env`
+- [x] K253: the time-zone test skips with `DB_DRIVER=mysql` in `.env`
 - [ ] K264: due change to another currency at the same amount
 - [ ] K265: rounding over an interval above 1
 - [ ] K266: the trusted-host log line
