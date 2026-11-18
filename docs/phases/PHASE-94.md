@@ -146,13 +146,14 @@ None.
 - **K255:** this makes create and replace do what list, GET and the logo
   upload already do (K189, K244), and what `docs/api.md` says a write token's
   reads do. Calling `catchUp()` after the save means a catch-up of other rows
-  is written in the same request, as it is for GET.
+  is written in the same request, as it is for GET. *Confirmed 2026-11-18.*
 - **K256 — Decided 2026-11-18:** a non-integer id filter is a 422 naming the
   parameter, on the API only, and `page` and `per_page` follow the same rule.
   Not chosen: 422 for the id filters only; keep ignoring them and say so in
   `docs/api.md` and OpenAPI.
 - **K257:** documentation catching up with code, no behaviour change. The
-  added test pins the bounds the documentation now states.
+  added test pins the bounds the documentation now states. *Confirmed
+  2026-11-18:* the code settles it (`SubscriptionService.php:336-344`).
 - **K263 — Decided 2026-11-18:** the note drops the "can't tell" claim and
   gives a read-only query listing the affected tokens, and owners keep
   reissuing. Not chosen: documenting the `CONVERT_TZ` repair with its
@@ -162,9 +163,13 @@ None.
 - **Release — Decided 2026-11-18:** ships as its own patch release once
   merged: the next patch after whichever of Phases 93, 95 and 96 ship first
   (1.46.4 if it follows 93's 1.46.3). Not chosen: holding all three for
-  1.47.0.
+  1.47.0. *Changed 2026-11-18:* Phase 93 shipped as 1.47.0, so this phase
+  ships as patch **1.47.1**.
 - OpenAPI `info.version` goes up one patch from whatever it is when this
   phase starts (B, C), since Phases 94 and 95 may merge in either order.
+  *Confirmed 2026-11-18:* 1.9.16 → 1.9.17.
+- **Known issues — checked 2026-11-18:** the log has no *Open* rows, so
+  nothing was offered on top of the four scheduled ones.
 
 ## Status
 
