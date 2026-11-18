@@ -192,7 +192,7 @@ None.
 - [x] K253: the time-zone test skips with `DB_DRIVER=mysql` in `.env`
 - [x] K264: due change to another currency at the same amount
 - [x] K265: rounding over an interval above 1
-- [ ] K266: the trusted-host log line
+- [x] K266: the trusted-host log line
 - [ ] K267: the four untested form behaviours
 - [ ] K268: the window edge, both sides
 - [ ] Rows marked Fixed in known-issues.md
