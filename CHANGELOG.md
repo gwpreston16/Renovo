@@ -8,6 +8,23 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **A local run on MySQL is clean.** With MySQL chosen in `.env`, as the
+  MySQL install does, one PostgreSQL-only time-zone test failed on
+  `SHOW TimeZone` instead of skipping, because it read the driver only from
+  the process environment. It now reads it the way the rest of the run does.
+  Tests only. *Phase 93.*
+- **Tests now catch five regressions that could have slipped through.** A
+  due price change to another currency at the same amount, a monthly or
+  yearly price spread over an interval that doesn't divide it exactly, the
+  log line recording a request let through to a private address by the
+  trusted-host list, four of the five form behaviours (`data-autosubmit`,
+  `data-clears`, `data-typed-trigger`, `data-focus-after`) and the edge of
+  the sign-in rate-limit window each have a test now. Each was shown to fail
+  when the behaviour it names is broken. The app itself is unchanged.
+  *Phase 93.*
+
 ## [1.46.2] - 2026-11-18
 
 ### Fixed

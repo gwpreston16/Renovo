@@ -195,10 +195,13 @@ None.
 - [x] K266: the trusted-host log line
 - [x] K267: the four untested form behaviours
 - [x] K268: the window edge, both sides
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 93 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 93 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green (lint, PHPStan and
+  the API doc tests locally; the suite on both engines, where the only
+  failures are 46 from the Windows host, the same on master; coverage in CI,
+  this PHP having no PCOV)
 
 ## Definition of done
 
