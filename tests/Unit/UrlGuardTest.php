@@ -10,7 +10,9 @@ use App\Http\StaticTrustedTargets;
 use App\Http\UrlGuard;
 use App\Http\OutboundPolicy;
 use App\Tests\Support\FakeDnsResolver;
+use App\Tests\Support\RecordingLogger;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Slim\Psr7\Factory\UriFactory;
 use Slim\Psr7\Uri;
@@ -32,12 +34,13 @@ final class UrlGuardTest extends TestCase
         array $answers = [],
         array $trusted = [],
         ?HttpClientOptions $options = null,
+        LoggerInterface $logger = new NullLogger(),
     ): UrlGuard {
         return new UrlGuard(
             new FakeDnsResolver($answers),
             new StaticTrustedTargets($trusted),
             $options ?? new HttpClientOptions(),
-            new NullLogger(),
+            $logger,
             OutboundPolicy::open(),
         );
     }
@@ -168,6 +171,36 @@ final class UrlGuardTest extends TestCase
         $target = $guard->inspect($this->uri('https://gotify.ts.net/message'));
 
         self::assertTrue($target->isTrusted);
+    }
+
+    /**
+     * K266: the one path to a private address is an administrator's choice,
+     * so it leaves an info line naming the host and the addresses; a public
+     * host leaves none.
+     */
+    public function testARequestAllowedToAPrivateAddressByTheTrustedListIsLogged(): void
+    {
+        $message = 'Outbound request allowed to a private address by the trusted-host list';
+
+        // A public address in the same answer is not one the list let through,
+        // so the line names only the private one.
+        $logger = new RecordingLogger();
+        $this->guard(['gotify.ts.net' => ['100.101.102.103', '93.184.216.34']], ['100.64.0.0/10'], null, $logger)
+            ->inspect($this->uri('https://gotify.ts.net/message'));
+
+        $lines = array_keys(array_filter($logger->records, static fn (array $r): bool => $r[1] === $message));
+        self::assertCount(1, $lines, 'one line for the trusted private request');
+        self::assertSame('info', $logger->records[$lines[0]][0]);
+        self::assertSame(
+            ['host' => 'gotify.ts.net', 'addresses' => ['100.101.102.103']],
+            $logger->contexts[$lines[0]],
+        );
+
+        $public = new RecordingLogger();
+        $this->guard(['example.com' => ['93.184.216.34']], ['100.64.0.0/10'], null, $public)
+            ->inspect($this->uri('https://example.com/hook'));
+
+        self::assertNotContains($message, array_column($public->records, 1), 'no line for a public host');
     }
 
     public function testARangeDoesNotCarryAnotherPrivateAddressOfTheSameHost(): void

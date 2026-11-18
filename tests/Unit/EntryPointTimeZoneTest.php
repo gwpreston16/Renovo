@@ -149,7 +149,11 @@ final class EntryPointTimeZoneTest extends TestCase
      */
     public function testPhinxIsHandedAUtcPostgresConnection(): void
     {
-        $driver = getenv('DB_DRIVER');
+        // K253: read the driver as the rest of the run sees it. The bootstrap
+        // loads .env with Dotenv's immutable loader, which fills $_ENV but
+        // never calls putenv(), so a MySQL install's DB_DRIVER=mysql is
+        // invisible to getenv(); CI sets it in the environment instead.
+        $driver = $_ENV['DB_DRIVER'] ?? getenv('DB_DRIVER');
         if (is_string($driver) && $driver !== '' && $driver !== 'pgsql') {
             self::markTestSkipped('PostgreSQL only: the MySQL block is covered by its own tests.');
         }

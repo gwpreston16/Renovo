@@ -187,6 +187,33 @@ final class PriceHistoryTest extends DatabaseTestCase
         self::assertSame(0, $this->service->applyDueChanges($scope));
     }
 
+    /**
+     * K264: a due change is found by price *or* currency, so moving from
+     * 9.99 GBP to 9.99 EUR is applied though the amount is unchanged.
+     */
+    public function testADueChangeToAnotherCurrencyAtTheSameAmountIsApplied(): void
+    {
+        $scope = $this->scope($this->alice);
+        $id = $this->createSubscription($scope, 999);
+        $this->service->recordInitialPrice($scope, $id, Money::of(999, 'GBP'), null, $this->alice);
+
+        $this->service->schedule($scope, $id, [
+            'price' => '9.99',
+            'currency' => 'EUR',
+            'effective_from' => '2026-09-15',
+        ]);
+
+        self::assertSame(0, $this->service->applyDueChanges($scope));
+        $before = $this->subscriptions->find($scope, $id)?->price;
+        self::assertSame([999, 'GBP'], [$before?->amountMinor, $before?->currency]);
+
+        $this->clock->advanceTo(new DateTimeImmutable('2026-09-15 08:00:00'));
+
+        self::assertSame(1, $this->service->applyDueChanges($scope));
+        $after = $this->subscriptions->find($scope, $id)?->price;
+        self::assertSame([999, 'EUR'], [$after?->amountMinor, $after?->currency]);
+    }
+
     public function testTheCurrentRowIsTheLatestByDateNotTheLatestInserted(): void
     {
         // A change scheduled for next year is written before a correction

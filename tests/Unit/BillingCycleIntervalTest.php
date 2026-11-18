@@ -65,6 +65,29 @@ final class BillingCycleIntervalTest extends TestCase
         self::assertSame(3000, BillingCycle::Monthly->monthlyMinor(18000, null, 6));
     }
 
+    /**
+     * K265: an interval that doesn't divide the price exactly rounds to the
+     * nearest minor unit, half away from zero, rather than truncating.
+     */
+    public function testAnIntervalThatDoesNotDivideExactlyRoundsToTheNearestMinorUnit(): void
+    {
+        // £9.99 every 7 months: 11988 / 7 = 1712.57 a year, 1713 / 12 = 142.75
+        // a month. Truncating would give 1712 and 142.
+        self::assertSame(1713, BillingCycle::Monthly->annualMinor(999, null, 7));
+        self::assertSame(143, BillingCycle::Monthly->monthlyMinor(999, null, 7));
+
+        // £10.01 every 3 years: 333.67 a year, 334 / 12 = 27.83 a month.
+        // Truncating would give 333 and 27.
+        self::assertSame(334, BillingCycle::Yearly->annualMinor(1001, null, 3));
+        self::assertSame(28, BillingCycle::Yearly->monthlyMinor(1001, null, 3));
+
+        // Nearest, not up: £10.00 every 7 months is 1714.29 a year (a ceiling
+        // would give 1715). And a half goes away from zero: £10.01 every 2
+        // years is 500.5 a year (truncating or rounding half to even give 500).
+        self::assertSame(1714, BillingCycle::Monthly->annualMinor(1000, null, 7));
+        self::assertSame(501, BillingCycle::Yearly->annualMinor(1001, null, 2));
+    }
+
     public function testSixMonthlyAdvancesByCalendarMonthsOnItsAnchor(): void
     {
         $august = new DateTimeImmutable('2026-08-31');

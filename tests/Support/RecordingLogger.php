@@ -16,8 +16,17 @@ final class RecordingLogger extends AbstractLogger
     /** @var list<array{string, string}> Level and message, in order. */
     public array $records = [];
 
+    /**
+     * Each line's context, at the same index as its entry in $records. Kept
+     * apart so the tests that read $records' pairs don't change (K266).
+     *
+     * @var list<array<mixed>>
+     */
+    public array $contexts = [];
+
     public function log($level, string|Stringable $message, array $context = []): void
     {
         $this->records[] = [is_scalar($level) ? (string) $level : '', (string) $message];
+        $this->contexts[] = $context;
     }
 }
