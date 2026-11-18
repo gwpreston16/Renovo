@@ -977,6 +977,13 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   with no change of shape. No migrations. See
   [Subscriptions](api.md#subscriptions) and [Logos](api.md#logos) in the API
   reference.
+- **Phase 92 — Tests that hold on any date, from the known-issues log —
+  complete (1.46.2).** Seven API and calendar-feed tests that created a
+  renewal or a trial end dated 1 December 2026 on the real clock, and so
+  failed on every engine from 2 December, now run on a frozen clock. An audit
+  with the app clock moved as far as 1 January 2028 found no other test tied
+  to a date that will pass. Nothing changes in the app or the API; OpenAPI
+  stays at 1.9.16. No migrations. See [Tests](development.md#tests).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
