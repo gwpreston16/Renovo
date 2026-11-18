@@ -346,10 +346,13 @@ final class ApiChargesTest extends ApiTestCase
 
     public function testSavingsReportsWhatACancellationRemoved(): void
     {
+        // Created paused, so the create's catch-up (K255) leaves its passed
+        // dates alone: they are what the cancellation saved.
         $id = $this->createSubscription([
             'name' => 'Gym',
             'price_minor' => 1000,
             'next_payment_date' => (new DateTimeImmutable('-55 days'))->format('Y-m-d'),
+            'is_active' => false,
         ]);
         // Cancelled sixty days ago, five days before its next payment.
         $this->db->execute(
@@ -461,13 +464,7 @@ final class ApiChargesTest extends ApiTestCase
 
     public function testReadingTheChargesCatchesUpFirstForAWriteToken(): void
     {
-        $id = $this->createSubscription([
-            'name' => 'Overdue',
-            'price_minor' => 700,
-            'billing_cycle' => 'weekly',
-            'next_payment_date' => (new DateTimeImmutable('-15 days'))->format('Y-m-d'),
-            'start_date' => (new DateTimeImmutable('-15 days'))->format('Y-m-d'),
-        ]);
+        $id = $this->overdueRow('Overdue', 'weekly', (new DateTimeImmutable('-15 days'))->format('Y-m-d'));
         $path = '/api/v1/subscriptions/' . $id . '/charges';
 
         // A read-only token reads what is there, and writes nothing.
@@ -480,13 +477,7 @@ final class ApiChargesTest extends ApiTestCase
     public function testAManualChargeOnABillingDateBecomesThatDatesChargeOnTheNextWriteRead(): void
     {
         $date = (new DateTimeImmutable('-3 days'))->format('Y-m-d');
-        $id = $this->createSubscription([
-            'name' => 'Late',
-            'price_minor' => 700,
-            'billing_cycle' => 'weekly',
-            'next_payment_date' => $date,
-            'start_date' => $date,
-        ]);
+        $id = $this->overdueRow('Late', 'weekly', $date);
         $path = '/api/v1/subscriptions/' . $id . '/charges';
 
         $posted = $this->api('POST', $path, $this->ownerToken, ['date' => $date, 'amount_minor' => 1500]);
@@ -692,5 +683,22 @@ final class ApiChargesTest extends ApiTestCase
     private function chargesPath(): string
     {
         return '/api/v1/subscriptions/' . $this->subscriptionId . '/charges';
+    }
+
+    /**
+     * A row at 700 whose next payment and start are already past, with
+     * nothing in the ledger yet. Backdated in SQL after the create, because a
+     * create through the API with a write token catches the row up (K255).
+     */
+    private function overdueRow(string $name, string $cycle, string $date): int
+    {
+        $id = $this->createSubscription(['name' => $name, 'price_minor' => 700, 'billing_cycle' => $cycle]);
+        $this->db->execute(
+            // Two names for the one date: MySQL refuses a repeated placeholder.
+            'UPDATE subscriptions SET next_payment_date = :next, start_date = :start WHERE id = :id',
+            ['next' => $date, 'start' => $date, 'id' => $id],
+        );
+
+        return $id;
     }
 }

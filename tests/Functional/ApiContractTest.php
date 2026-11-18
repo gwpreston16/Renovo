@@ -214,6 +214,9 @@ final class ApiContractTest extends ApiTestCase
         // The same trap, mirrored: `is_trial` is tested `!== '1'`, so JSON true
         // would clear the trial it was setting.
         $id = $this->createSubscription();
+        // Still to come: a PUT catches the row up (K255), and a trial whose
+        // end had passed would convert in the same request.
+        $trialEnd = (new \DateTimeImmutable('+30 days'))->format('Y-m-d');
 
         $this->api('PUT', '/api/v1/subscriptions/' . $id, $this->ownerToken, [
             'name' => 'Streaming',
@@ -222,14 +225,14 @@ final class ApiContractTest extends ApiTestCase
             'subscription_type' => 'recurring',
             'billing_cycle' => 'monthly',
             'is_trial' => true,
-            'trial_end_date' => '2026-10-01',
+            'trial_end_date' => $trialEnd,
             'converts_to_price_minor' => 1499,
         ]);
 
         $fetched = $this->fetch($id);
 
         self::assertTrue($fetched['is_trial']);
-        self::assertSame('2026-10-01', $fetched['trial_end_date']);
+        self::assertSame($trialEnd, $fetched['trial_end_date']);
         self::assertSame(1499, $fetched['converts_to_price_minor']);
     }
 
