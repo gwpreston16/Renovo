@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–93
+## Planned — Phases 30–96
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -102,6 +102,9 @@ can be moved.
 | 91 | [The API logo upload's catch-up, several tags, and tests that hold recent fixes, from the known-issues log](docs/phases/PHASE-91.md) | — | None | ✅ done |
 | 92 | [Tests that hold on any date, from the known-issues log](docs/phases/PHASE-92.md) | — | None | ✅ done |
 | 93 | [Tests that catch what they name, from the known-issues log](docs/phases/PHASE-93.md) | — | None | 📋 planned |
+| 94 | [API edges and the token-expiry note, from the known-issues log](docs/phases/PHASE-94.md) | — | None | 📋 planned |
+| 95 | [Lighter Budgets, Overview and calendar feed, from the known-issues log](docs/phases/PHASE-95.md) | — | None | 📋 planned |
+| 96 | [Dashboard tiles and tags that match the prototype, from the known-issues log](docs/phases/PHASE-96.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -260,6 +263,9 @@ can be moved.
 - **91 — The API logo upload's catch-up, several tags, and tests that hold recent fixes.** A batch from the known-issues log (K244, K245, K248-K251): a logo uploaded through the API comes back with the same caught-up dates as `GET` by id, the API list accepts several tags as `tag=3&tag=7` as well as `tag[]=`, and four recent fixes (the phone Filters toggle's wiring, the calendar's one-time list request, the used-up alert check, and the Budgets screen's reach back into December) each get a test that fails without them. Ships as 1.46.1.
 - **92 — Tests that hold on any date.** A batch from the known-issues log (K254): seven API and calendar-feed tests that use a fixed 2026-12-01 date on the real clock, and fail on every engine from 2 December 2026, run on a frozen clock, and the rest of the suite is checked for fixed dates that pass before 2028. Tests only. Ships as 1.46.2.
 - **93 — Tests that catch what they name.** A batch from the known-issues log (K253, K264–K268): tests for a due change to another currency at the same amount, rounding over a multi-month or multi-year interval, the trusted-host log line, four untested form behaviours and both sides of the sign-in window edge, each failing under the mutation its row names; and the PostgreSQL-only time-zone test skips when `.env` chooses MySQL. Tests only. Ships as 1.46.3.
+- **94 — API edges and the token-expiry note.** A batch from the known-issues log (K255–K257, K263): creating or replacing a subscription through the API returns its caught-up next payment; a non-integer `category`, `owner`, `tag`, `page` or `per_page` is a 422 on the API; `converts_to_cycle_days` documents its bounds; and the Phase 90 upgrade note lists the shifted token expiries instead of saying they can't be found. Ships as its own patch release.
+- **95 — Lighter Budgets, Overview and calendar feed.** A batch from the known-issues log (K246, K258, K259): the Budgets screen walks each member's spend once whatever their pay-day periods, the Overview dashboard loads the household's spend sources once, and an unchanged calendar feed answers 304 to a poll. Ships as its own patch release.
+- **96 — Dashboard tiles and tags that match the prototype.** A batch from the known-issues log (K260–K262): the Price change tile is a plain card, trials are blue on the dashboard as everywhere else, and each Coming up row ends with "Today", "Tomorrow" or "In N days". Ships as its own patch release.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40

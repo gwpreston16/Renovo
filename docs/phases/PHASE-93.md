@@ -145,17 +145,13 @@ None.
 
 ## Explicitly out of scope (leave clean seams, do NOT stub)
 
-- **K255** (API create and update return the next payment date without its
-  catch-up), **K256** (non-integer id filters ignored; needs a decision),
-  **K257** (docs-only: `converts_to_cycle_days` bounds). An API batch would
-  take them together. Offered 2026-11-18 and left for a later batch.
-- **K246** and **K258** (repeated spend walks on the Budgets screen and the
-  Overview dashboard) and **K259** (the calendar feed on every poll; needs a
-  decision). Performance work, larger than a test row.
-- **K260–K262** (dashboard colours and tags against the prototype; K262 needs
-  a decision). A design batch.
-- **K263** (the Phase 90 upgrade note on shifted token expiries; needs a
-  decision). Docs, but not in this theme.
+- **K255–K257** (API edges) and **K263** (the Phase 90 token-expiry note),
+  planned in [Phase 94](PHASE-94.md).
+- **K246, K258, K259** (repeated spend walks on the Budgets screen and the
+  Overview dashboard; the calendar feed on every poll), planned in
+  [Phase 95](PHASE-95.md).
+- **K260–K262** (dashboard colours and tags against the prototype), planned
+  in [Phase 96](PHASE-96.md).
 - **A lasting mutation-testing job** (Infection or similar). These rows were
   found by mutation by hand; running it in CI is new tooling and a ROADMAP
   question, not a row.
