@@ -158,9 +158,9 @@ None.
 - [x] K260: the Price change tile is a plain card; docblocks and DESIGN.md corrected
 - [x] K261: trials in info across the dashboard; Active tile note muted
 - [x] K262: Coming up rows end with how soon; date tiles plain
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 96 row marked ✅ done
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 96 row marked ✅ done
 - [ ] composer check, coverage and the API doc tests green
 
 ## Definition of done
