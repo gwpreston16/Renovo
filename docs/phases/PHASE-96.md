@@ -164,7 +164,12 @@ None.
 - [x] Rows marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed
 - [x] ROADMAP: Phase 96 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] composer check, coverage and the API doc tests green (lint, PHPStan,
+  the API doc tests, `npm test` (96) and the offline check green; the whole
+  suite green on Postgres (4976 tests) and MySQL (4975, before the
+  merge-review fixes, which change tests and CSS only). Coverage with PCOV:
+  93.22% total, 100% of changed lines. Screens checked at 375, 768 and
+  1280 px, light and dark)
 
 ## Definition of done
 
