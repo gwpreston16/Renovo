@@ -13,6 +13,8 @@ use App\Service\CalendarFeedService;
 use App\Support\Clock;
 use App\Support\FrozenClock;
 use DateTimeImmutable;
+use Psr\Http\Message\ResponseInterface;
+use Slim\Psr7\Factory\ServerRequestFactory;
 
 /**
  * The iCalendar feed: what it contains, and who may fetch it.
@@ -391,7 +393,7 @@ final class CalendarFeedTest extends ApiTestCase
         }
 
         $started = microtime(true);
-        $feed = $service->build($scope, 'Renovo');
+        $feed = $service->build($scope, 'Renovo')->body;
         $elapsed = microtime(true) - $started;
 
         self::assertGreaterThan(4000, substr_count($feed, 'BEGIN:VEVENT'));
@@ -408,6 +410,99 @@ final class CalendarFeedTest extends ApiTestCase
         ]);
 
         self::assertSame(60, substr_count($this->unfold($this->feed()), 'SUMMARY:Daily'));
+    }
+
+    /**
+     * K259: every event's DTSTAMP is the poll's own time, so the bodies of
+     * two polls a minute apart differ; the ETag leaves the stamp out and
+     * matches.
+     */
+    public function testTheFeedCarriesAnEtagThatIgnoresTheStamp(): void
+    {
+        $this->clock = FrozenClock::at('2026-10-15 12:00:00');
+        $this->boot();
+        $this->createSubscription(['name' => 'Streaming', 'next_payment_date' => '2026-12-01']);
+
+        $first = $this->poll();
+        $this->clock->advanceTo(new DateTimeImmutable('2026-10-15 12:01:00'));
+        $second = $this->poll();
+
+        self::assertNotSame((string) $first->getBody(), (string) $second->getBody(), 'The stamps differ.');
+        self::assertMatchesRegularExpression('~^W/"[0-9a-f]+"$~', $first->getHeaderLine('ETag'));
+        self::assertSame($first->getHeaderLine('ETag'), $second->getHeaderLine('ETag'));
+    }
+
+    /**
+     * K259: a client that sends back the ETag it holds gets a 304 with no
+     * body, and the same validator and caching rule, whichever form of the
+     * header it sends.
+     */
+    public function testAnUnchangedFeedAnswers304(): void
+    {
+        $this->clock = FrozenClock::at('2026-10-15 12:00:00');
+        $this->boot();
+        $this->createSubscription(['name' => 'Streaming', 'next_payment_date' => '2026-12-01']);
+        $etag = $this->poll()->getHeaderLine('ETag');
+        $strong = substr($etag, 2);
+
+        foreach ([$etag, $strong, '"other", ' . $etag, '*'] as $ifNoneMatch) {
+            $response = $this->poll($ifNoneMatch);
+
+            self::assertSame(304, $response->getStatusCode(), $ifNoneMatch);
+            self::assertSame('', (string) $response->getBody());
+            self::assertSame($etag, $response->getHeaderLine('ETag'));
+            self::assertSame('private, no-cache', $response->getHeaderLine('Cache-Control'));
+        }
+
+        self::assertSame(200, $this->poll('W/"other"')->getStatusCode());
+    }
+
+    /**
+     * K259: renaming a subscription changes the feed, so the old ETag no
+     * longer matches and the client is sent the new feed in full.
+     */
+    public function testAChangeGivesANewEtag(): void
+    {
+        $this->clock = FrozenClock::at('2026-10-15 12:00:00');
+        $this->boot();
+        $id = $this->createSubscription(['name' => 'Streaming', 'next_payment_date' => '2026-12-01']);
+        $old = $this->poll()->getHeaderLine('ETag');
+
+        $this->db->execute(
+            'UPDATE subscriptions SET name = :name WHERE id = :id',
+            ['name' => 'Streaming Plus', 'id' => $id],
+        );
+        $response = $this->poll($old);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('Streaming Plus', $this->unfold((string) $response->getBody()));
+        self::assertNotSame($old, $response->getHeaderLine('ETag'));
+    }
+
+    /**
+     * K259: `no-store` forbade the client from keeping the copy a 304 refers
+     * to; `no-cache` lets it keep one and makes it ask each time.
+     */
+    public function testTheFeedMayBeRevalidated(): void
+    {
+        self::assertSame('private, no-cache', $this->poll()->getHeaderLine('Cache-Control'));
+    }
+
+    /**
+     * One poll of the feed with the read-only token, as a calendar client
+     * makes it, optionally revalidating a copy it holds.
+     */
+    private function poll(?string $ifNoneMatch = null): ResponseInterface
+    {
+        $path = '/api/v1/calendar.ics?token=' . $this->readOnlyToken;
+        $request = (new ServerRequestFactory())
+            ->createServerRequest('GET', 'http://localhost' . $path, ['REMOTE_ADDR' => '127.0.0.1'])
+            ->withQueryParams(['token' => $this->readOnlyToken]);
+        if ($ifNoneMatch !== null) {
+            $request = $request->withHeader('If-None-Match', $ifNoneMatch);
+        }
+
+        return $this->app->handle($request);
     }
 
     private function announce(int $subscriptionId, int $priceMinor, DateTimeImmutable $from): void

@@ -60,8 +60,13 @@ final class CalendarFeedService
      * Note that it asks the service for the scoped list rather than for "all
      * subscriptions": the feed is exactly as isolated as the list page, because
      * it is the same query.
+     *
+     * With the body comes its weak ETag (K259): a hash of every line but the
+     * DTSTAMPs, which are the poll's own time and would make every poll
+     * look new. So a client polling a feed in which nothing has changed can
+     * be answered 304 without the year being sent again.
      */
-    public function build(Scope $scope, string $instanceName): string
+    public function build(Scope $scope, string $instanceName): CalendarFeed
     {
         $today = $this->clock->today();
         $horizon = $today->modify('+' . self::HORIZON_DAYS . ' days');
@@ -95,8 +100,12 @@ final class CalendarFeedService
         // RFC 5545 requires CRLF, and long lines folded. Clients are forgiving
         // about both right up until one is not.
         $lines = array_merge(...$rendered);
+        $stable = array_filter($lines, static fn (string $line): bool => !str_starts_with($line, 'DTSTAMP:'));
 
-        return implode("\r\n", array_merge(...array_map($this->fold(...), $lines))) . "\r\n";
+        return new CalendarFeed(
+            implode("\r\n", array_merge(...array_map($this->fold(...), $lines))) . "\r\n",
+            'W/"' . hash('sha256', implode("\n", $stable)) . '"',
+        );
     }
 
     /**
