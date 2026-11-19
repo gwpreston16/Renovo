@@ -154,7 +154,15 @@ None.
   and Coming up (`ForecastService::chargesWithin()`) load the subscriptions
   and price history again. Those two take the same optional `?SpendSources`
   that `ForecastService::charges()` already accepts, only if the measured
-  count shows the reload; nothing they compute changes.
+  count shows the reload; nothing they compute changes. It did (30
+  statements with the history half shared, 23 with both).
+- **K258's window, as built (2026-11-19):** the dashboard's one load runs
+  from the chart's first month (`sourcesForMonths()`, seven months back) to
+  yesterday rather than computing the earlier of that and the earliest
+  budget window. A monthly budget's period, a pay-day month included,
+  begins at most a month back, so the chart's window always holds it; and
+  `BudgetMonthService` checks `covers()` and loads its own once if it ever
+  did not (`BudgetScreenTest::testTheMonthCardLoadsItsOwnOnceWhenHandedTooShortALoad`).
 - **K259 — Decided 2026-11-18:** a weak ETag from the feed's content without
   `DTSTAMP`, answering 304, with `Cache-Control: private, no-cache`. Not
   chosen: also gzipping this route, which would revisit Phase 71; leaving it
@@ -180,11 +188,11 @@ None.
 - [x] Rows marked Fixed in known-issues.md
 - [x] CHANGELOG [Unreleased] → Fixed
 - [x] ROADMAP: Phase 95 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green (lint, PHPStan, the
-  API doc tests and every Phase 95 test green on Postgres and MySQL; the 46
-  failures in backup, passkey, 2FA and login-redirect tests fail the same on
-  master on this Windows machine. Coverage: no PCOV here, so CI's Postgres
-  leg is the measurement)
+- [x] composer check, coverage and the API doc tests green (lint, PHPStan, the
+  API doc tests and every Phase 95 test green on Postgres and MySQL; the
+  local failures in backup, passkey, 2FA, login-redirect and secrets tests
+  fail the same on master on this machine. Coverage, measured with PCOV in a
+  container on Postgres: changed lines 100%, total 93.10%)
 
 ## Definition of done
 

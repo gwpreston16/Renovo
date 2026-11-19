@@ -851,6 +851,40 @@ final class BudgetScreenTest extends DatabaseTestCase
         }
     }
 
+    /**
+     * K258: the dashboard hands the budgets card the spend it loaded for its
+     * chart. Handed a load that starts after the month began, which would miss
+     * the 1 June charge, the card loads its own once for every subject, as it
+     * does with nothing handed in, and shows the same figures. Read as it
+     * stood, each subject's walk would find it short and load its own.
+     */
+    public function testTheMonthCardLoadsItsOwnOnceWhenHandedTooShortALoad(): void
+    {
+        $this->monthly('Early', 1200, '2026-07-01', '2025-01-01');
+        $this->monthly('Late', 800, '2026-06-20', '2025-01-20');
+        $this->budget(['name' => 'Everything', 'amount' => '100.00', 'subject_user_id' => 'household']);
+        $this->budget(['name' => 'Mine', 'amount' => '100.00', 'subject_user_id' => (string) $this->ownerId]);
+        $months = $this->container()->get(BudgetMonthService::class);
+        $db = $this->container()->get(Database::class);
+        $scope = $this->ownerScope();
+        $short = $this->container()->get(SpendHistoryService::class)
+            ->sources($scope, new DateTimeImmutable('2026-06-10'), new DateTimeImmutable('2026-06-14'));
+
+        $before = $db->statementCount();
+        $own = $months->thisMonth($scope, 4);
+        $ownStatements = $db->statementCount() - $before;
+
+        $before = $db->statementCount();
+        $handed = $months->thisMonth($scope, 4, $short);
+        $handedStatements = $db->statementCount() - $before;
+
+        self::assertCount(2, $handed);
+        self::assertSame(1200, $handed[0]['charged']?->amountMinor);
+        self::assertSame(2000, $handed[0]['projected']?->amountMinor);
+        self::assertEquals($own, $handed);
+        self::assertLessThanOrEqual($ownStatements, $handedStatements, 'One load of its own, not one per subject.');
+    }
+
     public function testAPeriodStartingOnAClampedDayReadsToItsLastDay(): void
     {
         // Paid on the 31st, today 28 February: 28 February to 30 March, two

@@ -1615,8 +1615,8 @@ paths:
         rather than downgraded: a credential that can change data does not
         belong in a subscription URL. It shares the token's rate limit.
 
-        Every response carries a weak `ETag` and `Cache-Control: private,
-        no-cache`. A poll that sends that ETag back in `If-None-Match` while
+        Every `200` and `304` carries a weak `ETag` and `Cache-Control:
+        private, no-cache`; a refused poll carries neither. A poll that sends that ETag back in `If-None-Match` while
         the feed is unchanged gets `304 Not Modified` with no body. The ETag
         leaves out each event's `DTSTAMP`, which is the time of the poll.
       security: []

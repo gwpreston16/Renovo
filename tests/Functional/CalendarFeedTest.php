@@ -480,6 +480,51 @@ final class CalendarFeedTest extends ApiTestCase
     }
 
     /**
+     * K259: the instance name is in the feed's title, so renaming the
+     * instance gives every feed a new ETag, as a rename of a row does.
+     */
+    public function testTheInstanceNameIsPartOfTheEtag(): void
+    {
+        $this->clock = FrozenClock::at('2026-10-15 12:00:00');
+        $this->boot();
+        $this->createSubscription(['name' => 'Streaming', 'next_payment_date' => '2026-12-01']);
+        $service = $this->container()->get(CalendarFeedService::class);
+        $scope = Scope::forMember(
+            $this->ownerId,
+            false,
+            $this->householdId,
+            Role::OwnerAdmin,
+            $this->isolationMode(),
+        );
+
+        self::assertSame($service->build($scope, 'Renovo')->etag, $service->build($scope, 'Renovo')->etag);
+        self::assertNotSame($service->build($scope, 'Renovo')->etag, $service->build($scope, 'Home')->etag);
+    }
+
+    /**
+     * K259: the token is checked before the feed is built, so a poll with a
+     * current ETag but no valid token is a 401, never a 304.
+     */
+    public function testAnEtagIsNoSubstituteForAToken(): void
+    {
+        $etag = $this->poll()->getHeaderLine('ETag');
+
+        $request = (new ServerRequestFactory())
+            ->createServerRequest(
+                'GET',
+                'http://localhost/api/v1/calendar.ics?token=rubbish',
+                ['REMOTE_ADDR' => '127.0.0.1'],
+            )
+            ->withQueryParams(['token' => 'rubbish'])
+            ->withHeader('If-None-Match', $etag);
+        $response = $this->app->handle($request);
+
+        self::assertNotSame('', $etag);
+        self::assertSame(401, $response->getStatusCode());
+        self::assertSame('', $response->getHeaderLine('ETag'));
+    }
+
+    /**
      * K259: `no-store` forbade the client from keeping the copy a 304 refers
      * to; `no-cache` lets it keep one and makes it ask each time.
      */

@@ -642,10 +642,14 @@ final class DashboardTest extends DatabaseTestCase
         ] + $base, []);
         $subscriptions = $this->container()->get(SubscriptionService::class);
 
-        $names = static fn (array $rows): array => array_map(
-            static fn (Subscription $subscription): string => $subscription->name,
-            $rows,
-        );
+        // Compared as sets: neither query orders its rows, and the card
+        // sorts what it is given.
+        $names = static function (array $rows): array {
+            $names = array_map(static fn (Subscription $subscription): string => $subscription->name, $rows);
+            sort($names);
+
+            return $names;
+        };
         $running = $names($subscriptions->running($subscriptions->allForStats($owner, false)));
 
         self::assertSame($names($subscriptions->allForStats($owner)), $running);
