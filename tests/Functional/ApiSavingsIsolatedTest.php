@@ -20,10 +20,13 @@ final class ApiSavingsIsolatedTest extends ApiTestCase
 
     public function testEachTokenHolderSeesOnlyTheirOwnSavings(): void
     {
+        // Created paused, so the create's catch-up (K255) leaves its passed
+        // dates alone: they are what the cancellation saved.
         $id = $this->createSubscription([
             'name' => 'Gym',
             'price_minor' => 1000,
             'next_payment_date' => (new DateTimeImmutable('-55 days'))->format('Y-m-d'),
+            'is_active' => false,
         ]);
         $this->db->execute(
             'UPDATE subscriptions SET cancelled_at = :at, is_active = :off WHERE id = :id',

@@ -8,6 +8,38 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Creating or replacing a subscription through the API returns it caught
+  up.** With a `subscriptions:write` token, a `POST` or `PUT` whose next
+  payment date has already passed now runs the same catch-up as the list and
+  `GET` by id, so the `201` or `200` shows the next billing date and the
+  charges for the dates that passed are written then. It used to return the
+  stored date with a negative `days_until_next_payment` until the next read.
+  The response can now differ from the body sent: a trial whose end date has
+  passed comes back converted, a due price change applied, a finished fixed
+  term cancelled. A client importing history finds the passed dates' charges
+  already there, so it `PATCH`es one to record what was paid; `POST`ing a
+  second charge on the same date is a `422`. *Phase 94.*
+- **The API list refuses a filter id it can't use.** On
+  `GET /api/v1/subscriptions`, a `category`, `owner`, `tag`, `page` or
+  `per_page` that isn't a whole number of 1 or more is a `422` naming the
+  parameter. `?tag=music` used to answer `200` with every row, since the
+  filter takes a tag's id, not the name the resource returns; `page=0` and
+  `per_page=0`, once read as the first page and the default size, and a
+  negative id, once ignored, are refused too. An empty value
+  is still no filter, `per_page` over 100 is still read as 100, and the web
+  list is unchanged. OpenAPI 1.9.17, with no change of shape. *Phase 94.*
+- **`converts_to_cycle_days` is documented.** OpenAPI and `docs/api.md` now
+  say it is 1–3650, required when `converts_to_billing_cycle` is
+  `custom_days`, and ignored otherwise, as the API already enforced.
+  *Phase 94.*
+- **The 1.46.0 notes are corrected.** The Phase 90 upgrade note and its
+  CHANGELOG entry said that token expiries the 1.41.0 migration moved on a
+  MySQL server outside UTC can't be told apart from chosen ones. They can:
+  `docs/upgrading.md` now gives a read-only query that lists them, and says
+  when the list isn't exact. Nothing in the app changes. *Phase 94.*
+
 ## [1.47.0] - 2026-11-18
 
 ### Fixed
@@ -83,9 +115,10 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
   expire after 2038 moved every stored expiry by the server's offset, and
   rolling it back could fail. Phinx's connection now runs in UTC, as the
   application's does, so migrations, rollbacks and `phinx seed:run` keep
-  every time as it is. Expiries that already moved can't be told apart from
-  chosen ones: `docs/upgrading.md` says how to check and reissue them. The
-  Docker images run in UTC and were never affected. *Phase 90.*
+  every time as it is. The expiries that already moved are those of tokens
+  created before that migration ran: `docs/upgrading.md` gives a read-only
+  query that lists them, for their owners to check and reissue. The Docker
+  images run in UTC and were never affected. *Phase 90.*
 - **The Docker image takes every upload the app allows.** An attachment over
   4 MB couldn't be uploaded at all, though the limit is 10 MB. PHP and nginx
   in the image now let through anything up to the largest default, so a

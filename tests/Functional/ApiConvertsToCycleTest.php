@@ -110,6 +110,31 @@ final class ApiConvertsToCycleTest extends ApiTestCase
         }
     }
 
+    /**
+     * K257: the bounds the contract now states, 1 to 3650 on custom_days,
+     * held at both edges.
+     */
+    public function testConvertsToCycleDaysHoldsItsDocumentedBounds(): void
+    {
+        foreach ([0, 3651] as $outside) {
+            $response = $this->api('POST', '/api/v1/subscriptions', $this->ownerToken, $this->body([
+                'converts_to_billing_cycle' => 'custom_days',
+                'converts_to_cycle_days' => $outside,
+            ]));
+            self::assertSame(422, $response->getStatusCode(), $outside . ': ' . (string) $response->getBody());
+            self::assertArrayHasKey('converts_to_cycle_days', $this->decode($response)['error']['errors']);
+        }
+
+        foreach ([1, 3650] as $inside) {
+            $response = $this->api('POST', '/api/v1/subscriptions', $this->ownerToken, $this->body([
+                'converts_to_billing_cycle' => 'custom_days',
+                'converts_to_cycle_days' => $inside,
+            ]));
+            self::assertSame(201, $response->getStatusCode(), $inside . ': ' . (string) $response->getBody());
+            self::assertSame($inside, $this->decode($response)['data']['converts_to_cycle_days']);
+        }
+    }
+
     public function testAPutThatOmitsTheCycleKeepsTheStoredOne(): void
     {
         $created = $this->api('POST', '/api/v1/subscriptions', $this->ownerToken, $this->body([

@@ -613,9 +613,9 @@ without anybody editing the row. A token without that scope changes nothing.
 | Parameter | Type | Notes |
 | --- | --- | --- |
 | `q` | string | Search names and notes. |
-| `category` | integer | Category id. |
-| `owner` | integer | Owner user id. |
-| `tag` | integer or integer[] | Tag id; repeat it for several, in either form (`tag=3&tag=7` or `tag[]=3&tag[]=7`) or a mix of the two. A subscription matches when it has **any** of them. |
+| `category` | integer | Category id, 1 or more. |
+| `owner` | integer | Owner user id, 1 or more. |
+| `tag` | integer or integer[] | Tag id; repeat it for several, in either form (`tag=3&tag=7` or `tag[]=3&tag[]=7`) or a mix of the two. A subscription matches when it has **any** of them. An id, not the name the resource returns: `tag=music` is a `422`. |
 | `currency` | string | ISO 4217 code. |
 | `type` | enum | `recurring`, `one_off`, `lifetime`. |
 | `inactive` | `"0"` or `"1"` | `1` includes inactive subscriptions — paused and cancelled. `true` and `false` are refused. |
@@ -623,9 +623,9 @@ without anybody editing the row. A token without that scope changes nothing.
 | `sort` | enum | `name`, `next_payment`, `price`, `created`. |
 | `dir` | enum | `asc`, `desc`. |
 | `page` | integer | Minimum 1. A page past the last is empty, however large the number. |
-| `per_page` | integer | 1–100, default 25. |
+| `per_page` | integer | 1–100, default 25. Over 100 is read as 100. |
 
-An empty parameter is no filter. A `type`, `status`, `sort`, `dir` or `inactive` value outside the set above, or a `currency` that is not three letters, is a `422` naming the parameter, rather than being ignored; the web list is more forgiving.
+An empty parameter is no filter. A `type`, `status`, `sort`, `dir` or `inactive` value outside the set above, a `currency` that is not three letters, or a `category`, `owner`, `tag`, `page` or `per_page` that is not a whole number of 1 or more, is a `422` naming the parameter, rather than being ignored; the web list is more forgiving.
 
 Two things hold whatever `sort` and `dir` say, so that a page of results means
 the same on either supported database engine: inactive subscriptions come after
@@ -644,7 +644,8 @@ curl -H "Authorization: Bearer rnv_..." \
 }
 ```
 
-Responses: `200`, `401`, `403`, `422` (a filter value outside its set).
+Responses: `200`, `401`, `403`, `422` (a filter value outside its set, or an
+id or page that isn't a whole number of 1 or more).
 
 #### `POST /api/v1/subscriptions`
 
@@ -666,6 +667,18 @@ curl -X POST \
      https://your-instance.example/api/v1/subscriptions
 ```
 
+After saving, the request runs the [catch-up the list runs](#get-apiv1subscriptions),
+so the response is what the next read would show, which can differ from the
+body sent: on an active recurring row, a `next_payment_date` already past
+comes back moved on to the next billing date, with a charge written for each
+date that passed (a paused or cancelled row keeps its date, and a past one-off
+or lifetime entry gets its one charge); a trial whose
+`trial_end_date` has passed comes back converted; a due price change is
+applied; and a fixed term whose last payment has passed comes back cancelled.
+A charge for one of those dates is then already there, so
+[`PATCH`](#patch-apiv1chargesid) it to record what was paid, rather than
+`POST`ing another (a second charge on the same date is a `422`).
+
 Responses: `201`, `400`, `401`, `403`, `422`.
 
 #### `GET /api/v1/subscriptions/{id}`
@@ -678,7 +691,9 @@ in the list. Responses: `200`, `401`, `403`, `404`.
 
 Replace a subscription. A **full** replacement: any field the body omits takes
 its documented default, so read the resource, edit the representation and send
-it back rather than sending only what changed. The logo is untouched.
+it back rather than sending only what changed. The logo is untouched. After
+saving, the request runs the catch-up as [create](#post-apiv1subscriptions)
+does, so the response matches the next read.
 
 Responses: `200`, `400`, `401`, `403`, `404`, `422`.
 
@@ -825,7 +840,7 @@ Add a charge that fell off the cycle, such as a one-time fee. Needs
 
 | Field | Notes |
 | --- | --- |
-| `date` | **Required.** `YYYY-MM-DD`, today or earlier. One charge a day per subscription. |
+| `date` | **Required.** `YYYY-MM-DD`, today or earlier. One charge a day per subscription: a billing date the catch-up has reached, including through a [create](#post-apiv1subscriptions) or replace of a backdated row, already has its charge, so `PATCH` that one instead. |
 | `amount_minor` | **Required.** Integer minor units, in the subscription's currency, at most `1000000000000` (more is a `422` on the field, as for a price). The web form's decimal `amount` is not read. |
 | `note` | Optional, up to 255 characters. |
 
@@ -1049,7 +1064,7 @@ category, tag or payment method and to a charge's `note`.
 | `trial_end_date` | date, null | A date that does not exist is a `422`. |
 | `converts_to_price_minor` | integer, null | Minor units, zero or more (a negative value is a `422`, "Enter a price of zero or more."). `true`, a list, an object and text that is not a number are a `422` on this field, never read as "no price". |
 | `converts_to_billing_cycle` | enum, null | As `billing_cycle`: `weekly`, `monthly`, `quarterly`, `yearly`, `custom_days`, and any other value (`annual`, `daily`, `YEARLY`) is a `422` on this field, never saved as "no cycle". Null or an empty string means it converts on the cycle it has; a `PUT` that omits the key keeps a trial's stored cycle (and its `converts_to_cycle_days`). |
-| `converts_to_cycle_days` | integer, null | |
+| `converts_to_cycle_days` | integer, null | 1–3650. Required when `converts_to_billing_cycle` is `custom_days`; ignored otherwise. |
 | `converts_to_cycle_interval` | integer, null | As `cycle_interval`, for the cycle it converts to — bounded the same way, and an absent key on a PUT that keeps `converts_to_billing_cycle` keeps it. Null when it converts to the cycle it already has. |
 | `is_active` | boolean | Default `true`. `false` pauses it. Stays `false` while the subscription is cancelled. Pausing records the billing dates already passed first (a running trial has none to record: its first payment is its trial end), and keeps the date they move the row to unless the `PUT` sends another: the `next_payment_date` the row was read with is not written back over it. Resuming skips the paused dates: a past `next_payment_date` moves on to the first billing date from today, so the response may not echo the date sent, and each date it steps over is recorded as a `skipped` charge with `source` `paused` — except one that already has a payment added by hand, which becomes that date's `paused` charge, keeping its status. Billed for one of those months after all? `PATCH` that charge's `actual_minor`; a `POST` on its date is a `422`. |
 | `plan` | string, null | Max 60 — "Standard", "Family". An absent key keeps the current value. |

@@ -37,6 +37,10 @@ final class ApiInputValidationTest extends ApiTestCase
     public function testAnImpossibleDateIsRefused(string $field, string $value): void
     {
         $id = $this->createSubscription();
+        // What the row reads before the refused PUT, not the date it was
+        // created with: the create catches it up (K255), so from 2 December
+        // 2026 the stored date is no longer 2026-12-01.
+        $before = $this->show($id)['next_payment_date'];
         $body = [
             'name' => 'Streaming',
             'price_minor' => 1099,
@@ -52,7 +56,7 @@ final class ApiInputValidationTest extends ApiTestCase
 
         self::assertSame(422, $put->getStatusCode(), (string) $put->getBody());
         self::assertArrayHasKey($field, $this->decode($put)['error']['errors']);
-        self::assertSame('2026-12-01', $this->show($id)['next_payment_date']);
+        self::assertSame($before, $this->show($id)['next_payment_date']);
 
         $post = $this->api('POST', '/api/v1/subscriptions', $this->ownerToken, $body);
         self::assertSame(422, $post->getStatusCode());
