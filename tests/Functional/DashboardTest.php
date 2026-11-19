@@ -1041,6 +1041,41 @@ final class DashboardTest extends DatabaseTestCase
     }
 
     /**
+     * K258: the price-rise card reads its rows and price history from the
+     * dashboard's one load. In ISOLATED mode that load is the viewer's own
+     * rows, so another member's announced rise never reaches their banner.
+     */
+    public function testIsolatedModeKeepsAnotherMembersPriceRiseOffTheBanner(): void
+    {
+        $prices = $this->container()->get(PriceHistoryService::class);
+        $owner = $this->scopeFor($this->ownerId);
+        $streaming = $this->idOf('Streaming');
+        $prices->recordInitialPrice(
+            $owner,
+            $streaming,
+            Money::of(999, 'GBP'),
+            new DateTimeImmutable('2025-01-18'),
+            $this->ownerId,
+        );
+        $prices->recordCurrentPrice(
+            $owner,
+            $streaming,
+            Money::of(1299, 'GBP'),
+            PriceChangeSource::Manual,
+            $this->ownerId,
+            null,
+            new DateTimeImmutable('2026-07-18'),
+        );
+        self::assertSame('Streaming', $this->overview($this->ownerId)['price_change']['subscription']->name ?? null);
+
+        $this->container()->get(InstanceSettingsService::class)->setIsolationMode(IsolationMode::Isolated);
+        $editor = Scope::forMember($this->editorId, false, $this->householdId, Role::Editor, IsolationMode::Isolated);
+
+        self::assertNull($this->container()->get(DashboardService::class)->overview($editor)['price_change']);
+        self::assertStringNotContainsString('price-banner', $this->body($this->get('/', $this->editorId)));
+    }
+
+    /**
      * @dataProvider views
      */
     public function testAtMostOneActionOnEitherViewWearsTheAccent(string $view): void
