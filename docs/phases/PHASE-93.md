@@ -181,7 +181,10 @@ None.
   chosen: adding K257 on top; swapping K268 for K255.
 - **Release — Decided 2026-11-18:** ships as its own patch release,
   **1.46.3**, once merged, as tests-only Phase 92 did. Not chosen: holding it
-  for the next minor release.
+  for the next minor release. *Changed 2026-11-18:* it shipped as
+  **1.47.0** instead. `/release` took its next-minor default without reading
+  this decision; the owner kept the published tag, and `/release` now reads
+  the brief's *Release* decision first.
 - No OpenAPI change, so `info.version` stays as it is. *Confirmed
   2026-11-18.*
 - **Known issues — checked 2026-11-18:** the log has no *Open* rows, so
