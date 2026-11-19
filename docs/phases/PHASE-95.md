@@ -177,10 +177,14 @@ None.
 - [x] K246: one walk per subject on the Budgets screen
 - [x] K258: one load of spend sources on the Overview dashboard
 - [x] K259: ETag and 304 on the calendar feed
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 95 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 95 row marked ✅ done
+- [ ] composer check, coverage and the API doc tests green (lint, PHPStan, the
+  API doc tests and every Phase 95 test green on Postgres and MySQL; the 46
+  failures in backup, passkey, 2FA and login-redirect tests fail the same on
+  master on this Windows machine. Coverage: no PCOV here, so CI's Postgres
+  leg is the measurement)
 
 ## Definition of done
 
