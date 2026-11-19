@@ -185,8 +185,8 @@ uses it, and a deployment from the published image never installs it. See
 ## What's new
 
 Release notes are in [CHANGELOG.md](CHANGELOG.md), and what each phase built is
-in [docs/history.md](docs/history.md). The latest phase is **Phase 94, API edges and the token-expiry note, from the known-issues log**
-([brief](docs/phases/PHASE-94.md)); the [roadmap](ROADMAP.md) shows what is in
+in [docs/history.md](docs/history.md). The latest phase is **Phase 95, Lighter Budgets, Overview and calendar feed, from the known-issues log**
+([brief](docs/phases/PHASE-95.md)); the [roadmap](ROADMAP.md) shows what is in
 progress and what is planned.
 
 ## Contributing

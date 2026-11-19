@@ -1006,6 +1006,17 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   change of shape. No migrations. See [Subscriptions](api.md#subscriptions)
   in the API reference and
   [Upgrading](upgrading.md#after-upgrading-to-utc-migrations-on-mysql-phase-90).
+- **Phase 95 — Lighter Budgets, Overview and calendar feed, from the
+  known-issues log — complete (1.47.2).** The Budgets screen walks each
+  member's spending once however many pay-day periods it shows, taking about
+  half the time with 29 budgets across 7 members. The Overview dashboard
+  loads the household's subscriptions, price history and ledger once for all
+  its cards, from 34 database statements to 20 at 300 subscriptions. The
+  calendar feed carries an `ETag` and `Cache-Control: private, no-cache`, and
+  a poll with `If-None-Match` that finds nothing changed gets `304 Not
+  Modified` instead of the whole year. Every figure is unchanged. OpenAPI
+  1.9.18 adds the `304`, the `If-None-Match` parameter and the `ETag`
+  header. No migrations. See [Calendar feed](features/calendar.md#calendar-feed).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says

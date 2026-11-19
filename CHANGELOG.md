@@ -8,6 +8,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.47.2] - 2026-11-19
+
 ### Fixed
 
 - **The Budgets screen is faster when members are paid on different days.**
@@ -1869,7 +1871,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.47.1...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.47.2...HEAD
+[1.47.2]: https://github.com/gwpreston16/Renovo/compare/v1.47.1...v1.47.2
 [1.47.1]: https://github.com/gwpreston16/Renovo/compare/v1.47.0...v1.47.1
 [1.47.0]: https://github.com/gwpreston16/Renovo/compare/v1.46.2...v1.47.0
 [1.46.2]: https://github.com/gwpreston16/Renovo/compare/v1.46.1...v1.46.2
