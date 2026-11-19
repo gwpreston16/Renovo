@@ -129,17 +129,25 @@ None.
 
 - **K260:** makes the tile what the prototype draws
   (`design-import/Renovo App.dc.html:310`). `CLAUDE.md` says the prototype
-  wins a disagreement with `DESIGN.md`.
+  wins a disagreement with `DESIGN.md`. *Confirmed 2026-11-19.*
 - **K261:** makes the dashboard draw trials as the prototype and the
   Phase 22/25 briefs do, and as the 1.46.0 CHANGELOG already claims. It uses
-  existing info tokens, with one contrast pair added.
+  existing info tokens, with one contrast pair added. *Confirmed 2026-11-19*,
+  with the Active tile's note plain muted text.
 - **K262 — Decided 2026-11-18:** add the prototype's trailing "Today /
   Tomorrow / In N days" tag, warn inside seven days and muted beyond, with
   "Trial ends" in info for a trial. Not chosen: keeping the date-tile tint
   but in warn; keeping the accent tint as 1.46.0 shipped it.
 - **Assumption (C):** the date tile goes plain once the tag exists. The
   prototype has no date tile (its square is the logo letter), so the tag is
-  its only signal.
+  its only signal. *Confirmed 2026-11-19.*
+- **The Trial badge in Coming up — Decided 2026-11-19** (found while starting
+  it): the "Trial ends" tag replaces the row's separate Trial badge, so a
+  trial row ends with one info pill, as the prototype draws it
+  (`design-import/Renovo App.dc.html:1674`). The hint still says "Trial
+  converts". B's badge change therefore applies to Next 30 days and the
+  recent table; in Coming up the trial's info pill is the tag. Not chosen:
+  keeping both a "Trial" badge and a "Trial ends" tag.
 - **Release — Decided 2026-11-18:** ships as its own patch release once
   merged, the next patch number after whichever of Phases 93, 94 and 95 ship
   first. Not chosen: holding all three for 1.47.0.
