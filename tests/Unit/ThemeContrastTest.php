@@ -79,7 +79,11 @@ final class ThemeContrastTest extends TestCase
         // trial row, whose ground is surface-2, so each tint is held there too.
         'warn' => ['warn-bg:surface', 'warn-bg:surface-2', 'bg', 'surface', 'surface-2'],
         'bad' => ['bad-bg:surface', 'bad-bg:surface-2', 'bg', 'surface', 'surface-2'],
-        'info' => ['info-bg:surface', 'surface'],
+        // A trial on the dashboard is an info badge or tag, in a row that turns
+        // surface-2 under the pointer (the recent table, Next 30 days).
+        'info' => ['info-bg:surface', 'info-bg:surface-2', 'surface'],
+        // A trial's marker on Next 30 days: its initials on the info fill.
+        'surface' => ['info'],
 
         // The secondary button.
         'ink-btn-text' => ['ink-btn', 'ink-btn-hover'],

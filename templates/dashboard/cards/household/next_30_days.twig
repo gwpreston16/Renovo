@@ -7,7 +7,7 @@
     The markers and their key are a picture of the list below them, so they
     are hidden from assistive technology and the list says everything they
     do — a trial's conversion included, which it names in words as well as
-    marking in the trial colour.
+    marking in the trial colour (info, as on the list and the calendar).
 #}
 {% import 'partials/logo.twig' as logo %}
 
@@ -55,7 +55,7 @@
                     <span class="timeline-date num">{{ marker.date|local_date('d MMM') }}</span>
                     <span class="timeline-name">{{ marker.subscription.name }}</span>
                     {#- A trial's conversion is named in a badge, not only by its marker's colour. -#}
-                    {% if is_trial %}<span class="badge badge-warn">{{ t('state.trial') }}</span>{% endif %}
+                    {% if is_trial %}<span class="badge badge-info">{{ t('state.trial') }}</span>{% endif %}
                     <span class="num">{{ marker.amount.amountMinor|money(marker.amount.currency) }}</span>
                 </li>
             {% endfor %}

@@ -8,6 +8,23 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Coming up says how soon each charge is.** Each row on the dashboard's
+  Coming up card now ends with a tag: "Today", "Tomorrow" or "In 5 days",
+  amber inside the next seven days (the charges the Due next 7 days tile
+  counts) and grey beyond, or "Trial ends" in blue for a trial converting.
+  Before, a charge due this week was marked only by a tint on its date, with
+  no words, and the date tile is now plain. *Phase 96.*
+- **A trial is blue on the dashboard, as everywhere else.** The Trial badges
+  on Next 30 days and the subscriptions table, and the trial markers and key
+  on Next 30 days, were amber on the dashboard while the subscriptions list
+  and the calendar draw a trial in blue. The Active tile's "1 trial · 0
+  paused" is now plain grey text. *Phase 96.*
+- **The Price change tile is a plain card.** It was drawn on an amber
+  background. It is now a card like the others, with only its icon square in
+  amber, as the design draws it. *Phase 96.*
+
 ## [1.47.2] - 2026-11-19
 
 ### Fixed

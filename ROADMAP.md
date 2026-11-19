@@ -104,7 +104,7 @@ can be moved.
 | 93 | [Tests that catch what they name, from the known-issues log](docs/phases/PHASE-93.md) | — | None | ✅ done |
 | 94 | [API edges and the token-expiry note, from the known-issues log](docs/phases/PHASE-94.md) | — | None | ✅ done |
 | 95 | [Lighter Budgets, Overview and calendar feed, from the known-issues log](docs/phases/PHASE-95.md) | — | None | ✅ done |
-| 96 | [Dashboard tiles and tags that match the prototype, from the known-issues log](docs/phases/PHASE-96.md) | — | None | 📋 planned |
+| 96 | [Dashboard tiles and tags that match the prototype, from the known-issues log](docs/phases/PHASE-96.md) | — | None | ✅ done |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was

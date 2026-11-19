@@ -1446,6 +1446,13 @@ p.note {
     border-color: transparent;
 }
 
+/* A tag with nothing to flag: muted on the quiet fill (a held pair). */
+.badge-muted {
+    background: var(--surface-2);
+    color: var(--muted);
+    border-color: transparent;
+}
+
 .chip {
     display: inline-flex;
     align-items: center;
@@ -2258,11 +2265,12 @@ legend {
 }
 
 /*
- * A heads-up rather than a problem: the warn tint, as the prototype draws its
- * "Price change" tile — `--warn-bg` ground, `--warn` icon and heading. Not a
- * coloured side rule: the prototype's only left border is the navigation's
- * active marker. Every pair here is one ThemeContrastTest already holds
- * (`warn` and `text` on `warn-bg:surface`), so it reads in every palette.
+ * A heads-up rather than a problem — a one-time secret to copy now, a
+ * temporary password, a backup not yet off the server: the warn tint as the
+ * ground, with a `--warn` icon and heading. Not a coloured side rule: the
+ * prototype's only left border is the navigation's active marker. Every pair
+ * here is one ThemeContrastTest already holds (`warn` and `text` on
+ * `warn-bg:surface`), so it reads in every palette.
  */
 .callout {
     background: var(--warn-bg);

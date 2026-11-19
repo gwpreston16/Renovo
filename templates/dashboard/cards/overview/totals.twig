@@ -56,9 +56,9 @@
             <span class="kpi-icon kpi-icon-neutral">{{ icon('subscriptions') }}</span>
         </header>
         <p class="stat-value num">{{ kpis.active.count|decimal(0) }}</p>
-        {# Trials carry the warn hue they have in Coming up and Free trials. #}
+        {# Plain muted text, as the prototype draws it: a count, not an alert. #}
         <p class="kpi-note">
-            <span{% if kpis.active.trials > 0 %} class="is-trials"{% endif %}>{{ t('dashboard.trials_count', {'trials': kpis.active.trials}) }}</span>
+            {{ t('dashboard.trials_count', {'trials': kpis.active.trials}) }}
             · {{ t('dashboard.paused_count', {'paused': kpis.active.paused}) }}
         </p>
     </article>

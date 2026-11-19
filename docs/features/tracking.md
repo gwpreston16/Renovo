@@ -12,7 +12,9 @@ your account, and each view has its own card order and hiding.
   in the next seven days, and the active count with trials and paused beneath.
   Below that: a thirteen-bar chart of six months behind, this month split into
   already charged and still due, and six forecast months; where the money goes;
-  the next 30 days of charges; this month's budgets; running trials, with
+  the next 30 days of charges, each ending with how soon it is ("Today",
+  "Tomorrow", "In 5 days", amber within the week, or "Trial ends" for a
+  trial converting); this month's budgets; running trials, with
   Cancel trial for whoever may change the row; and the next scheduled price
   rise. The subscriptions table is an optional card.
 - **Household**: this month so far, as already charged of everything due; year

@@ -62,9 +62,9 @@
                             {{ subscription.price.amountMinor|money(subscription.price.currency) }}
                         </td>
                         <td>
-                            {# Derived in one place: Cancelled, Paused, Trial or Active. #}
+                            {# Derived in one place: Cancelled, Paused, Trial or Active. A trial is info, as on the subscriptions list. #}
                             {% set status = subscription.status.value %}
-                            <span class="badge {{ status == 'trial' ? 'badge-warn' : '' }}" data-status="{{ status }}">
+                            <span class="badge {{ status == 'trial' ? 'badge-info' : '' }}" data-status="{{ status }}">
                                 {{ t(subscription.status.labelKey) }}
                             </span>
                         </td>

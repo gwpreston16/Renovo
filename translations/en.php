@@ -1352,6 +1352,8 @@ return [
     'dashboard.coming_up' => 'Coming up',
     'dashboard.coming_up_more' =>
         'And {count, plural, one {# more charge} other {# more charges}} in the next {days} days.',
+    // Coming up's tag past tomorrow: how many days until the charge.
+    'dashboard.due_in_days' => '{days, plural, one {In # day} other {In # days}}',
     'dashboard.coming_up_note' => 'Charges and trial conversions in the next {days} days',
     'dashboard.converts_to' => 'Converts to',
     'dashboard.converts_on' => 'converts {date}',
