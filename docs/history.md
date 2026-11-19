@@ -994,6 +994,18 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   PostgreSQL-only time-zone test now skips, rather than fails, with MySQL
   chosen in `.env`. Nothing changes in the app or the API; OpenAPI stays at
   1.9.16. No migrations. See [Tests](development.md#tests).
+- **Phase 94 — API edges and the token-expiry note, from the known-issues
+  log — complete (1.47.1).** Creating or replacing a subscription through
+  the API now returns it caught up, with its next billing date and the
+  charges for passed dates already written, as a read would. The API list
+  answers `422` to a `category`, `owner`, `tag`, `page` or `per_page` that
+  isn't a whole number of 1 or more, where `?tag=music` once quietly
+  returned every row. `converts_to_cycle_days` is documented as 1–3650, and
+  the Phase 90 upgrade note now gives a read-only query listing the token
+  expiries the 1.41.0 migration moved on MySQL. OpenAPI 1.9.17, with no
+  change of shape. No migrations. See [Subscriptions](api.md#subscriptions)
+  in the API reference and
+  [Upgrading](upgrading.md#after-upgrading-to-utc-migrations-on-mysql-phase-90).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
