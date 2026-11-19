@@ -345,8 +345,8 @@ final class DashboardService
             'approx_base' => $this->approxBase($charge['amount']),
             'is_trial_conversion' => $charge['reason'] === 'trial_conversion',
             'is_due_soon' => $charge['date'] <= $dueSoonEnd,
-            // Calendar days, both at midnight, so a charge's time of day and a
-            // daylight-saving change can't move it a day.
+            // Calendar days, both at midnight in the clock's zone (UTC, which
+            // has no clock change), so a time of day can't move a charge a day.
             'days_until' => (int) $today->setTime(0, 0)->diff($charge['date']->setTime(0, 0))->format('%r%a'),
             // A category folded into the donut's "everything else" tail is
             // drawn in the tail's muted hue there, so it takes that here too.

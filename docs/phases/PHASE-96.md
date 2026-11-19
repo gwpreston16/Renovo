@@ -134,6 +134,9 @@ None.
   Phase 22/25 briefs do, and as the 1.46.0 CHANGELOG already claims. It uses
   existing info tokens, with one contrast pair added. *Confirmed 2026-11-19*,
   with the Active tile's note plain muted text.
+  Found while building it: the Next 30 days marker draws its initials in
+  `--surface` on the marker's fill, so with the fill now `--info` a second
+  pair, `surface` on `info`, is held too. It adds no colour.
 - **K262 — Decided 2026-11-18:** add the prototype's trailing "Today /
   Tomorrow / In N days" tag, warn inside seven days and muted beyond, with
   "Trial ends" in info for a trial. Not chosen: keeping the date-tile tint

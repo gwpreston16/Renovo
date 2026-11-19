@@ -4202,9 +4202,14 @@ a.segmented-option {
     line-height: 1.1;
 }
 
-/* How soon a Coming up charge is: the row's last word, kept on one line. */
+/*
+ * How soon a Coming up charge is: the row's last word, kept on one line. At a
+ * larger text size the row wraps, and the tag then sits at the right, under
+ * the amount, rather than under the date.
+ */
 .charge-when {
     flex-shrink: 0;
+    margin-left: auto;
     white-space: nowrap;
 }
 
@@ -4264,7 +4269,17 @@ a.segmented-option {
     font-weight: var(--weight-bold);
 }
 
-@media (max-width: 479px) {
+/*
+ * Where the card is narrow (a phone, or the dashboard's side-by-side columns
+ * on a tablet) the logo and the owner's face give way, so the row keeps its
+ * how-soon tag at its end on one line, as the prototype draws it. The card's
+ * own width decides, not the window's.
+ */
+.charge-list {
+    container: charge-list / inline-size;
+}
+
+@container charge-list (max-width: 30rem) {
     .charge-row .logo,
     .charge-owner {
         display: none;

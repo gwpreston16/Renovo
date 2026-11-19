@@ -351,6 +351,10 @@ final class DashboardTest extends DatabaseTestCase
             $tags[$name] = [$hue, $words];
         }
 
+        // The card shows eight rows; these must all be among them.
+        $named = ['Due today', 'Due tomorrow', 'Due in five', 'Due in twelve', 'Trial plan'];
+        self::assertSame([], array_diff($named, array_keys($tags)), 'A row fell past the card\'s cap.');
+
         self::assertSame(['badge-warn', 'Today'], $tags['Due today']);
         self::assertSame(['badge-warn', 'Tomorrow'], $tags['Due tomorrow']);
         self::assertSame(['badge-warn', 'In 5 days'], $tags['Due in five']);
@@ -362,6 +366,23 @@ final class DashboardTest extends DatabaseTestCase
         self::assertStringNotContainsString('is-soon', $card);
         self::assertStringNotContainsString('is-trial', $card);
         self::assertSame(8, substr_count($card, 'class="date-tile"'));
+    }
+
+    /** The seventh day is the window's last, so its tag is warn; the eighth is muted. */
+    public function testTheTagTurnsMutedAfterTheSeventhDay(): void
+    {
+        $this->monthly('Due in seven', 100, 'GBP', '2026-06-22', '2025-01-22');
+        $this->monthly('Due in eight', 100, 'GBP', '2026-06-23', '2025-01-23');
+        $card = $this->section($this->body($this->get('/', $this->ownerId)), 'coming-up-card');
+
+        self::assertMatchesRegularExpression(
+            '#Due in seven</a>.*?<span class="badge badge-warn charge-when">\s*In 7 days\s*</span>#s',
+            $card,
+        );
+        self::assertMatchesRegularExpression(
+            '#Due in eight</a>.*?<span class="badge badge-muted charge-when">\s*In 8 days\s*</span>#s',
+            $card,
+        );
     }
 
     /** `days_until` is the whole days from today, so the template only picks words. */
@@ -1039,10 +1060,6 @@ final class DashboardTest extends DatabaseTestCase
     }
 
     /**
-     * An htmx request to the dashboard that is not a table chip still gets the
-     * page, so nothing else that asks for `/` can be handed eight rows.
-     */
-    /**
      * K261: a trial is info (blue) on the Overview, as it is on the
      * subscriptions list and the calendar, and the Active tile's count of
      * trials is plain muted text, as the prototype draws it.
@@ -1069,6 +1086,10 @@ final class DashboardTest extends DatabaseTestCase
         self::assertStringNotContainsString('is-trials', $body);
     }
 
+    /**
+     * An htmx request to the dashboard that is not a table chip still gets the
+     * page, so nothing else that asks for `/` can be handed eight rows.
+     */
     public function testOnlyAChipGetsTheTableFragment(): void
     {
         self::assertStringContainsString('<nav', $this->body($this->get('/', $this->ownerId, htmx: true)));
