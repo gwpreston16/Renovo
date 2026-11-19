@@ -717,9 +717,6 @@ final class DashboardTest extends DatabaseTestCase
         self::assertSame(2400, $rise['annual_minor']);
 
         $banner = $this->section($this->body($this->get('/', $this->ownerId)), 'price-banner');
-        // A heads-up about money, drawn as the warn-tinted callout.
-        $page = $this->body($this->get('/', $this->ownerId));
-        self::assertStringContainsString('class="card price-banner callout"', $page);
         self::assertStringContainsString('Streaming rises from £9.99 to £11.99 on 1 July', $banner);
         self::assertStringContainsString('+£2.00 a month, +£24.00 a year', $banner);
     }
@@ -1113,6 +1110,41 @@ final class DashboardTest extends DatabaseTestCase
     public static function views(): array
     {
         return [['overview'], ['household']];
+    }
+
+    /**
+     * K260: the prototype draws the Price change tile as a plain surface card,
+     * with the warn tint only in its icon square, so it is not a callout.
+     */
+    public function testThePriceChangeTileIsAPlainCard(): void
+    {
+        $prices = $this->container()->get(PriceHistoryService::class);
+        $scope = $this->scopeFor($this->ownerId);
+        $streaming = $this->idOf('Streaming');
+        $prices->recordInitialPrice(
+            $scope,
+            $streaming,
+            Money::of(999, 'GBP'),
+            new DateTimeImmutable('2025-01-18'),
+            $this->ownerId,
+        );
+        $prices->recordCurrentPrice(
+            $scope,
+            $streaming,
+            Money::of(1199, 'GBP'),
+            PriceChangeSource::Manual,
+            $this->ownerId,
+            null,
+            new DateTimeImmutable('2026-07-01'),
+        );
+
+        $page = $this->body($this->get('/', $this->ownerId));
+        self::assertStringContainsString('<section class="card price-banner" ', $page);
+        self::assertStringNotContainsString('callout', $page);
+        self::assertStringContainsString(
+            '<span class="kpi-icon kpi-icon-warn">',
+            $this->section($page, 'price-banner'),
+        );
     }
 
     /**

@@ -4437,14 +4437,6 @@ a.segmented-option {
     color: var(--warn);
 }
 
-/*
- * On the callout's warn tint the icon's own warn tile would vanish, so it
- * sits on the card's surface instead (`warn` on `surface` is a held pair).
- */
-.price-banner.callout .kpi-icon-warn {
-    background: var(--surface);
-}
-
 .price-banner-title {
     margin: 0.25rem 0;
     font-weight: var(--weight-bold);

@@ -352,8 +352,11 @@ and fields that are quiet until focused.
   temporary password, a backup that is not off the server. Not a failure (that
   is Bad) and not a status (that is a chip).
 - **Style:** the Warn tint (`--warn-bg`) as the ground, a leading `warn` icon
-  and the heading in `--warn`, as the prototype's "Price change" tile is drawn.
-  Text stays `--text`. The class is `.callout`, on a `.card` or an `.alert`.
+  and the heading in `--warn`. Text stays `--text`. The class is `.callout`,
+  on a `.card` or an `.alert`.
+- **Not a callout:** the dashboard's Price change tile. The prototype draws it
+  as a plain surface card whose only warn tint is its icon square, like every
+  other KPI icon, with the heading in `--warn`.
 - **Never:** a coloured side rule. The prototype's only left border is the
   navigation's active marker. The dashboard's update banner stays on the
   surface with its info icon in the warn hue.
