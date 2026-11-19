@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.17"
+  version: "1.9.18"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -1614,6 +1614,11 @@ paths:
         `calendar:read` scope, and one holding any write scope is refused
         rather than downgraded: a credential that can change data does not
         belong in a subscription URL. It shares the token's rate limit.
+
+        Every `200` and `304` carries a weak `ETag` and `Cache-Control:
+        private, no-cache`; a refused poll carries neither. A poll that sends
+        that ETag back in `If-None-Match` while the feed is unchanged gets `304 Not Modified` with no body. The ETag
+        leaves out each event's `DTSTAMP`, which is the time of the poll.
       security: []
       parameters:
         - name: token
@@ -1621,9 +1626,23 @@ paths:
           required: true
           schema: { type: string }
           description: A token with `calendar:read` and no write scope.
+        - name: If-None-Match
+          in: header
+          required: false
+          schema: { type: string }
+          description: |
+            The `ETag` of the copy the client holds (or a comma-separated list,
+            or `*`), compared weakly. If it matches the feed as it stands, the
+            answer is `304`.
       responses:
         "200":
           headers:
+            ETag:
+              description: A weak validator for this feed, to send back in `If-None-Match`.
+              schema: { type: string, example: 'W/"3f2a…"' }
+            Cache-Control:
+              description: Always `private, no-cache`.
+              schema: { type: string }
             RateLimit-Limit:
               $ref: "#/components/headers/RateLimit-Limit"
             RateLimit-Remaining:
@@ -1635,6 +1654,21 @@ paths:
             text/calendar:
               schema:
                 type: string
+        "304":
+          headers:
+            ETag:
+              description: The same validator the client sent, still current.
+              schema: { type: string }
+            Cache-Control:
+              description: Always `private, no-cache`.
+              schema: { type: string }
+            RateLimit-Limit:
+              $ref: "#/components/headers/RateLimit-Limit"
+            RateLimit-Remaining:
+              $ref: "#/components/headers/RateLimit-Remaining"
+            RateLimit-Reset:
+              $ref: "#/components/headers/RateLimit-Reset"
+          description: Not modified. The feed is unchanged since the copy whose ETag was sent; no body.
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":

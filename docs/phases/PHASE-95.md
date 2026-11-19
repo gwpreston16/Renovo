@@ -142,8 +142,27 @@ None.
 - **K246:** this makes the Budgets screen walk the way
   `BudgetService::measure()` already does (one walk per subject, filtered per
   window). The periods only filter the walk; they never change it.
+  *Confirmed 2026-11-19:* settled by the code, `BudgetService::measure()`
+  (`src/Service/BudgetService.php:177-191`) already works this way.
 - **K258:** this extends K167's load-once to the dashboard K167 was about.
   `AnalyticsScreenService` already does it for `/stats`.
+  *Confirmed 2026-11-19:* settled by the code, `AnalyticsScreenService`
+  hands one `SpendSources` to every walk on `/stats`.
+- **K258, found while starting it (assumption, 2026-11-19):** the brief says
+  `SpendChartService::window()` already accepts `$sources`, but only its
+  history half uses them: the forecast half (`ForecastService::monthly()`)
+  and Coming up (`ForecastService::chargesWithin()`) load the subscriptions
+  and price history again. Those two take the same optional `?SpendSources`
+  that `ForecastService::charges()` already accepts, only if the measured
+  count shows the reload; nothing they compute changes. It did (30
+  statements with the history half shared, 23 with both).
+- **K258's window, as built (2026-11-19):** the dashboard's one load runs
+  from the chart's first month (`sourcesForMonths()`, seven months back) to
+  yesterday rather than computing the earlier of that and the earliest
+  budget window. A monthly budget's period, a pay-day month included,
+  begins at most a month back, so the chart's window always holds it; and
+  `BudgetMonthService` checks `covers()` and loads its own once if it ever
+  did not (`BudgetScreenTest::testTheMonthCardLoadsItsOwnOnceWhenHandedTooShortALoad`).
 - **K259 — Decided 2026-11-18:** a weak ETag from the feed's content without
   `DTSTAMP`, answering 304, with `Cache-Control: private, no-cache`. Not
   chosen: also gzipping this route, which would revisit Phase 71; leaving it
@@ -163,13 +182,17 @@ None.
 
 ## Status
 
-- [ ] K246: one walk per subject on the Budgets screen
-- [ ] K258: one load of spend sources on the Overview dashboard
-- [ ] K259: ETag and 304 on the calendar feed
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 95 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K246: one walk per subject on the Budgets screen
+- [x] K258: one load of spend sources on the Overview dashboard
+- [x] K259: ETag and 304 on the calendar feed
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 95 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green (lint, PHPStan, the
+  API doc tests and every Phase 95 test green on Postgres and MySQL; the
+  local failures in backup, passkey, 2FA, login-redirect and secrets tests
+  fail the same on master on this machine. Coverage, measured with PCOV in a
+  container on Postgres: changed lines 100%, total 93.10%)
 
 ## Definition of done
 

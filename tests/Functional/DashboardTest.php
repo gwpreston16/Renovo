@@ -7,11 +7,13 @@ namespace App\Tests\Functional;
 use App\Application\Middleware\AuthenticationMiddleware;
 use App\Domain\DashboardCard;
 use App\Domain\DashboardView;
+use App\Domain\Entity\Subscription;
 use App\Domain\ExchangeRate;
 use App\Domain\IsolationMode;
 use App\Domain\Money;
 use App\Domain\PriceChangeSource;
 use App\Domain\Role;
+use App\Persistence\Database;
 use App\Repository\DashboardCardRepository;
 use App\Repository\ExchangeRateRepository;
 use App\Repository\HouseholdRepository;
@@ -28,6 +30,7 @@ use App\Service\ForecastService;
 use App\Service\InstanceSettingsService;
 use App\Service\PriceHistoryService;
 use App\Service\SpendHistoryService;
+use App\Service\SubscriptionService;
 use App\Support\Clock;
 use App\Support\FrozenClock;
 use App\Tests\Integration\DatabaseTestCase;
@@ -548,6 +551,113 @@ final class DashboardTest extends DatabaseTestCase
         self::assertStringNotContainsString('Keep it', $this->body($this->get('/', $this->ownerId)));
     }
 
+    /**
+     * K258: the chart, Coming up, the budgets card and the price-rise card
+     * read one load of the household's subscriptions, price history and
+     * ledger rather than one each. The count is the same at 10 subscriptions
+     * as at 60, so nothing on the page loads per row; with this fixture it
+     * was 37 before and is 23 after.
+     */
+    public function testTheOverviewDashboardLoadsTheSpendSourcesOnce(): void
+    {
+        $budgets = $this->container()->get(BudgetService::class);
+        $owner = $this->scopeFor($this->ownerId);
+        foreach (['household', (string) $this->ownerId] as $subject) {
+            $budgets->create($owner, [
+                'name' => 'Budget',
+                'period' => 'monthly',
+                'amount' => '100.00',
+                'subject_user_id' => $subject,
+                'warn_threshold_percent' => '85',
+            ]);
+        }
+        $prices = $this->container()->get(PriceHistoryService::class);
+        $rising = $this->monthly('Rising', 700, 'GBP', '2026-06-27', '2025-01-27');
+        $prices->recordInitialPrice(
+            $owner,
+            $rising,
+            Money::of(700, 'GBP'),
+            new DateTimeImmutable('2025-01-27'),
+            $this->ownerId,
+        );
+        $prices->recordCurrentPrice(
+            $owner,
+            $rising,
+            Money::of(900, 'GBP'),
+            PriceChangeSource::Manual,
+            $this->ownerId,
+            null,
+            new DateTimeImmutable('2026-07-27'),
+        );
+
+        $count = function (int $subscriptions): int {
+            for ($index = $this->subscriptionCount(); $index < $subscriptions; $index++) {
+                $next = sprintf('2026-06-%02d', 1 + $index % 28);
+                $this->monthly('Extra ' . $index, 100 + $index, 'GBP', $next, '2025-01-01');
+            }
+            self::assertSame($subscriptions, $this->subscriptionCount());
+
+            $db = $this->container()->get(Database::class);
+            $dashboard = $this->container()->get(DashboardService::class);
+            // Once to let the catch-up write what it writes, then measured.
+            $dashboard->overview($this->scopeFor($this->ownerId));
+            $before = $db->statementCount();
+            $overview = $dashboard->overview($this->scopeFor($this->ownerId));
+            self::assertNotNull($overview['price_change']);
+            self::assertNotSame([], $overview['budgets']);
+
+            return $db->statementCount() - $before;
+        };
+
+        $ten = $count(10);
+        $sixty = $count(60);
+
+        self::assertSame($ten, $sixty, 'Nothing on the page loads per subscription.');
+        self::assertLessThanOrEqual(23, $ten);
+    }
+
+    /**
+     * K258: the price-rise card cuts its rows from the dashboard's one load,
+     * which holds every row; `running()` must leave exactly the rows
+     * `allForStats()` reads, so a paused row or a fixed term that has ended
+     * never reaches the card.
+     */
+    public function testTheRunningRowsCutFromTheOneLoadAreTheStatsRows(): void
+    {
+        $repository = new SubscriptionRepository($this->db);
+        $owner = $this->scopeFor($this->ownerId);
+        $base = [
+            'price_minor' => 500,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-05-01',
+            'start_date' => '2025-01-01',
+        ];
+        $repository->create($owner, ['name' => 'Paused', 'is_active' => false] + $base, []);
+        $repository->create($owner, [
+            'name' => 'Ended term',
+            'payments_end_on' => '2026-05-01',
+            'is_active' => true,
+        ] + $base, []);
+        $subscriptions = $this->container()->get(SubscriptionService::class);
+
+        // Compared as sets: neither query orders its rows, and the card
+        // sorts what it is given.
+        $names = static function (array $rows): array {
+            $names = array_map(static fn (Subscription $subscription): string => $subscription->name, $rows);
+            sort($names);
+
+            return $names;
+        };
+        $running = $names($subscriptions->running($subscriptions->allForStats($owner, false)));
+
+        self::assertSame($names($subscriptions->allForStats($owner)), $running);
+        self::assertNotContains('Paused', $running);
+        self::assertNotContains('Ended term', $running);
+        self::assertContains('Streaming', $running);
+    }
+
     public function testThePriceBannerIsAbsentWithNoScheduledRise(): void
     {
         self::assertNull($this->overview($this->ownerId)['price_change']);
@@ -931,6 +1041,41 @@ final class DashboardTest extends DatabaseTestCase
     }
 
     /**
+     * K258: the price-rise card reads its rows and price history from the
+     * dashboard's one load. In ISOLATED mode that load is the viewer's own
+     * rows, so another member's announced rise never reaches their banner.
+     */
+    public function testIsolatedModeKeepsAnotherMembersPriceRiseOffTheBanner(): void
+    {
+        $prices = $this->container()->get(PriceHistoryService::class);
+        $owner = $this->scopeFor($this->ownerId);
+        $streaming = $this->idOf('Streaming');
+        $prices->recordInitialPrice(
+            $owner,
+            $streaming,
+            Money::of(999, 'GBP'),
+            new DateTimeImmutable('2025-01-18'),
+            $this->ownerId,
+        );
+        $prices->recordCurrentPrice(
+            $owner,
+            $streaming,
+            Money::of(1299, 'GBP'),
+            PriceChangeSource::Manual,
+            $this->ownerId,
+            null,
+            new DateTimeImmutable('2026-07-18'),
+        );
+        self::assertSame('Streaming', $this->overview($this->ownerId)['price_change']['subscription']->name ?? null);
+
+        $this->container()->get(InstanceSettingsService::class)->setIsolationMode(IsolationMode::Isolated);
+        $editor = Scope::forMember($this->editorId, false, $this->householdId, Role::Editor, IsolationMode::Isolated);
+
+        self::assertNull($this->container()->get(DashboardService::class)->overview($editor)['price_change']);
+        self::assertStringNotContainsString('price-banner', $this->body($this->get('/', $this->editorId)));
+    }
+
+    /**
      * @dataProvider views
      */
     public function testAtMostOneActionOnEitherViewWearsTheAccent(string $view): void
@@ -1072,6 +1217,11 @@ final class DashboardTest extends DatabaseTestCase
         };
 
         return Scope::forMember($userId, false, $this->householdId, $role, IsolationMode::Shared);
+    }
+
+    private function subscriptionCount(): int
+    {
+        return (int) $this->db->fetchValue('SELECT COUNT(*) FROM subscriptions');
     }
 
     private function body(ResponseInterface $response): string

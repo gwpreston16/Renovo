@@ -8,6 +8,27 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **The Budgets screen is faster when members are paid on different days.**
+  It used to walk the household's whole spending again for every budget
+  period it showed. It now walks each person's spending once and reads each of
+  their budgets from that walk. With 29 budgets across 7 members at 300
+  subscriptions it takes about half as long. Every figure is unchanged.
+  *Phase 95.*
+- **The Overview dashboard loads the household's spending once.** Coming up,
+  the spending chart, the budgets card and the price-rise card each loaded the
+  subscriptions, price history and ledger for themselves. They now share one
+  load, which takes the page from 34 database statements to 20 at 300
+  subscriptions, and about a quarter off its time. Every figure is unchanged.
+  *Phase 95.*
+- **A calendar poll that finds nothing new is answered `304`.** The calendar
+  feed now carries an `ETag` and `Cache-Control: private, no-cache` (it was
+  `no-store`). A calendar client that asks with `If-None-Match` while nothing
+  in the feed has changed gets `304 Not Modified` and no body, instead of the
+  whole year, about 1.2 MB at 300 subscriptions. OpenAPI 1.9.18 adds the
+  `304`, the `If-None-Match` parameter and the `ETag` header. *Phase 95.*
+
 ## [1.47.1] - 2026-11-19
 
 ### Fixed

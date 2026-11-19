@@ -7,16 +7,24 @@ namespace App\Tests\Functional;
 use App\Application\Middleware\AuthenticationMiddleware;
 use App\Domain\AlertType;
 use App\Domain\BudgetPeriod;
+use App\Domain\ChargeSource;
+use App\Domain\ChargeStatus;
 use App\Domain\ExchangeRate;
 use App\Domain\IsolationMode;
+use App\Domain\Money;
+use App\Domain\PriceChangeSource;
 use App\Domain\Role;
+use App\Domain\SplitMode;
 use App\Persistence\Database;
 use App\Repository\BudgetRepository;
+use App\Repository\ChargeRepository;
 use App\Repository\ExchangeRateRepository;
 use App\Repository\HouseholdRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\NotificationChannelRepository;
 use App\Repository\NotificationRouteRepository;
+use App\Repository\PriceHistoryRepository;
+use App\Repository\SplitRepository;
 use App\Repository\SubscriptionRepository;
 use App\Repository\UserRepository;
 use App\Security\CsrfTokenManager;
@@ -669,6 +677,212 @@ final class BudgetScreenTest extends DatabaseTestCase
 
         self::assertCount(3, $rows);
         self::assertLessThanOrEqual($one + 2, $three, 'Nothing grows with the pay-day budgets.');
+    }
+
+    /**
+     * K246: the screen walks each subject's spend once, over a span that
+     * covers all of its budgets' periods, and each budget filters that walk
+     * to its own. Seven members on seven different pay days with four budgets
+     * each, plus two household budgets, must read exactly what each budget
+     * reads when it is the only one on the screen.
+     *
+     * The fixture reaches every part of the walk a wider span could change:
+     * a ledger that begins inside the span with a skipped charge, a price
+     * rise inside it, a split, a trial converting inside a period, a weekly
+     * bill and pay days clamped at the month's end.
+     */
+    public function testBudgetsReadTogetherMatchEachReadAlone(): void
+    {
+        $users = new UserRepository($this->db);
+        $memberships = new MembershipRepository($this->db);
+        $members = [$this->ownerId, $this->editorId, $this->contributorId];
+        foreach (['four', 'five', 'six', 'seven'] as $name) {
+            $id = $users->create($name . '@example.test', ucfirst($name), 'hash', false, new DateTimeImmutable());
+            $memberships->create($this->householdId, $id, Role::Editor);
+            $members[] = $id;
+        }
+        // Today is 15 June: the 15th starts a period today, the 31st was
+        // clamped to 31 May, the 1st and 5th began this month, the rest last.
+        $payDays = ['2026-05-01', '2026-05-05', '2026-05-15', '2026-05-20', '2026-05-25', '2026-05-28', '2026-05-31'];
+        foreach ($members as $index => $member) {
+            $users->updatePreferences($member, ['pay_day' => $payDays[$index]]);
+        }
+
+        foreach ($members as $index => $member) {
+            $next = sprintf('2026-06-%02d', 2 + 4 * $index);
+            $this->monthly('Member ' . $index, 300 + 100 * $index, $next, '2025-01-02', $member);
+        }
+        $subscriptions = $this->subscriptions();
+        $subscriptions->create($this->ownerScope(), [
+            'name' => 'Weekly box',
+            'price_minor' => 250,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'weekly',
+            'next_payment_date' => '2026-06-17',
+            'start_date' => '2025-01-07',
+            'is_active' => true,
+        ], []);
+        $subscriptions->create($this->scopeFor($members[3]), [
+            'name' => 'Trial',
+            'price_minor' => 0,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'is_trial' => true,
+            'trial_end_date' => '2026-06-22',
+            'converts_to_price_minor' => 1299,
+            'start_date' => '2026-06-08',
+            'is_active' => true,
+        ], []);
+
+        // Shared equally by the owner and the fifth member, with a price rise
+        // on 20 May inside every span.
+        $shared = $subscriptions->create($this->ownerScope(), [
+            'name' => 'Shared',
+            'price_minor' => 2000,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-06-21',
+            'start_date' => '2025-01-21',
+            'is_active' => true,
+        ], []);
+        (new PriceHistoryRepository($this->db))->append(
+            $this->ownerScope(),
+            $shared,
+            Money::of(2400, 'GBP'),
+            new DateTimeImmutable('2026-05-20'),
+            PriceChangeSource::Manual,
+        );
+        $subscriptions->setSplitMode($this->ownerScope(), $shared, SplitMode::Equal);
+        (new SplitRepository($this->db))->replaceForSubscription($this->ownerScope(), $shared, $this->ownerId, [
+            ['user_id' => $this->ownerId, 'share_units' => 1],
+            ['user_id' => $members[4], 'share_units' => 1],
+        ]);
+
+        // Its ledger begins on 9 May, after some spans have begun, with the
+        // June charge skipped.
+        $ledgered = $subscriptions->create($this->ownerScope(), [
+            'name' => 'Ledgered',
+            'price_minor' => 1100,
+            'currency' => 'GBP',
+            'subscription_type' => 'recurring',
+            'billing_cycle' => 'monthly',
+            'next_payment_date' => '2026-07-09',
+            'start_date' => '2025-01-09',
+            'is_active' => true,
+        ], []);
+        $charges = new ChargeRepository($this->db);
+        $charges->record(
+            $this->ownerScope(),
+            $ledgered,
+            $this->ownerId,
+            new DateTimeImmutable('2026-05-09'),
+            Money::of(1100, 'GBP'),
+            ChargeSource::CatchUp,
+            1150,
+        );
+        $charges->record(
+            $this->ownerScope(),
+            $ledgered,
+            $this->ownerId,
+            new DateTimeImmutable('2026-06-09'),
+            Money::of(1100, 'GBP'),
+            ChargeSource::CatchUp,
+            status: ChargeStatus::Skipped,
+        );
+
+        $ids = [
+            $this->budget(['name' => 'House', 'amount' => '500.00', 'subject_user_id' => 'household']),
+            $this->budget([
+                'name' => 'House year',
+                'period' => 'annual',
+                'amount' => '5000.00',
+                'subject_user_id' => 'household',
+            ]),
+        ];
+        foreach ($members as $member) {
+            $subject = ['subject_user_id' => (string) $member, 'amount' => '100.00'];
+            $ids[] = $this->budget(['name' => 'Calendar'] + $subject);
+            $ids[] = $this->budget(['name' => 'Pay day', 'follows_pay_day' => '1'] + $subject);
+            $ids[] = $this->budget(['name' => 'Fortnight', 'period' => 'fortnight'] + $subject);
+            $ids[] = $this->budget(['name' => 'Four weeks', 'period' => 'four_weeks'] + $subject);
+        }
+        self::assertCount(30, $ids);
+
+        $months = $this->container()->get(BudgetMonthService::class);
+        $scope = $this->ownerScope();
+        $reads = static function (array $rows): array {
+            $byId = [];
+            foreach ($rows as $row) {
+                // The entity carries its updated-at stamp, which the switching
+                // below changes; the read is what is compared.
+                $read = $row['read'];
+                if ($read !== null) {
+                    unset($read['budget']);
+                }
+                $byId[$row['budget']->id] = $read;
+            }
+
+            return $byId;
+        };
+        $together = $reads($months->all($scope));
+        self::assertCount(30, $together);
+
+        // The figures are real, so equality is not null against null.
+        $charged = array_filter(
+            $together,
+            static fn (?array $read): bool => ($read['charged'] ?? null)?->amountMinor > 0,
+        );
+        self::assertGreaterThan(20, count($charged));
+
+        $budgets = new BudgetRepository($this->db);
+        foreach ($ids as $id) {
+            $budgets->update($scope, $id, ['is_active' => false]);
+        }
+        foreach ($ids as $id) {
+            $budgets->update($scope, $id, ['is_active' => true]);
+            $alone = $reads($months->all($scope));
+            $budgets->update($scope, $id, ['is_active' => false]);
+
+            self::assertSame([$id], array_keys($alone));
+            self::assertEquals($alone[$id], $together[$id], 'Budget ' . $id . ' reads differently alone.');
+        }
+    }
+
+    /**
+     * K258: the dashboard hands the budgets card the spend it loaded for its
+     * chart. Handed a load that starts after the month began, which would miss
+     * the 1 June charge, the card loads its own once for every subject, as it
+     * does with nothing handed in, and shows the same figures. Read as it
+     * stood, each subject's walk would find it short and load its own.
+     */
+    public function testTheMonthCardLoadsItsOwnOnceWhenHandedTooShortALoad(): void
+    {
+        $this->monthly('Early', 1200, '2026-07-01', '2025-01-01');
+        $this->monthly('Late', 800, '2026-06-20', '2025-01-20');
+        $this->budget(['name' => 'Everything', 'amount' => '100.00', 'subject_user_id' => 'household']);
+        $this->budget(['name' => 'Mine', 'amount' => '100.00', 'subject_user_id' => (string) $this->ownerId]);
+        $months = $this->container()->get(BudgetMonthService::class);
+        $db = $this->container()->get(Database::class);
+        $scope = $this->ownerScope();
+        $short = $this->container()->get(SpendHistoryService::class)
+            ->sources($scope, new DateTimeImmutable('2026-06-10'), new DateTimeImmutable('2026-06-14'));
+
+        $before = $db->statementCount();
+        $own = $months->thisMonth($scope, 4);
+        $ownStatements = $db->statementCount() - $before;
+
+        $before = $db->statementCount();
+        $handed = $months->thisMonth($scope, 4, $short);
+        $handedStatements = $db->statementCount() - $before;
+
+        self::assertCount(2, $handed);
+        self::assertSame(1200, $handed[0]['charged']?->amountMinor);
+        self::assertSame(2000, $handed[0]['projected']?->amountMinor);
+        self::assertEquals($own, $handed);
+        self::assertLessThanOrEqual($ownStatements, $handedStatements, 'One load of its own, not one per subject.');
     }
 
     public function testAPeriodStartingOnAClampedDayReadsToItsLastDay(): void

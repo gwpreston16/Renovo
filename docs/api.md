@@ -1018,7 +1018,15 @@ place. A calendar client fetches a URL on a timer for ever and cannot send an
   quietly accepting one teaches the operator that it is fine to put it there.
 - It shares the token's [rate limit](#rate-limits).
 
-Responses: `200` (`text/calendar`), `401`, `403`, `429`.
+Every `200` and `304` carries a weak `ETag` (`W/"…"`) and `Cache-Control:
+private, no-cache`; a refused poll (`401`, `403`, `429`) carries neither.
+Send that ETag back in **`If-None-Match`** (a comma-separated list and `*`
+work too; `W/` is optional) and, while the feed is unchanged, the answer
+is `304 Not Modified` with the same ETag and no body. The ETag leaves out each
+event's `DTSTAMP`, which is the time of the poll, so two polls of an unchanged
+feed match.
+
+Responses: `200` (`text/calendar`), `304`, `401`, `403`, `429`.
 
 ---
 

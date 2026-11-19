@@ -34,6 +34,13 @@ Every event is a whole-day event â€” a billing date is a date, not an instant â€
 and its identifier is stable, so a client that refetches on a timer recognises
 what it already has instead of duplicating it.
 
+A poll that finds nothing new costs almost nothing to send. The feed carries an
+`ETag`, and a calendar client that asks with it (`If-None-Match`) while nothing
+in the feed has changed gets `304 Not Modified` and no body, instead of the
+whole year again (about 1.2 MB at 300 subscriptions). The feed is still built
+on every poll, so a change shows on the next one. The feed is not compressed:
+it goes out as it did before, and the 304 is what saves the bytes.
+
 This is the one endpoint that takes its credential in the URL, because a calendar
 client cannot send an `Authorization` header. It compensates by refusing a
 **token that can write anything**: one holding a write scope is refused rather

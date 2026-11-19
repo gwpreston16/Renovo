@@ -503,11 +503,13 @@ final class AnalyticsScreenTest extends DatabaseTestCase
     }
 
     /**
-     * The KPI row, both charts and the year-over-year card read the past from
-     * one load of the household's subscriptions, price history and ledger
-     * rather than one each (K167): 72 statements before, 52 after.
+     * The analytics screen's (/stats) KPI row, both charts and the
+     * year-over-year card read the past from one load of the household's
+     * subscriptions, price history and ledger rather than one each (K167): 72
+     * statements before, 52 after. The Overview dashboard has its own test
+     * (`DashboardTest`, K258).
      */
-    public function testTheOverviewLoadsTheSpendSourcesOnce(): void
+    public function testTheAnalyticsScreenLoadsTheSpendSourcesOnce(): void
     {
         $db = $this->container()->get(Database::class);
         $scope = $this->scopeFor($this->ownerId);

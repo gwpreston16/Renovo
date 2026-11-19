@@ -157,7 +157,7 @@ final class PrivateSubscriptionTest extends DatabaseTestCase
         );
         self::assertStringNotContainsString('Therapy', (string) json_encode($month));
 
-        $feed = $this->container->get(CalendarFeedService::class)->build($scope, 'Renovo');
+        $feed = $this->container->get(CalendarFeedService::class)->build($scope, 'Renovo')->body;
         self::assertStringNotContainsString('Therapy', $feed);
     }
 

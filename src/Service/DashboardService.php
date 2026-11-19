@@ -100,6 +100,7 @@ final class DashboardService
         private readonly SpendInsightService $insights,
         private readonly InstanceSettingsService $settings,
         private readonly PermissionService $permissions,
+        private readonly SpendHistoryService $history,
         private readonly Clock $clock,
     ) {
     }
@@ -116,7 +117,21 @@ final class DashboardService
         // card is computed from a figure the next page load would correct.
         $stats = $this->stats->dashboard($scope);
 
-        $comingUp = $this->forecast->chargesWithin($scope, self::COMING_UP_DAYS);
+        // The household's subscriptions, price history and ledger, loaded
+        // once for Coming up, the chart, the budgets card and the price-rise
+        // card rather than once each (K258). After the catch-up above, so no
+        // card reads a row it is about to change. The chart's past reaches
+        // furthest back, its seventh month before this one; a monthly
+        // budget's period, a pay-day month included, began at most a month
+        // ago, so it is inside the same window (and loads its own if it ever
+        // were not).
+        $sources = $this->history->sourcesForMonths(
+            $scope,
+            self::CHART_PAST_MONTHS + 1,
+            $this->clock->today()->modify('-1 day'),
+        );
+
+        $comingUp = $this->forecast->chargesWithin($scope, self::COMING_UP_DAYS, $sources);
         $dueSoonEnd = $this->clock->today()->modify(sprintf('+%d days', self::DUE_SOON_DAYS));
         $dueSoon = array_values(array_filter(
             $comingUp,
@@ -148,7 +163,7 @@ final class DashboardService
                 ],
                 'one_off' => $stats['one_off'],
             ],
-            'chart' => $this->chart($scope, $monthlyBudget?->amount),
+            'chart' => $this->chart($scope, $monthlyBudget?->amount, $sources),
             'where_it_goes' => $breakdown + ['donut' => $donut],
             'coming_up' => [
                 'days' => self::COMING_UP_DAYS,
@@ -158,11 +173,14 @@ final class DashboardService
                 ),
                 'more' => max(0, count($comingUp) - self::COMING_UP_ROWS),
             ] + $this->chargeTotals($comingUp),
-            'budgets' => $this->budgets->thisMonth($scope, self::BUDGET_ROWS),
+            'budgets' => $this->budgets->thisMonth($scope, self::BUDGET_ROWS, $sources),
             'trials' => array_map(fn (Subscription $trial): array => $this->trialRow($scope, $trial), $trials),
             'price_change' => $this->insights->nextScheduledRise(
                 $scope,
-                $this->subscriptions->allForStats($scope),
+                // The running rows `allForStats()` would read again, cut from
+                // the one load.
+                $this->subscriptions->running($sources->subscriptions),
+                $sources->history,
             ),
             'base_currency' => $this->settings->baseCurrency(),
         ];
@@ -209,13 +227,19 @@ final class DashboardService
      *
      * @return array<string, mixed>
      */
-    private function chart(Scope $scope, ?Money $budget): array
+    private function chart(Scope $scope, ?Money $budget, SpendSources $sources): array
     {
         $budgetMinor = $budget === null
             ? null
             : $this->rates->convertMinor($budget->amountMinor, $budget->currency, $this->settings->baseCurrency());
 
-        return $this->spendChart->window($scope, self::CHART_PAST_MONTHS, self::CHART_FUTURE_MONTHS, $budgetMinor);
+        return $this->spendChart->window(
+            $scope,
+            self::CHART_PAST_MONTHS,
+            self::CHART_FUTURE_MONTHS,
+            $budgetMinor,
+            $sources,
+        );
     }
 
     /**
