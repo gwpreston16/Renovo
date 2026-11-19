@@ -80,11 +80,17 @@ final class ForecastService
      * @param int|null $forUserId When given, only that member's share of each
      *                            charge is counted — which is what a budget
      *                            needs and what a household overview does not.
+     * @param SpendSources|null $sources What a screen loaded once for all its
+     *                                   walks; see `charges()`.
      * @return list<MonthTotals>
      */
-    public function monthly(Scope $scope, int $months = self::DEFAULT_MONTHS, ?int $forUserId = null): array
-    {
-        return $this->monthsOf($this->charges($scope, $months, $forUserId), $months);
+    public function monthly(
+        Scope $scope,
+        int $months = self::DEFAULT_MONTHS,
+        ?int $forUserId = null,
+        ?SpendSources $sources = null,
+    ): array {
+        return $this->monthsOf($this->charges($scope, $months, $forUserId, null, $sources), $months);
     }
 
     /**
@@ -252,9 +258,12 @@ final class ForecastService
      * than months — the dashboard's Due next 7 days, Coming up and Next 30
      * days all read it, so a trial converting on Friday is in all three.
      *
+     * `$sources` is what the dashboard loaded once for every card (K258);
+     * see `charges()`.
+     *
      * @return list<array{subscription: Subscription, date: DateTimeImmutable, amount: Money, reason: string}>
      */
-    public function chargesWithin(Scope $scope, int $days): array
+    public function chargesWithin(Scope $scope, int $days, ?SpendSources $sources = null): array
     {
         $end = $this->clock->today()->modify(sprintf('+%d days', $days));
 
@@ -263,7 +272,7 @@ final class ForecastService
         $months = intdiv(max(0, $days), 28) + 1;
 
         return array_values(array_filter(
-            $this->charges($scope, $months),
+            $this->charges($scope, $months, null, null, $sources),
             static fn (array $charge): bool => $charge['date'] <= $end,
         ));
     }

@@ -172,7 +172,11 @@ final class SpendInsightService
      * `from` and `to` are the price per cycle either side of it; `monthly_minor`
      * and `annual_minor` the difference it makes over a month and a year.
      *
+     * `$history` is every price row in scope by subscription, when the caller
+     * has loaded it already — the dashboard, once for every card (K258).
+     *
      * @param list<Subscription> $subscriptions
+     * @param array<int, list<PriceChange>>|null $history
      * @return array{
      *     subscription: Subscription,
      *     date: DateTimeImmutable,
@@ -183,10 +187,10 @@ final class SpendInsightService
      *     ends_offer: bool
      * }|null
      */
-    public function nextScheduledRise(Scope $scope, array $subscriptions): ?array
+    public function nextScheduledRise(Scope $scope, array $subscriptions, ?array $history = null): ?array
     {
         $today = $this->clock->today();
-        $history = $this->priceHistory->historyBySubscription($scope);
+        $history ??= $this->priceHistory->historyBySubscription($scope);
         $rises = array_values(array_filter(
             $this->priceMoves($subscriptions, $history, $today),
             // An offer ending is the soonest rise as much as an announced

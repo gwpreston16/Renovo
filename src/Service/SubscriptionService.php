@@ -846,15 +846,27 @@ final class SubscriptionService
     public function allForStats(Scope $scope, bool $activeOnly = true): array
     {
         $rows = $this->subscriptions->findAllForStats($scope, $activeOnly);
-        if (!$activeOnly) {
-            return $rows;
-        }
 
+        return $activeOnly ? $this->running($rows) : $rows;
+    }
+
+    /**
+     * The running rows of a set: active, and with a payment still to come
+     * today. What `allForStats()` returns by default, cut from a set a caller
+     * already holds — the dashboard's one load of every row (K258) — so the
+     * two can never disagree about which rows count.
+     *
+     * @param list<Subscription> $rows
+     * @return list<Subscription>
+     */
+    public function running(array $rows): array
+    {
         $today = $this->clock->today();
 
         return array_values(array_filter(
             $rows,
-            static fn (Subscription $subscription): bool => $subscription->hasChargesRemaining($today),
+            static fn (Subscription $subscription): bool => $subscription->isActive
+                && $subscription->hasChargesRemaining($today),
         ));
     }
 

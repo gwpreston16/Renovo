@@ -67,7 +67,8 @@ final class SpendChartService
      * figure owes its reader that number.
      *
      * `$sources` is the spend a screen that draws several charts loaded once
-     * for all of them; left null, the chart loads its own.
+     * for all of them, read by both halves; left null, the chart loads its
+     * own.
      *
      * @return array<string, mixed>
      */
@@ -80,7 +81,7 @@ final class SpendChartService
     ): array {
         $yesterday = $this->clock->today()->modify('-1 day');
         $past = $this->history->history($scope, $pastMonths + 1, $yesterday, null, $sources);
-        $future = $this->forecast->monthly($scope, $futureMonths + 1);
+        $future = $this->forecast->monthly($scope, $futureMonths + 1, null, $sources);
 
         return $this->monthBars($past['months'], $future, $budgetMinor) + [
             'excluded_count' => $past['excluded_count'],

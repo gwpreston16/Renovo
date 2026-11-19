@@ -175,7 +175,7 @@ None.
 ## Status
 
 - [x] K246: one walk per subject on the Budgets screen
-- [ ] K258: one load of spend sources on the Overview dashboard
+- [x] K258: one load of spend sources on the Overview dashboard
 - [ ] K259: ETag and 304 on the calendar feed
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed
