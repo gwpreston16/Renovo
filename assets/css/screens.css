@@ -4202,33 +4202,10 @@ a.segmented-option {
     line-height: 1.1;
 }
 
-/*
- * How close a charge is, on its date tile. Inside the Due next 7 days window
- * the tile takes the accent's soft fill; a trial converting takes the warn
- * tint its Trial badge has. The month and day take the tint's own ink, since
- * `--faint` is not held to AA on a tint. Pairs: `accent-text` and `warn` on
- * their tints over the surface, both in ThemeContrastTest.
- */
-.date-tile.is-soon,
-.date-tile.is-trial {
-    padding: 0.25rem 0;
-    border-radius: var(--radius-small);
-}
-
-.date-tile.is-soon {
-    background: var(--accent-soft);
-}
-
-.date-tile.is-soon > span {
-    color: var(--accent-text);
-}
-
-.date-tile.is-trial {
-    background: var(--warn-bg);
-}
-
-.date-tile.is-trial > span {
-    color: var(--warn);
+/* How soon a Coming up charge is: the row's last word, kept on one line. */
+.charge-when {
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 /*

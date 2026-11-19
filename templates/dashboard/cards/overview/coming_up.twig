@@ -6,9 +6,12 @@
     Each amount is in its own currency, with roughly what it is in the base
     currency beside it when that is a different one with a rate.
 
-    The date tile says how close a charge is: tinted in the accent when it is
-    inside the Due next 7 days window, in the warn hue when a trial converts
-    (as its Trial badge is), and plain beyond. The category's dot is the
+    Each row ends with a tag saying how soon it is, in words a screen reader
+    reads: "Trial ends" in info (the trial colour everywhere) for a trial
+    converting; otherwise Today, Tomorrow or In N days, warn inside the Due
+    next 7 days window (the rows that tile counts) and muted beyond. The tag
+    is the only signal, as in the prototype, so the date tile stays plain.
+    The category's dot is the
     colour of its segment on Where it goes, with the name written beside it,
     so the colour links the two cards without being the only way to read it.
 #}
@@ -33,7 +36,7 @@
             {% for row in coming_up.rows %}
                 {% set subscription = row.subscription %}
                 <li class="charge-row">
-                    <span class="date-tile{{ row.is_trial_conversion ? ' is-trial' : (row.is_due_soon ? ' is-soon' : '') }}" aria-hidden="true">
+                    <span class="date-tile" aria-hidden="true">
                         <span class="date-tile-month">{{ row.date|local_date('MMM') }}</span>
                         <span class="date-tile-day num">{{ row.date|local_date('d') }}</span>
                     </span>
@@ -60,7 +63,17 @@
                         {% endif %}
                     </span>
                     {% if row.is_trial_conversion %}
-                        <span class="badge badge-warn">{{ t('state.trial') }}</span>
+                        <span class="badge badge-info charge-when">{{ t('calendar.kind_trial') }}</span>
+                    {% else %}
+                        <span class="badge {{ row.is_due_soon ? 'badge-warn' : 'badge-muted' }} charge-when">
+                            {%- if row.days_until <= 0 -%}
+                                {{ t('state.today') }}
+                            {%- elseif row.days_until == 1 -%}
+                                {{ t('state.tomorrow') }}
+                            {%- else -%}
+                                {{ t('dashboard.due_in_days', {'days': row.days_until}) }}
+                            {%- endif -%}
+                        </span>
                     {% endif %}
                 </li>
             {% endfor %}

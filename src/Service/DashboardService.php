@@ -132,7 +132,8 @@ final class DashboardService
         );
 
         $comingUp = $this->forecast->chargesWithin($scope, self::COMING_UP_DAYS, $sources);
-        $dueSoonEnd = $this->clock->today()->modify(sprintf('+%d days', self::DUE_SOON_DAYS));
+        $today = $this->clock->today();
+        $dueSoonEnd = $today->modify(sprintf('+%d days', self::DUE_SOON_DAYS));
         $dueSoon = array_values(array_filter(
             $comingUp,
             static fn (array $charge): bool => $charge['date'] <= $dueSoonEnd,
@@ -168,7 +169,7 @@ final class DashboardService
             'coming_up' => [
                 'days' => self::COMING_UP_DAYS,
                 'rows' => array_map(
-                    fn (array $charge): array => $this->chargeRow($charge, $dueSoonEnd, $categoryColours),
+                    fn (array $charge): array => $this->chargeRow($charge, $today, $dueSoonEnd, $categoryColours),
                     array_slice($comingUp, 0, self::COMING_UP_ROWS),
                 ),
                 'more' => max(0, count($comingUp) - self::COMING_UP_ROWS),
@@ -321,8 +322,10 @@ final class DashboardService
      * One Coming up row: the charge in its own currency, and roughly what that
      * is in the base currency when it is a different one that converts.
      *
-     * `is_due_soon` is the Due next 7 days tile's own test, so the rows the
-     * card tints are exactly the ones that tile counts. `category_colour` is
+     * `is_due_soon` is the Due next 7 days tile's own test, so the rows whose
+     * tag is warn are exactly the ones that tile counts. `days_until` is the
+     * whole days from today to the charge (0 today, 1 tomorrow), so the
+     * template only chooses the tag's words. `category_colour` is
      * the colour the row's category is drawn in on Where it goes; null when
      * the subscription has no category.
      *
@@ -330,14 +333,21 @@ final class DashboardService
      * @param array<string, string> $categoryColours
      * @return array<string, mixed>
      */
-    private function chargeRow(array $charge, DateTimeImmutable $dueSoonEnd, array $categoryColours): array
-    {
+    private function chargeRow(
+        array $charge,
+        DateTimeImmutable $today,
+        DateTimeImmutable $dueSoonEnd,
+        array $categoryColours,
+    ): array {
         $category = $charge['subscription']->categoryName;
 
         return $charge + [
             'approx_base' => $this->approxBase($charge['amount']),
             'is_trial_conversion' => $charge['reason'] === 'trial_conversion',
             'is_due_soon' => $charge['date'] <= $dueSoonEnd,
+            // Calendar days, both at midnight, so a charge's time of day and a
+            // daylight-saving change can't move it a day.
+            'days_until' => (int) $today->setTime(0, 0)->diff($charge['date']->setTime(0, 0))->format('%r%a'),
             // A category folded into the donut's "everything else" tail is
             // drawn in the tail's muted hue there, so it takes that here too.
             'category_colour' => $category === null || $category === ''

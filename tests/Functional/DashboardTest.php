@@ -330,26 +330,54 @@ final class DashboardTest extends DatabaseTestCase
     }
 
     /**
-     * The date tile says how close a charge is: the accent tint inside the
-     * Due next 7 days window (the tile's own test, so the same rows), the
-     * warn tint for a trial converting, plain beyond both.
+     * K262: each Coming up row ends with how soon it is, in words. Inside the
+     * Due next 7 days window (the tile's own test, so the same rows) the tag
+     * is warn, beyond it muted; a trial converting says "Trial ends" in info.
+     * The tag is the only signal, so no date tile is tinted.
      */
-    public function testComingUpTintsWhatIsDueSoonAndWhatATrialConvertsTo(): void
+    public function testComingUpRowsSayHowSoon(): void
     {
-        $rows = [];
-        foreach ($this->overview($this->ownerId)['coming_up']['rows'] as $row) {
-            $rows[$row['subscription']->name] = $row;
+        $this->addComingUpRowsAtEachDistance();
+        $card = $this->section($this->body($this->get('/', $this->ownerId)), 'coming-up-card');
+
+        $tags = [];
+        preg_match_all(
+            '#<a href="[^"]+">([^<]+)</a>.*?<span class="badge (badge-[a-z]+) charge-when">\s*([^<]+?)\s*</span>#s',
+            $card,
+            $matches,
+            PREG_SET_ORDER,
+        );
+        foreach ($matches as [, $name, $hue, $words]) {
+            $tags[$name] = [$hue, $words];
         }
 
-        // Thursday the 18th is inside the week; the 24th is not.
-        self::assertTrue($rows['Streaming']['is_due_soon']);
-        self::assertFalse($rows['Editors own thing']['is_due_soon']);
-        self::assertTrue($rows['Trial plan']['is_trial_conversion']);
+        self::assertSame(['badge-warn', 'Today'], $tags['Due today']);
+        self::assertSame(['badge-warn', 'Tomorrow'], $tags['Due tomorrow']);
+        self::assertSame(['badge-warn', 'In 5 days'], $tags['Due in five']);
+        self::assertSame(['badge-muted', 'In 12 days'], $tags['Due in twelve']);
+        self::assertSame(['badge-info', 'Trial ends'], $tags['Trial plan']);
 
-        $card = $this->section($this->body($this->get('/', $this->ownerId)), 'coming-up-card');
-        self::assertSame(1, substr_count($card, 'class="date-tile is-soon"'));
-        self::assertSame(1, substr_count($card, 'class="date-tile is-trial"'));
-        self::assertSame(2, substr_count($card, 'class="date-tile"'));
+        // The tag replaces the trial's separate badge and the tinted tile.
+        self::assertStringNotContainsString('>Trial</span>', $card);
+        self::assertStringNotContainsString('is-soon', $card);
+        self::assertStringNotContainsString('is-trial', $card);
+        self::assertSame(8, substr_count($card, 'class="date-tile"'));
+    }
+
+    /** `days_until` is the whole days from today, so the template only picks words. */
+    public function testComingUpRowsCarryDaysUntil(): void
+    {
+        $this->addComingUpRowsAtEachDistance();
+
+        $days = [];
+        foreach ($this->overview($this->ownerId)['coming_up']['rows'] as $row) {
+            $days[$row['subscription']->name] = [$row['days_until'], $row['is_due_soon']];
+        }
+
+        self::assertSame([0, true], $days['Due today']);
+        self::assertSame([1, true], $days['Due tomorrow']);
+        self::assertSame([5, true], $days['Due in five']);
+        self::assertSame([12, false], $days['Due in twelve']);
     }
 
     /**
@@ -1032,6 +1060,12 @@ final class DashboardTest extends DatabaseTestCase
         );
         self::assertStringNotContainsString('badge-warn', $recent);
 
+        // Coming up's trial pill is its tag (K262), in info and not warn.
+        self::assertMatchesRegularExpression(
+            '#Trial plan</a>.*?<span class="badge badge-info charge-when">Trial ends</span>#s',
+            $this->section($body, 'coming-up-card'),
+        );
+
         self::assertStringNotContainsString('is-trials', $body);
     }
 
@@ -1166,6 +1200,15 @@ final class DashboardTest extends DatabaseTestCase
             '<span class="kpi-icon kpi-icon-warn">',
             $this->section($page, 'price-banner'),
         );
+    }
+
+    /** Rows today, tomorrow, in 5 days (inside the week) and in 12 (beyond it). */
+    private function addComingUpRowsAtEachDistance(): void
+    {
+        $this->monthly('Due today', 100, 'GBP', '2026-06-15', '2025-01-15');
+        $this->monthly('Due tomorrow', 100, 'GBP', '2026-06-16', '2025-01-16');
+        $this->monthly('Due in five', 100, 'GBP', '2026-06-20', '2025-01-20');
+        $this->monthly('Due in twelve', 100, 'GBP', '2026-06-27', '2025-01-27');
     }
 
     /**

@@ -157,7 +157,7 @@ None.
 
 - [x] K260: the Price change tile is a plain card; docblocks and DESIGN.md corrected
 - [x] K261: trials in info across the dashboard; Active tile note muted
-- [ ] K262: Coming up rows end with how soon; date tiles plain
+- [x] K262: Coming up rows end with how soon; date tiles plain
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed
 - [ ] ROADMAP: Phase 96 row marked ✅ done
