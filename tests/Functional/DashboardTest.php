@@ -385,6 +385,22 @@ final class DashboardTest extends DatabaseTestCase
         );
     }
 
+    /** A trial converting inside the week still says "Trial ends" in info, never a warn countdown. */
+    public function testATrialInsideTheWeekStillSaysTrialEnds(): void
+    {
+        $this->db->execute(
+            "UPDATE subscriptions SET trial_end_date = '2026-06-17' WHERE id = :id",
+            ['id' => $this->trialId],
+        );
+        $card = $this->section($this->body($this->get('/', $this->ownerId)), 'coming-up-card');
+
+        self::assertMatchesRegularExpression(
+            '#Trial plan</a>.*?<span class="badge badge-info charge-when">Trial ends</span>#s',
+            $card,
+        );
+        self::assertStringNotContainsString('In 2 days', $card);
+    }
+
     /** `days_until` is the whole days from today, so the template only picks words. */
     public function testComingUpRowsCarryDaysUntil(): void
     {
