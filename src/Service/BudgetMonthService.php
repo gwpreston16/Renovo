@@ -58,6 +58,12 @@ use DateTimeImmutable;
  *     estimate: bool
  * }
  * @phpstan-type PeriodBudget array{budget: Budget, read: MonthBudget|null, lacks_pay_day: bool}
+ * @phpstan-type BudgetSpan array{
+ *     subject: int|null,
+ *     first: DateTimeImmutable,
+ *     last: DateTimeImmutable,
+ *     months: int
+ * }
  */
 final class BudgetMonthService
 {
@@ -80,9 +86,13 @@ final class BudgetMonthService
      * a member's, then the per-category ones, each group oldest first so the
      * order holds still between visits.
      *
+     * `$sources` is what the dashboard loaded once for its chart and this
+     * card together (K258); left null, or not covering this month's periods,
+     * the card loads its own.
+     *
      * @return list<MonthBudget>
      */
-    public function thisMonth(Scope $scope, int $limit): array
+    public function thisMonth(Scope $scope, int $limit, ?SpendSources $sources = null): array
     {
         $monthly = array_values(array_filter(
             $this->budgets->all($scope),
@@ -97,15 +107,7 @@ final class BudgetMonthService
                 ?: $a->id <=> $b->id;
         });
 
-        $rows = [];
-        $cache = [];
-        $shown = array_slice($monthly, 0, $limit);
-        $sources = $shown === [] ? null : $this->sources($scope, $shown);
-        foreach ($shown as $budget) {
-            $rows[] = $this->readCached($scope, $budget, $cache, $sources);
-        }
-
-        return $rows;
+        return array_values($this->readEach($scope, array_slice($monthly, 0, $limit), $sources));
     }
 
     /**
@@ -131,52 +133,143 @@ final class BudgetMonthService
                 ?: $a->id <=> $b->id;
         });
 
-        $rows = [];
-        $cache = [];
-        $sources = null;
+        // A two- or four-weekly budget whose member has no pay day has no
+        // period to read; it is listed with the reason, like one this scope
+        // cannot see whole. One this scope cannot see whole is unavailable
+        // whatever its pay day; setting one would not help, so it is not
+        // asked for.
+        $lacking = [];
+        $measurable = [];
         foreach ($budgets as $budget) {
-            // A two- or four-weekly budget whose member has no pay day has no
-            // period to read; it is listed with the reason, like one this
-            // scope cannot see whole.
-            // One this scope cannot see whole is unavailable whatever its pay
-            // day; setting one would not help, so it is not asked for.
             $visible = $this->budgets->isMeasurableBy($scope, $budget);
-            $lacksPayDay = $visible && $this->budgets->lacksPayDay($budget);
-            $measurable = $visible && !$lacksPayDay;
-            $sources ??= $measurable ? $this->sources($scope, $budgets) : null;
-            $rows[] = [
-                'budget' => $budget,
-                'read' => $measurable
-                    ? $this->readCached($scope, $budget, $cache, $sources)
-                    : null,
-                'lacks_pay_day' => $lacksPayDay,
-            ];
+            $lacking[$budget->id] = $visible && $this->budgets->lacksPayDay($budget);
+            if ($visible && !$lacking[$budget->id]) {
+                $measurable[] = $budget;
+            }
         }
 
-        return $rows;
+        $reads = $this->readEach($scope, $measurable);
+
+        return array_map(static fn (Budget $budget): array => [
+            'budget' => $budget,
+            'read' => $reads[$budget->id] ?? null,
+            'lacks_pay_day' => $lacking[$budget->id],
+        ], $budgets);
     }
 
     /**
-     * One budget over its period, walking the reconstruction and the forecast
-     * once per subject and period however many budgets share them.
+     * Each budget over its period, walking the reconstruction and the
+     * forecast once per subject however many budgets and periods share it
+     * (K246).
      *
-     * @param array<string, array{past: list<Charge>, ahead: list<Charge>}> $cache
-     * @return MonthBudget
+     * Every budget of one subject reads the same two walks, over the span
+     * that holds all of that subject's periods (`spans()`), and filters them
+     * to its own window, as `BudgetService::measure()` does for the alerts.
+     * A period only ever filters a walk: a charge's date and amount do not
+     * depend on where the walk began or how far ahead it ran.
+     *
+     * @param list<Budget> $budgets Budgets with a period this scope can measure.
+     * @return array<int, MonthBudget> By budget id.
      */
-    private function readCached(Scope $scope, Budget $budget, array &$cache, ?SpendSources $sources): array
+    private function readEach(Scope $scope, array $budgets, ?SpendSources $given = null): array
     {
-        // Only reached for a budget with a period: lacksPayDay() is checked
-        // first, and every other shape always has one.
-        $window = BudgetWindow::forBudget($budget, $this->clock->today());
-        assert($window !== null);
+        if ($budgets === []) {
+            return [];
+        }
 
-        // Budgets of one subject share a walk only when their periods agree to
-        // the day: two members' pay-day months start on different days.
-        $key = ($budget->subjectUserId ?? 'household') . ':'
-            . $window->first->format('Y-m-d') . ':' . $window->last->format('Y-m-d');
-        $cache[$key] ??= $this->periodCharges($scope, $budget->subjectUserId, $budget->period, $window, $sources);
+        $today = $this->clock->today();
+        $spans = self::spans($budgets, $today);
+        $sources = $this->sources($scope, $spans, $given);
 
-        return $this->read($budget, $window, $cache[$key]['past'], $cache[$key]['ahead']);
+        $walks = [];
+        foreach ($spans as $subject => $span) {
+            $walks[$subject] = $this->spanCharges($scope, $span, $sources);
+        }
+
+        $reads = [];
+        foreach ($budgets as $budget) {
+            // Only reached for a budget with a period: lacksPayDay() is
+            // checked first, and every other shape always has one.
+            $window = BudgetWindow::forBudget($budget, $today);
+            assert($window !== null);
+            $walk = $walks[self::subjectKey($budget)];
+
+            // The same bounds the walks had when each period made its own:
+            // after the day before the period began, and on or before its
+            // last day.
+            $before = $window->first->modify('-1 day');
+            $last = $window->last;
+            $reads[$budget->id] = $this->read(
+                $budget,
+                $window,
+                array_values(array_filter(
+                    $walk['past'],
+                    static fn (array $charge): bool => $charge['date'] > $before,
+                )),
+                array_values(array_filter(
+                    $walk['ahead'],
+                    static fn (array $charge): bool => $charge['date'] <= $last,
+                )),
+            );
+        }
+
+        return $reads;
+    }
+
+    /**
+     * One span per subject: from the first day of the earliest of its
+     * budgets' periods that contain `$today` to the last day of the latest,
+     * and the forecast horizon in months that reaches that last day.
+     *
+     * The household is a subject of its own. Each member is one, so two
+     * members on different pay days walk separately, but one member's
+     * calendar month, pay-day month, fortnight and four weeks share a walk.
+     * A budget with no period (no pay day for a weekly one) is left out.
+     *
+     * The horizon is the longest any of the subject's budgets needs. A
+     * period's length in months reaches the last day of a calendar or weekly
+     * period, but not always a pay-day month's: a pay day on the 31st starts
+     * one on 28 February that runs to 30 March, two days past 28 February
+     * plus a month. So a pay-day month asks for one month more.
+     *
+     * @param list<Budget> $budgets
+     * @return array<int|string, BudgetSpan> By subject: a member's id, or "household".
+     */
+    public static function spans(array $budgets, DateTimeImmutable $today): array
+    {
+        $spans = [];
+        foreach ($budgets as $budget) {
+            $window = BudgetWindow::forBudget($budget, $today);
+            if ($window === null) {
+                continue;
+            }
+
+            $months = $budget->period->months()
+                + ($window->followsPayDay && $budget->period === BudgetPeriod::Monthly ? 1 : 0);
+            $key = self::subjectKey($budget);
+            $span = $spans[$key] ?? [
+                'subject' => $budget->subjectUserId,
+                'first' => $window->first,
+                'last' => $window->last,
+                'months' => $months,
+            ];
+            $spans[$key] = [
+                'subject' => $span['subject'],
+                'first' => min($span['first'], $window->first),
+                'last' => max($span['last'], $window->last),
+                'months' => max($span['months'], $months),
+            ];
+        }
+
+        return $spans;
+    }
+
+    /**
+     * The key a budget's subject is walked under.
+     */
+    private static function subjectKey(Budget $budget): string
+    {
+        return $budget->subjectUserId === null ? 'household' : (string) $budget->subjectUserId;
     }
 
     /**
@@ -210,69 +303,51 @@ final class BudgetMonthService
     }
 
     /**
-     * What every period's past walk reads, loaded once for the whole screen:
-     * from the day before the earliest period on it began — this calendar
-     * year's, or a pay-day month that started last December — to yesterday.
-     * Without it each member's budget loaded the household's subscriptions,
-     * price history and ledger again, twice (K182).
+     * What every span's past walk reads, loaded once for the whole screen:
+     * from the day before the earliest span began — this calendar year's, or
+     * a pay-day month that started last December — to yesterday. Without it
+     * each member's budget loaded the household's subscriptions, price
+     * history and ledger again, twice (K182).
      *
-     * @param list<Budget> $budgets
+     * A caller that has loaded them already for a wider window — the
+     * dashboard, for its chart (K258) — hands them in; they are used when they
+     * cover every span, and otherwise this loads its own.
+     *
+     * @param array<int|string, BudgetSpan> $spans
      */
-    private function sources(Scope $scope, array $budgets): SpendSources
+    private function sources(Scope $scope, array $spans, ?SpendSources $given): SpendSources
     {
         $today = $this->clock->today();
-        $earliest = $today->setDate((int) $today->format('Y'), 1, 1);
-        foreach ($budgets as $budget) {
-            $window = BudgetWindow::forBudget($budget, $today);
-            if ($window !== null && $window->first < $earliest) {
-                $earliest = $window->first;
-            }
-        }
+        $from = min(array_column($spans, 'first'))->modify('-1 day');
+        $to = $today->modify('-1 day');
 
-        return $this->history->sources($scope, $earliest->modify('-1 day'), $today->modify('-1 day'));
+        return $given !== null && $given->covers($scope, $from, $to)
+            ? $given
+            : $this->history->sources($scope, $from, $to);
     }
 
     /**
-     * One subject's charges in the budget's period that contains today, split
-     * into before today (reconstructed) and today to the period's end
-     * (forecast). The forecast's horizon of the period's length in months
-     * reaches the last day of a calendar period or a weekly one, but not
-     * always a pay-day month's: a pay day on the 31st starts one on 28
-     * February that runs to 30 March, two days past 28 February plus a month.
-     * So a pay-day month asks for one month more.
+     * One subject's charges over its span, split into before today
+     * (reconstructed, from the span's first day) and from today (forecast,
+     * over the span's horizon). Each budget cuts its own period from these.
      *
+     * @param BudgetSpan $span
      * @return array{past: list<Charge>, ahead: list<Charge>}
      */
-    private function periodCharges(
-        Scope $scope,
-        ?int $subjectUserId,
-        BudgetPeriod $period,
-        BudgetWindow $window,
-        ?SpendSources $sources,
-    ): array {
+    private function spanCharges(Scope $scope, array $span, SpendSources $sources): array
+    {
         $today = $this->clock->today();
-        $last = $window->last;
 
-        $past = $this->history->charges(
-            $scope,
-            $window->first->modify('-1 day'),
-            $today->modify('-1 day'),
-            $subjectUserId,
-            $sources,
-        )['charges'];
-
-        $ahead = array_values(array_filter(
-            $this->forecast->charges(
+        return [
+            'past' => $this->history->charges(
                 $scope,
-                $period->months() + ($window->followsPayDay && $period === BudgetPeriod::Monthly ? 1 : 0),
-                $subjectUserId,
-                null,
+                $span['first']->modify('-1 day'),
+                $today->modify('-1 day'),
+                $span['subject'],
                 $sources,
-            ),
-            static fn (array $charge): bool => $charge['date'] <= $last,
-        ));
-
-        return ['past' => $past, 'ahead' => $ahead];
+            )['charges'],
+            'ahead' => $this->forecast->charges($scope, $span['months'], $span['subject'], null, $sources),
+        ];
     }
 
     /**
