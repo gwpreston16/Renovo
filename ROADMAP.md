@@ -103,7 +103,7 @@ can be moved.
 | 92 | [Tests that hold on any date, from the known-issues log](docs/phases/PHASE-92.md) | — | None | ✅ done |
 | 93 | [Tests that catch what they name, from the known-issues log](docs/phases/PHASE-93.md) | — | None | ✅ done |
 | 94 | [API edges and the token-expiry note, from the known-issues log](docs/phases/PHASE-94.md) | — | None | ✅ done |
-| 95 | [Lighter Budgets, Overview and calendar feed, from the known-issues log](docs/phases/PHASE-95.md) | — | None | 📋 planned |
+| 95 | [Lighter Budgets, Overview and calendar feed, from the known-issues log](docs/phases/PHASE-95.md) | — | None | 🚧 in progress |
 | 96 | [Dashboard tiles and tags that match the prototype, from the known-issues log](docs/phases/PHASE-96.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos

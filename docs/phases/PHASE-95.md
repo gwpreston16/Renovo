@@ -142,8 +142,19 @@ None.
 - **K246:** this makes the Budgets screen walk the way
   `BudgetService::measure()` already does (one walk per subject, filtered per
   window). The periods only filter the walk; they never change it.
+  *Confirmed 2026-11-19:* settled by the code, `BudgetService::measure()`
+  (`src/Service/BudgetService.php:177-191`) already works this way.
 - **K258:** this extends K167's load-once to the dashboard K167 was about.
   `AnalyticsScreenService` already does it for `/stats`.
+  *Confirmed 2026-11-19:* settled by the code, `AnalyticsScreenService`
+  hands one `SpendSources` to every walk on `/stats`.
+- **K258, found while starting it (assumption, 2026-11-19):** the brief says
+  `SpendChartService::window()` already accepts `$sources`, but only its
+  history half uses them: the forecast half (`ForecastService::monthly()`)
+  and Coming up (`ForecastService::chargesWithin()`) load the subscriptions
+  and price history again. Those two take the same optional `?SpendSources`
+  that `ForecastService::charges()` already accepts, only if the measured
+  count shows the reload; nothing they compute changes.
 - **K259 — Decided 2026-11-18:** a weak ETag from the feed's content without
   `DTSTAMP`, answering 304, with `Cache-Control: private, no-cache`. Not
   chosen: also gzipping this route, which would revisit Phase 71; leaving it
