@@ -3994,11 +3994,6 @@ a.segmented-option {
     color: var(--bad);
 }
 
-/* The Active tile's trial count, in the warn hue trials have across the page. */
-.kpi-note .is-trials {
-    color: var(--warn);
-}
-
 .card-icon {
     display: inline-flex;
     color: var(--faint);
@@ -4665,8 +4660,9 @@ a.segmented-option {
     font-weight: var(--weight-heavy);
 }
 
+/* A trial is info (blue) here as on the list and the calendar. */
 .timeline-marker.is-trial {
-    background: var(--warn);
+    background: var(--info);
 }
 
 .timeline-marker.lane-0 {
@@ -4717,7 +4713,7 @@ a.segmented-option {
 }
 
 .timeline-key.is-trial {
-    background: var(--warn);
+    background: var(--info);
 }
 
 .timeline-list {

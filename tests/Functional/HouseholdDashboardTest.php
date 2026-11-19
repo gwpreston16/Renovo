@@ -292,10 +292,22 @@ final class HouseholdDashboardTest extends DatabaseTestCase
         self::assertMatchesRegularExpression(
             // Named in a visible badge, not only by its marker's colour.
             '/<li class="timeline-item is-trial">.*?Trial plan<\/span>\s*'
-                . '<span class="badge badge-warn">Trial<\/span>/s',
+                . '<span class="badge badge-info">Trial<\/span>/s',
             $card,
         );
         self::assertSame(1, substr_count($card, 'timeline-item is-trial'), 'Only the conversion is a trial.');
+    }
+
+    /**
+     * K261: a trial is info (blue) on Next 30 days, as it is on the
+     * subscriptions list and the calendar, never the warn hue.
+     */
+    public function testTrialsAreDrawnInInfoOnNext30Days(): void
+    {
+        $card = $this->card($this->page($this->adaId), 'aria-labelledby="timeline-heading"');
+
+        self::assertSame(1, substr_count($card, '<span class="badge badge-info">Trial</span>'));
+        self::assertStringNotContainsString('badge-warn', $card);
     }
 
     public function testByCategoryDrawsEachBarInItsCategorysColour(): void

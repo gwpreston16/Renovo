@@ -158,7 +158,7 @@ final class DashboardTest extends DatabaseTestCase
         self::assertStringContainsString('Yearly run-rate', $body);
         self::assertStringContainsString('at today’s prices', $body);
         self::assertStringContainsString('Due next 7 days', $body);
-        self::assertMatchesRegularExpression('#<span class="is-trials">1 trial</span>\s*· 0 paused#', $body);
+        self::assertMatchesRegularExpression('#<p class="kpi-note">\s*1 trial\s*· 0 paused#', $body);
 
         $kpis = $this->overview($this->ownerId)['kpis'];
         // Only Streaming falls in 15–22 June; the trial converts on the 25th.
@@ -1014,6 +1014,27 @@ final class DashboardTest extends DatabaseTestCase
      * An htmx request to the dashboard that is not a table chip still gets the
      * page, so nothing else that asks for `/` can be handed eight rows.
      */
+    /**
+     * K261: a trial is info (blue) on the Overview, as it is on the
+     * subscriptions list and the calendar, and the Active tile's count of
+     * trials is plain muted text, as the prototype draws it.
+     */
+    public function testTrialsAreDrawnInInfoOnTheOverview(): void
+    {
+        $this->container()->get(DashboardLayoutService::class)
+            ->setVisible($this->ownerId, DashboardView::Overview, DashboardCard::Recent, true);
+        $body = $this->body($this->get('/', $this->ownerId));
+
+        $recent = $this->section($body, 'recent-card');
+        self::assertMatchesRegularExpression(
+            '#<span class="badge badge-info" data-status="trial">\s*Trial\s*</span>#',
+            $recent,
+        );
+        self::assertStringNotContainsString('badge-warn', $recent);
+
+        self::assertStringNotContainsString('is-trials', $body);
+    }
+
     public function testOnlyAChipGetsTheTableFragment(): void
     {
         self::assertStringContainsString('<nav', $this->body($this->get('/', $this->ownerId, htmx: true)));
