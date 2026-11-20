@@ -38,11 +38,13 @@
 {% endmacro %}
 
 {#
-    The same mark as a tile, for the subscriptions table: the cached logo when
-    there is one, otherwise the service's initial on a tile. A list of thirty
-    rows where every unbranded one is the same brand mark reads as thirty of the
-    same thing; an initial tells them apart at a glance, which is what the
-    table's first column is for. Decorative either way — the name is beside it.
+    The same mark as a tile, for the subscriptions table, the calendar and the
+    Overview's Coming up and Free trials cards: the cached logo when there is
+    one, otherwise the service's initial on a tile. A list of thirty rows where
+    every unbranded one is the same brand mark reads as thirty of the same
+    thing; an initial tells them apart at a glance. Decorative either way — the
+    name is beside it. `size` sets the image's box; the initial's tile takes
+    its size from the stylesheet, which each list sets to match.
 #}
 {% macro tile(subscription, size = 32) %}
     {%- if subscription.logoPath -%}

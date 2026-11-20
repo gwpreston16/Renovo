@@ -227,6 +227,19 @@ final class ApiChargesTest extends ApiTestCase
     }
 
     /**
+     * K279: both bad paging parameters are named in the one 422, so a client
+     * fixes them in one round trip rather than finding the second after the
+     * first.
+     */
+    public function testBadPageAndPerPageAreBothNamed(): void
+    {
+        $response = $this->api('GET', $this->chargesPath() . '?page=0&per_page=0', $this->ownerToken);
+
+        self::assertSame(422, $response->getStatusCode(), (string) $response->getBody());
+        self::assertSame(['page', 'per_page'], array_keys($this->decode($response)['error']['errors']));
+    }
+
+    /**
      * K270: the charges list read `?page=0` as page 1 while the subscription
      * list refused it. Both now answer a 422 naming the parameter, for every
      * shape a cast or is_numeric() would have let through as a number.

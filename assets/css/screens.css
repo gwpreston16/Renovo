@@ -4172,6 +4172,12 @@ a.segmented-option {
 }
 
 .charge-row {
+    /*
+     * Positioned so the name link's stretched layer (.charge-name a::after)
+     * covers this row and not the whole card, which is the next positioned
+     * ancestor up.
+     */
+    position: relative;
     display: flex;
     /*
      * A larger text size wraps the row; the how-soon tag then sits at its
@@ -4182,6 +4188,18 @@ a.segmented-option {
     gap: 0.75rem;
     padding: 0.6875rem 0.5rem;
     border-top: 1px solid var(--border);
+    border-radius: var(--radius-small);
+}
+
+.charge-row:hover {
+    background: var(--surface-2);
+}
+
+/* The prototype's 34px tile: the logo, or the service's initial (K275). */
+.charge-row .service-tile {
+    width: 2.125rem;
+    height: 2.125rem;
+    border-radius: var(--radius-control);
 }
 
 .date-tile {
@@ -4260,6 +4278,24 @@ a.segmented-option {
     white-space: nowrap;
 }
 
+/*
+ * The whole row opens the subscription, not just a name a phone cuts to a few
+ * letters (K276), as the subscription card does. The name stays the one link
+ * a keyboard or screen reader meets; its ::after is stretched over the row.
+ * Nothing else in the row takes a tap; only the owner's face is lifted above
+ * the layer, so hovering it still shows whose row it is.
+ */
+.charge-name a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+}
+
+.charge-owner {
+    position: relative;
+    z-index: 1;
+}
+
 .charge-owner {
     flex-shrink: 0;
 }
@@ -4278,18 +4314,19 @@ a.segmented-option {
  * leave the name room to read, so the how-soon tag stays at the row's end on
  * one line. The card's own width decides, not the window's.
  *
- * 26rem is measured, not guessed (K269): with the logo and face, a row's fixed
- * parts are about 10.5rem (padding, date tile, logo, face and five gaps), plus
- * the amount (4.5rem, or 5.75rem for "≈ £1,234.56") and the widest tag (4.5rem,
- * "Tomorrow" or "In 30 days"). Under 26rem the name would get less than about
- * 5rem. A phone's list (about 18.8rem at 375px) and the side-by-side card at
- * 768px (about 17rem) still drop them; at 1024px (about 27.75rem) they stay.
+ * 26.5rem is measured, not guessed (K269, re-measured for K275's tile): with
+ * the tile and face, a row's fixed parts are about 11.125rem (padding, date
+ * tile, the 34px tile, face and five gaps), plus the amount (4.5rem, or 5.75rem
+ * for "≈ £1,234.56") and the widest tag (4.5rem, "Trial ends" or "In 30 days").
+ * Under about 26.4rem the name would get less than 5rem. A phone's list (about
+ * 18.8rem at 375px) and the side-by-side card at 768px (about 17rem) still drop
+ * them; at 1024px (about 27.75rem) they stay.
  */
 .charge-list {
     container: charge-list / inline-size;
 }
 
-@container charge-list (max-width: 26rem) {
+@container charge-list (max-width: 26.5rem) {
     .charge-row .logo,
     .charge-owner {
         display: none;
@@ -4391,6 +4428,12 @@ a.segmented-option {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+}
+
+/* The prototype's 28px tile: the trial's logo, or its initial (K275). */
+.trial-row .service-tile {
+    width: 1.75rem;
+    height: 1.75rem;
 }
 
 .trial-row form {

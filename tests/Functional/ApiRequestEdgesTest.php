@@ -112,6 +112,18 @@ final class ApiRequestEdgesTest extends ApiTestCase
         ]);
     }
 
+    /**
+     * K279: both bad paging parameters are named in the one 422 on the
+     * subscription list too, not just the first one the loop meets.
+     */
+    public function testBadPageAndPerPageAreBothNamed(): void
+    {
+        $response = $this->api('GET', '/api/v1/subscriptions?page=0&per_page=0', $this->readOnlyToken);
+
+        self::assertSame(422, $response->getStatusCode(), (string) $response->getBody());
+        self::assertSame(['page', 'per_page'], array_keys($this->decode($response)['error']['errors']));
+    }
+
     public function testANonIntegerPageIsRefused(): void
     {
         $this->assertRefusedNaming([

@@ -187,13 +187,21 @@ None. F edits a migration's comment only.
   and the Free trials card follows Coming up. Not chosen: Coming up only,
   leaving Free trials on Phase 48's mark. The threshold is re-measured, not
   shifted by the reviewer's 0.625rem estimate.
-- **K276:** makes the row what the prototype draws (`:240`), using the idiom
-  commit `a92ef62` already uses for the subscription card.
+- **K275, measured while building it (2026-11-20): 26.5rem.** With the 34px
+  tile and face a row's fixed parts are about 11.125rem; with "≈ £1,234.56"
+  and "Trial ends"/"In 30 days" the name keeps 5rem down to about 26.44rem.
+  Lists measured: 18.8rem at 375px and 17.1rem at 768px drop the tile and
+  face; 27.75rem at 1024px and 38.4rem at 1280px keep them. The Free trials
+  tile is 28px. The test's `assertLessThan(30.0)` went: the 27.75rem check
+  says the same thing more tightly.
+- **K276 — Confirmed 2026-11-20:** makes the row what the prototype draws
+  (`:240`), using the idiom commit `a92ef62` already uses for the
+  subscription card. Not chosen: leaving only the name as the target.
 - **K278 and K279:** tests that make K269's and K256/K270's fixes hold; no
   behaviour change.
-- **K280:** makes the charges contract say what the code and the CHANGELOG
-  already say; OpenAPI **1.10.1**, a patch, since no status code or shape
-  changes.
+- **K280 — Confirmed 2026-11-20:** makes the charges contract say what the
+  code and the CHANGELOG already say; OpenAPI **1.10.1**, a patch, since no
+  status code or shape changes. Not chosen: the text without a version bump.
 - **K281 and K282:** make the text say what the code does, as K272 and K274
   did.
 - **K277 — Decided 2026-11-20:** not in this batch. Not chosen: the
@@ -210,17 +218,17 @@ None. F edits a migration's comment only.
 
 ## Status
 
-- [ ] K275: Coming up and Free trials draw the initial tile; threshold re-measured
-- [ ] K276: the whole Coming up row opens the subscription, with a hover
-- [ ] K278: style test asserts the `charge-list` container and the template's class
-- [ ] K279: tests that both bad paging parameters are named in one 422, on both lists
-- [ ] K280: charges docs and OpenAPI say a `per_page` over 100 is read as 100; OpenAPI 1.10.1
-- [ ] K281: backfill comment corrected
-- [ ] K282: `forSubscription()` docblock corrected
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 98 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K275: Coming up and Free trials draw the initial tile; threshold re-measured
+- [x] K276: the whole Coming up row opens the subscription, with a hover
+- [x] K278: style test asserts the `charge-list` container and the template's class
+- [x] K279: tests that both bad paging parameters are named in one 422, on both lists
+- [x] K280: charges docs and OpenAPI say a `per_page` over 100 is read as 100; OpenAPI 1.10.1
+- [x] K281: backfill comment corrected
+- [x] K282: `forSubscription()` docblock corrected
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 98 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
