@@ -8,6 +8,33 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Changed
+
+- **The charges list refuses paging it can't read.** On
+  `GET /api/v1/subscriptions/{id}/charges`, a `page` or `per_page` that isn't
+  a whole number of 1 or more (`0`, `abc`, `1.5`, `page[]=1`) is now a `422`
+  naming the parameter, as on the subscription list. It used to be read as
+  page 1 and 25 rows. An empty value is still the default, over 100 per page
+  is still clamped, and an unknown subscription is still a `404`. OpenAPI
+  1.10.0 adds the `422`. *Phase 97.*
+
+### Fixed
+
+- **Coming up keeps its logos and faces on a tablet or small laptop.** Each
+  row's logo and owner face were hidden whenever the list was narrower than
+  30rem, which took them off the side-by-side dashboard up to about 1,100px
+  wide. They now give way only where the row can't hold them beside a
+  readable name, a list under 26rem: a phone, or the narrow card at 768px.
+  *Phase 97.*
+- **The upgrade notes say what rolling back budgets for others loses.**
+  Rolling back past the migration that lets a budget measure the household or
+  another member turns every such budget into one for its owner, and migrating
+  again doesn't undo it. `docs/upgrading.md` and the migration now say so, and
+  how to put them back. *Phase 97.*
+- **OpenAPI describes the calendar feed's `304` correctly.** It said the
+  `304` carries the validator the client sent; it carries the feed's own weak
+  ETag, the one a `200` would. *Phase 97.*
+
 ## [1.47.3] - 2026-11-20
 
 ### Fixed

@@ -209,10 +209,19 @@ None. D edits a migration's docblock only.
 - [x] K272: rollback cost in the migration docblock and `docs/upgrading.md`
 - [x] K273: OpenAPI 304 ETag description corrected
 - [x] K274: `.charge-row` comment corrected
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed (and Changed for K270)
-- [ ] ROADMAP: Phase 97 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed (and Changed for K270)
+- [x] ROADMAP: Phase 97 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green (lint, PHPStan,
+  the API doc tests, `npm test` (96), the offline check and the locale check
+  green. The whole suite on Postgres 16 and MySQL 9.7 on a Windows host:
+  4981 tests each, with the same 46 failures on both, in 13 classes this phase
+  doesn't touch (passkeys' EC keys, backups, file modes, secrets), which fail
+  identically on `master` on this host. Every test the phase adds or changes
+  passes on both. Coverage not measured locally: this PHP has no PCOV or
+  Xdebug, so the 85% total and 80% changed-line checks are CI's on the
+  Postgres leg. Coming up checked at 375, 768, 1024 and 1280 px, light and
+  dark)
 
 ## Definition of done
 
