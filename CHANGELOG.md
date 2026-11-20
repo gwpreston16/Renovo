@@ -8,6 +8,20 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+### Fixed
+
+- **Coming up and Free trials tell unbranded services apart.** A row with no
+  logo showed the Renovo mark, so a list of unbranded services read as one
+  thing repeated. Each now shows the service's initial on a tile, as the
+  subscriptions list and calendar do. *Phase 98.*
+- **The whole Coming up row opens the subscription.** Only the name did,
+  which a phone cuts to a few letters; a tap anywhere on the row now opens it,
+  and the row shows a hover. *Phase 98.*
+- **The charges list says a `per_page` over 100 is read as 100.** The API
+  reference and OpenAPI gave the range as 1–100 beside the `422` for bad
+  paging, so a client could expect a `422`. OpenAPI 1.10.1 says it is clamped,
+  as the subscription list's already did. *Phase 98.*
+
 ## [1.47.4] - 2026-11-20
 
 ### Changed

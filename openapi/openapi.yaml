@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.10.0"
+  version: "1.10.1"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -819,7 +819,8 @@ paths:
         runs the same catch-up as the subscription list, so every passed date
         is there. Paged; a page past the last returns the last. A `page` or
         `per_page` that isn't a whole number of 1 or more is a `422` naming
-        it, as on the subscription list; an empty value is the default.
+        it, as on the subscription list; an empty value is the default, and
+        a `per_page` over 100 is clamped to 100.
       parameters:
         - { name: page, in: query, schema: { type: integer, minimum: 1 } }
         - name: per_page
