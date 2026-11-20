@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–96
+## Planned — Phases 30–97
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -105,6 +105,7 @@ can be moved.
 | 94 | [API edges and the token-expiry note, from the known-issues log](docs/phases/PHASE-94.md) | — | None | ✅ done |
 | 95 | [Lighter Budgets, Overview and calendar feed, from the known-issues log](docs/phases/PHASE-95.md) | — | None | ✅ done |
 | 96 | [Dashboard tiles and tags that match the prototype, from the known-issues log](docs/phases/PHASE-96.md) | — | None | ✅ done |
+| 97 | [Coming up, charges paging and contract notes, from the known-issues log](docs/phases/PHASE-97.md) | — | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -266,6 +267,7 @@ can be moved.
 - **94 — API edges and the token-expiry note.** A batch from the known-issues log (K255–K257, K263): creating or replacing a subscription through the API returns its caught-up next payment; a non-integer `category`, `owner`, `tag`, `page` or `per_page` is a 422 on the API; `converts_to_cycle_days` documents its bounds; and the Phase 90 upgrade note lists the shifted token expiries instead of saying they can't be found. Ships as its own patch release.
 - **95 — Lighter Budgets, Overview and calendar feed.** A batch from the known-issues log (K246, K258, K259): the Budgets screen walks each member's spend once whatever their pay-day periods, the Overview dashboard loads the household's spend sources once, and an unchanged calendar feed answers 304 to a poll. Ships as its own patch release.
 - **96 — Dashboard tiles and tags that match the prototype.** A batch from the known-issues log (K260–K262): the Price change tile is a plain card, trials are blue on the dashboard as everywhere else, and each Coming up row ends with "Today", "Tomorrow" or "In N days". Ships as its own patch release.
+- **97 — Coming up, charges paging and contract notes.** A batch from the known-issues log (K269–K274): Coming up keeps its logos and owner faces on tablets, the charges list refuses bad paging with a 422 as the subscription list does (OpenAPI 1.10.0), a test holds split rows on the Overview in ISOLATED mode, and three notes are corrected (the Phase 20 rollback cost, the 304 ETag, a CSS comment). Ships as its own patch release.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
