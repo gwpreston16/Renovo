@@ -203,7 +203,7 @@ None. D edits a migration's docblock only.
 ## Status
 
 - [x] K269: Coming up hides logo and owner only in a phone-width list (26rem, measured)
-- [ ] K270: charges list refuses bad `page` / `per_page` with a 422; OpenAPI 1.10.0
+- [x] K270: charges list refuses bad `page` / `per_page` with a 422; OpenAPI 1.10.0
 - [ ] K271: Overview test for a split participant in ISOLATED mode
 - [ ] K272: rollback cost in the migration docblock and `docs/upgrading.md`
 - [ ] K273: OpenAPI 304 ETag description corrected

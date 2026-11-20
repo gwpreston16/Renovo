@@ -830,8 +830,10 @@ List the subscription's charges, newest first, a page at a time. With a
 subscription list, so every billing date that has passed is there; a token
 without it reads what the last catch-up wrote. Paged with `page`
 (minimum 1) and `per_page` (1–100, default 25), with a `meta` block shaped like
-the subscription list's. A page past the last returns the last. Responses:
-`200`, `401`, `403`, `404`.
+the subscription list's. A page past the last returns the last. A `page` or
+`per_page` that isn't a whole number of 1 or more (`0`, `abc`, `1.5`,
+`page[]=1`) is a `422` naming it, as on the subscription list; an empty value
+is the default. Responses: `200`, `401`, `403`, `404`, `422`.
 
 #### `POST /api/v1/subscriptions/{id}/charges`
 

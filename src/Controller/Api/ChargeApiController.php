@@ -55,7 +55,10 @@ final class ChargeApiController extends ApiController
             throw new HttpNotFoundException($request, $this->translator->trans('error.api.subscription_not_found'));
         }
 
+        // After the 404, so an unknown subscription is a 404 whatever its
+        // paging; then bad paging is a 422, as on the subscription list (K270).
         $query = $request->getQueryParams();
+        $this->assertWholePaging($query);
         $perPage = $this->positive($query['per_page'] ?? null, self::DEFAULT_PER_PAGE, self::MAX_PER_PAGE);
         $number = $this->positive($query['page'] ?? null, 1, PHP_INT_MAX);
         $page = $this->charges->page($scope, (int) $id, $number, $perPage);
@@ -106,9 +109,14 @@ final class ChargeApiController extends ApiController
         ]);
     }
 
+    /**
+     * A checked paging value as an int: the default when it wasn't sent, and
+     * no more than the cap. assertWholePaging() has already refused anything
+     * that isn't a whole number of 1 or more.
+     */
     private function positive(mixed $raw, int $default, int $max): int
     {
-        if (!is_scalar($raw) || !is_numeric($raw) || (int) $raw < 1) {
+        if (!is_string($raw) || $raw === '') {
             return $default;
         }
 

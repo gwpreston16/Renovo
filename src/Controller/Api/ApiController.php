@@ -10,6 +10,8 @@ use App\Domain\Entity\ApiToken;
 use App\Domain\Entity\User;
 use App\I18n\Translator;
 use App\Security\Scope;
+use App\Service\ValidationError;
+use App\Service\ValidationException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
@@ -21,7 +23,9 @@ use Slim\Exception\HttpBadRequestException;
  *
  * Endpoints stay as thin as the web controllers and for the same reason — they
  * call the identical services. There is no rule, validation or default in this
- * directory that the browser does not also get.
+ * directory that the browser does not also get, with one exception: a list's
+ * query string. A client is told when a filter or a page isn't one the list
+ * accepts (a 422), where the browser's lists quietly ignore it (K193, K256).
  *
  * Route placeholders arrive as named arguments — `{id}` reaches a method
  * declaring `string $id` — because the application sets Slim's
@@ -134,5 +138,52 @@ abstract class ApiController
         }
 
         return $user;
+    }
+
+    /**
+     * Refuses a `page` or `per_page` that is sent and isn't a whole number of 1
+     * or more, as a 422 naming the parameter. An empty value means the default.
+     *
+     * Every paged list on the API calls this, so they answer the same input the
+     * same way: a forgiving read used to turn `?page=0` into page 1 on the
+     * charges list while the subscription list refused it (K256, K270). The
+     * browser's lists stay forgiving; a person editing an address bar is not a
+     * client that needs telling.
+     *
+     * @param array<string, mixed> $query
+     *
+     * @throws ValidationException
+     */
+    protected function assertWholePaging(array $query): void
+    {
+        $errors = [];
+        foreach (['page', 'per_page'] as $name) {
+            $value = $query[$name] ?? '';
+            if ($value !== '' && !self::isPositiveWholeNumber($value)) {
+                $errors[$name] = self::notAWholeNumber();
+            }
+        }
+
+        if ($errors !== []) {
+            throw new ValidationException($errors);
+        }
+    }
+
+    /**
+     * Digits only, and not zero: no sign, no decimal point, no spaces, and not
+     * a list (`page[]=1`). A value too large for an int is still a whole
+     * number; as an id it matches no row, and as a page it is past the end.
+     */
+    protected static function isPositiveWholeNumber(mixed $value): bool
+    {
+        return is_string($value) && ctype_digit($value) && ltrim($value, '0') !== '';
+    }
+
+    /**
+     * The 422 a parameter gets when it isn't a whole number of 1 or more.
+     */
+    protected static function notAWholeNumber(): ValidationError
+    {
+        return new ValidationError('error.api.filter_invalid', ['allowed' => 'a whole number of 1 or more']);
     }
 }

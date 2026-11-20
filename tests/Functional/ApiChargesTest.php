@@ -226,6 +226,60 @@ final class ApiChargesTest extends ApiTestCase
         self::assertNotSame($this->chargeId, $body['data'][0]['id']);
     }
 
+    /**
+     * K270: the charges list read `?page=0` as page 1 while the subscription
+     * list refused it. Both now answer a 422 naming the parameter, for every
+     * shape a cast or is_numeric() would have let through as a number.
+     */
+    public function testANonIntegerPageIsRefused(): void
+    {
+        $refused = [
+            'page=abc' => 'page',
+            'page=0' => 'page',
+            'per_page=x' => 'per_page',
+            'per_page=0' => 'per_page',
+            'page[]=1' => 'page',
+            'page=1.5' => 'page',
+            'page=%2B1' => 'page',
+            'page=%201' => 'page',
+            'per_page=1e3' => 'per_page',
+            'page=-1' => 'page',
+        ];
+
+        foreach ($refused as $query => $parameter) {
+            $response = $this->api('GET', $this->chargesPath() . '?' . $query, $this->ownerToken);
+
+            self::assertSame(422, $response->getStatusCode(), $query . ': ' . (string) $response->getBody());
+            $errors = $this->decode($response)['error']['errors'];
+            self::assertSame([$parameter], array_keys($errors), $query);
+            self::assertStringContainsString('a whole number of 1 or more', $errors[$parameter], $query);
+        }
+    }
+
+    /**
+     * The limits the contract already states still hold: an empty value is the
+     * default, over 100 per page is clamped, and a page past the last returns
+     * the last. An unknown subscription is still a 404 whatever its paging.
+     */
+    public function testAWholeNumberPageStillAnswers200(): void
+    {
+        $empty = $this->api('GET', $this->chargesPath() . '?page=&per_page=', $this->ownerToken);
+        self::assertSame(200, $empty->getStatusCode(), (string) $empty->getBody());
+        $meta = $this->decode($empty)['meta'];
+        self::assertSame([1, 25], [$meta['page'], $meta['per_page']]);
+
+        $clamped = $this->api('GET', $this->chargesPath() . '?per_page=500', $this->ownerToken);
+        self::assertSame(200, $clamped->getStatusCode(), (string) $clamped->getBody());
+        self::assertSame(100, $this->decode($clamped)['meta']['per_page']);
+
+        $past = $this->api('GET', $this->chargesPath() . '?per_page=1&page=99999999999999999999', $this->ownerToken);
+        self::assertSame(200, $past->getStatusCode(), (string) $past->getBody());
+        self::assertSame(2, $this->decode($past)['meta']['page']);
+
+        $unknown = $this->api('GET', '/api/v1/subscriptions/999999/charges?page=0', $this->ownerToken);
+        self::assertSame(404, $unknown->getStatusCode(), (string) $unknown->getBody());
+    }
+
     public function testAnActualOnASkippedChargeSaysItHappened(): void
     {
         $path = '/api/v1/charges/' . $this->chargeId;
