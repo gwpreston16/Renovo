@@ -225,10 +225,10 @@ None. F edits a migration's comment only.
 - [x] K280: charges docs and OpenAPI say a `per_page` over 100 is read as 100; OpenAPI 1.10.1
 - [x] K281: backfill comment corrected
 - [x] K282: `forSubscription()` docblock corrected
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed
-- [ ] ROADMAP: Phase 98 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed
+- [x] ROADMAP: Phase 98 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green
 
 ## Definition of done
 
