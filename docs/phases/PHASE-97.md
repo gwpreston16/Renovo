@@ -72,10 +72,11 @@ approximate "≈" figure in a long currency), the "Trial ends" and
 threshold the logo and face still give way, so the tag stays on the row's
 line. Update the comment above the rule to say why that width.
 
-Regression test: `DashboardTest::testComingUpHidesTheLogoOnlyInAPhoneWidthList`.
-It reads the built stylesheet's `@container charge-list` rule and asserts its
-threshold is the measured value, under 30rem; the screens are checked at 768,
-1024 and 375 px.
+Regression test: `ComingUpRowStylesTest::testComingUpHidesTheLogoOnlyInAPhoneWidthList`
+(a unit test, so it runs without a database; it reads `screens.css` as
+`DashboardCardTest` does). It asserts the `@container charge-list` threshold
+is the measured value, under 30rem, and still hides only the logo and face;
+the screens are checked at 375, 768, 1024 and 1280 px.
 
 ### B. K270 — the charges list refuses bad paging, as the subscription list does
 
@@ -125,7 +126,8 @@ rows (checked by that mutation, then reverted).
   and migrating again backfills every subject to the owner, so it doesn't
   return. Only a backup restores them; otherwise recreate those budgets.
 - `docs/upgrading.md` gains *After upgrading to household and member budgets
-  (Phase 20)* with the same cost, in the shape of the Phase 87 section.
+  (Phase 20)* with the same cost, in the shape of the Phase 87 section; it
+  names the form's **Whose spending** field for putting a budget back.
 
 A comment change in a migration changes no schema; `MigrationOrderTest`
 still passes. Test: `DocsLinkTest` over the new section.
@@ -179,22 +181,47 @@ None. D edits a migration's docblock only.
   the code is correct today.
 - **K272:** documentation only, the same kind of fix as K83 and K247.
 - **K273 and K274:** make the text say what the code does.
+- **Assumptions found while starting it — Confirmed 2026-11-20** (they follow
+  from the decisions above and the existing rules, so nothing was asked):
+  B's check runs after the `404` for an unknown subscription, so an unknown id
+  is still a `404` whatever its paging; the whole-number rule moves to one
+  protected helper on `ApiController` that both lists call; OpenAPI goes to
+  1.10.0, not a patch, because a `422` is a new status code on that
+  operation.
+- **K269, measured while building it (2026-11-20): 26rem.** With the logo
+  and face, a row's fixed parts are about 10.5rem plus the amount (4.5rem,
+  5.75rem for "≈ £1,234.56") and the widest tag (4.5rem); under 26rem the
+  name would get less than about 5rem. Measured on the demo household at
+  1024 px: the list is 27.75rem there and now keeps both; at 768 px (about
+  17rem) and 375 px (about 18.8rem) they still give way, with every tag on its
+  row's line and no horizontal scroll. The reviewer's 22–24rem would leave the
+  name 0–3rem. The test went in a unit test rather than `DashboardTest`, which
+  needs a database.
 - **Release — Decided 2026-11-20:** ships as its own patch release once
   merged, **1.47.4** (after v1.47.3). Not chosen: holding it for the next
   minor.
 
 ## Status
 
-- [ ] K269: Coming up hides logo and owner only in a phone-width list
-- [ ] K270: charges list refuses bad `page` / `per_page` with a 422; OpenAPI 1.10.0
-- [ ] K271: Overview test for a split participant in ISOLATED mode
-- [ ] K272: rollback cost in the migration docblock and `docs/upgrading.md`
-- [ ] K273: OpenAPI 304 ETag description corrected
-- [ ] K274: `.charge-row` comment corrected
-- [ ] Rows marked Fixed in known-issues.md
-- [ ] CHANGELOG [Unreleased] → Fixed (and Changed for K270)
-- [ ] ROADMAP: Phase 97 row marked ✅ done
-- [ ] composer check, coverage and the API doc tests green
+- [x] K269: Coming up hides logo and owner only in a phone-width list (26rem, measured)
+- [x] K270: charges list refuses bad `page` / `per_page` with a 422; OpenAPI 1.10.0
+- [x] K271: Overview test for a split participant in ISOLATED mode (fails with the shared load narrowed to the reader's own rows)
+- [x] K272: rollback cost in the migration docblock and `docs/upgrading.md`
+- [x] K273: OpenAPI 304 ETag description corrected
+- [x] K274: `.charge-row` comment corrected
+- [x] Rows marked Fixed in known-issues.md
+- [x] CHANGELOG [Unreleased] → Fixed (and Changed for K270)
+- [x] ROADMAP: Phase 97 row marked ✅ done
+- [x] composer check, coverage and the API doc tests green (lint, PHPStan,
+  the API doc tests, `npm test` (96), the offline check and the locale check
+  green. The whole suite on Postgres 16 and MySQL 9.7 on a Windows host:
+  4981 tests each, with the same 46 failures on both, in 13 classes this phase
+  doesn't touch (passkeys' EC keys, backups, file modes, secrets), which fail
+  identically on `master` on this host. Every test the phase adds or changes
+  passes on both. Coverage not measured locally: this PHP has no PCOV or
+  Xdebug, so the 85% total and 80% changed-line checks are CI's on the
+  Postgres leg. Coming up checked at 375, 768, 1024 and 1280 px, light and
+  dark)
 
 ## Definition of done
 
@@ -208,8 +235,8 @@ more. There is no migration (D edits a docblock). No new strings: B reuses
 
 ## Tests
 
-- K269: `DashboardTest::testComingUpHidesTheLogoOnlyInAPhoneWidthList`; the
-  screens checked in the browser.
+- K269: `ComingUpRowStylesTest::testComingUpHidesTheLogoOnlyInAPhoneWidthList`;
+  the screens checked in the browser.
 - K270: `ApiChargesTest::testANonIntegerPageIsRefused`,
   `ApiChargesTest::testAWholeNumberPageStillAnswers200`;
   `ApiRequestEdgesTest`, `OpenApiCoverageTest`, `ApiDocCoverageTest`.

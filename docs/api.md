@@ -830,8 +830,10 @@ List the subscription's charges, newest first, a page at a time. With a
 subscription list, so every billing date that has passed is there; a token
 without it reads what the last catch-up wrote. Paged with `page`
 (minimum 1) and `per_page` (1–100, default 25), with a `meta` block shaped like
-the subscription list's. A page past the last returns the last. Responses:
-`200`, `401`, `403`, `404`.
+the subscription list's. A page past the last returns the last. A `page` or
+`per_page` that isn't a whole number of 1 or more (`0`, `abc`, `1.5`,
+`page[]=1`) is a `422` naming it, as on the subscription list; an empty value
+is the default. Responses: `200`, `401`, `403`, `404`, `422`.
 
 #### `POST /api/v1/subscriptions/{id}/charges`
 
@@ -1022,9 +1024,9 @@ Every `200` and `304` carries a weak `ETag` (`W/"…"`) and `Cache-Control:
 private, no-cache`; a refused poll (`401`, `403`, `429`) carries neither.
 Send that ETag back in **`If-None-Match`** (a comma-separated list and `*`
 work too; `W/` is optional) and, while the feed is unchanged, the answer
-is `304 Not Modified` with the same ETag and no body. The ETag leaves out each
-event's `DTSTAMP`, which is the time of the poll, so two polls of an unchanged
-feed match.
+is `304 Not Modified` with the feed's current ETag and no body. The ETag
+leaves out each event's `DTSTAMP`, which is the time of the poll, so two polls
+of an unchanged feed match.
 
 Responses: `200` (`text/calendar`), `304`, `401`, `403`, `429`.
 

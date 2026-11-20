@@ -423,10 +423,7 @@ final class SubscriptionApiController extends ApiController
             }
             foreach ($values as $value) {
                 if ($value !== '' && !self::isPositiveWholeNumber($value)) {
-                    $errors[$name] = new ValidationError(
-                        'error.api.filter_invalid',
-                        ['allowed' => 'a whole number of 1 or more'],
-                    );
+                    $errors[$name] = self::notAWholeNumber();
                     break;
                 }
             }
@@ -435,16 +432,6 @@ final class SubscriptionApiController extends ApiController
         if ($errors !== []) {
             throw new ValidationException($errors);
         }
-    }
-
-    /**
-     * Digits only, and not zero: no sign, no decimal point, no spaces. A value
-     * too large for an int is still a whole number; it matches no row, and a
-     * page past the end is an empty page.
-     */
-    private static function isPositiveWholeNumber(mixed $value): bool
-    {
-        return is_string($value) && ctype_digit($value) && ltrim($value, '0') !== '';
     }
 
     /**

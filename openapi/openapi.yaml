@@ -9,7 +9,7 @@ openapi: 3.0.3
 
 info:
   title: Renovo API
-  version: "1.9.18"
+  version: "1.10.0"
   description: |
     Read and write subscriptions, categories, payment methods, tags and attachments.
 
@@ -817,7 +817,9 @@ paths:
         at the price in force that day, plus any added by hand. Nothing here
         is read from a bank. With a `subscriptions:write` token, the request first
         runs the same catch-up as the subscription list, so every passed date
-        is there. Paged; a page past the last returns the last.
+        is there. Paged; a page past the last returns the last. A `page` or
+        `per_page` that isn't a whole number of 1 or more is a `422` naming
+        it, as on the subscription list; an empty value is the default.
       parameters:
         - { name: page, in: query, schema: { type: integer, minimum: 1 } }
         - name: per_page
@@ -851,6 +853,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -1657,7 +1661,7 @@ paths:
         "304":
           headers:
             ETag:
-              description: The same validator the client sent, still current.
+              description: The feed's current weak ETag, the same one a `200` would carry.
               schema: { type: string }
             Cache-Control:
               description: Always `private, no-cache`.
