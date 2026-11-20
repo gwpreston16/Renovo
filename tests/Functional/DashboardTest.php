@@ -332,6 +332,21 @@ final class DashboardTest extends DatabaseTestCase
     }
 
     /**
+     * K275: a Coming up row with no cached logo draws the service's initial on
+     * a tile, as the prototype does, not the Renovo mark on every row.
+     */
+    public function testComingUpDrawsAnUnbrandedServicesInitial(): void
+    {
+        $card = $this->section($this->body($this->get('/', $this->ownerId)), 'coming-up-card');
+
+        self::assertStringContainsString(
+            '<span class="logo service-tile service-initial" aria-hidden="true">S</span>',
+            $card,
+        );
+        self::assertStringNotContainsString('#renovo-mark', $card);
+    }
+
+    /**
      * K262: each Coming up row ends with how soon it is, in words. Inside the
      * Due next 7 days window (the tile's own test, so the same rows) the tag
      * is warn, beyond it muted; a trial converting says "Trial ends" in info.
@@ -607,8 +622,13 @@ final class DashboardTest extends DatabaseTestCase
 
         $card = $this->section($this->body($this->get('/', $this->ownerId)), 'trials-card');
 
-        self::assertStringContainsString('<img class="logo" src="/storage/logos/trial.png"', $card);
-        self::assertStringContainsString('logo-fallback', $card);
+        self::assertStringContainsString('<img class="logo service-tile" src="/storage/logos/trial.png"', $card);
+        // K275: the unbranded trial gets its initial on a tile, not the mark.
+        self::assertStringContainsString(
+            '<span class="logo service-tile service-initial" aria-hidden="true">T</span>',
+            $card,
+        );
+        self::assertStringNotContainsString('#renovo-mark', $card);
         self::assertSame(2, substr_count($card, 'class="trial-row"'));
         self::assertSame(2, preg_match_all('~class="logo\b~', $card));
     }

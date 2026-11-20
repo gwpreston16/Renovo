@@ -40,7 +40,7 @@
                         <span class="date-tile-month">{{ row.date|local_date('MMM') }}</span>
                         <span class="date-tile-day num">{{ row.date|local_date('d') }}</span>
                     </span>
-                    {{ logo.mark(subscription) }}
+                    {{ logo.tile(subscription, 34) }}
                     <span class="charge-name">
                         <a href="/subscriptions/{{ subscription.id }}{{ can_edit_row(scope, subscription) ? '/edit' : '/money' }}">{{ subscription.name }}</a>
                         <span class="hint">
