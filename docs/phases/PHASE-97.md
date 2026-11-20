@@ -179,6 +179,13 @@ None. D edits a migration's docblock only.
   the code is correct today.
 - **K272:** documentation only, the same kind of fix as K83 and K247.
 - **K273 and K274:** make the text say what the code does.
+- **Assumptions found while starting it — Confirmed 2026-11-20** (they follow
+  from the decisions above and the existing rules, so nothing was asked):
+  B's check runs after the `404` for an unknown subscription, so an unknown id
+  is still a `404` whatever its paging; the whole-number rule moves to one
+  protected helper on `ApiController` that both lists call; OpenAPI goes to
+  1.10.0, not a patch, because a `422` is a new status code on that
+  operation.
 - **Release — Decided 2026-11-20:** ships as its own patch release once
   merged, **1.47.4** (after v1.47.3). Not chosen: holding it for the next
   minor.
