@@ -207,8 +207,8 @@ None. D edits a migration's docblock only.
 - [x] K270: charges list refuses bad `page` / `per_page` with a 422; OpenAPI 1.10.0
 - [x] K271: Overview test for a split participant in ISOLATED mode (fails with the shared load narrowed to the reader's own rows)
 - [x] K272: rollback cost in the migration docblock and `docs/upgrading.md`
-- [ ] K273: OpenAPI 304 ETag description corrected
-- [ ] K274: `.charge-row` comment corrected
+- [x] K273: OpenAPI 304 ETag description corrected
+- [x] K274: `.charge-row` comment corrected
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed (and Changed for K270)
 - [ ] ROADMAP: Phase 97 row marked ✅ done

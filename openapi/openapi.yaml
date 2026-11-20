@@ -1661,7 +1661,7 @@ paths:
         "304":
           headers:
             ETag:
-              description: The same validator the client sent, still current.
+              description: The feed's current weak ETag, the same one a `200` would carry.
               schema: { type: string }
             Cache-Control:
               description: Always `private, no-cache`.
