@@ -19,6 +19,14 @@ use Phinx\Migration\AbstractMigration;
  * On MySQL this is not transactional. Should it stop halfway, the manual
  * rollback is: drop the foreign key `fk_budgets_subject_user`, then the index
  * `ix_budgets_subject_user`, then the column.
+ *
+ * Rolling back loses what the column says (K272). `down()` drops it, so under
+ * the older code every budget measures its owner again: a household-wide budget
+ * (subject null) becomes one for its owner's share alone, and Alice's budget
+ * for Bob becomes a budget for Alice. Migrating again does not undo it, because
+ * the backfill above sets every subject to the owner. Only the pre-upgrade
+ * backup brings them back; otherwise those budgets are recreated by hand.
+ * `docs/upgrading.md` says so for operators.
  */
 final class AddSubjectUserIdToBudgets extends AbstractMigration
 {

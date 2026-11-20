@@ -46,6 +46,24 @@ Nothing else is touched. The migration's `down()` does nothing, because a
 deletion cannot be undone. The backup you took first is the only way back to
 the old arrangements.
 
+## After upgrading to household and member budgets (Phase 20)
+
+One migration adds `budgets.subject_user_id`: whose spending a budget
+measures, separate from who set it, with empty meaning the whole household.
+Every existing budget is filled in to measure its owner, which is what it
+measured before, so nothing changes on upgrade.
+
+Rolling back past it has one cost, and it is for good:
+
+- **Every budget measures its owner again.** A household-wide budget becomes a
+  budget for its owner's share alone, and a budget one member set for another
+  (Alice's budget for Bob) becomes a budget for the member who set it. Their
+  figures and threshold alerts change with no warning.
+- **Migrating again does not bring them back.** The migration fills every
+  budget in to measure its owner, as it did the first time. Only a database
+  backup taken before the rollback restores them; otherwise note those
+  budgets first and set **Whose spending** back on each budget's form.
+
 ## After upgrading to instance backups (Phase 38)
 
 Nothing is needed beyond `phinx migrate` (one new table, `backup_runs`), and

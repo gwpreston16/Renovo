@@ -126,7 +126,8 @@ rows (checked by that mutation, then reverted).
   and migrating again backfills every subject to the owner, so it doesn't
   return. Only a backup restores them; otherwise recreate those budgets.
 - `docs/upgrading.md` gains *After upgrading to household and member budgets
-  (Phase 20)* with the same cost, in the shape of the Phase 87 section.
+  (Phase 20)* with the same cost, in the shape of the Phase 87 section; it
+  names the form's **Whose spending** field for putting a budget back.
 
 A comment change in a migration changes no schema; `MigrationOrderTest`
 still passes. Test: `DocsLinkTest` over the new section.
@@ -205,7 +206,7 @@ None. D edits a migration's docblock only.
 - [x] K269: Coming up hides logo and owner only in a phone-width list (26rem, measured)
 - [x] K270: charges list refuses bad `page` / `per_page` with a 422; OpenAPI 1.10.0
 - [x] K271: Overview test for a split participant in ISOLATED mode (fails with the shared load narrowed to the reader's own rows)
-- [ ] K272: rollback cost in the migration docblock and `docs/upgrading.md`
+- [x] K272: rollback cost in the migration docblock and `docs/upgrading.md`
 - [ ] K273: OpenAPI 304 ETag description corrected
 - [ ] K274: `.charge-row` comment corrected
 - [ ] Rows marked Fixed in known-issues.md
