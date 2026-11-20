@@ -72,10 +72,11 @@ approximate "≈" figure in a long currency), the "Trial ends" and
 threshold the logo and face still give way, so the tag stays on the row's
 line. Update the comment above the rule to say why that width.
 
-Regression test: `DashboardTest::testComingUpHidesTheLogoOnlyInAPhoneWidthList`.
-It reads the built stylesheet's `@container charge-list` rule and asserts its
-threshold is the measured value, under 30rem; the screens are checked at 768,
-1024 and 375 px.
+Regression test: `ComingUpRowStylesTest::testComingUpHidesTheLogoOnlyInAPhoneWidthList`
+(a unit test, so it runs without a database; it reads `screens.css` as
+`DashboardCardTest` does). It asserts the `@container charge-list` threshold
+is the measured value, under 30rem, and still hides only the logo and face;
+the screens are checked at 375, 768, 1024 and 1280 px.
 
 ### B. K270 — the charges list refuses bad paging, as the subscription list does
 
@@ -186,13 +187,22 @@ None. D edits a migration's docblock only.
   protected helper on `ApiController` that both lists call; OpenAPI goes to
   1.10.0, not a patch, because a `422` is a new status code on that
   operation.
+- **K269, measured while building it (2026-11-20): 26rem.** With the logo
+  and face, a row's fixed parts are about 10.5rem plus the amount (4.5rem,
+  5.75rem for "≈ £1,234.56") and the widest tag (4.5rem); under 26rem the
+  name would get less than about 5rem. Measured on the demo household at
+  1024 px: the list is 27.75rem there and now keeps both; at 768 px (about
+  17rem) and 375 px (about 18.8rem) they still give way, with every tag on its
+  row's line and no horizontal scroll. The reviewer's 22–24rem would leave the
+  name 0–3rem. The test went in a unit test rather than `DashboardTest`, which
+  needs a database.
 - **Release — Decided 2026-11-20:** ships as its own patch release once
   merged, **1.47.4** (after v1.47.3). Not chosen: holding it for the next
   minor.
 
 ## Status
 
-- [ ] K269: Coming up hides logo and owner only in a phone-width list
+- [x] K269: Coming up hides logo and owner only in a phone-width list (26rem, measured)
 - [ ] K270: charges list refuses bad `page` / `per_page` with a 422; OpenAPI 1.10.0
 - [ ] K271: Overview test for a split participant in ISOLATED mode
 - [ ] K272: rollback cost in the migration docblock and `docs/upgrading.md`
@@ -215,8 +225,8 @@ more. There is no migration (D edits a docblock). No new strings: B reuses
 
 ## Tests
 
-- K269: `DashboardTest::testComingUpHidesTheLogoOnlyInAPhoneWidthList`; the
-  screens checked in the browser.
+- K269: `ComingUpRowStylesTest::testComingUpHidesTheLogoOnlyInAPhoneWidthList`;
+  the screens checked in the browser.
 - K270: `ApiChargesTest::testANonIntegerPageIsRefused`,
   `ApiChargesTest::testAWholeNumberPageStillAnswers200`;
   `ApiRequestEdgesTest`, `OpenApiCoverageTest`, `ApiDocCoverageTest`.

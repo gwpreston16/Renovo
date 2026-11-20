@@ -4270,16 +4270,23 @@ a.segmented-option {
 }
 
 /*
- * Where the card is narrow (a phone, or the dashboard's side-by-side columns
- * on a tablet) the logo and the owner's face give way, so the row keeps its
- * how-soon tag at its end on one line, as the prototype draws it. The card's
- * own width decides, not the window's.
+ * The prototype draws the logo and the owner's face on every row and lets the
+ * name ellipsize. They give way only where the row can't hold them and still
+ * leave the name room to read, so the how-soon tag stays at the row's end on
+ * one line. The card's own width decides, not the window's.
+ *
+ * 26rem is measured, not guessed (K269): with the logo and face, a row's fixed
+ * parts are about 10.5rem (padding, date tile, logo, face and five gaps), plus
+ * the amount (4.5rem, or 5.75rem for "≈ £1,234.56") and the widest tag (4.5rem,
+ * "Tomorrow"). Under 26rem the name would get less than about 5rem. A phone's
+ * list (about 18.5rem at 375px) and the side-by-side card at 768px (about
+ * 16.5rem) still drop them; at 1024px (about 27.75rem) they stay.
  */
 .charge-list {
     container: charge-list / inline-size;
 }
 
-@container charge-list (max-width: 30rem) {
+@container charge-list (max-width: 26rem) {
     .charge-row .logo,
     .charge-owner {
         display: none;
