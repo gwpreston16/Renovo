@@ -13,6 +13,7 @@ use App\Domain\IsolationMode;
 use App\Domain\Money;
 use App\Domain\PriceChangeSource;
 use App\Domain\Role;
+use App\Domain\SplitMode;
 use App\Persistence\Database;
 use App\Repository\DashboardCardRepository;
 use App\Repository\ExchangeRateRepository;
@@ -30,6 +31,7 @@ use App\Service\ForecastService;
 use App\Service\InstanceSettingsService;
 use App\Service\PriceHistoryService;
 use App\Service\SpendHistoryService;
+use App\Service\SplitService;
 use App\Service\SubscriptionService;
 use App\Support\Clock;
 use App\Support\FrozenClock;
@@ -1131,8 +1133,9 @@ final class DashboardTest extends DatabaseTestCase
 
     /**
      * K258: the price-rise card reads its rows and price history from the
-     * dashboard's one load. In ISOLATED mode that load is the viewer's own
-     * rows, so another member's announced rise never reaches their banner.
+     * dashboard's one load. In ISOLATED mode that load is the rows the viewer
+     * can see, their own and those split with them, so another member's
+     * announced rise on a row they don't share never reaches their banner.
      */
     public function testIsolatedModeKeepsAnotherMembersPriceRiseOffTheBanner(): void
     {
@@ -1162,6 +1165,77 @@ final class DashboardTest extends DatabaseTestCase
 
         self::assertNull($this->container()->get(DashboardService::class)->overview($editor)['price_change']);
         self::assertStringNotContainsString('price-banner', $this->body($this->get('/', $this->editorId)));
+    }
+
+    /**
+     * K271: a shared-cost split is visible to its participants whatever the
+     * isolation mode. Since K258 every Overview card reads one shared load, so
+     * a narrowing of that load (or of a card's handed-in sources) to the
+     * reader's own rows would drop the owner's split row from the editor's
+     * Coming up, budget and price-rise card at once. The repository's widening
+     * is tested in SplitVisibilityTest; this holds the Overview to it.
+     */
+    public function testIsolatedModeStillShowsASplitParticipantTheirSharedRow(): void
+    {
+        $owner = $this->scopeFor($this->ownerId);
+        $streaming = $this->idOf('Streaming');
+        $prices = $this->container()->get(PriceHistoryService::class);
+        $prices->recordInitialPrice(
+            $owner,
+            $streaming,
+            Money::of(999, 'GBP'),
+            new DateTimeImmutable('2025-01-18'),
+            $this->ownerId,
+        );
+        // Announced the way the app announces one, so June's charge stays £9.99.
+        $prices->schedule($owner, $streaming, [
+            'price' => '12.99',
+            'currency' => 'GBP',
+            'effective_from' => '2026-07-18',
+        ]);
+        $this->budget($this->editorId, 'Mine', '100.00', 'monthly', (string) $this->editorId);
+
+        $this->container()->get(InstanceSettingsService::class)->setIsolationMode(IsolationMode::Isolated);
+        $editor = Scope::forMember($this->editorId, false, $this->householdId, Role::Editor, IsolationMode::Isolated);
+        $dashboard = $this->container()->get(DashboardService::class);
+
+        // Before the split, Streaming is the owner's alone: off the editor's page.
+        $alone = $dashboard->overview($editor);
+        self::assertNotContains('Streaming', $this->comingUpNames($alone));
+        self::assertNull($alone['price_change']);
+        $projectedAlone = $alone['budgets'][0]['projected']?->amountMinor;
+
+        $this->container()->get(SplitService::class)->update(
+            $owner,
+            $streaming,
+            ['split_mode' => SplitMode::Equal->value, 'shares' => [$this->ownerId => 1, $this->editorId => 1]],
+        );
+
+        $shared = $dashboard->overview($editor);
+        self::assertContains('Streaming', $this->comingUpNames($shared));
+        self::assertSame('Streaming', $shared['price_change']['subscription']->name ?? null);
+        // The editor's budget counts their half of the 18 June charge (£9.99).
+        $projectedShared = $shared['budgets'][0]['projected']?->amountMinor;
+        self::assertNotNull($projectedAlone);
+        self::assertNotNull($projectedShared);
+        self::assertContains($projectedShared - $projectedAlone, [499, 500]);
+
+        $body = $this->body($this->get('/', $this->editorId));
+        self::assertStringContainsString('Streaming', $this->section($body, 'coming-up'));
+    }
+
+    /**
+     * The subscription names in an Overview's Coming up card.
+     *
+     * @param array<string, mixed> $overview
+     * @return list<string>
+     */
+    private function comingUpNames(array $overview): array
+    {
+        return array_map(
+            static fn (array $row): string => $row['subscription']->name,
+            $overview['coming_up']['rows'],
+        );
     }
 
     /**
