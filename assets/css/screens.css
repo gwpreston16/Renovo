@@ -4281,13 +4281,19 @@ a.segmented-option {
 /*
  * The whole row opens the subscription, not just a name a phone cuts to a few
  * letters (K276), as the subscription card does. The name stays the one link
- * a keyboard or screen reader meets; its ::after is stretched over the row,
- * and nothing else in the row takes a tap, so nothing needs lifting above it.
+ * a keyboard or screen reader meets; its ::after is stretched over the row.
+ * Nothing else in the row takes a tap; only the owner's face is lifted above
+ * the layer, so hovering it still shows whose row it is.
  */
 .charge-name a::after {
     content: '';
     position: absolute;
     inset: 0;
+}
+
+.charge-owner {
+    position: relative;
+    z-index: 1;
 }
 
 .charge-owner {

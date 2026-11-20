@@ -347,6 +347,43 @@ final class DashboardTest extends DatabaseTestCase
     }
 
     /**
+     * K275: a branded Coming up row keeps its cached logo, drawn in the
+     * prototype's 34px tile.
+     */
+    public function testComingUpDrawsABrandedServicesLogoInItsTile(): void
+    {
+        $this->db->execute(
+            "UPDATE subscriptions SET logo_path = 'storage/logos/streaming.png' WHERE name = 'Streaming'",
+        );
+
+        $card = $this->section($this->body($this->get('/', $this->ownerId)), 'coming-up-card');
+
+        self::assertMatchesRegularExpression(
+            '~<img class="logo service-tile" src="/storage/logos/streaming\.png" alt=""\s+width="34" height="34">~',
+            $card,
+        );
+    }
+
+    /**
+     * K276: the stretched name link covers the whole row, so the name must be
+     * the row's only link and nothing else in it may take a tap.
+     */
+    public function testEachComingUpRowHasOnlyItsNameLink(): void
+    {
+        $card = $this->section($this->body($this->get('/', $this->ownerId)), 'coming-up-card');
+
+        $rows = preg_split('~<li class="charge-row">~', $card) ?: [];
+        array_shift($rows);
+        self::assertNotEmpty($rows);
+        foreach ($rows as $row) {
+            $row = explode('</li>', $row)[0];
+            self::assertSame(1, substr_count($row, '<a '), $row);
+            self::assertStringNotContainsString('<button', $row);
+            self::assertStringNotContainsString('<form', $row);
+        }
+    }
+
+    /**
      * K262: each Coming up row ends with how soon it is, in words. Inside the
      * Due next 7 days window (the tile's own test, so the same rows) the tag
      * is warn, beyond it muted; a trial converting says "Trial ends" in info.
@@ -622,7 +659,10 @@ final class DashboardTest extends DatabaseTestCase
 
         $card = $this->section($this->body($this->get('/', $this->ownerId)), 'trials-card');
 
-        self::assertStringContainsString('<img class="logo service-tile" src="/storage/logos/trial.png"', $card);
+        self::assertMatchesRegularExpression(
+            '~<img class="logo service-tile" src="/storage/logos/trial\.png" alt=""\s+width="28" height="28">~',
+            $card,
+        );
         // K275: the unbranded trial gets its initial on a tile, not the mark.
         self::assertStringContainsString(
             '<span class="logo service-tile service-initial" aria-hidden="true">T</span>',

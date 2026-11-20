@@ -227,11 +227,6 @@ final class ApiChargesTest extends ApiTestCase
     }
 
     /**
-     * K270: the charges list read `?page=0` as page 1 while the subscription
-     * list refused it. Both now answer a 422 naming the parameter, for every
-     * shape a cast or is_numeric() would have let through as a number.
-     */
-    /**
      * K279: both bad paging parameters are named in the one 422, so a client
      * fixes them in one round trip rather than finding the second after the
      * first.
@@ -244,6 +239,11 @@ final class ApiChargesTest extends ApiTestCase
         self::assertSame(['page', 'per_page'], array_keys($this->decode($response)['error']['errors']));
     }
 
+    /**
+     * K270: the charges list read `?page=0` as page 1 while the subscription
+     * list refused it. Both now answer a 422 naming the parameter, for every
+     * shape a cast or is_numeric() would have let through as a number.
+     */
     public function testANonIntegerPageIsRefused(): void
     {
         $refused = [
