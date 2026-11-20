@@ -1017,6 +1017,15 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   Modified` instead of the whole year. Every figure is unchanged. OpenAPI
   1.9.18 adds the `304`, the `If-None-Match` parameter and the `ETag`
   header. No migrations. See [Calendar feed](features/calendar.md#calendar-feed).
+- **Phase 96 — Dashboard tiles and tags that match the prototype, from the
+  known-issues log — complete (1.47.3).** Each row on the dashboard's Coming
+  up card ends with how soon it is: "Today", "Tomorrow" or "In N days", amber
+  inside the next seven days and grey beyond, or "Trial ends" in blue for a
+  trial converting; the date tile is plain. Trials are blue on the dashboard,
+  as on the subscriptions list and the calendar, and the Active tile's trial
+  count is plain text. The Price change tile is a plain card with only its
+  icon square in amber. No API change. No migrations. See
+  [The dashboard](features/tracking.md#the-dashboard).
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
