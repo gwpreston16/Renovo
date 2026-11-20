@@ -106,7 +106,7 @@ can be moved.
 | 95 | [Lighter Budgets, Overview and calendar feed, from the known-issues log](docs/phases/PHASE-95.md) | — | None | ✅ done |
 | 96 | [Dashboard tiles and tags that match the prototype, from the known-issues log](docs/phases/PHASE-96.md) | — | None | ✅ done |
 | 97 | [Coming up, charges paging and contract notes, from the known-issues log](docs/phases/PHASE-97.md) | — | None | ✅ done |
-| 98 | [Coming up rows, paging tests and charge notes, from the known-issues log](docs/phases/PHASE-98.md) | — | None | 📋 planned |
+| 98 | [Coming up rows, paging tests and charge notes, from the known-issues log](docs/phases/PHASE-98.md) | — | None | 🚧 in progress |
 | 99 | [Coming up's second line as the prototype draws it, from the known-issues log](docs/phases/PHASE-99.md) | 98 | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos

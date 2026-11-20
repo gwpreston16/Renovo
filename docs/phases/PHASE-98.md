@@ -187,13 +187,14 @@ None. F edits a migration's comment only.
   and the Free trials card follows Coming up. Not chosen: Coming up only,
   leaving Free trials on Phase 48's mark. The threshold is re-measured, not
   shifted by the reviewer's 0.625rem estimate.
-- **K276:** makes the row what the prototype draws (`:240`), using the idiom
-  commit `a92ef62` already uses for the subscription card.
+- **K276 — Confirmed 2026-11-20:** makes the row what the prototype draws
+  (`:240`), using the idiom commit `a92ef62` already uses for the
+  subscription card. Not chosen: leaving only the name as the target.
 - **K278 and K279:** tests that make K269's and K256/K270's fixes hold; no
   behaviour change.
-- **K280:** makes the charges contract say what the code and the CHANGELOG
-  already say; OpenAPI **1.10.1**, a patch, since no status code or shape
-  changes.
+- **K280 — Confirmed 2026-11-20:** makes the charges contract say what the
+  code and the CHANGELOG already say; OpenAPI **1.10.1**, a patch, since no
+  status code or shape changes. Not chosen: the text without a version bump.
 - **K281 and K282:** make the text say what the code does, as K272 and K274
   did.
 - **K277 — Decided 2026-11-20:** not in this batch. Not chosen: the
