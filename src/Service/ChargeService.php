@@ -319,7 +319,8 @@ final class ChargeService
     }
 
     /**
-     * Every charge of one subscription, newest first — the API's list.
+     * Every charge of one subscription, newest first, unpaged. The API pages
+     * through page() instead; this whole list is for callers that want it all.
      *
      * @return list<Charge>
      */
