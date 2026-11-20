@@ -30,7 +30,7 @@ becomes 🚧 when `/next-phase` starts it on its branch, after its decisions are
 confirmed or corrected, and ✅ in the PR that finishes it. Its brief keeps the
 same file throughout.
 
-## Planned — Phases 30–98
+## Planned — Phases 30–99
 
 Numbered in the order they were drafted; the **Needs** column is the build
 order. Each phase lists what it needs; where it needs nothing it says so, and
@@ -107,6 +107,7 @@ can be moved.
 | 96 | [Dashboard tiles and tags that match the prototype, from the known-issues log](docs/phases/PHASE-96.md) | — | None | ✅ done |
 | 97 | [Coming up, charges paging and contract notes, from the known-issues log](docs/phases/PHASE-97.md) | — | None | ✅ done |
 | 98 | [Coming up rows, paging tests and charge notes, from the known-issues log](docs/phases/PHASE-98.md) | — | None | 📋 planned |
+| 99 | [Coming up's second line as the prototype draws it, from the known-issues log](docs/phases/PHASE-99.md) | 98 | None | 📋 planned |
 
 - **30 — Shipped as the API catch-up** for tags and payment-method logos
   ([brief](docs/phases/PHASE-30.md)). The channel-secret encryption that was
@@ -270,6 +271,7 @@ can be moved.
 - **96 — Dashboard tiles and tags that match the prototype.** A batch from the known-issues log (K260–K262): the Price change tile is a plain card, trials are blue on the dashboard as everywhere else, and each Coming up row ends with "Today", "Tomorrow" or "In N days". Ships as its own patch release.
 - **97 — Coming up, charges paging and contract notes.** A batch from the known-issues log (K269–K274): Coming up keeps its logos and owner faces on tablets, the charges list refuses bad paging with a 422 as the subscription list does (OpenAPI 1.10.0), a test holds split rows on the Overview in ISOLATED mode, and three notes are corrected (the Phase 20 rollback cost, the 304 ETag, a CSS comment). Ships as its own patch release.
 - **98 — Coming up rows, paging tests and charge notes.** A batch from the known-issues log (K275, K276, K278–K282): Coming up and Free trials draw an unbranded service's initial on a tile and the whole Coming up row opens the subscription, two tests hold the container rule and multi-parameter paging 422s, and three notes are corrected (the charges `per_page` clamp, OpenAPI 1.10.1; a migration comment; a stale docblock). Ships as its own patch release.
+- **99 — Coming up's second line as the prototype draws it.** A batch from the known-issues log (K277): the line under each Coming up name becomes the plan and payment method, as on the subscriptions list, with the cycle under the amount; the category dot added in 1.46.0 goes. Built after Phase 98; ships as its own patch release.
 
 Phases 37–43 need nothing from 31–36, so they can be brought forward and
 renumbered if operational work should come before features. Within them, 40
