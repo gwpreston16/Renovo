@@ -1039,6 +1039,17 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   own ETag. No migrations. See [Subscriptions](api.md#subscriptions) in the
   API reference.
 
+- **Phase 98 — Coming up rows, paging tests and charge notes, from the
+  known-issues log — complete (1.47.5).** Coming up and Free trials show an
+  unbranded service's initial on a tile instead of the Renovo mark, so a list
+  of them no longer reads as one thing repeated, and a tap anywhere on a
+  Coming up row opens the subscription. Tests now hold the list's container
+  rule and a paged list naming both bad paging parameters in one `422`. The
+  charges list's docs say a `per_page` over 100 is read as 100 (OpenAPI
+  1.10.1), the budget subject migration's comment says what a failed MySQL
+  run leaves, and a stale docblock is corrected. No migrations. See
+  [The dashboard](features/tracking.md#the-dashboard).
+
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
 which is in progress. `SPEC.md` has the conventions every phase followed.
