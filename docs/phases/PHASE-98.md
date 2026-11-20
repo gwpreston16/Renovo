@@ -223,7 +223,7 @@ None. F edits a migration's comment only.
 - [x] K278: style test asserts the `charge-list` container and the template's class
 - [x] K279: tests that both bad paging parameters are named in one 422, on both lists
 - [x] K280: charges docs and OpenAPI say a `per_page` over 100 is read as 100; OpenAPI 1.10.1
-- [ ] K281: backfill comment corrected
+- [x] K281: backfill comment corrected
 - [ ] K282: `forSubscription()` docblock corrected
 - [ ] Rows marked Fixed in known-issues.md
 - [ ] CHANGELOG [Unreleased] → Fixed

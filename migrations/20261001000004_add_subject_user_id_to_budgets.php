@@ -43,8 +43,9 @@ final class AddSubjectUserIdToBudgets extends AbstractMigration
             ])
             ->update();
 
-        // Idempotent: a re-run after a partial MySQL failure touches only the
-        // rows the first attempt did not reach.
+        // One statement, so it fills every row or none. A re-run after a
+        // partial MySQL failure stops at the column added above; follow the
+        // manual rollback in the docblock, then migrate again (K281).
         $this->execute('UPDATE budgets SET subject_user_id = owner_user_id WHERE subject_user_id IS NULL');
     }
 
