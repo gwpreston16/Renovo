@@ -4173,7 +4173,10 @@ a.segmented-option {
 
 .charge-row {
     display: flex;
-    /* A larger text size wraps the badge under the name rather than past the card. */
+    /*
+     * A larger text size wraps the row; the how-soon tag then sits at its
+     * right end, under the amount (.charge-when).
+     */
     flex-wrap: wrap;
     align-items: center;
     gap: 0.75rem;
