@@ -8,6 +8,8 @@ Before upgrading, **back up your database**, then run `vendor/bin/phinx migrate`
 
 ## [Unreleased]
 
+## [1.47.4] - 2026-11-20
+
 ### Changed
 
 - **The charges list refuses paging it can't read.** On
@@ -1917,7 +1919,8 @@ recurring bills. Requires PHP 8.4+ and PostgreSQL or MySQL/MariaDB.
   explicit rollbacks, and sample data with a second household member and a
   year of history. The default port is 9090.
 
-[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.47.3...HEAD
+[Unreleased]: https://github.com/gwpreston16/Renovo/compare/v1.47.4...HEAD
+[1.47.4]: https://github.com/gwpreston16/Renovo/compare/v1.47.3...v1.47.4
 [1.47.3]: https://github.com/gwpreston16/Renovo/compare/v1.47.2...v1.47.3
 [1.47.2]: https://github.com/gwpreston16/Renovo/compare/v1.47.1...v1.47.2
 [1.47.1]: https://github.com/gwpreston16/Renovo/compare/v1.47.0...v1.47.1

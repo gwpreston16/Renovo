@@ -1026,6 +1026,18 @@ patch (see [`CHANGELOG.md`](../CHANGELOG.md)):
   count is plain text. The Price change tile is a plain card with only its
   icon square in amber. No API change. No migrations. See
   [The dashboard](features/tracking.md#the-dashboard).
+- **Phase 97 — Coming up, charges paging and contract notes, from the
+  known-issues log — complete (1.47.4).** The dashboard's Coming up rows keep
+  their logo and owner face on a tablet or small laptop, dropping them only
+  where the list is narrower than 26rem. A test now holds a split
+  participant's shared row on the Overview in ISOLATED mode. The upgrade
+  notes and the budget subject migration say that rolling it back turns every
+  budget for the household or another member into one for its owner, and how
+  to put them back. The charges list answers a `page` or `per_page` that
+  isn't a whole number of 1 or more with a `422`, as the subscription list
+  does; OpenAPI 1.10.0 adds it and says a calendar `304` carries the feed's
+  own ETag. No migrations. See [Subscriptions](api.md#subscriptions) in the
+  API reference.
 
 Each phase's brief, with its scope, decisions and status, is in
 [`phases/`](phases/) as `PHASE-<n>.md`, and the [roadmap](../ROADMAP.md) says
