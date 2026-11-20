@@ -244,6 +244,8 @@ final class ApiChargesTest extends ApiTestCase
             'page=%201' => 'page',
             'per_page=1e3' => 'per_page',
             'page=-1' => 'page',
+            // Zeros only is zero, however many.
+            'page=00' => 'page',
         ];
 
         foreach ($refused as $query => $parameter) {
@@ -271,6 +273,15 @@ final class ApiChargesTest extends ApiTestCase
         $clamped = $this->api('GET', $this->chargesPath() . '?per_page=500', $this->ownerToken);
         self::assertSame(200, $clamped->getStatusCode(), (string) $clamped->getBody());
         self::assertSame(100, $this->decode($clamped)['meta']['per_page']);
+
+        $atCap = $this->api('GET', $this->chargesPath() . '?per_page=100', $this->ownerToken);
+        self::assertSame(100, $this->decode($atCap)['meta']['per_page']);
+
+        // Leading zeros are still a whole number of 1 or more.
+        $padded = $this->api('GET', $this->chargesPath() . '?page=01&per_page=0001', $this->ownerToken);
+        self::assertSame(200, $padded->getStatusCode(), (string) $padded->getBody());
+        $meta = $this->decode($padded)['meta'];
+        self::assertSame([1, 1], [$meta['page'], $meta['per_page']]);
 
         $past = $this->api('GET', $this->chargesPath() . '?per_page=1&page=99999999999999999999', $this->ownerToken);
         self::assertSame(200, $past->getStatusCode(), (string) $past->getBody());
@@ -621,6 +632,9 @@ final class ApiChargesTest extends ApiTestCase
 
         $charge = '/api/v1/charges/' . $this->chargeId;
         self::assertSame(404, $this->api('GET', $this->chargesPath(), $token)->getStatusCode());
+        // Bad paging can't tell a stranger the subscription exists: still a
+        // 404, never the 422 a visible one gets (K270).
+        self::assertSame(404, $this->api('GET', $this->chargesPath() . '?page=0', $token)->getStatusCode());
         self::assertSame(404, $this->api('PATCH', $charge, $token, ['status' => 'skipped'])->getStatusCode());
         self::assertSame(404, $this->api('POST', $this->chargesPath(), $token, [
             'date' => (new DateTimeImmutable('-1 day'))->format('Y-m-d'),

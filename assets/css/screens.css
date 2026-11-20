@@ -4281,9 +4281,9 @@ a.segmented-option {
  * 26rem is measured, not guessed (K269): with the logo and face, a row's fixed
  * parts are about 10.5rem (padding, date tile, logo, face and five gaps), plus
  * the amount (4.5rem, or 5.75rem for "≈ £1,234.56") and the widest tag (4.5rem,
- * "Tomorrow"). Under 26rem the name would get less than about 5rem. A phone's
- * list (about 18.5rem at 375px) and the side-by-side card at 768px (about
- * 16.5rem) still drop them; at 1024px (about 27.75rem) they stay.
+ * "Tomorrow" or "In 30 days"). Under 26rem the name would get less than about
+ * 5rem. A phone's list (about 18.8rem at 375px) and the side-by-side card at
+ * 768px (about 17rem) still drop them; at 1024px (about 27.75rem) they stay.
  */
 .charge-list {
     container: charge-list / inline-size;

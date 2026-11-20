@@ -144,11 +144,14 @@ abstract class ApiController
      * Refuses a `page` or `per_page` that is sent and isn't a whole number of 1
      * or more, as a 422 naming the parameter. An empty value means the default.
      *
-     * Every paged list on the API calls this, so they answer the same input the
-     * same way: a forgiving read used to turn `?page=0` into page 1 on the
-     * charges list while the subscription list refused it (K256, K270). The
-     * browser's lists stay forgiving; a person editing an address bar is not a
-     * client that needs telling.
+     * The charges list calls this. The subscription list checks `page` and
+     * `per_page` in its own loop, beside its id filters, so it can report them
+     * all in one 422; both use isPositiveWholeNumber() and notAWholeNumber(),
+     * so the two lists answer the same input the same way. A forgiving read
+     * used to turn `?page=0` into page 1 on the charges list while the
+     * subscription list refused it (K256, K270). The browser's lists stay
+     * forgiving; a person editing an address bar is not a client that needs
+     * telling.
      *
      * @param array<string, mixed> $query
      *
